@@ -33,9 +33,8 @@
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
-#include <jogasaki/meta/character_field_option.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor::function {
@@ -56,7 +55,7 @@ TEST_F(aggregate_builtin_functions_test, count_distinct_int4) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     data::value_store store{
-        meta::field_type{meta::field_enum_tag<kind::int4>},
+        meta::int4_type(),
         &resource,
         &varlen_resource
     };
@@ -90,7 +89,7 @@ TEST_F(aggregate_builtin_functions_test, count_distinct_character) {
     memory::monotonic_paged_memory_resource resource{&pool};
     memory::monotonic_paged_memory_resource varlen_resource{&pool};
     data::value_store store{
-        meta::field_type{std::make_shared<meta::character_field_option>()},
+        meta::character_type(),
         &resource,
         &varlen_resource
     };

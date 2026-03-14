@@ -198,16 +198,11 @@ TEST_F(ddl_test, create_table_temporal_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
-        auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-        auto todtz = meta::field_type{std::make_shared<meta::time_of_day_field_option>(true)};
-        auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
         EXPECT_EQ((mock::typed_nullable_record<
             kind::date, kind::time_of_day, kind::time_of_day, kind::time_point, kind::time_point
         >(
             std::tuple{
-                dat, tod, todtz, tp, tptz,
+                date_type(), time_of_day_type(false), time_of_day_type(true), time_point_type(false), time_point_type(true),
             },
             d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0
         )), result[0]);
@@ -235,12 +230,9 @@ TEST_F(ddl_test, create_table_decimals) {
     execute_query("SELECT * FROM T", result);
     ASSERT_EQ(1, result.size());
 
-    auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
-    auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-    auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
     EXPECT_EQ(
         (mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
-            std::tuple{dec_3_0, dec_5_3, dec_10_1},
+            std::tuple{decimal_type(3, 0), decimal_type(5, 3), decimal_type(10, 1)},
             v111,
             v11_111,
             v11111_1

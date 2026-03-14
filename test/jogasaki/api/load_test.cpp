@@ -66,7 +66,7 @@ inline std::shared_ptr<jogasaki::meta::external_record_meta> create_file_meta() 
     return std::make_shared<meta::external_record_meta>(
         std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{
-                meta::field_type(std::make_shared<meta::character_field_option>()),
+                meta::character_type(),
             },
             boost::dynamic_bitset<std::uint64_t>{1}.flip()
         ),
@@ -283,9 +283,9 @@ TEST_F(load_test, decimals) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TDECIMALS ORDER BY C0", result);
         ASSERT_EQ(1, result.size());
-        auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
-        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-        auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+        auto dec_3_0 = meta::decimal_type(3, 0);
+        auto dec_5_3 = meta::decimal_type(5, 3);
+        auto dec_10_1 = meta::decimal_type(10, 1);
         EXPECT_EQ((mock::typed_nullable_record<
             kind::decimal, kind::decimal, kind::decimal,
             kind::decimal, kind::decimal, kind::decimal
@@ -341,9 +341,9 @@ TEST_F(load_test, decimals_with_indefinite_precscale) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TDECIMALS ORDER BY C0", result);
         ASSERT_EQ(1, result.size());
-        auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
-        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-        auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+        auto dec_3_0 = meta::decimal_type(3, 0);
+        auto dec_5_3 = meta::decimal_type(5, 3);
+        auto dec_10_1 = meta::decimal_type(10, 1);
         EXPECT_EQ((mock::typed_nullable_record<
             kind::decimal, kind::decimal, kind::decimal,
             kind::decimal, kind::decimal, kind::decimal
@@ -388,19 +388,19 @@ TEST_F(load_test, cast_from_string) {
         ASSERT_EQ(2, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(
             std::tuple{
-                meta::field_type{meta::field_enum_tag<kind::int4>},
-                meta::field_type{meta::field_enum_tag<kind::int8>},
-                meta::field_type{meta::field_enum_tag<kind::float4>},
-                meta::field_type{meta::field_enum_tag<kind::float8>},
-                meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
+                meta::int4_type(),
+                meta::int8_type(),
+                meta::float4_type(),
+                meta::float8_type(),
+                meta::decimal_type(5, 3),
             }, 1, 10, 100.0, 1000.0, triple{1, 0, 11111, -3} /* 11.111 */
         )), result[0]);
         EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(std::tuple{
-                meta::field_type{meta::field_enum_tag<kind::int4>},
-                meta::field_type{meta::field_enum_tag<kind::int8>},
-                meta::field_type{meta::field_enum_tag<kind::float4>},
-                meta::field_type{meta::field_enum_tag<kind::float8>},
-                meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
+                meta::int4_type(),
+                meta::int8_type(),
+                meta::float4_type(),
+                meta::float8_type(),
+                meta::decimal_type(5, 3),
             }, 2, 20, 200.0, 2000.0, triple{1, 0, 22222, -3} /* 22.222 */
         )), result[1]);
     }

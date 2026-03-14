@@ -314,9 +314,7 @@ TEST_F(update_test, verify_error_abort_tx) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T ORDER BY C0", result);
         ASSERT_EQ(1, result.size());
-        auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 2)};
-        auto i4 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
-        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::decimal>(std::tuple{i4, dec}, 1, v1)), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::decimal>(std::tuple{int4_type(), decimal_type(5, 2)}, 1, v1)), result[0]);
     }
 }
 

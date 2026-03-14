@@ -171,9 +171,9 @@ TEST_F(arrow_readwrite_test, temporal_types) {
     p = p / "temporal_types.arrow";
     auto rec = mock::typed_nullable_record<kind::date, kind::time_of_day, kind::time_point>(
         std::tuple{
-            meta::field_type{meta::field_enum_tag<kind::date>},
-            meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
-            meta::field_type{std::make_shared<meta::time_point_field_option>()},
+            meta::date_type(),
+            meta::time_of_day_type(),
+            meta::time_point_type(),
         },
         runtime_t<meta::field_type_kind::date>(),
         runtime_t<meta::field_type_kind::time_of_day>(),
@@ -339,7 +339,7 @@ void arrow_readwrite_test::test_rw_decimal(meta::field_type& ftype, std::string_
 }
 
 TEST_F(arrow_readwrite_test, decimal) {
-    auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+    auto fm = meta::decimal_type(5, 3);
     {
         SCOPED_TRACE("read/write 1.230");
         auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3));
@@ -348,7 +348,7 @@ TEST_F(arrow_readwrite_test, decimal) {
 }
 
 TEST_F(arrow_readwrite_test, decimal_max_values) {
-    auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(38, 37)};
+    auto fm = meta::decimal_type(38, 37);
     {
         SCOPED_TRACE("-9.99....9 (38 digits)");
         auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, -37));
@@ -420,9 +420,9 @@ TEST_F(arrow_readwrite_test, nulls) {
 }
 
 TEST_F(arrow_readwrite_test, generate_decimal_sample) {
-    auto fm0 = meta::field_type{std::make_shared<meta::decimal_field_option>(6, 3)};
-    auto fm1 = meta::field_type{std::make_shared<meta::decimal_field_option>(4, 1)};
-    auto fm2 = meta::field_type{std::make_shared<meta::decimal_field_option>(20, 0)};
+    auto fm0 = meta::decimal_type(6, 3);
+    auto fm1 = meta::decimal_type(4, 1);
+    auto fm2 = meta::decimal_type(20, 0);
 
     auto rec = mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
         std::tuple{fm0, fm1, fm2},
@@ -984,7 +984,7 @@ TEST_F(arrow_readwrite_test, record_size_for_types) {
     using time_point_v = takatori::datetime::time_point;
     using decimal_v = takatori::decimal::triple;
 
-    auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+    auto dec_3_0 = meta::decimal_type(3, 0);
     auto v111 = decimal_v{1, 0, 111, 0}; // 111
     verify_single_field_record_size(mock::typed_nullable_record<kind::decimal>(std::tuple{dec_3_0}, v111), 16);
 
@@ -992,12 +992,9 @@ TEST_F(arrow_readwrite_test, record_size_for_types) {
     auto t12_0_0 = time_of_day_v{12, 0, 0};
     auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
 
-    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
-    auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
-    auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-    verify_single_field_record_size(mock::typed_nullable_record<kind::date>(std::tuple{dat}, d2000_1_1), 4);
-    verify_single_field_record_size(mock::typed_nullable_record<kind::time_of_day>(std::tuple{tod}, t12_0_0), 8);
-    verify_single_field_record_size(mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, tp2000_1_1_12_0_0), 8);
+    verify_single_field_record_size(mock::typed_nullable_record<kind::date>(std::tuple{meta::date_type()}, d2000_1_1), 4);
+    verify_single_field_record_size(mock::typed_nullable_record<kind::time_of_day>(std::tuple{meta::time_of_day_type(false)}, t12_0_0), 8);
+    verify_single_field_record_size(mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, tp2000_1_1_12_0_0), 8);
 }
 }
 

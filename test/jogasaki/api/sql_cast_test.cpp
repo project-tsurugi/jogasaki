@@ -188,31 +188,27 @@ TEST_F(sql_cast_test, cast_decimal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS DECIMAL(*,*)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, triple{1, 0, 123456, -3})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type()}, triple{1, 0, 123456, -3})), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS DECIMAL(6,2)) FROM TT", result);
         ASSERT_EQ(1, result.size());
 
-        auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(6, 2)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, triple{1, 0, 12345, -2})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(6, 2)}, triple{1, 0, 12345, -2})), result[0]);
     }
     test_stmt_err("SELECT CAST('123.456' AS DECIMAL(6,*)) FROM TT", error_code::unsupported_runtime_feature_exception);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS DECIMAL(*,2)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, 2)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, triple{1, 0, 12345, -2})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(std::nullopt, 2)}, triple{1, 0, 12345, -2})), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS DECIMAL) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(38, 0)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, triple{1, 0, 123, 0})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 0)}, triple{1, 0, 123, 0})), result[0]);
     }
 }
 
@@ -225,7 +221,7 @@ TEST_F(sql_cast_test, cast_decimal_normalize) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, CAST(C0 AS DECIMAL(5,2)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 2)};
+        auto fm = decimal_type(5, 2);
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::decimal, kind::decimal>(
                 std::tuple{fm, fm},
@@ -314,8 +310,7 @@ TEST_F(sql_cast_test, cast_without_length) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS DECIMAL) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(38, 0)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, triple{1, 0, 123, 0})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 0)}, triple{1, 0, 123, 0})), result[0]);
     }
 }
 

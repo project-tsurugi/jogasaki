@@ -986,7 +986,7 @@ TEST_F(coder_test, text_ordering) {
     data::any c3b{std::in_place_type<accessor::text>, text{"AAB"}};
     data::any c5{std::in_place_type<accessor::text>, text{"BB"}};
 
-    meta::field_type type{std::make_shared<meta::character_field_option>()};
+    auto type = meta::character_type();
     { SCOPED_TRACE("c0 < c2"); verify_order(type, c0, c2); }
     { SCOPED_TRACE("c2 < c3a"); verify_order(type, c2, c3a); }
     { SCOPED_TRACE("c3a < c3b"); verify_order(type, c3a, c3b); }
@@ -1000,7 +1000,7 @@ TEST_F(coder_test, binary_ordering) {
     data::any c3b{std::in_place_type<accessor::binary>, binary{"\x01\x01\x02"sv}};
     data::any c5{std::in_place_type<accessor::binary>, binary{"\x02\x02"sv}};
 
-    meta::field_type type{std::make_shared<meta::octet_field_option>(false, 5)};
+    auto type = meta::octet_type(false, 5);
     { SCOPED_TRACE("c0 < c2"); verify_order(type, c0, c2); }
     { SCOPED_TRACE("c2 < c3a"); verify_order(type, c2, c3a); }
     { SCOPED_TRACE("c3a < c3b"); verify_order(type, c3a, c3b); }
@@ -1013,7 +1013,7 @@ TEST_F(coder_test, date_ordering) {
     data::any c2{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{0}};
     data::any c3{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{1}};
     data::any c4{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{2}};
-    meta::field_type type{meta::field_enum_tag<kind::date>};
+    auto type = meta::date_type();
     { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
     { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
     { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
@@ -1026,7 +1026,7 @@ TEST_F(coder_test, time_of_day_ordering) {
     data::any c2{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{1ns*(24L*60*60*1000*1000*1000-2)}};
     data::any c3{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{1ns*(24L*60*60*1000*1000*1000-1)}};
 
-    meta::field_type type{std::make_shared<meta::time_of_day_field_option>()};
+    auto type = meta::time_of_day_type();
     { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
     { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
     { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
@@ -1039,7 +1039,7 @@ TEST_F(coder_test, time_point_ordering) {
     data::any c3{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{1ns}};
     data::any c4{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{2ns}};
 
-    meta::field_type type{std::make_shared<meta::time_point_field_option>()};
+    auto type = meta::time_point_type();
     { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
     { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
     { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
@@ -1053,7 +1053,7 @@ TEST_F(coder_test, time_point_ordering_with_only_secs) {
     data::any c3{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{1s, 0ns}};
     data::any c4{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{2s, 0ns}};
 
-    meta::field_type type{std::make_shared<meta::time_point_field_option>()};
+    auto type = meta::time_point_type();
     { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
     { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
     { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
@@ -1066,7 +1066,7 @@ TEST_F(coder_test, time_point_ordering_with_subsecs) {
     data::any c2{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 900ms}};
     data::any c3{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0s, 0ms}};
     data::any c4{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0s, 100ms}};
-    meta::field_type type{std::make_shared<meta::time_point_field_option>()};
+    auto type = meta::time_point_type();
     { SCOPED_TRACE("c0 < c1"); verify_order(type, c0, c1); }
     { SCOPED_TRACE("c1 < c2"); verify_order(type, c1, c2); }
     { SCOPED_TRACE("c2 < c3"); verify_order(type, c2, c3); }
@@ -1074,8 +1074,7 @@ TEST_F(coder_test, time_point_ordering_with_subsecs) {
 }
 
 TEST_F(coder_test, decimal_ordering_simple) {
-    auto opt = std::make_shared<meta::decimal_field_option>(6, 3);
-    meta::field_type type{opt};
+    auto type = meta::decimal_type(6, 3);
     data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 1, 2}}; // -100
     data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 10, 0}};  // -10
     data::any c2{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{0, 0, 0, 0}}; // 0
@@ -1223,8 +1222,7 @@ TEST_F(coder_test, decimal_64bit_boundary_values) {
 }
 
 TEST_F(coder_test, decimal_ordering_64bit_boundary_values) {
-    auto opt = std::make_shared<meta::decimal_field_option>(20, 0);
-    meta::field_type type{opt};
+    auto type = meta::decimal_type(20, 0);
     data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 1, 1, 0}}; // -18446744073709551617
     data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 1, 0, 0}}; // -18446744073709551616
     data::any c2{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0, 0xFFFFFFFFFFFFFFFFUL, 0}};  // -18446744073709551615
@@ -1250,8 +1248,7 @@ TEST_F(coder_test, decimal_ordering_64bit_boundary_values) {
 }
 
 TEST_F(coder_test, decimal_ordering_128bit_boundary_values) {
-    auto opt = std::make_shared<meta::decimal_field_option>(39, 0);
-    meta::field_type type{opt};
+    auto type = meta::decimal_type(39, 0);
     data::any c0{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0}};
     data::any c1{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFEUL, 0}};
     data::any c2{std::in_place_type<rtype<ft::decimal>>, rtype<ft::decimal>{-1, 0x8000000000000000UL, 0x0000000000000001UL, 0}};

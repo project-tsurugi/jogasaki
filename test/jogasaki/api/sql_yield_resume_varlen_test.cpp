@@ -50,6 +50,7 @@
 #include <jogasaki/executor/function/table_valued_function_kind.h>
 #include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
@@ -128,17 +129,17 @@ namespace {
 
 /// @brief field type for CHAR(20) — fixed-length character with length 20.
 [[nodiscard]] meta::field_type char20_ft() {
-    return meta::field_type{std::make_shared<meta::character_field_option>(false, std::size_t{20})};
+    return meta::character_type(false, std::size_t{20});
 }
 
 /// @brief field type for VARCHAR(*) — unbounded varying-length character (TVF output / UPPER result).
 [[nodiscard]] meta::field_type varchar_ft() {
-    return meta::field_type{std::make_shared<meta::character_field_option>(true, std::nullopt)};
+    return meta::character_type();
 }
 
 /// @brief field type for VARCHAR(20) — varying-length character with max length 20 (UNION ALL result).
 [[nodiscard]] meta::field_type varchar20_ft() {
-    return meta::field_type{std::make_shared<meta::character_field_option>(true, std::size_t{20})};
+    return meta::character_type(true, std::size_t{20});
 }
 
 }  // namespace

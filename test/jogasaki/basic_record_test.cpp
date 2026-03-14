@@ -24,6 +24,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_utils/record.h>
 #include <jogasaki/test_utils/types.h>
@@ -56,14 +57,14 @@ TEST_F(basic_record_test, meta) {
         basic_record r{create_record<kind::int4>()};
         auto meta = r.record_meta();
         EXPECT_EQ(1, meta->field_count());
-        EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, meta->at(0));
+        EXPECT_EQ(meta::int4_type(), meta->at(0));
     }
     {
         basic_record r{create_record<kind::int4, kind::int8>()};
         auto meta = r.record_meta();
         EXPECT_EQ(2, meta->field_count());
-        EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, meta->at(0));
-        EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int8>}, meta->at(1));
+        EXPECT_EQ(meta::int4_type(), meta->at(0));
+        EXPECT_EQ(meta::int8_type(), meta->at(1));
     }
 }
 
@@ -82,7 +83,7 @@ TEST_F(basic_record_test, share_metadata) {
     basic_record r2{create_record<kind::int4>(meta, 2)};
     auto meta2 = r2.record_meta();
     EXPECT_EQ(1, meta2->field_count());
-    EXPECT_EQ(meta::field_type{meta::field_enum_tag<kind::int4>}, meta2->at(0));
+    EXPECT_EQ(meta::int4_type(), meta2->at(0));
     EXPECT_EQ(meta, meta2);
 }
 
@@ -208,7 +209,7 @@ TEST_F(basic_record_test, field_size) {
 }
 
 TEST_F(basic_record_test, compare_decimal) {
-    auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+    auto fm = meta::decimal_type(5, 3);
     auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3));
     auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0, 123, -2));
     EXPECT_EQ(r1, r2);
@@ -221,10 +222,8 @@ TEST_F(basic_record_test, compare_decimal) {
 
 TEST_F(basic_record_test, compare_different_scale_decimal) {
     // verify basic_record compares decimal values correctly even if the scale is different
-    auto fm0 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-    auto fm1 = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm0}, runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0));
-    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm1}, runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0));
+    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5, 3)}, runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0));
+    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type()}, runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0));
     EXPECT_NE(r1, r2);
 }
 

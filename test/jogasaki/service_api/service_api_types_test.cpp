@@ -320,9 +320,9 @@ TEST_F(service_api_test, decimals) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
-                auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-                auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+                auto dec_3_0 = meta::decimal_type(3, 0);
+                auto dec_5_3 = meta::decimal_type(5, 3);
+                auto dec_10_1 = meta::decimal_type(10, 1);
                 EXPECT_EQ((mock::typed_nullable_record<
                     ft::decimal, ft::decimal, ft::decimal,
                     ft::decimal, ft::decimal, ft::decimal
@@ -429,11 +429,11 @@ TEST_F(service_api_test, temporal_types) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                auto dat = meta::field_type{meta::field_enum_tag<ft::date>};
-                auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
-                auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-                auto todtz = meta::field_type{std::make_shared<meta::time_of_day_field_option>(true)};
-                auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
+                auto dat = meta::date_type();
+                auto tod = meta::time_of_day_type(false);
+                auto tp = meta::time_point_type(false);
+                auto todtz = meta::time_of_day_type(true);
+                auto tptz = meta::time_point_type(true);
                 EXPECT_EQ((mock::typed_nullable_record<
                     ft::date, ft::time_of_day, ft::time_of_day, ft::time_point, ft::time_point,
                     ft::date, ft::time_of_day, ft::time_of_day, ft::time_point, ft::time_point
@@ -523,8 +523,7 @@ TEST_F(service_api_test, timestamptz) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
-                EXPECT_EQ((mock::typed_nullable_record<ft::time_point>(std::tuple{tptz}, exp_tp)), v[0]);
+                EXPECT_EQ((mock::typed_nullable_record<ft::time_point>(std::tuple{meta::time_point_type(true)}, exp_tp)), v[0]);
             }
         }
         {

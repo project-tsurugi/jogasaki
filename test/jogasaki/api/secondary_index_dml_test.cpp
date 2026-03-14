@@ -48,6 +48,7 @@
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
@@ -350,7 +351,7 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
         index_field_mapper mapper{
             {
                 {
-                    meta::field_type{field_enum_tag_t<k::int4>{}},
+                    meta::int4_type(),
                     true,
                     result.record_meta()->value_offset(0),
                     result.record_meta()->nullity_offset(0),
@@ -360,7 +361,7 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
             },
             {
                 {
-                    meta::field_type{field_enum_tag_t<k::int4>{}},
+                    meta::int4_type(),
                     true,
                     result.record_meta()->value_offset(1),
                     result.record_meta()->nullity_offset(1),
@@ -368,7 +369,7 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
                     kvs::spec_value
                 },
                 {
-                    meta::field_type{field_enum_tag_t<k::int4>{}},
+                    meta::int4_type(),
                     true,
                     result.record_meta()->value_offset(2),
                     result.record_meta()->nullity_offset(2),
@@ -378,7 +379,7 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
             },
             {
                 {
-                    meta::field_type{field_enum_tag_t<k::int4>{}},
+                    meta::int4_type(),
                     true,
                     kvs::spec_key_ascending
                 },
@@ -391,7 +392,7 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
             kvs::coding_context ctx{};
             if(auto res = utils::encode_any(
                     buf,
-                    meta::field_type{field_enum_tag_t<k::int4>{}},
+                    meta::int4_type(),
                     true,
                     kvs::spec_key_ascending,
                     ctx,

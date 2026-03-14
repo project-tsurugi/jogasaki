@@ -35,11 +35,10 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/compare_info.h>
-#include <jogasaki/meta/character_field_option.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor {
@@ -61,8 +60,8 @@ TEST_F(comparator_test, simple) {
     } a, b, c;
     auto meta = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(field_enum_tag<kind::int4>),
-            field_type(field_enum_tag<kind::int8>),
+            int4_type(),
+            int8_type(),
         },
         boost::dynamic_bitset<std::uint64_t>{"00"s},
         std::vector<std::size_t>{
@@ -108,12 +107,12 @@ TEST_F(comparator_test, types) {
     } a, b, c;
     auto meta = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(field_enum_tag<kind::int8>),
-            field_type(field_enum_tag<kind::int1>),
-            field_type(field_enum_tag<kind::int4>),
-            field_type(field_enum_tag<kind::int2>),
-            field_type(field_enum_tag<kind::float8>),
-            field_type(field_enum_tag<kind::float4>),
+            int8_type(),
+            int1_type(),
+            int4_type(),
+            int2_type(),
+            float8_type(),
+            float4_type(),
         },
         boost::dynamic_bitset<std::uint64_t>{6},
         std::vector<std::size_t>{
@@ -186,8 +185,8 @@ TEST_F(comparator_test, text) {
     } a, b, c;
     auto meta = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(std::make_shared<meta::character_field_option>()),
-            field_type(std::make_shared<meta::character_field_option>()),
+            character_type(),
+            character_type(),
         },
         boost::dynamic_bitset<std::uint64_t>{"00"s},
         std::vector<std::size_t>{
@@ -230,8 +229,8 @@ TEST_F(comparator_test, nullable) {
     } a, b, c;
     auto meta = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(field_enum_tag<kind::int8>),
-            field_type(field_enum_tag<kind::int8>),
+            int8_type(),
+            int8_type(),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip(),
         std::vector<std::size_t>{
@@ -279,8 +278,8 @@ TEST_F(comparator_test, different_meta_between_l_and_r) {
     } a;
     auto r_meta = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(field_enum_tag<kind::float4>),
-            field_type(field_enum_tag<kind::int8>),
+            float4_type(),
+            int8_type(),
         },
         boost::dynamic_bitset<std::uint64_t>{2}.flip(),
         std::vector<std::size_t>{

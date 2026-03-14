@@ -37,9 +37,6 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/port.h>
-#include <jogasaki/meta/character_field_option.h>
-#include <jogasaki/meta/decimal_field_option.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/type_helper.h>
@@ -183,10 +180,8 @@ TEST_F(function_round_test, decimal_38_38_min) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto fm =
-        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm},
+        std::tuple{decimal_type()},
         runtime_t<meta::field_type_kind::decimal>(-1, 0, 1, 0)
     );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
@@ -200,10 +195,8 @@ TEST_F(function_round_test, decimal_38_38_max) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto fm =
-        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm},
+        std::tuple{decimal_type()},
         runtime_t<meta::field_type_kind::decimal>(1, 5421010862427522170, 687399551400673280, -38)
     );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
@@ -217,10 +210,8 @@ TEST_F(function_round_test, decimal_38_0_min) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto fm =
-        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm},
+        std::tuple{decimal_type()},
         runtime_t<meta::field_type_kind::decimal>(-1, 5421010862427522170, 687399551400673279, 0)
     );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
@@ -233,10 +224,8 @@ TEST_F(function_round_test, decimal_38_0_max) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto fm =
-        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm},
+        std::tuple{decimal_type()},
         runtime_t<meta::field_type_kind::decimal>(1, 5421010862427522170, 687399551400673279, 0)
     );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
@@ -249,10 +238,8 @@ TEST_F(function_round_test, decimal_1_1_min) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto fm =
-        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm},
+        std::tuple{decimal_type()},
         runtime_t<meta::field_type_kind::decimal>(-1, 0, 1, 0)
     );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
@@ -265,10 +252,8 @@ TEST_F(function_round_test, decimal_1_1_max) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto fm =
-        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm},
+        std::tuple{decimal_type()},
         runtime_t<meta::field_type_kind::decimal>(1, 0, 10, -1)
     );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
@@ -755,9 +740,7 @@ TEST_F(function_round_test, decimal_over) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        auto fm = meta::field_type{
-            std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-        auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(test.sign,
+        auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type()}, runtime_t<meta::field_type_kind::decimal>(test.sign,
                                 test.coefficient_high, test.coefficient_low, test.exponent));
         EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
     }
@@ -774,10 +757,8 @@ TEST_F(function_round_test, decimal_half) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        auto fm = meta::field_type{
-            std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
         auto r1 = mock::typed_nullable_record<kind::decimal>(
-            std::tuple{fm},
+            std::tuple{decimal_type()},
             runtime_t<meta::field_type_kind::decimal>(
                 test.sign,
                 test.coefficient_high,
@@ -799,10 +780,8 @@ TEST_F(function_round_test, decimal_less) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        auto fm = meta::field_type{
-            std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
         auto r1 = mock::typed_nullable_record<kind::decimal>(
-            std::tuple{fm},
+            std::tuple{decimal_type()},
             runtime_t<meta::field_type_kind::decimal>(
                 test.sign,
                 test.coefficient_high,
@@ -825,10 +804,8 @@ TEST_F(function_round_test, decimal_over_minus) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        auto fm = meta::field_type{
-            std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
         auto r1 = mock::typed_nullable_record<kind::decimal>(
-            std::tuple{fm},
+            std::tuple{decimal_type()},
             runtime_t<meta::field_type_kind::decimal>(
                 test.sign,
                 test.coefficient_high,
@@ -851,10 +828,8 @@ TEST_F(function_round_test, decimal_half_minus) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        auto fm = meta::field_type{
-            std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
         auto r1 = mock::typed_nullable_record<kind::decimal>(
-            std::tuple{fm},
+            std::tuple{decimal_type()},
             runtime_t<meta::field_type_kind::decimal>(
                 test.sign,
                 test.coefficient_high,
@@ -877,10 +852,8 @@ TEST_F(function_round_test, decimal_less_minus) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        auto fm = meta::field_type{
-            std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
         auto r1 = mock::typed_nullable_record<kind::decimal>(
-            std::tuple{fm},
+            std::tuple{decimal_type()},
             runtime_t<meta::field_type_kind::decimal>(
                 test.sign,
                 test.coefficient_high,

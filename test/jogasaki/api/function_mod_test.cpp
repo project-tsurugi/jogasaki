@@ -37,9 +37,6 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/port.h>
-#include <jogasaki/meta/character_field_option.h>
-#include <jogasaki/meta/decimal_field_option.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/type_helper.h>
@@ -373,8 +370,6 @@ TEST_F(function_mod_test, bigint_bigint) {
 TEST_F(function_mod_test, decimal) {
     execute_statement("create table t (c0 DECIMAL)");
     execute_statement("insert into t values (-8::DECIMAL)");
-    auto fm =
-        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
 
     std::vector<TestCase_Decimal> test_cases = {
         // basic
@@ -415,7 +410,7 @@ TEST_F(function_mod_test, decimal) {
                                 std::string(",") + test.divisor.value() + std::string(") FROM t");
             execute_query(query, result);
             auto r1 = mock::typed_nullable_record<kind::decimal>(
-                std::tuple{fm},
+                std::tuple{decimal_type()},
                 runtime_t<meta::field_type_kind::decimal>(test.sigh, test.high, test.low, test.exponent)
             );
             ASSERT_EQ(1, result.size()) << "Query failed: " << query;

@@ -35,9 +35,9 @@
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
@@ -201,9 +201,7 @@ TEST_F(validate_user_scenario_test, select_date) {
     ASSERT_EQ(1, result.size());
 
     using kind = meta::field_type_kind;
-    auto i4 = meta::field_type{meta::field_enum_tag<kind::int4>};
-    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
-    EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::date>(std::tuple{i4, dat}, 1, d2000_1_1)), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::date>(std::tuple{meta::int4_type(), meta::date_type()}, 1, d2000_1_1)), result[0]);
 }
 
 }

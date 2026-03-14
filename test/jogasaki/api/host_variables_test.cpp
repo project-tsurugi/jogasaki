@@ -340,11 +340,11 @@ TEST_F(host_variables_test, insert_temporal_types) {
     execute_query("SELECT * FROM t", result);
     ASSERT_EQ(1, result.size());
 
-    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
-    auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
-    auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-    auto todtz = meta::field_type{std::make_shared<meta::time_of_day_field_option>(true)};
-    auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
+    auto dat = meta::date_type();
+    auto tod = meta::time_of_day_type(false);
+    auto tp = meta::time_point_type(false);
+    auto todtz = meta::time_of_day_type(true);
+    auto tptz = meta::time_point_type(true);
     EXPECT_EQ((mock::typed_nullable_record<
         kind::date, kind::time_of_day, kind::time_of_day, kind::time_point, kind::time_point,
         kind::date, kind::time_of_day, kind::time_of_day, kind::time_point, kind::time_point
@@ -361,11 +361,11 @@ TEST_F(host_variables_test, update_temporal_types) {
     execute_statement("create table t (K0 date, K1 time, K2 time with time zone, K3 timestamp, K4 timestamp with time zone, "
                       "C0 date, C1 time, C2 time with time zone, C3 timestamp, C4 timestamp with time zone, "
                       "primary key(K0, K1, K2, K3, K4))");
-    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
-    auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
-    auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-    auto todtz = meta::field_type{std::make_shared<meta::time_of_day_field_option>(true)};
-    auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
+    auto dat = meta::date_type();
+    auto tod = meta::time_of_day_type(false);
+    auto tp = meta::time_point_type(false);
+    auto todtz = meta::time_of_day_type(true);
+    auto tptz = meta::time_point_type(true);
 
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::date},
@@ -451,9 +451,9 @@ TEST_F(host_variables_test, insert_decimal_types) {
     execute_query("SELECT * FROM t", result);
     ASSERT_EQ(1, result.size());
 
-    auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
-    auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-    auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+    auto dec_3_0 = meta::decimal_type(3, 0);
+    auto dec_5_3 = meta::decimal_type(5, 3);
+    auto dec_10_1 = meta::decimal_type(10, 1);
     EXPECT_EQ((mock::typed_nullable_record<
         kind::decimal, kind::decimal, kind::decimal,
         kind::decimal, kind::decimal, kind::decimal
@@ -468,9 +468,6 @@ TEST_F(host_variables_test, insert_decimal_types) {
 
 TEST_F(host_variables_test, update_decimal_types) {
     execute_statement("create table t (K0 decimal(3,0), K1 decimal(5,3), K2 decimal(10,1), C0 decimal(3,0), C1 decimal(5,3), C2 decimal(10,1), primary key(K0, K1, K2))");
-    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
-    auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
-    auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
 
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::decimal},
@@ -511,9 +508,9 @@ TEST_F(host_variables_test, update_decimal_types) {
         execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
 
-        auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
-        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-        auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
+        auto dec_3_0 = meta::decimal_type(3, 0);
+        auto dec_5_3 = meta::decimal_type(5, 3);
+        auto dec_10_1 = meta::decimal_type(10, 1);
         EXPECT_EQ((mock::typed_nullable_record<
             kind::decimal, kind::decimal, kind::decimal,
             kind::decimal, kind::decimal, kind::decimal
@@ -611,9 +608,9 @@ TEST_F(host_variables_test, cast_decimals) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1, C2 FROM TT", result);
         ASSERT_EQ(1, result.size());
-        auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-        auto dec_4_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(4, 1)};
-        auto dec_10 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 0)};
+        auto dec_5_3 = meta::decimal_type(5, 3);
+        auto dec_4_1 = meta::decimal_type(4, 1);
+        auto dec_10 = meta::decimal_type(10, 0);
         auto v12_345 = decimal_v{1, 0, 12345, -3};
         auto v123_4 = decimal_v{1, 0, 1234, -1};
         auto v1234567890 = decimal_v{1, 0, 1234567890, 0};
@@ -642,7 +639,7 @@ TEST_F(host_variables_test, cast_inexact_decimals) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0 FROM TT", result);
         ASSERT_EQ(1, result.size());
-        auto dec_4_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(4, 3)};
+        auto dec_4_3 = meta::decimal_type(4, 3);
         auto v3_333 = decimal_v{1, 0, 3333, -3};
         EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec_4_3}, v3_333)), result[0]);
     }

@@ -129,7 +129,7 @@ TEST_F(sql_function_test, concat) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0 || C1 FROM T", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((typed_nullable_record<kind::character>(std::tuple{meta::field_type{std::make_shared<meta::character_field_option>(true, 20)}}, accessor::text{"AAABBB"})), result[0]);
+    EXPECT_EQ((typed_nullable_record<kind::character>(std::tuple{meta::character_type(true, 20)}, accessor::text{"AAABBB"})), result[0]);
 }
 
 // LENGTH not registered yet
@@ -348,12 +348,11 @@ TEST_F(sql_function_test, aggregate_decimals) {
     EXPECT_FALSE(rec.is_null(3));
     auto v15 = triple{1, 0, 15, 0}; // 15
 
-    auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto i64 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
+    auto dec = meta::decimal_type();
     EXPECT_EQ((mock::typed_nullable_record<
         kind::decimal, kind::decimal, kind::int8, kind::decimal
     >(std::tuple{
-            dec, dec, i64, dec
+            dec, dec, int8_type(), dec
         }, v20, v10, 2, v15)), result[0]);
 }
 
@@ -382,12 +381,11 @@ TEST_F(sql_function_test, aggregate_decimals_scale_zero) {
     EXPECT_FALSE(rec.is_null(3));
     auto v15 = triple{1, 0, 15, 0}; // 15
 
-    auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto i64 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
+    auto dec = meta::decimal_type();
     EXPECT_EQ((mock::typed_nullable_record<
         kind::decimal, kind::decimal, kind::int8, kind::decimal
     >(std::tuple{
-            dec, dec, i64, dec
+            dec, dec, int8_type(), dec
         }, v20, v10, 2, v15)), result[0]);
 }
 
@@ -529,15 +527,13 @@ TEST_F(sql_function_test, min_max_timestamp) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT MIN(c0) FROM t", result);
         ASSERT_EQ(1, result.size());
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, tp0)), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, tp0)), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT MAX(c0) FROM t", result);
         ASSERT_EQ(1, result.size());
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, tp2)), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, tp2)), result[0]);
     }
 }
 
@@ -568,15 +564,13 @@ TEST_F(sql_function_test, min_max_timestamp_with_tz) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT MIN(c0) FROM t", result);
         ASSERT_EQ(1, result.size());
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, tp0)), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(true)}, tp0)), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT MAX(c0) FROM t", result);
         ASSERT_EQ(1, result.size());
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, tp2)), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(true)}, tp2)), result[0]);
     }
 }
 
@@ -619,15 +613,13 @@ TEST_F(sql_function_test, min_max_timestamp_negative) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT MIN(c0) FROM t", result);
         ASSERT_EQ(1, result.size());
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, tpn2)), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, tpn2)), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT MAX(c0) FROM t", result);
         ASSERT_EQ(1, result.size());
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, tpp2)), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, tpp2)), result[0]);
     }
 }
 

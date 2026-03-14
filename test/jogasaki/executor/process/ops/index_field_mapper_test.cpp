@@ -41,6 +41,7 @@
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/status.h>
 #include <jogasaki/test_root.h>
@@ -113,7 +114,7 @@ TEST_F(index_field_mapper_test, simple) {
             index_field_mapper mapper{
                 {
                     {
-                        meta::field_type{field_enum_tag_t<k::int8>{}},
+                        meta::int8_type(),
                         true,
                         result.record_meta()->value_offset(0),
                         result.record_meta()->nullity_offset(0),
@@ -123,7 +124,7 @@ TEST_F(index_field_mapper_test, simple) {
                 },
                 {
                     {
-                        meta::field_type{field_enum_tag_t<k::int4>{}},
+                        meta::int4_type(),
                         true,
                         result.record_meta()->value_offset(1),
                         result.record_meta()->nullity_offset(1),
@@ -133,12 +134,12 @@ TEST_F(index_field_mapper_test, simple) {
                 },
                 {
                     {
-                        meta::field_type{field_enum_tag_t<k::int4>{}},
+                        meta::int4_type(),
                         true,
                         kvs::spec_key_ascending
                     },
                     {
-                        meta::field_type{field_enum_tag_t<k::int4>{}},
+                        meta::int4_type(),
                         true,
                         kvs::spec_key_ascending
                     },
@@ -191,7 +192,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
             index_field_mapper mapper{
                 {
                     {
-                        meta::field_type{field_enum_tag_t<k::int8>{}},
+                        meta::int8_type(),
                         true,
                         result.record_meta()->value_offset(0),
                         result.record_meta()->nullity_offset(0),
@@ -201,7 +202,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
                 },
                 {
                     {
-                        meta::field_type{field_enum_tag_t<k::int4>{}},
+                        meta::int4_type(),
                         true,
                         result.record_meta()->value_offset(1),
                         result.record_meta()->nullity_offset(1),

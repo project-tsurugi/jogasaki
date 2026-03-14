@@ -34,9 +34,8 @@
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
-#include <jogasaki/meta/decimal_field_option.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
@@ -104,8 +103,7 @@ TEST_F(sql_write_test, expression_error_handling_with_update) {
     execute_query("SELECT C0 FROM T", result);
     ASSERT_EQ(1, result.size());
 
-    auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec}, v10)), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5, 3)}, v10)), result[0]);
 }
 
 TEST_F(sql_write_test, expression_error_handling_with_insert) {

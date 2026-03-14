@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -92,6 +93,7 @@ public:
 };
 
 using namespace std::string_view_literals;
+using kind = meta::field_type_kind;
 
 TEST_F(api_test, syntax_error) {
     std::unique_ptr<api::executable_statement> stmt{};
@@ -160,9 +162,7 @@ TEST_F(api_test, primary_key_violation) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0", result);
     ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    EXPECT_DOUBLE_EQ(10.0, rec.ref().get_value<double>(rec.record_meta()->value_offset(1)));
+    EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, 10.0)), result[0]);
 }
 
 TEST_F(api_test, primary_key_violation_in_same_tx) {
@@ -365,9 +365,7 @@ TEST_F(api_test, resolve_place_holder_with_null) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1 FROM T0", result);
     ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
-    EXPECT_TRUE(rec.ref().is_null(rec.record_meta()->nullity_offset(1)));
+    EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, std::nullopt)), result[0]);
 }
 
 TEST_F(api_test, dump_load) {
@@ -384,11 +382,8 @@ TEST_F(api_test, dump_load) {
     ASSERT_EQ(status::ok, db_->load(ss, "T0", 0));
     execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
     ASSERT_EQ(2, result.size());
-    auto meta = result[0].record_meta();
-    EXPECT_EQ(1, result[0].ref().get_value<std::int64_t>(meta->value_offset(0)));
-    EXPECT_DOUBLE_EQ(10.0, result[0].ref().get_value<double>(meta->value_offset(1)));
-    EXPECT_EQ(2, result[1].ref().get_value<std::int64_t>(meta->value_offset(0)));
-    EXPECT_DOUBLE_EQ(20.0, result[1].ref().get_value<double>(meta->value_offset(1)));
+    EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, 10.0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(2, 20.0)), result[1]);
 }
 
 TEST_F(api_test, select_update_delete_for_missing_record) {
@@ -413,8 +408,7 @@ TEST_F(api_test, resolve_host_variable) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables, *ps, result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, 10.0)), result[0]);
     }
     {
         auto ps = api::create_parameter_set();
@@ -448,8 +442,7 @@ TEST_F(api_test, scan_with_host_variable) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0 WHERE C0 > :p0 AND C0 < :p1", variables, *ps, result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        EXPECT_EQ(20, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(20, 20.0)), result[0]);
     }
     {
         auto ps = api::create_parameter_set();
@@ -514,8 +507,7 @@ TEST_F(api_test, host_variable_same_name_different_type) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0 WHERE C0 = :p0", variables1, *ps, result);
         ASSERT_EQ(1, result.size());
-        auto& rec= result[0];
-        EXPECT_EQ(1, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, 10.0)), result[0]);
     }
     {
         auto ps = api::create_parameter_set();
@@ -523,8 +515,7 @@ TEST_F(api_test, host_variable_same_name_different_type) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0 WHERE C1 = :p0", variables2, *ps, result);
         ASSERT_EQ(1, result.size());
-        auto& rec= result[0];
-        EXPECT_EQ(2, rec.ref().get_value<std::int64_t>(rec.record_meta()->value_offset(0)));
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(2, 20.0)), result[0]);
     }
 }
 

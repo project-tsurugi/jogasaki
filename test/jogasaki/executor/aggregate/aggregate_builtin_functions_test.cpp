@@ -82,7 +82,7 @@ TEST_F(aggregate_builtin_functions_test, count_distinct_int4) {
         },
         args
     );
-    ASSERT_EQ(4, target.ref().get_value<std::int64_t>(meta->value_offset(0)));
+    ASSERT_EQ(mock::create_nullable_record<kind::int8>(std::int64_t{4}), target);
 }
 
 TEST_F(aggregate_builtin_functions_test, count_distinct_character) {
@@ -116,7 +116,7 @@ TEST_F(aggregate_builtin_functions_test, count_distinct_character) {
         },
         args
     );
-    ASSERT_EQ(5, target.ref().get_value<std::int64_t>(meta->value_offset(0)));
+    ASSERT_EQ(mock::create_nullable_record<kind::int8>(std::int64_t{5}), target);
 }
 
 }

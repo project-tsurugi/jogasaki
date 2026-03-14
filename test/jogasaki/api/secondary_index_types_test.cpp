@@ -63,7 +63,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 using index = yugawara::storage::index;
 

@@ -63,6 +63,8 @@ using accessor::text;
 using takatori::datetime::date;
 using takatori::datetime::time_of_day;
 using takatori::datetime::time_point;
+using takatori::decimal::triple;
+
 
 class arrow_readwrite_test : public ::testing::Test {
 public:
@@ -979,18 +981,13 @@ TEST_F(arrow_readwrite_test, record_size_for_types) {
 
     verify_single_field_record_size(mock::create_nullable_record<kind::float4>(10.0), 4);
 
-    using date_v = takatori::datetime::date;
-    using time_of_day_v = takatori::datetime::time_of_day;
-    using time_point_v = takatori::datetime::time_point;
-    using decimal_v = takatori::decimal::triple;
-
     auto dec_3_0 = meta::decimal_type(3, 0);
-    auto v111 = decimal_v{1, 0, 111, 0}; // 111
+    auto v111 = triple{1, 0, 111, 0}; // 111
     verify_single_field_record_size(mock::typed_nullable_record<kind::decimal>(std::tuple{dec_3_0}, v111), 16);
 
-    auto d2000_1_1 = date_v{2000, 1, 1};
-    auto t12_0_0 = time_of_day_v{12, 0, 0};
-    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto d2000_1_1 = date{2000, 1, 1};
+    auto t12_0_0 = time_of_day{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point{d2000_1_1, t12_0_0};
 
     verify_single_field_record_size(mock::typed_nullable_record<kind::date>(std::tuple{meta::date_type()}, d2000_1_1), 4);
     verify_single_field_record_size(mock::typed_nullable_record<kind::time_of_day>(std::tuple{meta::time_of_day_type(false)}, t12_0_0), 8);

@@ -70,7 +70,7 @@ using namespace jogasaki::scheduler;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 
 using takatori::util::unsafe_downcast;
 
@@ -439,9 +439,9 @@ TEST_F(host_variables_test, insert_decimal_types) {
         {"p2", api::field_type_kind::decimal},
     };
     auto ps = api::create_parameter_set();
-    auto v111 = decimal_v{1, 0, 111, 0}; // 111
-    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
-    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+    auto v111 = triple{1, 0, 111, 0}; // 111
+    auto v11_111 = triple{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = triple{1, 0, 111111, -1}; // 11111.1
 
     ps->set_decimal("p0", v111);
     ps->set_decimal("p1", v11_111);
@@ -477,12 +477,12 @@ TEST_F(host_variables_test, update_decimal_types) {
         {"n1", api::field_type_kind::decimal},
         {"n2", api::field_type_kind::decimal},
     };
-    auto v111 = decimal_v{1, 0, 111, 0}; // 111
-    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
-    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
-    auto v222 = decimal_v{1, 0, 222, 0}; // 222
-    auto v22_222 = decimal_v{1, 0, 22222, -3}; // 11.111
-    auto v22222_2 = decimal_v{1, 0, 222222, -1}; // 11111.1
+    auto v111 = triple{1, 0, 111, 0}; // 111
+    auto v11_111 = triple{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = triple{1, 0, 111111, -1}; // 11111.1
+    auto v222 = triple{1, 0, 222, 0}; // 222
+    auto v22_222 = triple{1, 0, 22222, -3}; // 11.111
+    auto v22222_2 = triple{1, 0, 222222, -1}; // 11111.1
     {
         auto ps = api::create_parameter_set();
         ps->set_decimal("p0", v111);
@@ -611,9 +611,9 @@ TEST_F(host_variables_test, cast_decimals) {
         auto dec_5_3 = meta::decimal_type(5, 3);
         auto dec_4_1 = meta::decimal_type(4, 1);
         auto dec_10 = meta::decimal_type(10, 0);
-        auto v12_345 = decimal_v{1, 0, 12345, -3};
-        auto v123_4 = decimal_v{1, 0, 1234, -1};
-        auto v1234567890 = decimal_v{1, 0, 1234567890, 0};
+        auto v12_345 = triple{1, 0, 12345, -3};
+        auto v123_4 = triple{1, 0, 1234, -1};
+        auto v1234567890 = triple{1, 0, 1234567890, 0};
         EXPECT_EQ((mock::typed_nullable_record<
             kind::decimal, kind::decimal, kind::decimal
         >(std::tuple{
@@ -629,7 +629,7 @@ TEST_F(host_variables_test, cast_inexact_decimals) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::decimal},
     };
-    auto v10 = decimal_v{1, 0, 10, 0};
+    auto v10 = triple{1, 0, 10, 0};
     auto ps = api::create_parameter_set();
     ps->set_decimal("p0", v10);
     execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps, status::err_expression_evaluation_failure);
@@ -640,7 +640,7 @@ TEST_F(host_variables_test, cast_inexact_decimals) {
         execute_query("SELECT C0 FROM TT", result);
         ASSERT_EQ(1, result.size());
         auto dec_4_3 = meta::decimal_type(4, 3);
-        auto v3_333 = decimal_v{1, 0, 3333, -3};
+        auto v3_333 = triple{1, 0, 3333, -3};
         EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec_4_3}, v3_333)), result[0]);
     }
 }

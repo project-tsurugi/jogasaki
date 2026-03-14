@@ -25,7 +25,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using date = takatori::datetime::date;
 using time_of_day = takatori::datetime::time_of_day;
 using time_point = takatori::datetime::time_point;

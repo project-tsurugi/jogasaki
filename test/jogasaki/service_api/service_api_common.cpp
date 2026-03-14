@@ -85,7 +85,7 @@ using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
 using time_of_day_tz = utils::time_of_day_tz;
 using time_point_tz = utils::time_point_tz;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using ft = meta::field_type_kind;
 
 using jogasaki::api::impl::get_impl;

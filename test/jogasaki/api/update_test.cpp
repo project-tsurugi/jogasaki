@@ -61,7 +61,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
@@ -306,7 +306,7 @@ TEST_F(update_test, verify_error_abort_tx) {
         {"p0", api::field_type_kind::decimal},
     };
     auto ps = api::create_parameter_set();
-    auto v1 = decimal_v{1, 0, 1, 0}; // 1
+    auto v1 = triple{1, 0, 1, 0}; // 1
     ps->set_decimal("p0", v1);
     execute_statement("INSERT INTO T VALUES (1, :p0)", variables, *ps);
     test_stmt_err("UPDATE T SET C1=C1 / 3 WHERE C0=1", error_code::value_evaluation_exception);

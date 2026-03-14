@@ -50,7 +50,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
@@ -84,7 +84,7 @@ TEST_F(sql_write_test, expression_error_handling_with_update) {
     }
     // verify transaction is aborted and rollbacked any changes on expression error
     execute_statement("CREATE TABLE T(C0 DECIMAL(5,3) NOT NULL)");
-    auto v10 = decimal_v{1, 0, 10, 0}; // 10
+    auto v10 = triple{1, 0, 10, 0}; // 10
     {
         std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::decimal},
@@ -115,7 +115,7 @@ TEST_F(sql_write_test, expression_error_handling_with_insert) {
             {"p0", api::field_type_kind::decimal},
         };
         auto ps = api::create_parameter_set();
-        auto v10 = decimal_v{1, 0, 10, 0}; // 10
+        auto v10 = triple{1, 0, 10, 0}; // 10
         ps->set_decimal("p0", v10);
         execute_statement("INSERT INTO T VALUES (:p0)", variables, *ps, *tx);
     }

@@ -77,7 +77,7 @@ using namespace jogasaki::mock;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 using kind = meta::field_type_kind;
 using api::impl::get_impl;
@@ -218,9 +218,9 @@ TEST_F(ddl_test, create_table_decimals) {
         {"p2", api::field_type_kind::decimal},
     };
     auto ps = api::create_parameter_set();
-    auto v111 = decimal_v{1, 0, 111, 0}; // 111
-    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
-    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+    auto v111 = triple{1, 0, 111, 0}; // 111
+    auto v11_111 = triple{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = triple{1, 0, 111111, -1}; // 11111.1
 
     ps->set_decimal("p0", v111);
     ps->set_decimal("p1", v11_111);
@@ -455,7 +455,7 @@ TEST_F(ddl_test, decimal_with_no_arg) {
     execute_query("SELECT * FROM T", result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(
-        (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 0)}, decimal_v{1, 0, 1, 0})),
+        (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 0)}, triple{1, 0, 1, 0})),
         result[0]
     );
 }
@@ -474,7 +474,7 @@ TEST_F(ddl_test, decimal_with_aster_prec) {
     execute_query("SELECT * FROM T", result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(
-        (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 3)}, decimal_v{1, 0, 1, 0})),
+        (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 3)}, triple{1, 0, 1, 0})),
         result[0]
     );
 }
@@ -577,7 +577,7 @@ TEST_F(ddl_test, decimal_default_value) {
             execute_query("SELECT C1 FROM T", result);
             ASSERT_EQ(1, result.size());
             EXPECT_EQ(
-                (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 0)}, decimal_v{1, 0, 1, 0})),
+                (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 0)}, triple{1, 0, 1, 0})),
                 result[0]
             );
         }
@@ -592,7 +592,7 @@ TEST_F(ddl_test, decimal_default_value) {
             execute_query("SELECT C1 FROM T", result);
             ASSERT_EQ(1, result.size());
             EXPECT_EQ(
-                (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 2)}, decimal_v{1, 0, 222, -2})),
+                (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 2)}, triple{1, 0, 222, -2})),
                 result[0]
             );
         }

@@ -47,7 +47,7 @@ using takatori::util::unsafe_downcast;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 
 class validate_user_scenario3_test :
     public ::testing::Test,

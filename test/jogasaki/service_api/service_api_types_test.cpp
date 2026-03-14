@@ -84,7 +84,7 @@ using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
 using time_of_day_tz = utils::time_of_day_tz;
 using time_point_tz = utils::time_point_tz;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using ft = meta::field_type_kind;
 
 using jogasaki::api::impl::get_impl;
@@ -255,12 +255,12 @@ TEST_F(service_api_test, decimals) {
         std::pair{"p5"s, sql::common::AtomType::DECIMAL}
     );
 
-    auto v111 = decimal_v{1, 0, 111, 0}; // 111
-    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
-    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
-    auto v222 = decimal_v{1, 0, 222, 0}; // 222
-    auto v22_222 = decimal_v{1, 0, 22222, -3}; // 22.222
-    auto v22222_2 = decimal_v{1, 0, 222222, -1}; // 22222.2
+    auto v111 = triple{1, 0, 111, 0}; // 111
+    auto v11_111 = triple{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = triple{1, 0, 111111, -1}; // 11111.1
+    auto v222 = triple{1, 0, 222, 0}; // 222
+    auto v22_222 = triple{1, 0, 22222, -3}; // 22.222
+    auto v22222_2 = triple{1, 0, 222222, -1}; // 22222.2
     {
         std::vector<parameter> parameters{
             {"p0"s, ValueCase::kDecimalValue, std::any{std::in_place_type<takatori::decimal::triple>, v111}},

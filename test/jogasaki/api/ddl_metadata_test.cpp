@@ -70,7 +70,7 @@ using namespace jogasaki::mock;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 using kind = meta::field_type_kind;
 using api::impl::get_impl;

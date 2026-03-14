@@ -58,7 +58,7 @@ using namespace jogasaki::scheduler;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 inline std::shared_ptr<jogasaki::meta::external_record_meta> create_file_meta() {
@@ -231,9 +231,9 @@ TEST_F(non_tx_load_test, existing_file_and_missing_file) {
 }
 
 TEST_F(non_tx_load_test, decimals) {
-    auto v111 = decimal_v{1, 0, 111, 0}; // 111
-    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
-    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+    auto v111 = triple{1, 0, 111, 0}; // 111
+    auto v11_111 = triple{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = triple{1, 0, 111111, -1}; // 11111.1
     {
         std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::decimal},
@@ -291,7 +291,7 @@ TEST_F(non_tx_load_test, decimals) {
 }
 
 TEST_F(non_tx_load_test, decimals_with_indefinite_precscale) {
-    auto v1 = decimal_v{1, 0, 1, 0}; // 1
+    auto v1 = triple{1, 0, 1, 0}; // 1
     {
         std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::decimal},
@@ -384,7 +384,7 @@ TEST_F(non_tx_load_test, cast_from_string) {
                 meta::float8_type(),
                 meta::decimal_type(5, 3),
             },
-            1, 10, 100.0, 1000.0, decimal_v{1, 0, 11111, -3} /* 11.111 */
+            1, 10, 100.0, 1000.0, triple{1, 0, 11111, -3} /* 11.111 */
         )), result[0]);
         EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(std::tuple{
                 meta::int4_type(),
@@ -393,7 +393,7 @@ TEST_F(non_tx_load_test, cast_from_string) {
                 meta::float8_type(),
                 meta::decimal_type(5, 3),
             },
-            2, 20, 200.0, 2000.0, decimal_v{1, 0, 22222, -3} /* 22.222 */
+            2, 20, 200.0, 2000.0, triple{1, 0, 22222, -3} /* 22.222 */
         )), result[1]);
     }
 }

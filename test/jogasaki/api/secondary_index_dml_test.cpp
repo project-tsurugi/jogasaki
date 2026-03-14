@@ -72,7 +72,7 @@ using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 using namespace jogasaki::executor::process::impl::ops;
 
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 using meta::field_enum_tag_t;

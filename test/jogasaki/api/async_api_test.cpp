@@ -159,12 +159,15 @@ TEST_F(async_api_test, async_query) {
     auto& m = *unsafe_downcast<api::impl::record_meta>(stmt->meta());
     auto recs = deserialize_msg({wrt->data_.data(), wrt->size_}, *m.meta());
     ASSERT_EQ(3, recs.size());
-    auto exp0 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-    auto exp1 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 20.0);
-    auto exp2 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 30.0);
-    EXPECT_EQ(exp0, recs[0]);
-    EXPECT_EQ(exp1, recs[1]);
-    EXPECT_EQ(exp2, recs[2]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0)), recs[0]
+    );
+    EXPECT_EQ(
+        (mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 20.0)), recs[1]
+    );
+    EXPECT_EQ(
+        (mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 30.0)), recs[2]
+    );
     EXPECT_TRUE(ch.all_writers_released());
     ASSERT_EQ(status::ok, tx->commit());
 }

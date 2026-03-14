@@ -170,10 +170,30 @@ TEST_F(service_api_test, data_types) {
                 auto m = create_record_meta(cols);
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(2, v.size());
-                auto exp1 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, 1, 1, 1.0, 1.0, accessor::text{"1"sv});
-                auto exp2 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, 2, 2, 2.0, 2.0, accessor::text{"2"sv});
-                EXPECT_EQ(exp1, v[0]);
-                EXPECT_EQ(exp2, v[1]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<
+                        meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8,
+                        meta::field_type_kind::float4, meta::field_type_kind::character>(
+                        std::tuple{
+                            meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(),
+                            meta::character_type(true, 100)
+                        },
+                        1, 1, 1.0, 1.0, accessor::text{"1"sv}
+                    )),
+                    v[0]
+                );
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<
+                        meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8,
+                        meta::field_type_kind::float4, meta::field_type_kind::character>(
+                        std::tuple{
+                            meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(),
+                            meta::character_type(true, 100)
+                        },
+                        2, 2, 2.0, 2.0, accessor::text{"2"sv}
+                    )),
+                    v[1]
+                );
             }
         }
         {

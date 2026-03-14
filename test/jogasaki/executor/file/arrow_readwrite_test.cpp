@@ -822,12 +822,13 @@ TEST_F(arrow_readwrite_test, char_utf8_string) {
     {
         accessor::record_ref ref{};
         ASSERT_TRUE(reader->next(ref));
-        auto exp = mock::typed_nullable_record<kind::character, kind::character>(
-            std::tuple{meta::character_type(true), meta::character_type(true)},
-            accessor::text("1  "),
-            accessor::text("1    ")
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{meta::character_type(true), meta::character_type(true)}, accessor::text("1  "),
+                accessor::text("1    ")
+            )),
+            mock::basic_record(ref, meta->origin())
         );
-        EXPECT_EQ(exp, mock::basic_record(ref, meta->origin()));
     }
     EXPECT_TRUE(reader->close());
 }

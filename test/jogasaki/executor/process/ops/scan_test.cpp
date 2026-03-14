@@ -186,10 +186,8 @@ TEST_F(scan_test, simple) {
     ctx.release();
     ASSERT_EQ(2, result.size());
     std::sort(result.begin(), result.end());
-    auto exp0 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100);
-    auto exp1 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
-    EXPECT_EQ(exp0, result[0]);
-    EXPECT_EQ(exp1, result[1]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100)), result[0]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
@@ -256,10 +254,8 @@ TEST_F(scan_test, nullable_fields) {
     ctx.release();
     ASSERT_EQ(2, result.size());
     std::sort(result.begin(), result.end());
-    auto exp0 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100);
-    auto exp1 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, std::nullopt, std::nullopt);
-    EXPECT_EQ(exp0, result[0]);
-    EXPECT_EQ(exp1, result[1]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100)), result[0]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, std::nullopt, std::nullopt)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
@@ -359,10 +355,8 @@ TEST_F(scan_test, scan_info) {
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
-    auto exp0 = jogasaki::mock::create_nullable_record<kind::int8, kind::character, kind::float8>(100, accessor::text("123456789012345678901234567890/B"), 1.0);
-    auto exp1 = jogasaki::mock::create_nullable_record<kind::int8, kind::character, kind::float8>(100, accessor::text("123456789012345678901234567890/C"), 2.0);
-    EXPECT_EQ(exp0, result[0]);
-    EXPECT_EQ(exp1, result[1]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::character, kind::float8>(100, accessor::text("123456789012345678901234567890/B"), 1.0)), result[0]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::character, kind::float8>(100, accessor::text("123456789012345678901234567890/C"), 2.0)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
@@ -456,10 +450,8 @@ TEST_F(scan_test, secondary_index) {
     ctx.release();
     ASSERT_EQ(2, result.size());
     std::sort(result.begin(), result.end());
-    auto exp0 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200);
-    auto exp1= jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(21, 2.1, 201);
-    EXPECT_EQ(exp0, result[0]);
-    EXPECT_EQ(exp1, result[1]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200)), result[0]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(21, 2.1, 201)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 

@@ -144,10 +144,9 @@ TEST_F(long_tx_test, short_update) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0", result);
     ASSERT_EQ(1, result.size());
-    auto exp0 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 10.0);
-    auto exp1 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(2, 20.0);
-    auto exp2 = mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(3, 30.0);
-    EXPECT_EQ((mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 2.0)), result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<meta::field_type_kind::int8, meta::field_type_kind::float8>(1, 2.0)), result[0]
+    );
 }
 
 TEST_F(long_tx_test, long_update) {

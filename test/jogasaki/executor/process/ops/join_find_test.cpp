@@ -318,10 +318,8 @@ TEST_F(join_find_test, secondary_index) {
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ASSERT_EQ(2, result.size());
     std::sort(result.begin(), result.end());
-    auto exp0 = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(200, 20);
-    auto exp1 = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(201, 20);
-    EXPECT_EQ(exp0, result[0]);
-    EXPECT_EQ(exp1, result[1]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(200, 20)), result[0]);
+    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(201, 20)), result[1]);
 
     ASSERT_EQ(status::ok, tx->commit());
     ctx.release();

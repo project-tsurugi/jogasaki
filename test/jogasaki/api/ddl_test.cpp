@@ -161,12 +161,17 @@ TEST_F(ddl_test, create_table_varieties_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        auto exp = mock::typed_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
-            std::tuple{int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5), character_type(true, 6)},
-            1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")
+        EXPECT_EQ(
+            (mock::typed_nullable_record<
+                kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
+                std::tuple{
+                    int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5),
+                    character_type(true, 6)
+                },
+                1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")
+            )),
+            result[0]
         );
-        EXPECT_EQ(exp, result[0]);
     }
 }
 
@@ -251,12 +256,17 @@ TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        auto exp = mock::typed_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
-            std::tuple{int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5), character_type(true, 6)},
-            1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")
+        EXPECT_EQ(
+            (mock::typed_nullable_record<
+                kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
+                std::tuple{
+                    int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5),
+                    character_type(true, 6)
+                },
+                1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")
+            )),
+            result[0]
         );
-        EXPECT_EQ(exp, result[0]);
     }
 }
 
@@ -300,9 +310,9 @@ TEST_F(ddl_test, complex_primary_key) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 10, 10);
-        EXPECT_EQ(exp, result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 10, 10)), result[0]
+        );
     }
 }
 
@@ -313,9 +323,7 @@ TEST_F(ddl_test, primary_key_column_only) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4>(1);
-        EXPECT_EQ(exp, result[0]);
+        EXPECT_EQ(mock::create_nullable_record<kind::int4>(1), result[0]);
     }
 }
 TEST_F(ddl_test, primary_key_columns_only) {
@@ -325,9 +333,7 @@ TEST_F(ddl_test, primary_key_columns_only) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4, kind::int4>(1, 10);
-        EXPECT_EQ(exp, result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
     }
 }
 

@@ -21,6 +21,8 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -46,11 +48,15 @@
 #include "generic_client_factory.h"
 #include "generic_record_impl.h"
 #include "udf_config.h"
+
 namespace fs = std::filesystem;
 using namespace plugin::udf;
 using jogasaki::location_prefix;
 
+using blocked_stem_map = std::map<std::string, std::set<std::string>>;
+
 namespace {
+
 [[nodiscard]] bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
     if (!fs::exists(path)) {
         results.emplace_back(load_status::path_not_found, path.string(), "Directory not found");
@@ -93,16 +99,114 @@ std::vector<fs::path> collect_desc_pb_files(fs::path const& dir) {
     return result;
 }
 
+[[nodiscard]] blocked_stem_map build_blocked_stem_map(
+    jogasaki::udf::descriptor::validation::message_diagnostics const& diagnostics) {
+    blocked_stem_map result{};
+
+    for (auto const& [message_name, diag] : diagnostics) {
+        for (auto const& proto : diag.defining_protos) {
+            auto stem = fs::path(proto).stem().string();
+            result[stem].insert(message_name);
+        }
+
+        for (auto const& proto : diag.referring_protos) {
+            auto stem = fs::path(proto).stem().string();
+            result[stem].insert(message_name);
+        }
+    }
+    return result;
+}
+
+void log_message_duplicate_diagnostics(
+    jogasaki::udf::descriptor::validation::message_diagnostics const& diagnostics) {
+    for (auto const& [message_name, diag] : diagnostics) {
+        std::ostringstream oss;
+        oss << R"({"event":"udf_message_duplicate","message":")" << message_name
+            << R"(","defined_in":[)";
+
+        bool first = true;
+        for (auto const& proto : diag.defining_protos) {
+            if (!first) { oss << ","; }
+            first = false;
+            oss << "\"" << proto << "\"";
+        }
+
+        oss << R"(],"referred_by":[)";
+        first = true;
+        for (auto const& proto : diag.referring_protos) {
+            if (!first) { oss << ","; }
+            first = false;
+            oss << "\"" << proto << "\"";
+        }
+        oss << "]}";
+
+        LOG_LP(WARNING) << jogasaki::udf::log::prefix << oss.str();
+    }
+}
+
+[[nodiscard]] std::string normalize_plugin_stem(std::string stem) {
+    constexpr std::string_view prefix = "lib";
+    if (stem.size() >= prefix.size() && stem.compare(0, prefix.size(), prefix) == 0) {
+        return stem.substr(prefix.size());
+    }
+    return stem;
+}
+
+void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& conflicting_messages,
+    jogasaki::udf::descriptor::validation::message_diagnostics const& diagnostics) {
+    std::ostringstream oss;
+    oss << R"({"event":"udf_plugin_skip","plugin":")" << so_path.filename().string()
+        << R"(","reason":"message_definition_duplicated","messages":[)";
+
+    bool first_message = true;
+    for (auto const& message_name : conflicting_messages) {
+        auto it = diagnostics.find(message_name);
+        if (it == diagnostics.end()) { continue; }
+
+        auto const& diag = it->second;
+
+        if (!first_message) { oss << ","; }
+        first_message = false;
+
+        oss << R"({"message":")" << message_name << R"(","defined_in":[)";
+
+        bool first = true;
+        for (auto const& proto : diag.defining_protos) {
+            if (!first) { oss << ","; }
+            first = false;
+            oss << "\"" << proto << "\"";
+        }
+
+        oss << R"(],"referred_by":[)";
+        first = true;
+        for (auto const& proto : diag.referring_protos) {
+            if (!first) { oss << ","; }
+            first = false;
+            oss << "\"" << proto << "\"";
+        }
+
+        oss << "]}";
+    }
+
+    oss << "]}";
+
+    LOG_LP(WARNING) << jogasaki::udf::log::prefix << oss.str();
+}
+
 } // namespace
 
 [[nodiscard]] std::string const& client_info::default_endpoint() const noexcept {
     return default_endpoint_;
 }
+
 [[nodiscard]] bool client_info::default_secure() const noexcept { return default_secure_; }
+
 void client_info::set_default_endpoint(std::string endpoint) {
     default_endpoint_ = std::move(endpoint);
 }
+
 void client_info::set_default_secure(bool secure) { default_secure_ = secure; }
+
 std::optional<udf_config> udf_loader::parse_ini(
     fs::path const& ini_path, std::vector<load_result>& results) {
     try {
@@ -131,11 +235,13 @@ std::optional<udf_config> udf_loader::parse_ini(
 
         std::string endpoint = std::string(jogasaki::global::config_pool()->endpoint());
         if (auto opt = pt.get_optional<std::string>("udf.endpoint")) { endpoint = *opt; }
+
         std::string transport = "stream";
         if (auto opt = pt.get_optional<std::string>("udf.transport")) {
             transport = *opt;
             if (transport.empty()) { transport = "stream"; }
         }
+
         bool secure = jogasaki::global::config_pool()->secure();
         if (auto opt = pt.get_optional<std::string>("udf.secure")) {
             std::string val = *opt;
@@ -164,45 +270,68 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     std::vector<load_result> results{};
     std::vector<std::filesystem::path> ini_files{};
     std::vector<std::filesystem::path> desc_files{};
+
     if (dir_path.empty()) {
         return {load_result(load_status::path_is_empty, "", "Directory path is empty")};
     }
     if (!validate_directory(path, results)) { return results; }
+
     ini_files = collect_ini_files(path);
     if (ini_files.empty()) {
         results.emplace_back(
             load_status::no_ini_files, std::string(dir_path), "No .ini files found (UDF disabled)");
         return results;
     }
+
     desc_files = collect_desc_pb_files(path);
     if (!jogasaki::udf::descriptor::validation::validate_rpc_method_duplicates(desc_files)) {
         results.emplace_back(
             load_status::rpc_name_duplicated, std::string(dir_path), "RPC name duplicated");
         return results;
     }
+
     LOG_LP(INFO) << jogasaki::udf::log::prefix << "No RPC name duplication detected in descriptors";
-    if (!jogasaki::udf::descriptor::validation::validate_message_definition_duplicates(
-            desc_files)) {
-        results.emplace_back(load_status::message_name_duplicated, std::string(dir_path),
-            "Message definition duplicated");
-        return results;
+
+    auto message_duplicates =
+        jogasaki::udf::descriptor::validation::find_message_definition_duplicates(desc_files);
+    auto blocked_stems = build_blocked_stem_map(message_duplicates);
+
+    if (message_duplicates.empty()) {
+        LOG_LP(INFO) << jogasaki::udf::log::prefix
+                     << "No message definition duplication detected in descriptors";
+    } else {
+        log_message_duplicate_diagnostics(message_duplicates);
     }
-    LOG_LP(INFO) << jogasaki::udf::log::prefix
-                 << "No message definition duplication detected in descriptors";
+
     for (auto const& ini_path : ini_files) {
+        auto raw_stem = ini_path.stem().string();
+        auto stem = normalize_plugin_stem(raw_stem);
+
+        auto so_path = ini_path;
+        so_path.replace_extension(".so");
+
+        if (auto it = blocked_stems.find(stem); it != blocked_stems.end()) {
+            log_blocked_plugin(so_path, it->second, message_duplicates);
+            results.emplace_back(load_status::message_name_duplicated, so_path.string(),
+                "Skipped loading due to duplicate message definition");
+            continue;
+        }
+
         auto udf_config_value = parse_ini(ini_path, results);
         if (!udf_config_value) { continue; }
+
         if (!udf_config_value->enabled()) {
             results.emplace_back(
                 load_status::udf_disabled, ini_path.string(), "UDF disabled in configuration");
             continue;
         }
-        auto so_path = ini_path;
-        so_path.replace_extension(".so");
+
         if (!fs::exists(so_path)) { continue; }
+
         VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
                                   << "UDF library found: " << so_path.string()
                                   << " (config: " << ini_path.string() << ")";
+
         std::string full_path = so_path.string();
         dlerror();
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
@@ -212,6 +341,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
                 err ? err : "dlopen failed with unknown error");
             return results;
         }
+
         auto cfg_sp = std::make_shared<udf_config>(std::move(*udf_config_value));
         auto res = create_api_from_handle(handle, full_path, cfg_sp);
         if (res.status() == load_status::ok) {
@@ -227,10 +357,11 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
 void udf_loader::unload_all() {
     plugins_.clear();
     for (auto* h : handles_) {
-        if (h) dlclose(h);
+        if (h) { dlclose(h); }
     }
     handles_.clear();
 }
+
 load_result udf_loader::create_api_from_handle(
     void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg) {
     if (!handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
@@ -249,6 +380,7 @@ load_result udf_loader::create_api_from_handle(
         return {load_status::api_init_failed, full_path, "Failed to initialize plugin API"};
     }
     std::shared_ptr<plugin_api> api_sptr = std::move(api_uptr);
+
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(
         dlsym(handle, "tsurugi_create_generic_client_factory"));
@@ -262,6 +394,7 @@ load_result udf_loader::create_api_from_handle(
         return {load_status::factory_symbol_missing, full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
+
     std::shared_ptr<grpc::ChannelCredentials> creds;
     if (cfg->secure()) {
         grpc::SslCredentialsOptions opts;
@@ -274,16 +407,19 @@ load_result udf_loader::create_api_from_handle(
         VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
                                   << "Creating INSECURE channel to endpoint: " << cfg->endpoint();
     }
+
     auto channel = grpc::CreateChannel(cfg->endpoint(), creds);
     auto raw_client = factory_ptr->create(channel);
     if (!raw_client) {
         return {load_status::factory_creation_failed, full_path,
             "Failed to create generic client from factory"};
     }
+
     plugins_.emplace_back(
         std::move(api_sptr), std::shared_ptr<generic_client>(raw_client), std::move(cfg));
     return {load_status::ok, full_path, "Loaded successfully"};
 }
+
 std::vector<plugin_entry>& udf_loader::get_plugins() noexcept { return plugins_; }
 
 udf_loader::~udf_loader() { unload_all(); }

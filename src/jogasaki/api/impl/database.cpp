@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -415,24 +416,23 @@ bool database::init() {
     );
     loader_     = std::make_unique<plugin::udf::udf_loader>();
     auto results = loader_->load(std::string(cfg_->plugin_directory()));
-    for (const auto& result : results) {
-        auto res_status = result.status();
-        if (res_status == plugin::udf::load_status::ok ||
-            res_status == plugin::udf::load_status::udf_disabled ||
-            res_status == plugin::udf::load_status::path_is_empty ||
-            res_status == plugin::udf::load_status::no_ini_and_so_files ||
-            res_status == plugin::udf::load_status::no_ini_files) {
-            LOG_LP(INFO) << jogasaki::udf::log::prefix << res_status << " file: " << result.file()
-                         << " detail: " << result.detail();
-        } else if (res_status == plugin::udf::load_status::path_not_found ||
-                   res_status == plugin::udf::load_status::ini_so_pair_mismatch ||
-                   res_status == plugin::udf::load_status::ini_invalid) {
-            LOG_LP(ERROR) << jogasaki::udf::log::prefix << res_status
-                                 << " file: " << result.file() << " detail: " << result.detail();
-            // return false;
-        } else {
-            LOG_LP(WARNING) << jogasaki::udf::log::prefix << res_status
-                                 << " file: " << result.file() << " detail: " << result.detail();
+    for (auto const& result : results) {
+        auto const status = result.status();
+        auto const outcome = classify(status);
+
+        std::ostringstream oss;
+
+        oss << jogasaki::udf::log::prefix << to_string_view(outcome)
+            << " status=" << to_string_view(status) << " file=" << result.file()
+            << " detail=" << result.detail();
+
+        auto const message = oss.str();
+
+        switch (outcome) {
+            case plugin::udf::load_outcome::ok: LOG_LP(INFO) << message; break;
+            case plugin::udf::load_outcome::skipped: LOG_LP(WARNING) << message; break;
+            case plugin::udf::load_outcome::fail: LOG_LP(ERROR) << message; break;
+            default: LOG_LP(ERROR) << message; break;
         }
     }
     for (auto& plugin : loader_->get_plugins()) {

@@ -16,12 +16,22 @@
 
 #pragma once
 
+#include <map>
+#include <set>
+#include <string>
 #include <filesystem>
 #include <vector>
 
 namespace jogasaki::udf::descriptor::validation {
 
-[[nodiscard]] bool validate_message_definition_duplicates(
+struct message_diagnostic {
+    std::set<std::string> defining_protos{};
+    std::set<std::string> referring_protos{};
+};
+
+using message_diagnostics = std::map<std::string, message_diagnostic>;
+
+[[nodiscard]] message_diagnostics find_message_definition_duplicates(
     std::vector<std::filesystem::path> const& desc_files);
 
-} // namespace jogasaki::udf::descriptor::validation
+}  // namespace jogasaki::udf::descriptor::validation

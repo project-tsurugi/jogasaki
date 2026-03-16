@@ -65,6 +65,12 @@ enum class load_status {
     rpc_name_duplicated,
 };
 
+enum class load_outcome {
+    ok,
+    skipped,
+    fail,
+};
+
 enum class generic_record_stream_status {
     ok,
     error,

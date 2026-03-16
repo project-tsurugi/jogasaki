@@ -16,6 +16,7 @@
 
 #include "error_info.h"
 
+#include <ostream>
 #include <string>
 #include <string_view>
 
@@ -73,6 +74,53 @@ std::string_view to_string_view(plugin::udf::load_status status) noexcept {
         case load_status::rpc_name_duplicated: return "rpc_name_duplicated"sv;
         default: return "unknown_status"sv;
     }
+}
+
+[[nodiscard]] load_outcome classify(plugin::udf::load_status status) noexcept {
+    using plugin::udf::load_status;
+
+    switch (status) {
+        case load_status::ok:
+            return load_outcome::ok;
+
+        case load_status::udf_disabled:
+        case load_status::path_is_empty:
+        case load_status::no_ini_and_so_files:
+        case load_status::no_ini_files:
+        case load_status::not_regular_file_or_dir:
+        case load_status::no_shared_objects_found:
+        case load_status::ini_so_pair_mismatch:
+        case load_status::ini_invalid:
+        case load_status::message_name_duplicated:
+            return load_outcome::skipped;
+
+        case load_status::path_not_found:
+        case load_status::rpc_name_duplicated:
+        case load_status::dlopen_failed:
+        case load_status::api_symbol_missing:
+        case load_status::api_init_failed:
+        case load_status::factory_symbol_missing:
+        case load_status::factory_creation_failed:
+            return load_outcome::fail;
+
+        default:
+            return load_outcome::fail;
+    }
+}
+
+[[nodiscard]] std::string_view to_string_view(load_outcome outcome) noexcept {
+    using namespace std::literals;
+
+    switch (outcome) {
+        case load_outcome::ok: return "OK"sv;
+        case load_outcome::skipped: return "SKIPPED"sv;
+        case load_outcome::fail: return "FAIL"sv;
+        default: return "UNKNOWN"sv;
+    }
+}
+
+std::ostream& operator<<(std::ostream& os, load_outcome outcome) {
+    return os << to_string_view(outcome);
 }
 
 [[nodiscard]] load_status load_result::status() const noexcept { return status_; }

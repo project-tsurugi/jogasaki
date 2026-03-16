@@ -22,21 +22,12 @@
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
 #include <google/protobuf/descriptor.pb.h>
-
-#include <jogasaki/logging_helper.h>
-#include <jogasaki/udf/log/logging_prefix.h>
-
 #include <jogasaki/udf/descriptor/descriptor_reader.h>
 
 namespace jogasaki::udf::descriptor::validation {
 
 namespace {
-
-struct message_info {
-    std::set<std::string> proto_file_names{};
-};
 
 [[nodiscard]] std::string build_full_message_name(
     std::string const& pkg, std::string const& parent_name, std::string const& message_name) {
@@ -57,11 +48,22 @@ struct message_info {
     return full_message_name;
 }
 
+[[nodiscard]] std::string normalize_type_name(std::string const& name) {
+    if (name.empty()) { return name; }
+    if (name.front() == '.') { return name; }
+
+    std::string result;
+    result.reserve(name.size() + 1);
+    result += ".";
+    result += name;
+    return result;
+}
+
 void collect_message_definitions(google::protobuf::DescriptorProto const& message,
     std::string const& pkg, std::string const& parent_name, std::string const& proto_file_name,
-    std::map<std::string, message_info>& seen) {
+    message_diagnostics& diagnostics) {
     auto const full_message_name = build_full_message_name(pkg, parent_name, message.name());
-    seen[full_message_name].proto_file_names.insert(proto_file_name);
+    diagnostics[full_message_name].defining_protos.insert(proto_file_name);
 
     std::string nested_parent_name;
     if (parent_name.empty()) {
@@ -73,70 +75,75 @@ void collect_message_definitions(google::protobuf::DescriptorProto const& messag
         nested_parent_name += message.name();
     }
 
+    for (auto const& field : message.field()) {
+        if (field.type() == google::protobuf::FieldDescriptorProto::TYPE_MESSAGE &&
+            !field.type_name().empty()) {
+            diagnostics[normalize_type_name(field.type_name())].referring_protos.insert(
+                proto_file_name);
+        }
+    }
+
     for (auto const& nested : message.nested_type()) {
-        collect_message_definitions(nested, pkg, nested_parent_name, proto_file_name, seen);
+        collect_message_definitions(nested, pkg, nested_parent_name, proto_file_name, diagnostics);
     }
 }
 
-void collect_message_definitions_in_file(
-    google::protobuf::FileDescriptorSet const& fds, std::map<std::string, message_info>& seen) {
-    for (auto const& file : fds.file()) {
-        auto const& pkg = file.package();
-        auto const& proto_file_name = file.name();
+void collect_message_references_in_services(
+    google::protobuf::FileDescriptorProto const& file, message_diagnostics& diagnostics) {
+    auto const& proto_file_name = file.name();
 
-        for (auto const& message : file.message_type()) {
-            collect_message_definitions(message, pkg, "", proto_file_name, seen);
+    for (auto const& service : file.service()) {
+        for (auto const& method : service.method()) {
+            if (!method.input_type().empty()) {
+                diagnostics[normalize_type_name(method.input_type())].referring_protos.insert(
+                    proto_file_name);
+            }
+            if (!method.output_type().empty()) {
+                diagnostics[normalize_type_name(method.output_type())].referring_protos.insert(
+                    proto_file_name);
+            }
         }
     }
 }
 
-[[nodiscard]] bool report_message_definition_duplicates(
-    std::map<std::string, message_info> const& seen) {
-    bool ok = true;
+void collect_message_information_in_file(
+    google::protobuf::FileDescriptorProto const& file, message_diagnostics& diagnostics) {
+    auto const& pkg = file.package();
+    auto const& proto_file_name = file.name();
 
-    for (auto const& [name, info] : seen) {
-        if (info.proto_file_names.size() <= 1) { continue; }
-
-        ok = false;
-
-        std::ostringstream oss;
-
-        oss << R"({"event":"udf_message_duplicate","message":")" << name << R"(","protos":[)";
-
-        bool first = true;
-        for (auto const& proto : info.proto_file_names) {
-            if (!first) { oss << ","; }
-            first = false;
-
-            oss << "\"" << proto << "\"";
-        }
-
-        oss << "]}";
-
-        LOG_LP(WARNING) << jogasaki::udf::log::prefix << oss.str();
+    for (auto const& message : file.message_type()) {
+        collect_message_definitions(message, pkg, "", proto_file_name, diagnostics);
     }
 
-    return ok;
+    collect_message_references_in_services(file, diagnostics);
+}
+
+[[nodiscard]] message_diagnostics filter_duplicates(message_diagnostics const& all) {
+    message_diagnostics duplicates{};
+    for (auto const& [message_name, diag] : all) {
+        if (diag.defining_protos.size() > 1) { duplicates.emplace(message_name, diag); }
+    }
+    return duplicates;
 }
 
 } // namespace
 
-bool validate_message_definition_duplicates(std::vector<std::filesystem::path> const& desc_files) {
-    if (desc_files.empty()) {
-        LOG_LP(WARNING) << jogasaki::udf::log::prefix
-                        << "no descriptor files found; message duplication check skipped";
-        return true;
-    }
+message_diagnostics find_message_definition_duplicates(
+    std::vector<std::filesystem::path> const& desc_files) {
+    if (desc_files.empty()) { return {}; }
 
-    std::map<std::string, message_info> seen{};
+    message_diagnostics all{};
 
     for (auto const& desc_path : desc_files) {
         google::protobuf::FileDescriptorSet fds;
-        if (!jogasaki::udf::descriptor::read_file_descriptor_set(desc_path, fds)) { return false; }
-        collect_message_definitions_in_file(fds, seen);
+        if (!jogasaki::udf::descriptor::read_file_descriptor_set(desc_path, fds)) { return {}; }
+
+        for (auto const& file : fds.file()) {
+            collect_message_information_in_file(file, all);
+        }
     }
 
-    return report_message_definition_duplicates(seen);
+    return filter_duplicates(all);
 }
 
 } // namespace jogasaki::udf::descriptor::validation

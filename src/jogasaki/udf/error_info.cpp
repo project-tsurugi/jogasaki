@@ -92,9 +92,7 @@ std::string_view to_string_view(plugin::udf::load_status status) noexcept {
         case load_status::no_shared_objects_found:
         case load_status::ini_so_pair_mismatch:
         case load_status::ini_invalid:
-        case load_status::message_name_duplicated:
-        case load_status::descriptor_open_failed:
-        case load_status::descriptor_parse_failed: return load_outcome::skipped;
+        case load_status::message_name_duplicated: return load_outcome::skipped;
 
         case load_status::path_not_found:
         case load_status::rpc_name_duplicated:
@@ -102,7 +100,9 @@ std::string_view to_string_view(plugin::udf::load_status status) noexcept {
         case load_status::api_symbol_missing:
         case load_status::api_init_failed:
         case load_status::factory_symbol_missing:
-        case load_status::factory_creation_failed: return load_outcome::fail;
+        case load_status::factory_creation_failed:
+        case load_status::descriptor_open_failed:
+        case load_status::descriptor_parse_failed: return load_outcome::fail;
 
         default: return load_outcome::fail;
     }

@@ -111,7 +111,6 @@ class udf_loader : public plugin_loader {
      * @return Reference to a vector of plugin entries.
      */
     [[nodiscard]] std::vector<plugin_entry>& get_plugins() noexcept override;
-    void add_handle(void* handle);
 
   private:
     void load_one_plugin(std::filesystem::path const& ini_path,

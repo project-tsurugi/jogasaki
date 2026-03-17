@@ -414,16 +414,16 @@ bool database::init() {
         *regular_functions_,
         global::scalar_function_repository()
     );
-    loader_     = std::make_unique<plugin::udf::udf_loader>();
+    loader_ = std::make_unique<plugin::udf::udf_loader>();
     auto results = loader_->load(std::string(cfg_->plugin_directory()));
     for (auto const& result : results) {
         auto const status = result.status();
-        auto const outcome = classify(status);
+        auto const outcome = plugin::udf::classify(status);
 
         std::ostringstream oss;
 
-        oss << jogasaki::udf::log::prefix << to_string_view(outcome)
-            << " status=" << to_string_view(status) << " file=" << result.file()
+        oss << jogasaki::udf::log::prefix << plugin::udf::to_string_view(outcome)
+            << " status=" << plugin::udf::to_string_view(status) << " file=" << result.file()
             << " detail=" << result.detail();
 
         auto const message = oss.str();
@@ -436,7 +436,8 @@ bool database::init() {
         }
     }
     for (auto& plugin : loader_->get_plugins()) {
-        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)), std::move(std::get<2>(plugin)));
+        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
+            std::move(std::get<2>(plugin)));
     }
     executor::function::add_udf_functions(*regular_functions_, global::scalar_function_repository(),
         global::table_valued_function_repository(), plugins_);

@@ -194,6 +194,51 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
     LOG_LP(WARNING) << jogasaki::udf::log::prefix << oss.str();
 }
 
+[[nodiscard]] bool validate_and_prepare_descriptors(std::vector<fs::path> const& desc_files,
+    std::string_view dir_path, std::vector<load_result>& results, blocked_stem_map& blocked_stems,
+    jogasaki::udf::descriptor::message_diagnostics& message_duplicates) {
+    auto analysis = jogasaki::udf::descriptor::analyze_descriptors(desc_files);
+    if (analysis.has_error()) {
+        for (auto const& error : analysis.errors) {
+            switch (error.status) {
+                case plugin::udf::descriptor_read_status::ok: break;
+                case plugin::udf::descriptor_read_status::descriptor_open_failed:
+                    results.emplace_back(plugin::udf::load_status::descriptor_open_failed,
+                        error.path.string(), "Failed to open descriptor file, SKIPED ALL UDFs");
+                    break;
+                case plugin::udf::descriptor_read_status::descriptor_parse_failed:
+                    results.emplace_back(plugin::udf::load_status::descriptor_parse_failed,
+                        error.path.string(), "Failed to parse descriptor file, SKIPED ALL UDFs");
+                    break;
+            }
+        }
+        return false;
+    }
+
+    auto const rpc_status =
+        jogasaki::udf::descriptor::validation::validate_rpc_method_duplicates(analysis.rpc_methods);
+    if (rpc_status != plugin::udf::rpc_duplicate_check_status::ok) {
+        results.emplace_back(plugin::udf::load_status::rpc_name_duplicated, std::string(dir_path),
+            "RPC name duplicated, SKIPED ALL UDFs");
+        return false;
+    }
+
+    LOG_LP(INFO) << jogasaki::udf::log::prefix << "No RPC name duplication detected in descriptors";
+
+    message_duplicates =
+        jogasaki::udf::descriptor::validation::filter_message_definition_duplicates(
+            analysis.message_info);
+    blocked_stems = build_blocked_stem_map(message_duplicates);
+
+    if (message_duplicates.empty()) {
+        LOG_LP(INFO) << jogasaki::udf::log::prefix
+                     << "No message definition duplication detected in descriptors";
+    } else {
+        log_message_duplicate_diagnostics(message_duplicates);
+    }
+    return true;
+}
+
 } // namespace
 
 [[nodiscard]] std::string const& client_info::default_endpoint() const noexcept {
@@ -271,6 +316,8 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     std::vector<load_result> results{};
     std::vector<std::filesystem::path> ini_files{};
     std::vector<std::filesystem::path> desc_files{};
+    blocked_stem_map blocked_stems{};
+    jogasaki::udf::descriptor::message_diagnostics message_duplicates{};
 
     if (dir_path.empty()) {
         return {load_result(load_status::path_is_empty, "", "Directory path is empty")};
@@ -285,94 +332,13 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     }
 
     desc_files = collect_desc_pb_files(path);
-
-    auto analysis = jogasaki::udf::descriptor::analyze_descriptors(desc_files);
-    if (analysis.has_error()) {
-        for (auto const& error : analysis.errors) {
-            switch (error.status) {
-                case plugin::udf::descriptor_read_status::ok: break;
-                case plugin::udf::descriptor_read_status::descriptor_open_failed:
-                    results.emplace_back(plugin::udf::load_status::descriptor_open_failed,
-                        error.path.string(), "Failed to open descriptor file, SKIPED ALL UDFs");
-                    break;
-                case plugin::udf::descriptor_read_status::descriptor_parse_failed:
-                    results.emplace_back(plugin::udf::load_status::descriptor_parse_failed,
-                        error.path.string(), "Failed to parse descriptor file, SKIPED ALL UDFs");
-                    break;
-            }
-        }
+    if (!validate_and_prepare_descriptors(
+            desc_files, dir_path, results, blocked_stems, message_duplicates)) {
         return results;
-    }
-
-    auto const rpc_status =
-        jogasaki::udf::descriptor::validation::validate_rpc_method_duplicates(analysis.rpc_methods);
-    if (rpc_status != plugin::udf::rpc_duplicate_check_status::ok) {
-        results.emplace_back(plugin::udf::load_status::rpc_name_duplicated, std::string(dir_path),
-            "RPC name duplicated, SKIPED ALL UDFs");
-        return results;
-    }
-
-    LOG_LP(INFO) << jogasaki::udf::log::prefix << "No RPC name duplication detected in descriptors";
-
-    auto message_duplicates =
-        jogasaki::udf::descriptor::validation::filter_message_definition_duplicates(
-            analysis.message_info);
-    auto blocked_stems = build_blocked_stem_map(message_duplicates);
-
-    if (message_duplicates.empty()) {
-        LOG_LP(INFO) << jogasaki::udf::log::prefix
-                     << "No message definition duplication detected in descriptors";
-    } else {
-        log_message_duplicate_diagnostics(message_duplicates);
     }
 
     for (auto const& ini_path : ini_files) {
-        auto raw_stem = ini_path.stem().string();
-        auto stem = normalize_plugin_stem(raw_stem);
-
-        auto so_path = ini_path;
-        so_path.replace_extension(".so");
-
-        if (auto it = blocked_stems.find(stem); it != blocked_stems.end()) {
-            log_blocked_plugin(so_path, it->second, message_duplicates);
-            results.emplace_back(load_status::message_name_duplicated, so_path.string(),
-                "Skipped loading due to duplicate message definition");
-            continue;
-        }
-
-        auto udf_config_value = parse_ini(ini_path, results);
-        if (!udf_config_value) { continue; }
-
-        if (!udf_config_value->enabled()) {
-            results.emplace_back(
-                load_status::udf_disabled, ini_path.string(), "UDF disabled in configuration");
-            continue;
-        }
-
-        if (!fs::exists(so_path)) { continue; }
-
-        VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
-                                  << "UDF library found: " << so_path.string()
-                                  << " (config: " << ini_path.string() << ")";
-
-        std::string full_path = so_path.string();
-        dlerror();
-        void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
-        if (!handle) {
-            const char* err = dlerror();
-            results.emplace_back(load_status::dlopen_failed, full_path,
-                err ? err : "dlopen failed with unknown error");
-            return results;
-        }
-
-        auto cfg_sp = std::make_shared<udf_config>(std::move(*udf_config_value));
-        auto res = create_api_from_handle(handle, full_path, cfg_sp);
-        if (res.status() == load_status::ok) {
-            handles_.push_back(handle);
-        } else {
-            dlclose(handle);
-        }
-        results.push_back(std::move(res));
+        load_one_plugin(ini_path, blocked_stems, message_duplicates, results);
     }
     return results;
 }
@@ -441,6 +407,57 @@ load_result udf_loader::create_api_from_handle(
     plugins_.emplace_back(
         std::move(api_sptr), std::shared_ptr<generic_client>(raw_client), std::move(cfg));
     return {load_status::ok, full_path, "Loaded successfully"};
+}
+
+void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map const& blocked_stems,
+    jogasaki::udf::descriptor::message_diagnostics const& message_duplicates,
+    std::vector<load_result>& results) {
+    auto raw_stem = ini_path.stem().string();
+    auto stem = normalize_plugin_stem(raw_stem);
+
+    auto so_path = ini_path;
+    so_path.replace_extension(".so");
+
+    if (auto it = blocked_stems.find(stem); it != blocked_stems.end()) {
+        log_blocked_plugin(so_path, it->second, message_duplicates);
+        results.emplace_back(load_status::message_name_duplicated, so_path.string(),
+            "Skipped loading due to duplicate message definition");
+        return;
+    }
+
+    auto udf_config_value = parse_ini(ini_path, results);
+    if (!udf_config_value) { return; }
+
+    if (!udf_config_value->enabled()) {
+        results.emplace_back(
+            load_status::udf_disabled, ini_path.string(), "UDF disabled in configuration");
+        return;
+    }
+
+    if (!fs::exists(so_path)) { return; }
+
+    VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
+                              << "UDF library found: " << so_path.string()
+                              << " (config: " << ini_path.string() << ")";
+
+    std::string full_path = so_path.string();
+    dlerror();
+    void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+        const char* err = dlerror();
+        results.emplace_back(
+            load_status::dlopen_failed, full_path, err ? err : "dlopen failed with unknown error");
+        return;
+    }
+
+    auto cfg_sp = std::make_shared<udf_config>(std::move(*udf_config_value));
+    auto res = create_api_from_handle(handle, full_path, cfg_sp);
+    if (res.status() == load_status::ok) {
+        handles_.push_back(handle);
+    } else {
+        dlclose(handle);
+    }
+    results.push_back(std::move(res));
 }
 
 std::vector<plugin_entry>& udf_loader::get_plugins() noexcept { return plugins_; }

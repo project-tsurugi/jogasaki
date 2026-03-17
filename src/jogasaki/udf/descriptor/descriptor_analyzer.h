@@ -43,15 +43,19 @@ struct descriptor_load_error {
     std::filesystem::path path{};
     plugin::udf::descriptor_read_status status{};
 };
-
 struct descriptor_analysis_result {
+    // intentionally public: simple POD-like result container
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     std::vector<descriptor_load_error> errors{};
+    // intentionally public: simple POD-like result container
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     std::vector<rpc_method_entry> rpc_methods{};
+    // intentionally public: simple POD-like result container
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     message_diagnostics message_info{};
 
     [[nodiscard]] bool has_error() const noexcept { return !errors.empty(); }
 };
-
 [[nodiscard]] descriptor_analysis_result analyze_descriptors(
     std::vector<std::filesystem::path> const& desc_files);
 

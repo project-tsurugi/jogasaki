@@ -58,6 +58,8 @@ enum class load_status {
     udf_disabled,
     no_shared_objects_found,
     dlopen_failed,
+    descriptor_open_failed,
+    descriptor_parse_failed,
     api_symbol_missing,
     api_init_failed,
     factory_symbol_missing,
@@ -71,10 +73,10 @@ enum class load_outcome {
     fail,
 };
 
-enum class generic_record_stream_status {
-    ok,
-    error,
-    end_of_stream,
-    not_ready
-};
-}  // namespace plugin::udf
+enum class generic_record_stream_status { ok, error, end_of_stream, not_ready };
+
+enum class descriptor_read_status { ok, descriptor_open_failed, descriptor_parse_failed };
+
+enum class rpc_duplicate_check_status { ok, rpc_name_duplicated };
+
+} // namespace plugin::udf

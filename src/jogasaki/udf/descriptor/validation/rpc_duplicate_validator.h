@@ -15,12 +15,14 @@
  */
 #pragma once
 
-#include <filesystem>
 #include <vector>
+
+#include <jogasaki/udf/descriptor/descriptor_analyzer.h>
+#include <jogasaki/udf/enum_types.h>
 
 namespace jogasaki::udf::descriptor::validation {
 
-[[nodiscard]] bool validate_rpc_method_duplicates(
-    std::vector<std::filesystem::path> const& desc_files);
+[[nodiscard]] plugin::udf::rpc_duplicate_check_status validate_rpc_method_duplicates(
+    std::vector<rpc_method_entry> const& rpc_methods);
 
 } // namespace jogasaki::udf::descriptor::validation

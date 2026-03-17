@@ -39,6 +39,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/udf/descriptor/descriptor_analyzer.h>
 #include <jogasaki/udf/descriptor/validation/message_duplicate_validator.h>
 #include <jogasaki/udf/descriptor/validation/rpc_duplicate_validator.h>
 #include <jogasaki/udf/log/logging_prefix.h>
@@ -100,7 +101,7 @@ std::vector<fs::path> collect_desc_pb_files(fs::path const& dir) {
 }
 
 [[nodiscard]] blocked_stem_map build_blocked_stem_map(
-    jogasaki::udf::descriptor::validation::message_diagnostics const& diagnostics) {
+    jogasaki::udf::descriptor::message_diagnostics const& diagnostics) {
     blocked_stem_map result{};
 
     for (auto const& [message_name, diag] : diagnostics) {
@@ -118,7 +119,7 @@ std::vector<fs::path> collect_desc_pb_files(fs::path const& dir) {
 }
 
 void log_message_duplicate_diagnostics(
-    jogasaki::udf::descriptor::validation::message_diagnostics const& diagnostics) {
+    jogasaki::udf::descriptor::message_diagnostics const& diagnostics) {
     for (auto const& [message_name, diag] : diagnostics) {
         std::ostringstream oss;
         oss << R"({"event":"udf_message_duplicate","message":")" << message_name
@@ -153,7 +154,7 @@ void log_message_duplicate_diagnostics(
 }
 
 void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& conflicting_messages,
-    jogasaki::udf::descriptor::validation::message_diagnostics const& diagnostics) {
+    jogasaki::udf::descriptor::message_diagnostics const& diagnostics) {
     std::ostringstream oss;
     oss << R"({"event":"udf_plugin_skip","plugin":")" << so_path.filename().string()
         << R"(","reason":"message_definition_duplicated","messages":[)";
@@ -284,16 +285,38 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     }
 
     desc_files = collect_desc_pb_files(path);
-    if (!jogasaki::udf::descriptor::validation::validate_rpc_method_duplicates(desc_files)) {
-        results.emplace_back(
-            load_status::rpc_name_duplicated, std::string(dir_path), "RPC name duplicated");
+
+    auto analysis = jogasaki::udf::descriptor::analyze_descriptors(desc_files);
+    if (analysis.has_error()) {
+        for (auto const& error : analysis.errors) {
+            switch (error.status) {
+                case plugin::udf::descriptor_read_status::ok: break;
+                case plugin::udf::descriptor_read_status::descriptor_open_failed:
+                    results.emplace_back(plugin::udf::load_status::descriptor_open_failed,
+                        error.path.string(), "Failed to open descriptor file, SKIPED ALL UDFs");
+                    break;
+                case plugin::udf::descriptor_read_status::descriptor_parse_failed:
+                    results.emplace_back(plugin::udf::load_status::descriptor_parse_failed,
+                        error.path.string(), "Failed to parse descriptor file, SKIPED ALL UDFs");
+                    break;
+            }
+        }
+        return results;
+    }
+
+    auto const rpc_status =
+        jogasaki::udf::descriptor::validation::validate_rpc_method_duplicates(analysis.rpc_methods);
+    if (rpc_status != plugin::udf::rpc_duplicate_check_status::ok) {
+        results.emplace_back(plugin::udf::load_status::rpc_name_duplicated, std::string(dir_path),
+            "RPC name duplicated, SKIPED ALL UDFs");
         return results;
     }
 
     LOG_LP(INFO) << jogasaki::udf::log::prefix << "No RPC name duplication detected in descriptors";
 
     auto message_duplicates =
-        jogasaki::udf::descriptor::validation::find_message_definition_duplicates(desc_files);
+        jogasaki::udf::descriptor::validation::filter_message_definition_duplicates(
+            analysis.message_info);
     auto blocked_stems = build_blocked_stem_map(message_duplicates);
 
     if (message_duplicates.empty()) {

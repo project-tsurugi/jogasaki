@@ -523,6 +523,26 @@ TEST_F(sql_yield_resume_varlen_test, take_flat) {
     );
 }
 
+TEST_F(sql_yield_resume_varlen_test, values) {
+    // varlen version of sql_yield_resume_test::values.
+    // plan: values('aaa...'::varchar) -> apply(TVF(t.c0))
+    // the inline subquery SELECT 'aaa...'::varchar AS c0 is compiled via the values
+    // operator; the :: cast ensures the literal is VARCHAR in the values operator itself.
+    // that operator sits directly upstream of apply, exercising the values operator's
+    // yield-propagation path with a varlen character value.
+    run_yield_propagation_test(
+        "SELECT t.c0, tvf.c1 "
+        "FROM (SELECT 'aaaaaaaaaaaaaaaaaaaa'::varchar AS c0) AS t "
+        "CROSS APPLY tvf_varlen_blocking(t.c0) AS tvf",
+        {"values"},
+        {
+            mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{varchar_ft(), varchar_ft()},
+                accessor::text{kc1_a}, accessor::text{ktvf_r}),
+        }
+    );
+}
+
 TEST_F(sql_yield_resume_varlen_test, find) {
     // varlen version of sql_yield_resume_test::find.
     // plan: find(T where C0='11..1') -> apply(TVF(T.C0))

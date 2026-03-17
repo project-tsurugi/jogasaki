@@ -46,7 +46,8 @@ public:
         bool has_find_operator,
         bool has_join_find_or_scan_operator,
         bool has_write_operations,
-        write_kind write_kind
+        write_kind write_kind,
+        bool has_values_operator
     );
 
     [[nodiscard]] bool has_scan_operator() const noexcept;
@@ -55,6 +56,7 @@ public:
     [[nodiscard]] bool has_join_find_or_scan_operator() const noexcept;
     [[nodiscard]] bool has_write_operations() const noexcept;
     [[nodiscard]] write_kind get_write_kind() const noexcept;
+    [[nodiscard]] bool has_values_operator() const noexcept;
 
 private:
     bool has_scan_operator_ = false;
@@ -63,6 +65,7 @@ private:
     bool has_join_find_or_scan_operator_ = false;
     bool has_write_operations_ = false;
     write_kind write_kind_ = write_kind::delete_;
+    bool has_values_operator_ = false;
 };
 
 /**

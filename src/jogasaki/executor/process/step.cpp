@@ -114,7 +114,8 @@ model::step_kind step::kind() const noexcept {
 
 std::size_t step::partitions() const noexcept {
     if (info_->details().has_scan_operator() ||
-        info_->details().has_find_operator()) {
+        info_->details().has_find_operator() ||
+        info_->details().has_values_operator()) {
         return 1;
     }
     return global::config_pool()->default_partitions();

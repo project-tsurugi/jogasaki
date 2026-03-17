@@ -16,11 +16,6 @@
 
 #pragma once
 
-#include <map>
-#include <set>
-#include <string>
-#include <vector>
-
 #include <jogasaki/udf/descriptor/descriptor_analyzer.h>
 
 namespace jogasaki::udf::descriptor::validation {

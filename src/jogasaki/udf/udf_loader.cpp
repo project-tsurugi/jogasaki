@@ -424,6 +424,7 @@ void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map cons
 
     auto so_path = ini_path;
     so_path.replace_extension(".so");
+    if (!fs::exists(so_path)) { return; }
     auto udf_config_value = parse_ini(ini_path, results);
     if (!udf_config_value) { return; }
 
@@ -438,8 +439,6 @@ void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map cons
             "Skipped loading due to duplicate message definition");
         return;
     }
-
-    if (!fs::exists(so_path)) { return; }
 
     VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
                               << "UDF library found: " << so_path.string()

@@ -161,13 +161,13 @@ descriptor_analysis_result analyze_descriptors(
         google::protobuf::FileDescriptorSet fds;
         auto const read_status = read_file_descriptor_set(desc_path, fds);
         if (read_status != plugin::udf::descriptor_read_status::ok) {
-            result.errors.emplace_back(descriptor_load_error{desc_path, read_status});
+            result.errors().emplace_back(descriptor_load_error{desc_path, read_status});
             continue;
         }
 
         for (auto const& file : fds.file()) {
-            collect_rpc_methods_in_file(file, result.rpc_methods);
-            collect_message_information_in_file(file, result.message_info);
+            collect_rpc_methods_in_file(file, result.rpc_methods());
+            collect_message_information_in_file(file, result.message_info());
         }
     }
 

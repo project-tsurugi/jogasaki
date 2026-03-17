@@ -43,19 +43,39 @@ struct descriptor_load_error {
     std::filesystem::path path{};
     plugin::udf::descriptor_read_status status{};
 };
-struct descriptor_analysis_result {
-    // intentionally public: simple POD-like result container
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    std::vector<descriptor_load_error> errors{};
-    // intentionally public: simple POD-like result container
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    std::vector<rpc_method_entry> rpc_methods{};
-    // intentionally public: simple POD-like result container
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    message_diagnostics message_info{};
+class descriptor_analysis_result {
+  public:
+    descriptor_analysis_result() = default;
+    ~descriptor_analysis_result() = default;
+    descriptor_analysis_result(descriptor_analysis_result const&) = default;
+    descriptor_analysis_result(descriptor_analysis_result&&) noexcept = default;
+    descriptor_analysis_result& operator=(descriptor_analysis_result const&) = default;
+    descriptor_analysis_result& operator=(descriptor_analysis_result&&) noexcept = default;
 
-    [[nodiscard]] bool has_error() const noexcept { return !errors.empty(); }
+    [[nodiscard]] std::vector<descriptor_load_error> const& errors() const noexcept {
+        return errors_;
+    }
+
+    [[nodiscard]] std::vector<descriptor_load_error>& errors() noexcept { return errors_; }
+
+    [[nodiscard]] std::vector<rpc_method_entry> const& rpc_methods() const noexcept {
+        return rpc_methods_;
+    }
+
+    [[nodiscard]] std::vector<rpc_method_entry>& rpc_methods() noexcept { return rpc_methods_; }
+
+    [[nodiscard]] message_diagnostics const& message_info() const noexcept { return message_info_; }
+
+    [[nodiscard]] message_diagnostics& message_info() noexcept { return message_info_; }
+
+    [[nodiscard]] bool has_error() const noexcept { return !errors_.empty(); }
+
+  private:
+    std::vector<descriptor_load_error> errors_{};
+    std::vector<rpc_method_entry> rpc_methods_{};
+    message_diagnostics message_info_{};
 };
+
 [[nodiscard]] descriptor_analysis_result analyze_descriptors(
     std::vector<std::filesystem::path> const& desc_files);
 

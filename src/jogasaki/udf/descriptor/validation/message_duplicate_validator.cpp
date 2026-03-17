@@ -18,9 +18,8 @@
 #include <jogasaki/udf/descriptor/descriptor_analyzer.h>
 namespace jogasaki::udf::descriptor::validation {
 
-udf::descriptor::message_diagnostics filter_message_definition_duplicates(
-    udf::descriptor::message_diagnostics const& all) {
-    udf::descriptor::message_diagnostics duplicates{};
+message_diagnostics filter_message_definition_duplicates(message_diagnostics const& all) {
+    message_diagnostics duplicates{};
     for (auto const& [message_name, diag] : all) {
         if (diag.defining_protos.size() > 1) { duplicates.emplace(message_name, diag); }
     }

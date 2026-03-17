@@ -58,6 +58,11 @@ install(DIRECTORY
         PATTERN "proto/kvs/*.pb.h"
         )
 
+file(GLOB ARROW_SOURCES
+        "jogasaki/executor/file/arrow*.cpp"
+        "jogasaki/executor/file/parquet*.cpp"
+)
+
 file(GLOB SOURCES
         "jogasaki/*.cpp"
         "jogasaki/accessor/*.cpp"
@@ -118,6 +123,7 @@ file(GLOB SOURCES
         "jogasaki/udf/descriptor/validation/*.cpp"
         "jogasaki/udf/log/*.cpp"
 )
+list(REMOVE_ITEM SOURCES ${ARROW_SOURCES})
 if(ENABLE_ALTIMETER)
 file(GLOB SRC_ALTIMETER_ENABLED
         "jogasaki/external_log/details/*.cpp"
@@ -133,8 +139,11 @@ set_source_files_properties(
         GENERATED TRUE
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
 )
+add_library(arrow_objs OBJECT ${ARROW_SOURCES})
+set_target_properties(arrow_objs PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_library(${ENGINE}
         ${SOURCES}
+        ${ARROW_SOURCES}
         ${GENERATED_SQL_PROTO_SRCS}
         ${GENERATED_METADATA_PROTO_SRCS}
         ${GENERATED_KVSSERVICE_PROTO_SRCS}
@@ -151,6 +160,11 @@ set_target_properties(${ENGINE}
 )
 
 target_include_directories(${ENGINE}
+        PRIVATE ${CMAKE_BINARY_DIR}/src
+        PRIVATE .
+)
+
+target_include_directories(arrow_objs
         PRIVATE ${CMAKE_BINARY_DIR}/src
         PRIVATE .
 )
@@ -181,7 +195,31 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
-        PRIVATE ${PARQUET_PREFIX}parquet_shared
+#        PRIVATE ${PARQUET_PREFIX}parquet_shared
+        PRIVATE mpdecpp
+        PRIVATE ${GRPC_LIBRARIES}
+        )
+
+target_link_libraries(arrow_objs
+        PUBLIC api
+        PUBLIC ${tateyama_engine}
+        PUBLIC takatori
+        PUBLIC yugawara
+        PRIVATE mizugaki
+#        PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
+#        PRIVATE limestone
+#        PRIVATE data-relay-grpc
+#        PRIVATE tbb
+#        PRIVATE numa
+#        PRIVATE tsl::hopscotch_map
+        PRIVATE Boost::boost
+        PRIVATE Boost::filesystem
+        PRIVATE Boost::thread
+        PRIVATE Boost::container
+        PRIVATE glog::glog
+        PRIVATE atomic
+        PRIVATE protobuf::libprotobuf
+        PRIVATE Parquet::parquet_shared
         PRIVATE mpdecpp
         PRIVATE ${GRPC_LIBRARIES}
         )
@@ -214,6 +252,7 @@ endif()
 # This version definition should be shared with caller at least.
 target_compile_definitions(${ENGINE} PUBLIC BOOST_THREAD_VERSION=4)
 
+set_compile_options(arrow_objs)
 set_compile_options(${ENGINE})
 
 install_custom(${ENGINE} ${export_name})

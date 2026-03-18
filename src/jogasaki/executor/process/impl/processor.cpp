@@ -62,6 +62,7 @@ abstract::status processor::run(abstract::task_context *context) {
     // initialize work_context
     auto* work = unsafe_downcast<work_context>(context->work_context()); //NOLINT
     if (work->variable_tables().empty()) {
+        work->variable_tables().reserve(info_->vars_info_list().size());
         for(auto& block_info : info_->vars_info_list()) {
             work->variable_tables().emplace_back(block_info);
         }

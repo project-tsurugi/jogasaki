@@ -59,6 +59,8 @@ project::project(
     record_operator(index, info, block_index),
     downstream_(std::move(downstream))
 {
+    evaluators_.reserve(columns.size());
+    variables_.reserve(columns.size());
     for(auto&& c: columns) {
         evaluators_.emplace_back(c.value(), info.compiled_info(), info.host_variables());
         variables_.emplace_back(c.variable());

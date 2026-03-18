@@ -261,8 +261,10 @@ void aggregate_group::finish(abstract::task_context* context) {
 std::vector<details::aggregate_group_column> aggregate_group::create_columns(sequence_view<column const> columns) {
     auto var_indices = variable_indices(columns).second;
     std::vector<details::aggregate_group_column> ret{};
+    ret.reserve(columns.size());
     for(auto&& c : columns) {
         std::vector<std::size_t> argument_indices{};
+        argument_indices.reserve(c.arguments().size());
         for(auto&& a : c.arguments()) {
             argument_indices.emplace_back(var_indices[a]);
         }

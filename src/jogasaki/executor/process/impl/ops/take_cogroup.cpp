@@ -282,6 +282,8 @@ void take_cogroup::finish(abstract::task_context* context) {
 }
 
 void take_cogroup::create_readers(take_cogroup_context& ctx) {
+    ctx.readers_.reserve(groups_.size());
+    ctx.inputs_.reserve(groups_.size());
     for(auto&& g: groups_) {
         auto idx = g.reader_index_;
         auto* reader = ctx.task_context().reader(idx).reader<io::group_reader>();

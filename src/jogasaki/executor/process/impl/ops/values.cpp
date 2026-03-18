@@ -21,22 +21,15 @@
 #include <glog/logging.h>
 
 #include <takatori/relation/values.h>
-#include <takatori/type/data.h>
-#include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
 #include <yugawara/compiled_info.h>
 
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/conv/require_conversion.h>
-#include <jogasaki/executor/expr/details/cast_evaluation.h>
 #include <jogasaki/executor/expr/evaluator.h>
-#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
-#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/wrt/fill_evaluated_value.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -44,6 +37,7 @@
 #include <jogasaki/request_cancel_config.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/cancel_request.h>
+#include <jogasaki/utils/field_types.h>
 
 #include "cancel_if_needed.h"
 #include "context_helper.h"
@@ -62,16 +56,18 @@ values::values(
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
+    fields_(create_fields(node.columns(), info)),
     downstream_(std::move(downstream))
 {
-    for (auto&& col : node.columns()) {
-        variables_.emplace_back(col);
-    }
+    row_evaluators_.reserve(node.rows().size());
+    row_source_types_.reserve(node.rows().size());
     for (auto&& row : node.rows()) {
-        auto& rev = row_evaluators_.emplace_back();
+        auto& revals = row_evaluators_.emplace_back();
         auto& src_types = row_source_types_.emplace_back();
+        revals.reserve(row.elements().size());
+        src_types.reserve(row.elements().size());
         for (auto&& elem : row.elements()) {
-            rev.emplace_back(elem, info.compiled_info(), info.host_variables());
+            revals.emplace_back(elem, info.compiled_info(), info.host_variables());
             src_types.emplace_back(&info.compiled_info().type_of(elem));
         }
     }
@@ -98,7 +94,7 @@ operation_status values::operator()(values_context& ctx, abstract::task_context*
     }
     auto& vars = ctx.output_variables();
     auto ref = vars.store().ref();
-    auto& cinfo = compiled_info();
+
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::values);
     while (ctx.current_row_ < row_evaluators_.size()) {
         if (ctx.state() != context_state::calling_child) {
@@ -106,59 +102,26 @@ operation_status values::operator()(values_context& ctx, abstract::task_context*
                 finish(context);
                 return operation_status_kind::aborted;
             }
-            auto& rev = row_evaluators_[ctx.current_row_];
-            for (std::size_t i = 0, n = variables_.size(); i < n; ++i) {
-                auto& v = variables_[i];
-                auto info = vars.info().at(v);
-                auto& ev = rev[i];
-                expr::evaluator_context c{
-                    ctx.varlen_resource(),
-                    ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-                };
-                context_helper helper{ctx.task_context()};
-                c.blob_session(std::addressof(helper.blob_session_container()));
-                auto result = ev(c, vars, ctx.varlen_resource());
-                if (result.error()) {
+            auto& revals = row_evaluators_[ctx.current_row_];
+            context_helper helper{ctx.task_context()};
+            process::impl::variable_table empty{};
+            for (std::size_t i = 0, n = fields_.size(); i < n; ++i) {
+                auto const& field = fields_[i];
+                if (auto st = wrt::fill_evaluated_value(
+                        revals[i],
+                        *row_source_types_[ctx.current_row_][i],
+                        wrt::value_input_conversion_kind::unify,
+                        field,
+                        *ctx.req_context(),
+                        helper.blob_session_container(),
+                        empty,
+                        *ctx.varlen_resource(),
+                        ref
+                    );
+                    st != status::ok) {
+                    ctx.abort();
                     finish(context);
-                    return handle_expression_error(ctx, result, c);
-                }
-                // perform implicit type coercion when the expression result type differs
-                // from the column variable type (e.g. INT8 literal in a DECIMAL column)
-                auto& source_type = *row_source_types_[ctx.current_row_][i];
-                auto& target_type = cinfo.type_of(v);
-                data::any converted = result;
-                if (conv::to_require_conversion(source_type, target_type)) {
-                    auto cast_result = expr::details::conduct_cast(c, source_type, target_type, result);
-                    if (cast_result.error()) {
-                        finish(context);
-                        return handle_expression_error(ctx, cast_result, c);
-                    }
-                    converted = cast_result;
-                }
-                using t = takatori::type::type_kind;
-                bool is_null = converted.empty();
-                ref.set_null(info.nullity_offset(), is_null);
-                if (! is_null) {
-                    switch (target_type.kind()) {
-                        case t::boolean: copy_to<runtime_t<meta::field_type_kind::boolean>>(ref, info.value_offset(), converted); break;
-                        case t::int4: copy_to<runtime_t<meta::field_type_kind::int4>>(ref, info.value_offset(), converted); break;
-                        case t::int8: copy_to<runtime_t<meta::field_type_kind::int8>>(ref, info.value_offset(), converted); break;
-                        case t::float4: copy_to<runtime_t<meta::field_type_kind::float4>>(ref, info.value_offset(), converted); break;
-                        case t::float8: copy_to<runtime_t<meta::field_type_kind::float8>>(ref, info.value_offset(), converted); break;
-                        case t::decimal: copy_to<runtime_t<meta::field_type_kind::decimal>>(ref, info.value_offset(), converted); break;
-                        case t::character: copy_to<runtime_t<meta::field_type_kind::character>>(ref, info.value_offset(), converted); break;
-                        case t::octet: copy_to<runtime_t<meta::field_type_kind::octet>>(ref, info.value_offset(), converted); break;
-                        case t::date: copy_to<runtime_t<meta::field_type_kind::date>>(ref, info.value_offset(), converted); break;
-                        case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), converted); break;
-                        case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), converted); break;
-                        case t::blob: copy_to<runtime_t<meta::field_type_kind::blob>>(ref, info.value_offset(), converted); break;
-                        case t::clob: copy_to<runtime_t<meta::field_type_kind::clob>>(ref, info.value_offset(), converted); break;
-                        default:
-                            finish(context);
-                            VLOG_LP(log_error) << "Unsupported type in values operator result:"
-                                               << cinfo.type_of(v).kind();
-                            return error_abort(ctx, status::err_unsupported);
-                    }
+                    return operation_status_kind::aborted;
                 }
             }
         } else {
@@ -196,6 +159,26 @@ void values::finish(abstract::task_context* context) {
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }
+}
+
+std::vector<details::values_field> values::create_fields(
+    std::vector<takatori::descriptor::variable> const& columns,
+    processor_info const& pinfo
+) {
+    std::vector<details::values_field> fields{};
+    fields.reserve(columns.size());
+    for (auto const& col : columns) {
+        auto const& target_type = pinfo.compiled_info().type_of(col);
+        auto const& vinfo = block_info().at(col);
+        fields.emplace_back(details::values_field{
+            utils::type_for(target_type),
+            true,
+            vinfo.value_offset(),
+            vinfo.nullity_offset(),
+            std::addressof(target_type)
+        });
+    }
+    return fields;
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

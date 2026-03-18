@@ -22,24 +22,19 @@
 
 #include <takatori/relation/project.h>
 #include <takatori/type/data.h>
-#include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
 #include <yugawara/compiled_info.h>
 
-#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/expr/evaluator.h>
-#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
-#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/wrt/fill_evaluated_value.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/field_types.h>
 
 #include "context_helper.h"
 #include "operator_base.h"
@@ -57,13 +52,12 @@ project::project(
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
+    fields_(create_fields(columns, info)),
     downstream_(std::move(downstream))
 {
     evaluators_.reserve(columns.size());
-    variables_.reserve(columns.size());
     for(auto&& c: columns) {
         evaluators_.emplace_back(c.value(), info.compiled_info(), info.host_variables());
-        variables_.emplace_back(c.variable());
     }
 }
 
@@ -91,45 +85,22 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& vars = ctx.output_variables();
         // fill scope variables
         auto ref = vars.store().ref();
-        auto& cinfo = compiled_info();
-        for(std::size_t i=0, n = variables_.size(); i < n; ++i) {
-            auto& v = variables_[i];
-            auto info = vars.info().at(variables_[i]);
-            auto& ev = evaluators_[i];
-            expr::evaluator_context c{
-                ctx.varlen_resource(),
-                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-            };
-            context_helper helper{ctx.task_context()};
-            c.blob_session(std::addressof(helper.blob_session_container()));
-            auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
-                                                               // by take/scan operator
-            if (result.error()) {
-                return handle_expression_error(ctx, result, c);
-            }
-
-            using t = takatori::type::type_kind;
-            bool is_null = result.empty();
-            ref.set_null(info.nullity_offset(), is_null);
-            if (! is_null) {
-                switch(cinfo.type_of(v).kind()) {
-                    case t::boolean: copy_to<runtime_t<meta::field_type_kind::boolean>>(ref, info.value_offset(), result); break;
-                    case t::int4: copy_to<runtime_t<meta::field_type_kind::int4>>(ref, info.value_offset(), result); break;
-                    case t::int8: copy_to<runtime_t<meta::field_type_kind::int8>>(ref, info.value_offset(), result); break;
-                    case t::float4: copy_to<runtime_t<meta::field_type_kind::float4>>(ref, info.value_offset(), result); break;
-                    case t::float8: copy_to<runtime_t<meta::field_type_kind::float8>>(ref, info.value_offset(), result); break;
-                    case t::decimal: copy_to<runtime_t<meta::field_type_kind::decimal>>(ref, info.value_offset(), result); break;
-                    case t::character: copy_to<runtime_t<meta::field_type_kind::character>>(ref, info.value_offset(), result); break;
-                    case t::octet: copy_to<runtime_t<meta::field_type_kind::octet>>(ref, info.value_offset(), result); break;
-                    case t::date: copy_to<runtime_t<meta::field_type_kind::date>>(ref, info.value_offset(), result); break;
-                    case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), result); break;
-                    case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;
-                    case t::blob: copy_to<runtime_t<meta::field_type_kind::blob>>(ref, info.value_offset(), result); break;
-                    case t::clob: copy_to<runtime_t<meta::field_type_kind::clob>>(ref, info.value_offset(), result); break;
-                    default:
-                        VLOG_LP(log_error) << "Unsupported type in project operator result:" << cinfo.type_of(v).kind();
-                        return error_abort(ctx, status::err_unsupported);
-                }
+        context_helper helper{ctx.task_context()};
+        for(std::size_t i=0, n = fields_.size(); i < n; ++i) {
+            if (auto st = wrt::fill_evaluated_value(
+                    evaluators_[i],
+                    *fields_[i].target_type_,
+                    wrt::value_input_conversion_kind::none,
+                    fields_[i],
+                    *ctx.req_context(),
+                    helper.blob_session_container(),
+                    vars,
+                    *ctx.varlen_resource(),
+                    ref
+                );
+                st != status::ok) {
+                ctx.abort();
+                return operation_status_kind::aborted;
             }
         }
     } else {
@@ -163,6 +134,26 @@ void project::finish(abstract::task_context* context) {
     if (downstream_) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }
+}
+
+std::vector<details::project_field> project::create_fields(
+    takatori::tree::tree_fragment_vector<takatori::relation::project::column> const& columns,
+    processor_info const& pinfo
+) {
+    std::vector<details::project_field> fields{};
+    fields.reserve(columns.size());
+    for (auto&& c : columns) {
+        auto const& target_type = pinfo.compiled_info().type_of(c.variable());
+        auto const& vinfo = block_info().at(c.variable());
+        fields.emplace_back(details::project_field{
+            utils::type_for(target_type),
+            true,
+            vinfo.value_offset(),
+            vinfo.nullity_offset(),
+            std::addressof(target_type)
+        });
+    }
+    return fields;
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

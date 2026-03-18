@@ -19,19 +19,18 @@
 #include <memory>
 #include <vector>
 
-#include <takatori/descriptor/variable.h>
 #include <takatori/relation/project.h>
 #include <takatori/tree/tree_fragment_vector.h>
+#include <takatori/type/data.h>
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/data/any.h>
-#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/meta/field_type.h>
 
 #include "operator_base.h"
 #include "project_context.h"
@@ -39,6 +38,22 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+
+namespace details {
+
+/**
+ * @brief field for the project operator
+ */
+struct project_field {
+    meta::field_type type_{};  //NOLINT
+    bool nullable_{true};  //NOLINT
+    std::size_t offset_{};  //NOLINT
+    std::size_t nullity_offset_{};  //NOLINT
+    takatori::type::data const* target_type_{};  //NOLINT
+};
+
+} // namespace details
+
 /**
  * @brief project operator
  */
@@ -96,13 +111,13 @@ public:
 
 private:
     std::vector<expr::evaluator> evaluators_{};
-    std::vector<takatori::descriptor::variable> variables_{};
+    std::vector<details::project_field> fields_{};
     std::unique_ptr<operator_base> downstream_{};
 
-    template <typename T>
-    void copy_to(accessor::record_ref target_ref, std::size_t target_offset, data::any src) {
-        target_ref.set_value<T>(target_offset, src.to<T>());
-    }
+    [[nodiscard]] std::vector<details::project_field> create_fields(
+        takatori::tree::tree_fragment_vector<takatori::relation::project::column> const& columns,
+        processor_info const& info
+    );
 };
 
 }

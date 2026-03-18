@@ -24,9 +24,8 @@
 #include <takatori/type/data.h>
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/data/any.h>
 #include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
@@ -39,6 +38,21 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+
+namespace details {
+
+/**
+ * @brief field for the values operator
+ */
+struct values_field {
+    meta::field_type type_{};                       //NOLINT
+    bool nullable_{true};                           //NOLINT
+    std::size_t offset_{};                          //NOLINT
+    std::size_t nullity_offset_{};                  //NOLINT
+    takatori::type::data const* target_type_{};     //NOLINT
+};
+
+} // namespace details
 
 /**
  * @brief values operator - produces tuples from scalar expressions without any upstream scan.
@@ -102,17 +116,15 @@ public:
     void finish(abstract::task_context* context) override;
 
 private:
-    /// @brief per-row evaluators indexed as row_evaluators_[row_index][column_index]
     std::vector<std::vector<expr::evaluator>> row_evaluators_{};
-    /// @brief source types of each expression, indexed as row_source_types_[row_index][column_index]
     std::vector<std::vector<takatori::type::data const*>> row_source_types_{};
-    std::vector<takatori::descriptor::variable> variables_{};
+    std::vector<details::values_field> fields_{};
     std::unique_ptr<operator_base> downstream_{};
 
-    template <typename T>
-    void copy_to(accessor::record_ref target_ref, std::size_t target_offset, data::any src) {
-        target_ref.set_value<T>(target_offset, src.to<T>());
-    }
+    [[nodiscard]] std::vector<details::values_field> create_fields(
+        std::vector<takatori::descriptor::variable> const& columns,
+        processor_info const& pinfo
+    );
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

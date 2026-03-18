@@ -73,6 +73,7 @@
 #include "take_cogroup.h"
 #include "take_flat.h"
 #include "take_group.h"
+#include "values.h"
 #include "write_create.h"
 #include "write_existing.h"
 #include "write_kind.h"
@@ -296,9 +297,9 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {
-    (void)node;
-    throw_exception(std::logic_error{""});
-    return {};
+    auto block_index = info_->block_indices().at(&node);
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    return std::make_unique<values>(index_++, *info_, block_index, node, std::move(downstream));
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::identify& node) {

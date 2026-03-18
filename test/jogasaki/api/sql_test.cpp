@@ -404,11 +404,6 @@ TEST_F(sql_test, update_string_with_invalid_char) {
     test_stmt_err("UPDATE T SET C0 = :p0", variables, *ps, error_code::invalid_runtime_value_exception);
 }
 
-TEST_F(sql_test, unsupported_features) {
-    test_stmt_err("select 1", error_code::unsupported_compiler_feature_exception);
-    test_stmt_err("values (1)", error_code::unsupported_compiler_feature_exception);
-}
-
 TEST_F(sql_test, limit) {
     // test limit clause with order by (i.e. group operator is used)
     execute_statement("create table t (c0 int primary key)");

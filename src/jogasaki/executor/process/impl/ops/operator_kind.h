@@ -38,6 +38,7 @@ enum class operator_kind : std::size_t {
     aggregate_group,
     flatten,
     apply,
+    values,
 };
 
 /**
@@ -66,6 +67,7 @@ constexpr inline std::string_view to_string_view(operator_kind value) noexcept {
         case operator_kind::aggregate_group: return "aggregate_group"sv;
         case operator_kind::flatten: return "flatten"sv;
         case operator_kind::apply: return "apply"sv;
+        case operator_kind::values: return "values"sv;
     }
     std::abort();
 }
@@ -84,5 +86,5 @@ inline std::ostream& operator<<(std::ostream& out, operator_kind value) {
 using operator_kind_set = takatori::util::enum_set<
     operator_kind,
     operator_kind::unknown,
-    operator_kind::apply>;
+    operator_kind::values>;
 }

@@ -68,11 +68,13 @@
 #include <jogasaki/executor/process/impl/ops/project_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 
@@ -258,6 +260,11 @@ TEST_F(project_test, simple) {
         {},
         {},
     };
+    // TODO use request_context_ in operator_test_utils
+    request_context req_ctx{};
+    task_ctx.work_context(std::make_unique<impl::work_context>(
+        &req_ctx, 0, 0, nullptr, nullptr, nullptr, nullptr, false, false
+    ));
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
@@ -399,6 +406,11 @@ TEST_F(project_test, text) {
         {},
         {},
     };
+    // TODO use request_context_ in operator_test_utils
+    request_context req_ctx{};
+    task_ctx.work_context(std::make_unique<impl::work_context>(
+        &req_ctx, 0, 0, nullptr, nullptr, nullptr, nullptr, false, false
+    ));
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource res{&pool};

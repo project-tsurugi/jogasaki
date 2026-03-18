@@ -36,14 +36,16 @@ processor_details::processor_details(
     bool has_find_operator,
     bool has_join_find_or_scan_operator,
     bool has_write_operations,
-    write_kind write_kind
+    write_kind write_kind,
+    bool has_values_operator
 ) :
     has_scan_operator_(has_scan_operator),
     has_emit_operator_(has_emit_operator),
     has_find_operator_(has_find_operator),
     has_join_find_or_scan_operator_(has_join_find_or_scan_operator),
     has_write_operations_(has_write_operations),
-    write_kind_(write_kind)
+    write_kind_(write_kind),
+    has_values_operator_(has_values_operator)
 {}
 
 bool processor_details::has_scan_operator() const noexcept {
@@ -68,6 +70,10 @@ write_kind processor_details::get_write_kind() const noexcept {
 
 bool processor_details::has_join_find_or_scan_operator() const noexcept {
     return has_join_find_or_scan_operator_;
+}
+
+bool processor_details::has_values_operator() const noexcept {
+    return has_values_operator_;
 }
 
 processor_info::processor_info(
@@ -127,6 +133,7 @@ processor_details processor_info::create_details() {
     bool has_find_operator = false;
     bool has_join_find_or_scan_operator = false;
     bool has_write_operator = false;
+    bool has_values_operator = false;
     write_kind write_kind = write_kind::delete_;
     using kind = relation::expression_kind;
     takatori::relation::sort_from_upstream(*relations_, [&](relation::expression const& node) {
@@ -150,6 +157,9 @@ processor_details processor_info::create_details() {
             case kind::join_scan:
                 has_join_find_or_scan_operator = true;
                 break;
+            case kind::values:
+                has_values_operator = true;
+                break;
             default:
                 break;
         }
@@ -160,7 +170,8 @@ processor_details processor_info::create_details() {
         has_find_operator,
         has_join_find_or_scan_operator,
         has_write_operator,
-        write_kind
+        write_kind,
+        has_values_operator
     };
 }
 

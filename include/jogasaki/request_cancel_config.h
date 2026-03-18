@@ -39,6 +39,7 @@ enum class request_cancel_kind : std::int32_t {
     transaction_begin_wait,
     transaction_precommit,
     transaction_durable_wait,
+    values,
 };
 
 /**
@@ -62,6 +63,7 @@ enum class request_cancel_kind : std::int32_t {
         case kind::transaction_begin_wait: return "transaction_begin_wait"sv;
         case kind::transaction_precommit: return "transaction_precommit"sv;
         case kind::transaction_durable_wait: return "transaction_durable_wait"sv;
+        case kind::values: return "values"sv;
     }
     std::abort();
 }
@@ -95,7 +97,7 @@ public:
 
 private:
     takatori::util::
-        enum_set<request_cancel_kind, request_cancel_kind::write, request_cancel_kind::transaction_durable_wait>
+        enum_set<request_cancel_kind, request_cancel_kind::write, request_cancel_kind::values>
             enabled_kinds_;
 };
 

@@ -267,7 +267,9 @@ public:
                         c.blob_session(std::addressof(helper.blob_session_container()));
                         result = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
                         if(result.error()) {
-                            return handle_expression_error(ctx, result, c);
+                            handle_expression_error(*ctx.req_context(), result, c);
+                            ctx.abort();
+                            return operation_status_kind::aborted;
                         }
                     }
                     if(result.template to<bool>()) {
@@ -297,7 +299,9 @@ resume_calling_child_1:
                                 c.blob_session(std::addressof(helper.blob_session_container()));
                                 result = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
                                 if (result.error()) {
-                                    return handle_expression_error(ctx, result, c);
+                                    handle_expression_error(*ctx.req_context(), result, c);
+                                    ctx.abort();
+                                    return operation_status_kind::aborted;
                                 }
                             }
                             if (result.template to<bool>()) {
@@ -352,7 +356,9 @@ resume_calling_child_3:
                                 c.blob_session(std::addressof(helper.blob_session_container()));
                                 result = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
                                 if (result.error()) {
-                                    return handle_expression_error(ctx, result, c);
+                                    handle_expression_error(*ctx.req_context(), result, c);
+                                    ctx.abort();
+                                    return operation_status_kind::aborted;
                                 }
                             }
                             if (result.template to<bool>()) {
@@ -412,7 +418,9 @@ resume_calling_child_6:
                             c.blob_session(std::addressof(helper.blob_session_container()));
                             auto a = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
                             if (a.error()) {
-                                return handle_expression_error(ctx, a, c);
+                                handle_expression_error(*ctx.req_context(), a, c);
+                                ctx.abort();
+                                return operation_status_kind::aborted;
                             }
                             if (a.template to<bool>()) {
                                 ctx.exists_match_ = true;

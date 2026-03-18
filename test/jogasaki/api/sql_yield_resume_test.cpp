@@ -461,6 +461,25 @@ TEST_F(sql_yield_resume_test, take_flat) {
     );
 }
 
+TEST_F(sql_yield_resume_test, values) {
+    // verify that values correctly propagates yield from a downstream apply operator.
+    // plan: values(1::int, 2::int) -> apply(TVF(t.c0))
+    // the inline subquery SELECT 1::int AS c0, 2::int AS c1 is compiled via the values
+    // operator; the :: cast ensures the literals are INT4 in the values operator itself,
+    // so t.c0 can be passed directly to the TVF without a separate cast expression.
+    // that operator sits directly upstream of apply, exercising the values operator's
+    // yield-propagation path.
+    run_yield_propagation_test(
+        "SELECT t.c0, tvf.c1, tvf.c2 "
+        "FROM (SELECT 1::int AS c0, 2::int AS c1) AS t "
+        "CROSS APPLY mock_table_func_blocking(t.c0) AS tvf",
+        {"values"},
+        {
+            create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 1, 100L),
+        }
+    );
+}
+
 TEST_F(sql_yield_resume_test, find) {
     // verify that find correctly propagates yield from a downstream apply operator.
     // plan: find(T where C0=1) -> apply(TVF(T.C0))

@@ -124,9 +124,17 @@ status update_record(
     accessor::record_ref host_variables
 ) {
     for(auto const& f : fields) {
+        auto const& source = f.source_external_ ? host_variables : input_variables;
+        if (source.is_null(f.source_nullity_offset_) && ! f.nullable_) {
+            set_error_context(
+                ctx,
+                error_code::not_null_constraint_violation_exception,
+                string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                status::err_integrity_constraint_violation);
+            return status::err_integrity_constraint_violation;
+        }
         auto target = f.key_ ? extracted_key_record : extracted_value_record;
         if(! f.requires_conversion_) {
-            // assuming intermediate fields are nullable. Nullability check is done on encoding.
             utils::copy_nullable_field(
                 f.target_ftype_,
                 target,

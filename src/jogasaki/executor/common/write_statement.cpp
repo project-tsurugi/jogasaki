@@ -50,18 +50,15 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
-#include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
-#include <jogasaki/executor/conv/require_conversion.h>
-#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator.h>
-#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/executor/wrt/fill_evaluated_value.h>
 #include <jogasaki/executor/wrt/fill_record_fields.h>
 #include <jogasaki/executor/wrt/insert_new_record.h>
 #include <jogasaki/executor/wrt/write_field.h>
@@ -85,103 +82,8 @@
 namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
-using jogasaki::executor::expr::evaluator;
-
-using takatori::util::string_builder;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
-
-static status fill_evaluated_value(
-    wrt::write_field const& f,
-    request_context& ctx,
-    wrt::write_context& wctx,
-    write_statement::tuple const& t,
-    compiled_info const& info,
-    memory::lifo_paged_memory_resource& resource,
-    executor::process::impl::variable_table const* host_variables,
-    data::small_record_store& out
-) {
-    auto& source_type = info.type_of(t.elements()[f.index_]);
-    evaluator eval{t.elements()[f.index_], info, host_variables};
-    process::impl::variable_table empty{};
-    expr::evaluator_context c{
-        std::addressof(resource),
-        ctx.transaction().get()
-    };
-    c.blob_session(std::addressof(wctx.blob_session_container_));
-    auto res = eval(c, empty, std::addressof(resource));
-    if (res.error()) {
-        auto err = res.to<expr::error>();
-        if(err.kind() == expr::error_kind::lost_precision_value_too_long) {
-            auto rc = status::err_expression_evaluation_failure;
-            set_error_context(
-                ctx,
-                error_code::value_too_long_exception,
-                "evaluated value was too long to write",
-                rc
-            );
-            return rc;
-        }
-        if(err.kind() == expr::error_kind::unsupported) {
-            auto rc = status::err_unsupported;
-            set_error_context(
-                ctx,
-                error_code::unsupported_runtime_feature_exception,
-                "unsupported expression",
-                rc
-            );
-            return rc;
-        }
-        if(err.kind() == expr::error_kind::error_info_provided) {
-            set_error_info(ctx, c.get_error_info());
-            return c.get_error_info()->status();
-        }
-        auto rc = status::err_expression_evaluation_failure;
-        set_error_context(
-            ctx,
-            error_code::value_evaluation_exception,
-            string_builder{} << "An error occurred in evaluating values. error:"
-                             << res.to<expr::error>() << string_builder::to_string,
-            rc
-        );
-        return rc;
-    }
-
-    // To clean up varlen data resource in data::any, we rely on upper layer that does clean up
-    // on evey process invocation. Otherwise, we have to copy the result of conversion and
-    // lifo resource is not convenient to copy the result when caller and callee use the same resource.
-    data::any converted{res};
-    if(conv::to_require_conversion(source_type, *f.target_type_)) {
-        if(auto st = conv::conduct_assignment_conversion(
-            source_type,
-            *f.target_type_,
-            res,
-            converted,
-            ctx,
-            std::addressof(resource)
-        );
-        st != status::ok) {
-            return st;
-        }
-    }
-    // varlen fields data is already on `resource`, so no need to copy
-    auto nocopy = nullptr;
-    if (f.nullable_) {
-        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, converted, nocopy);
-    } else {
-        if (!converted) {
-            auto rc = status::err_integrity_constraint_violation;
-            set_error_context(
-                ctx,
-                error_code::not_null_constraint_violation_exception,
-                string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                rc);
-            return rc;
-        }
-        utils::copy_field(f.type_, out.ref(), f.offset_, converted, nocopy);
-    }
-    return status::ok;
-}
 
 static status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
@@ -201,7 +103,22 @@ static status create_record_from_tuple(  //NOLINT(readability-function-cognitive
             }
             continue;
         }
-        if(auto res = fill_evaluated_value(f, ctx, wctx, t, info, resource, host_variables, out); res != status::ok) {
+        auto& expr = t.elements()[f.index_];
+        auto& source_type = info.type_of(expr);
+        expr::evaluator eval{expr, info, host_variables};
+        executor::process::impl::variable_table empty{};
+        if (auto res = wrt::fill_evaluated_value(
+                eval,
+                source_type,
+                wrt::value_input_conversion_kind::assignment,
+                f,
+                ctx,
+                wctx.blob_session_container_,
+                empty,
+                resource,
+                out.ref()
+            );
+            res != status::ok) {
             return res;
         }
     }

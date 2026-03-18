@@ -380,7 +380,9 @@ public:
                     c.blob_session(std::addressof(h.blob_session_container()));
                     auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                     if (r.error()) {
-                        return handle_expression_error(ctx, r, c);
+                        handle_expression_error(*ctx.req_context(), r, c);
+                        ctx.abort();
+                        return operation_status_kind::aborted;
                     }
                     if(! r.template to<bool>()) {
                         if(join_kind_ != join_kind::left_outer) {

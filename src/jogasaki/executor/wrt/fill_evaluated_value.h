@@ -28,9 +28,9 @@
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/conv/unify.h>
-#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/relay/blob_session_container.h>
@@ -124,40 +124,8 @@ status fill_evaluated_value(
     c.blob_session(std::addressof(blob_session));
     auto res = eval(c, variables, std::addressof(resource));
     if (res.error()) {
-        auto err = res.to<expr::error>();
-        if (err.kind() == expr::error_kind::lost_precision_value_too_long) {
-            auto rc = status::err_expression_evaluation_failure;
-            set_error_context(
-                ctx,
-                error_code::value_too_long_exception,
-                "evaluated value was too long to write",
-                rc
-            );
-            return rc;
-        }
-        if (err.kind() == expr::error_kind::unsupported) {
-            auto rc = status::err_unsupported;
-            set_error_context(
-                ctx,
-                error_code::unsupported_runtime_feature_exception,
-                "unsupported expression",
-                rc
-            );
-            return rc;
-        }
-        if (err.kind() == expr::error_kind::error_info_provided) {
-            set_error_info(ctx, c.get_error_info());
-            return c.get_error_info()->status();
-        }
-        auto rc = status::err_expression_evaluation_failure;
-        set_error_context(
-            ctx,
-            error_code::value_evaluation_exception,
-            string_builder{} << "An error occurred in evaluating values. error:"
-                             << res.to<expr::error>() << string_builder::to_string,
-            rc
-        );
-        return rc;
+        handle_expression_error(ctx, res, c);
+        return ctx.error_info()->status();
     }
 
     // To clean up varlen data resource in data::any, we rely on upper layer that does clean up

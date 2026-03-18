@@ -275,14 +275,14 @@ bool apply::evaluate_arguments(apply_context& ctx, std::vector<data::any>& args)
     for (auto& ev : argument_evaluators_) {
         auto result = ev(ctx.evaluator_context_, vars, ctx.varlen_resource());
         if (result.error()) {
-            handle_expression_error(ctx, result, ctx.evaluator_context_);
+            handle_expression_error(*ctx.req_context(), result, ctx.evaluator_context_);
             return false;
         }
 
         // Pre-process LOB references (assign reference tags)
         result = expr::pre_process_if_lob(result, ctx.evaluator_context_);
         if (result.error()) {
-            handle_expression_error(ctx, result, ctx.evaluator_context_);
+            handle_expression_error(*ctx.req_context(), result, ctx.evaluator_context_);
             return false;
         }
 
@@ -313,7 +313,7 @@ bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
         // Post-process LOB references (register session storage LOBs to datastore)
         auto processed_value = expr::post_process_if_lob(value, ctx.evaluator_context_);
         if (processed_value.error()) {
-            handle_expression_error(ctx, processed_value, ctx.evaluator_context_);
+            handle_expression_error(*ctx.req_context(), processed_value, ctx.evaluator_context_);
             return false;
         }
 

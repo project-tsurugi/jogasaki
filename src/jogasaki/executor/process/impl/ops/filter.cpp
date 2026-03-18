@@ -82,7 +82,9 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
         c.blob_session(std::addressof(helper.blob_session_container()));
         auto res = evaluate_bool(c, evaluator_, vars, resource);
         if (res.error()) {
-            return handle_expression_error(ctx, res, c);
+            handle_expression_error(*ctx.req_context(), res, c);
+            ctx.abort();
+            return operation_status_kind::aborted;
         }
         if (! res.to<bool>()) {
             return operation_status_kind::ok;

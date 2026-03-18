@@ -22,18 +22,17 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
-
-#include "../operation_status.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::string_builder;
 
 //NOLINTBEGIN
-#define handle_expression_error(ctx, a, ectx)                                                                          \
+#define handle_expression_error(ctx, a, ectx)                                                                         \
     ::jogasaki::executor::process::impl::ops::details::handle_expression_error_impl(                                   \
-        ctx,                                                                                                           \
+        ctx,                                                                                                          \
         a,                                                                                                             \
         ectx,                                                                                                          \
         __FILE__,                                                                                                      \
@@ -41,9 +40,8 @@ using takatori::util::string_builder;
     )
 //NOLINTEND
 
-template<class Context>
-operation_status handle_expression_error_impl(  //NOLINT(readability-function-cognitive-complexity)
-    Context& ctx,
+inline void handle_expression_error_impl(  //NOLINT(readability-function-cognitive-complexity)
+    request_context& ctx,
     data::any res,
     jogasaki::executor::expr::evaluator_context const& ectx,
     std::string_view filepath,
@@ -52,72 +50,66 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
     if (err.kind() == expr::error_kind::unsupported) {
         auto rc = status::err_unsupported;
         error::set_error_context_impl(
-            *ctx.req_context(),
+            ctx,
             error_code::unsupported_runtime_feature_exception,
             string_builder{} << "unsupported expression is used" << string_builder::to_string,
             filepath,
             position,
             rc,
             false);
-        ctx.abort();
-        return operation_status_kind::aborted;
+        return;
     }
     if (err.kind() == expr::error_kind::lost_precision_value_too_long) {
         auto rc = status::err_expression_evaluation_failure;
         error::set_error_context_impl(
-            *ctx.req_context(),
+            ctx,
             error_code::value_too_long_exception,
             "evaluated value was too long",
             filepath,
             position,
             rc,
             false);
-        ctx.abort();
-        return operation_status_kind::aborted;
+        return;
     }
     if (err.kind() == expr::error_kind::lob_file_io_error) {
         auto rc = status::err_io_error;
         error::set_error_context_impl(
-            *ctx.req_context(),
+            ctx,
             error_code::lob_file_io_error,
             "I/O error occurred while evaluating lob data",
             filepath,
             position,
             rc,
             false);
-        ctx.abort();
-        return operation_status_kind::aborted;
+        return;
     }
     if (err.kind() == expr::error_kind::lob_reference_invalid) {
         auto rc = status::err_invalid_state;
         error::set_error_context_impl(
-            *ctx.req_context(),
+            ctx,
             error_code::lob_reference_invalid,
             "invalid lob reference was used to evaluate expression",
             filepath,
             position,
             rc,
             false);
-        ctx.abort();
-        return operation_status_kind::aborted;
+        return;
     }
     if(err.kind() == expr::error_kind::error_info_provided) {
-        set_error_info(*ctx.req_context(), ectx.get_error_info());
-        ctx.abort();
-        return operation_status_kind::aborted;
+        set_error_info(ctx, ectx.get_error_info());
+        return;
     }
     if (err.kind() == expr::error_kind::invalid_input_value) {
         auto rc = status::err_expression_evaluation_failure;
         error::set_error_context_impl(
-            *ctx.req_context(),
+            ctx,
             error_code::value_evaluation_exception,
             string_builder{} << "invalid input value is used" << string_builder::to_string,
             filepath,
             position,
             rc,
             false);
-        ctx.abort();
-        return operation_status_kind::aborted;
+        return;
     }
     if (err.kind() == expr::error_kind::arithmetic_error) {
         std::string_view msg = "arithmetic error occurred";  // generic message - use more specific one if available
@@ -144,15 +136,14 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
         }
         auto rc = status::err_expression_evaluation_failure;
         error::set_error_context_impl(
-            *ctx.req_context(),
+            ctx,
             error_code::value_evaluation_exception,
             msg,
             filepath,
             position,
             rc,
             false);
-        ctx.abort();
-        return operation_status_kind::aborted;
+        return;
     }
     auto rc = status::err_expression_evaluation_failure;
 
@@ -168,15 +159,13 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
     }
     ss << "]";
     error::set_error_context_impl(
-        *ctx.req_context(),
+        ctx,
         error_code::value_evaluation_exception,
         ss.str(),
         filepath,
         position,
         rc,
         false);
-    ctx.abort();
-    return operation_status_kind::aborted;
 }
 
 }  // namespace jogasaki::executor::process::impl::ops::details

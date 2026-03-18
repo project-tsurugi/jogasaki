@@ -14,10 +14,16 @@
  * limitations under the License.
  */
 #pragma once
+
 #include <filesystem>
+#include <map>
+#include <optional>
+#include <set>
 #include <string_view>
 #include <tuple>
 #include <vector>
+
+#include <jogasaki/udf/descriptor/descriptor_analyzer.h>
 
 #include "error_info.h"
 #include "generic_client.h"
@@ -49,10 +55,8 @@ namespace plugin::udf {
  * @see plugin_loader
  */
 
-
 class client_info {
-public:
-
+  public:
     client_info() = default;
     ~client_info() = default;
     client_info(client_info const&) = default;
@@ -64,15 +68,13 @@ public:
     void set_default_endpoint(std::string endpoint);
     void set_default_secure(bool secure);
 
-private:
-
+  private:
     std::string default_endpoint_{"dns:///localhost:50051"};
     bool default_secure_{false};
 };
 
 class udf_loader : public plugin_loader {
-public:
-
+  public:
     udf_loader() = default;
     udf_loader(udf_loader const&) = delete;
     udf_loader& operator=(udf_loader const&) = delete;
@@ -112,14 +114,17 @@ public:
     [[nodiscard]] std::vector<plugin_entry>& get_plugins() noexcept override;
 
   private:
-
+    void load_one_plugin(std::filesystem::path const& ini_path,
+        std::map<std::string, std::set<std::string>> const& blocked_stems,
+        jogasaki::udf::descriptor::message_diagnostics const& message_duplicates,
+        std::vector<load_result>& results);
     /** List of raw `dlopen()` handles for loaded plugins. */
-    [[nodiscard]] load_result
-    create_api_from_handle(void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg);
-    [[nodiscard]] std::optional<udf_config>
-    parse_ini(std::filesystem::path const& ini_path, std::vector<load_result>& results);
+    [[nodiscard]] load_result create_api_from_handle(
+        void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg);
+    [[nodiscard]] std::optional<udf_config> parse_ini(
+        std::filesystem::path const& ini_path, std::vector<load_result>& results);
     /** List of loaded plugin API/client pairs. */
     std::vector<plugin_entry> plugins_;
     std::vector<void*> handles_;
 };
-}  // namespace plugin::udf
+} // namespace plugin::udf

@@ -16,12 +16,11 @@
 
 #pragma once
 
-#include <filesystem>
-#include <vector>
+#include <jogasaki/udf/descriptor/descriptor_analyzer.h>
 
 namespace jogasaki::udf::descriptor::validation {
 
-[[nodiscard]] bool validate_message_definition_duplicates(
-    std::vector<std::filesystem::path> const& desc_files);
+[[nodiscard]] message_diagnostics filter_message_definition_duplicates(
+    message_diagnostics const& all);
 
 } // namespace jogasaki::udf::descriptor::validation

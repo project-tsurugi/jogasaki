@@ -16,6 +16,7 @@
 
 #include "error_info.h"
 
+#include <ostream>
 #include <string>
 #include <string_view>
 
@@ -28,7 +29,7 @@ std::string_view error_info::message() const noexcept { return message_; }
 // @see enum_types.h (enum class error_code_type)
 std::string_view to_string_view(error_code_type code) noexcept {
     using namespace std::literals;
-    switch(code) {
+    switch (code) {
         case grpc::StatusCode::OK: return "OK"sv;
         case grpc::StatusCode::CANCELLED: return "CANCELLED"sv;
         case grpc::StatusCode::UNKNOWN: return "UNKNOWN"sv;
@@ -53,7 +54,7 @@ std::string_view to_string_view(error_code_type code) noexcept {
 std::string_view to_string_view(plugin::udf::load_status status) noexcept {
     using namespace std::literals;
 
-    switch(status) {
+    switch (status) {
         case load_status::ok: return "ok"sv;
         case load_status::path_is_empty: return "path_is_empty"sv;
         case load_status::path_not_found: return "path_not_found"sv;
@@ -71,8 +72,55 @@ std::string_view to_string_view(plugin::udf::load_status status) noexcept {
         case load_status::factory_symbol_missing: return "factory_symbol_missing"sv;
         case load_status::factory_creation_failed: return "factory_creation_failed"sv;
         case load_status::rpc_name_duplicated: return "rpc_name_duplicated"sv;
+        case load_status::descriptor_open_failed: return "descriptor_open_failed"sv;
+        case load_status::descriptor_parse_failed: return "descriptor_parse_failed"sv;
         default: return "unknown_status"sv;
     }
+}
+
+[[nodiscard]] load_outcome classify(plugin::udf::load_status status) noexcept {
+    using plugin::udf::load_status;
+
+    switch (status) {
+        case load_status::ok: return load_outcome::ok;
+
+        case load_status::udf_disabled:
+        case load_status::path_is_empty:
+        case load_status::no_ini_and_so_files:
+        case load_status::no_ini_files:
+        case load_status::not_regular_file_or_dir:
+        case load_status::no_shared_objects_found:
+        case load_status::ini_so_pair_mismatch:
+        case load_status::ini_invalid:
+        case load_status::message_name_duplicated: return load_outcome::skipped;
+
+        case load_status::path_not_found:
+        case load_status::rpc_name_duplicated:
+        case load_status::dlopen_failed:
+        case load_status::api_symbol_missing:
+        case load_status::api_init_failed:
+        case load_status::factory_symbol_missing:
+        case load_status::factory_creation_failed:
+        case load_status::descriptor_open_failed:
+        case load_status::descriptor_parse_failed: return load_outcome::fail;
+
+        default: return load_outcome::fail;
+    }
+}
+
+[[nodiscard]] std::string_view to_string_view(load_outcome outcome) noexcept {
+    using namespace std::literals;
+
+    switch (outcome) {
+        case load_outcome::ok: return "OK"sv;
+        case load_outcome::skipped: return "SKIPPED"sv;
+        case load_outcome::fail: return "FAIL"sv;
+        default: return "UNKNOWN"sv;
+    }
+}
+
+std::ostream& operator<<(std::ostream& os, load_outcome outcome) {
+    return os << to_string_view(outcome);
 }
 
 [[nodiscard]] load_status load_result::status() const noexcept { return status_; }
@@ -82,6 +130,10 @@ void load_result::set_status(load_status s) noexcept { status_ = s; }
 void load_result::set_file(std::string f) noexcept { file_ = std::move(f); }
 void load_result::set_detail(std::string d) noexcept { detail_ = std::move(d); }
 
-std::ostream& operator<<(std::ostream& out, grpc::StatusCode const& code) { return out << to_string_view(code); }
-std::ostream& operator<<(std::ostream& out, load_status const& status) { return out << to_string_view(status); }
-}  // namespace plugin::udf
+std::ostream& operator<<(std::ostream& out, grpc::StatusCode const& code) {
+    return out << to_string_view(code);
+}
+std::ostream& operator<<(std::ostream& out, load_status const& status) {
+    return out << to_string_view(status);
+}
+} // namespace plugin::udf

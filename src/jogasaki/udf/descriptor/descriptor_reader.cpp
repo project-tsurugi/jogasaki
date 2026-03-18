@@ -15,32 +15,35 @@
  */
 #include "descriptor_reader.h"
 
+#include <filesystem>
 #include <fstream>
 
 #include <glog/logging.h>
+#include <google/protobuf/descriptor.pb.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/log/logging_prefix.h>
 
 namespace jogasaki::udf::descriptor {
 
-bool read_file_descriptor_set(
+plugin::udf::descriptor_read_status read_file_descriptor_set(
     std::filesystem::path const& desc_path, google::protobuf::FileDescriptorSet& fds) {
     std::ifstream input(desc_path, std::ios::binary);
     if (!input) {
         LOG_LP(WARNING) << jogasaki::udf::log::prefix
                         << "cannot open descriptor: " << desc_path.string();
-        return false;
+        return plugin::udf::descriptor_read_status::descriptor_open_failed;
     }
 
     if (!fds.ParseFromIstream(&input)) {
         LOG_LP(WARNING) << jogasaki::udf::log::prefix
                         << "failed to parse descriptor: " << desc_path.string();
-        return false;
+        return plugin::udf::descriptor_read_status::descriptor_parse_failed;
     }
 
-    return true;
+    return plugin::udf::descriptor_read_status::ok;
 }
 
 } // namespace jogasaki::udf::descriptor

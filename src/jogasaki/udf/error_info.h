@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstdint>
+#include <ostream>
 #include <string>
 #include <string_view>
 
@@ -72,6 +73,10 @@ private:
 
 [[nodiscard]] std::string_view to_string_view(grpc::StatusCode code) noexcept;
 [[nodiscard]] std::string_view to_string_view(load_status status) noexcept;
+[[nodiscard]] std::string_view to_string_view(load_outcome outcome) noexcept;
 std::ostream& operator<<(std::ostream& out, grpc::StatusCode const& code);
 std::ostream& operator<<(std::ostream& out, load_status const& status);
+std::ostream& operator<<(std::ostream& os, load_outcome outcome);
+[[nodiscard]] load_outcome classify(plugin::udf::load_status status) noexcept;
+
 }  // namespace plugin::udf

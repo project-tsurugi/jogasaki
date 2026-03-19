@@ -172,7 +172,7 @@ std::vector<details::values_field> values::create_fields(
         auto const& vinfo = block_info().at(col);
         fields.emplace_back(details::values_field{
             utils::type_for(target_type),
-            true,
+            true,  // always nullable, so values op. does not cause not-null violation
             vinfo.value_offset(),
             vinfo.nullity_offset(),
             std::addressof(target_type)

@@ -99,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& out, value_input_conversion_kind v
  * @param ctx request context used for error reporting and transaction access.
  * @param blob_session blob session container used by the evaluator for BLOB handling.
  * @param variables the working variable table for resolving variable references in the expression.
- * @param resource memory resource for expression evaluation and varlen data allocation.
+ * @param varlen_resource memory resource for expression evaluation and varlen data allocation.
  * @param out target record reference to write the evaluated value into.
  * @return status::ok on success, or an error status on failure.
  */
@@ -112,17 +112,17 @@ status fill_evaluated_value(
     request_context& ctx,
     relay::blob_session_container& blob_session,
     executor::process::impl::variable_table& variables,
-    memory::lifo_paged_memory_resource& resource,
+    memory::lifo_paged_memory_resource& varlen_resource,
     accessor::record_ref out
 ) {
     using takatori::util::string_builder;
 
     expr::evaluator_context c{
-        std::addressof(resource),
+        std::addressof(varlen_resource),
         ctx.transaction().get()
     };
     c.blob_session(std::addressof(blob_session));
-    auto res = eval(c, variables, std::addressof(resource));
+    auto res = eval(c, variables, std::addressof(varlen_resource));
     if (res.error()) {
         handle_expression_error(ctx, res, c);
         return ctx.error_info()->status();
@@ -151,7 +151,7 @@ status fill_evaluated_value(
                     res,
                     converted,
                     ctx,
-                    std::addressof(resource)
+                    std::addressof(varlen_resource)
                 );
                 st != status::ok) {
                 return st;
@@ -162,14 +162,14 @@ status fill_evaluated_value(
                     *field.target_type_,
                     res,
                     converted,
-                    std::addressof(resource)
+                    std::addressof(varlen_resource)
                 );
                 st != status::ok) {
                 return st;
             }
         }
     }
-    // varlen fields data is already on `resource`, so no need to copy
+    // varlen fields data is already on `varlen_resource`, so no need to copy
     auto nocopy = nullptr;
     if (field.nullable_) {
         utils::copy_nullable_field(field.type_, out, field.offset_, field.nullity_offset_, converted, nocopy);

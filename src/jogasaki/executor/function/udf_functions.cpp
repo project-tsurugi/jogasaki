@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ using jogasaki::executor::expr::error_kind;
 namespace {
 
 constexpr std::size_t SUPPORTED_MAJOR = 0;
-constexpr std::size_t SUPPORTED_MINOR = 2;
+constexpr std::size_t SUPPORTED_MINOR = 3;
 
 std::unordered_map<std::string_view, std::size_t> const& nested_type_map() {
     static const std::unordered_map<std::string_view, std::size_t> map{

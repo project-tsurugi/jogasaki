@@ -37,6 +37,7 @@
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/expr/lob_processing.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
@@ -106,6 +107,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::apply);
     data::any_sequence_stream_status stream_status{};
     data::any_sequence sequence{};
+    auto max_polls = global::config_pool()->apply_max_polls();
 
     if (ctx.state() == context_state::calling_child) {
         VLOG_LP(log_trace) << "resuming apply op. after downstream yield";
@@ -176,10 +178,20 @@ try_next:
         stream_status = ctx.stream_->try_next(sequence);
 
         if (stream_status == data::any_sequence_stream_status::not_ready) {
-            // TVF stream is not ready yet; yield the worker thread and retry later
-            VLOG_LP(log_trace) << "apply operator yields: TVF stream not ready";
-            ctx.state(context_state::yielding);
-            return operation_status_kind::yield;
+            // Poll up to apply_max_polls times before yielding
+            for (std::size_t i = 0; i < max_polls; ++i) {
+                sequence.clear();
+                stream_status = ctx.stream_->try_next(sequence);
+                if (stream_status != data::any_sequence_stream_status::not_ready) {
+                    break;
+                }
+            }
+            if (stream_status == data::any_sequence_stream_status::not_ready) {
+                // TVF stream is not ready yet; yield the worker thread and retry later
+                VLOG_LP(log_trace) << "apply operator yields: TVF stream not ready";
+                ctx.state(context_state::yielding);
+                return operation_status_kind::yield;
+            }
         }
         if (stream_status == data::any_sequence_stream_status::end_of_stream) {
             break;

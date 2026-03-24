@@ -216,6 +216,7 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_enable_disjunction_range_hinting) " << cfg.enable_disjunction_range_hinting() << " : whether to extract ranges from conditions containing OR";
     LOGCFG << "(grpc_server_endpoint) " << cfg.grpc_server_endpoint() << " : gRPC server endpoint for communication with BLOB server.";
     LOGCFG << "(grpc_server_secure) " << cfg.grpc_server_secure() << " : Whether to use a secure gRPC communication channel for BLOB server.";
+    LOGCFG << "(dev_apply_max_polls) " << cfg.apply_max_polls() << " : number of additional try_next polls before yielding in the apply operator";
 }
 
 static bool validate_core_assignment_parameters(configuration const& cfg) {

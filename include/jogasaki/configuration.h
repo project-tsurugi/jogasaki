@@ -594,6 +594,14 @@ public:
         udf_pass_mock_tag_ = arg;
     }
 
+    [[nodiscard]] std::size_t apply_max_polls() const noexcept {
+        return apply_max_polls_;
+    }
+
+    void apply_max_polls(std::size_t arg) noexcept {
+        apply_max_polls_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -663,6 +671,7 @@ public:
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
         print_non_default(udf_pass_mock_tag);
+        print_non_default(apply_max_polls);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -736,6 +745,7 @@ private:
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;
     bool udf_pass_mock_tag_ = false;
+    std::size_t apply_max_polls_ = 0;
 };
 
 }  // namespace jogasaki

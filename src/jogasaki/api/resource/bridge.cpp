@@ -340,6 +340,9 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<bool>("dev_enable_disjunction_range_hinting")) {
         ret->enable_disjunction_range_hinting(v.value());
     }
+    if (auto v = jogasaki_config->get<std::size_t>("dev_apply_max_polls")) {
+        ret->apply_max_polls(v.value());
+    }
     return true;
 }
 

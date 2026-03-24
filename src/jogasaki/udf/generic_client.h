@@ -18,13 +18,13 @@
 #include <cstddef>
 #include <utility>
 
+#include "generic_client_context.h"
 #include "generic_record.h"
 
 #include <grpcpp/client_context.h>
 namespace plugin::udf {
 class generic_client {
-public:
-
+  public:
     using function_index_type = std::pair<int, int>;
     generic_client() = default;
     virtual ~generic_client() = default;
@@ -33,16 +33,11 @@ public:
     generic_client(generic_client&&) = delete;
     generic_client& operator=(generic_client&&) = delete;
 
-    virtual void call(
-        grpc::ClientContext& context,
-        function_index_type function_index,
-        generic_record& request,
-        generic_record& response
-    ) const = 0;
+    virtual void call(plugin::udf::generic_client_context& context,
+        function_index_type function_index, generic_record& request,
+        generic_record& response) const = 0;
     virtual std::unique_ptr<plugin::udf::generic_record_stream> call_server_streaming_async(
-        std::unique_ptr<grpc::ClientContext> context,
-        function_index_type function_index,
-        generic_record& request
-    ) const = 0;
+        std::unique_ptr<plugin::udf::generic_client_context> context,
+        function_index_type function_index, generic_record& request) const = 0;
 };
-}  // namespace plugin::udf
+} // namespace plugin::udf

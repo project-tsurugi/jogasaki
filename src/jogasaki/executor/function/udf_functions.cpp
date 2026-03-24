@@ -16,19 +16,19 @@
 #include "udf_functions.h"
 
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
+#include <boost/assert.hpp>
+#include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <unordered_map>
-#include <variant>
-#include <boost/algorithm/string.hpp>
-#include <boost/assert.hpp>
-#include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <tsl/hopscotch_hash.h>
 #include <tsl/hopscotch_set.h>
+#include <unordered_map>
+#include <variant>
 
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
@@ -84,6 +84,7 @@
 #include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/error_info.h>
+#include <jogasaki/udf/generic_client_context.h>
 #include <jogasaki/udf/generic_record_impl.h>
 #include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/udf/plugin_loader.h>
@@ -114,55 +115,65 @@ std::unordered_map<std::string_view, std::size_t> const& nested_type_map() {
         {jogasaki::udf::bridge::DECIMAL_RECORD, data::any::index<runtime_t<kind::decimal>>},
         {jogasaki::udf::bridge::DATE_RECORD, data::any::index<runtime_t<kind::date>>},
         {jogasaki::udf::bridge::LOCALTIME_RECORD, data::any::index<runtime_t<kind::time_of_day>>},
-        {jogasaki::udf::bridge::LOCALDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
-        {jogasaki::udf::bridge::OFFSETDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
+        {jogasaki::udf::bridge::LOCALDATETIME_RECORD,
+            data::any::index<runtime_t<kind::time_point>>},
+        {jogasaki::udf::bridge::OFFSETDATETIME_RECORD,
+            data::any::index<runtime_t<kind::time_point>>},
         {jogasaki::udf::bridge::BLOB_RECORD, data::any::index<runtime_t<kind::blob>>},
         {jogasaki::udf::bridge::CLOB_RECORD, data::any::index<runtime_t<kind::clob>>},
     };
     return map;
 }
-std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>> const&
+std::unordered_map<std::string_view,
+    std::function<std::shared_ptr<const takatori::type::data>()>> const&
 get_type_map() {
-    static const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>
+    static const std::unordered_map<std::string_view,
+        std::function<std::shared_ptr<const takatori::type::data>()>>
         map = {
-            {jogasaki::udf::bridge::DECIMAL_RECORD, [] { return std::make_shared<takatori::type::decimal>(); }},
-            {jogasaki::udf::bridge::DATE_RECORD, [] { return std::make_shared<takatori::type::date>(); }},
-            {jogasaki::udf::bridge::LOCALTIME_RECORD, [] { return std::make_shared<takatori::type::time_of_day>(); }},
-            {jogasaki::udf::bridge::LOCALDATETIME_RECORD, [] { return std::make_shared<takatori::type::time_point>(); }},
+            {jogasaki::udf::bridge::DECIMAL_RECORD,
+                [] { return std::make_shared<takatori::type::decimal>(); }},
+            {jogasaki::udf::bridge::DATE_RECORD,
+                [] { return std::make_shared<takatori::type::date>(); }},
+            {jogasaki::udf::bridge::LOCALTIME_RECORD,
+                [] { return std::make_shared<takatori::type::time_of_day>(); }},
+            {jogasaki::udf::bridge::LOCALDATETIME_RECORD,
+                [] { return std::make_shared<takatori::type::time_point>(); }},
             {jogasaki::udf::bridge::OFFSETDATETIME_RECORD,
-             [] { return std::make_shared<takatori::type::time_point>(takatori::type::with_time_zone); }},
-            {jogasaki::udf::bridge::BLOB_RECORD, [] { return std::make_shared<takatori::type::blob>(); }},
-            {jogasaki::udf::bridge::CLOB_RECORD, [] { return std::make_shared<takatori::type::clob>(); }},
+                [] {
+                    return std::make_shared<takatori::type::time_point>(
+                        takatori::type::with_time_zone);
+                }},
+            {jogasaki::udf::bridge::BLOB_RECORD,
+                [] { return std::make_shared<takatori::type::blob>(); }},
+            {jogasaki::udf::bridge::CLOB_RECORD,
+                [] { return std::make_shared<takatori::type::clob>(); }},
         };
     return map;
 }
 
-[[nodiscard]]
-bool is_supported_version(plugin::udf::package_version const& v) noexcept {
-    return v.major() == SUPPORTED_MAJOR &&
-           v.minor() == SUPPORTED_MINOR;
+[[nodiscard]] bool is_supported_version(plugin::udf::package_version const& v) noexcept {
+    return v.major() == SUPPORTED_MAJOR && v.minor() == SUPPORTED_MINOR;
 }
 
 std::string int128_to_bytes(__int128 coeff) {
     std::string bytes(16, '\0');
     auto u = static_cast<unsigned __int128>(coeff);
     // NOLINTNEXTLINE(hicpp-signed-bitwise)
-    for(int i = 0; i < 16; ++i) { bytes[15 - i] = static_cast<char>((u >> (i * 8)) & 0xFFU); }
+    for (int i = 0; i < 16; ++i) {
+        bytes[15 - i] = static_cast<char>((u >> (i * 8)) & 0xFFU);
+    }
     return bytes;
 }
 
-void register_function(
-    yugawara::function::configurable_provider& functions,
+void register_function(yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
-    yugawara::function::declaration::definition_id_type& current_id,
-    std::string const& fn_name,
+    yugawara::function::declaration::definition_id_type& current_id, std::string const& fn_name,
     std::shared_ptr<const takatori::type::data> const& return_type,
     std::vector<std::shared_ptr<const takatori::type::data>> const& param_types,
-    std::function<data::any(evaluator_context&, sequence_view<data::any>)> const& lambda_func
-) {
+    std::function<data::any(evaluator_context&, sequence_view<data::any>)> const& lambda_func) {
     current_id++;
-    auto info =
-        std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, param_types.size());
+    auto info = std::make_shared<scalar_function_info>(
+        scalar_function_kind::user_defined, lambda_func, param_types.size());
     repo.add(current_id, info);
     functions.add(yugawara::function::declaration(current_id, fn_name, return_type, param_types));
 }
@@ -182,33 +193,34 @@ void add_time_point_args(plugin::udf::generic_record_impl& request, sequence_vie
     request.add_int8(sec);
     request.add_uint4(nano);
     request.add_int4(offset_min);
-    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " time_point_tz:(" << sec << ","
-                       << nano << "," << offset_min << ")";
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " time_point_tz:("
+                       << sec << "," << nano << "," << offset_min << ")";
 }
 
-void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity)
-    plugin::udf::generic_record_impl& request,
-    sequence_view<data::any> args,
-    std::vector<plugin::udf::column_descriptor*> const& columns
-) {
-    for(std::size_t i = 0; i < columns.size(); ++i) {
+void fill_request_with_args( // NOLINT(readability-function-cognitive-complexity)
+    plugin::udf::generic_record_impl& request, sequence_view<data::any> args,
+    std::vector<plugin::udf::column_descriptor*> const& columns) {
+    for (std::size_t i = 0; i < columns.size(); ++i) {
         auto const& type = columns[i]->type_kind();
         auto const& src = args[i];
-        switch(src.type_index()) {
+        switch (src.type_index()) {
             case data::any::index<runtime_t<kind::boolean>>: {
                 auto value = static_cast<bool>(src.to<runtime_t<kind::boolean>>());
                 request.add_bool(value);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " boolean:" << value;
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " boolean:" << value;
                 break;
             }
             case data::any::index<runtime_t<kind::int4>>: {
                 auto result = src.to<runtime_t<kind::int4>>();
                 if (is_signed_int4(type)) {
                     request.add_int4(result);
-                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " int4:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
+                                       << " int4:" << result;
                 } else {
                     request.add_uint4(result);
-                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " uint4:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
+                                       << " uint4:" << result;
                 }
                 break;
             }
@@ -216,35 +228,41 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 auto result = src.to<runtime_t<kind::int8>>();
                 if (is_signed_int8(type)) {
                     request.add_int8(result);
-                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " int8:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
+                                       << " int8:" << result;
                 } else {
                     request.add_uint8(result);
-                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " uint8:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
+                                       << " uint8:" << result;
                 }
                 break;
             }
             case data::any::index<runtime_t<kind::float4>>: {
                 auto value = src.to<runtime_t<kind::float4>>();
                 request.add_float(value);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " float4:" << value;
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " float4:" << value;
                 break;
             }
             case data::any::index<runtime_t<kind::float8>>: {
                 auto value = src.to<runtime_t<kind::float8>>();
                 request.add_double(value);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " float8:" << value;
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " float8:" << value;
                 break;
             }
             case data::any::index<accessor::binary>: {
                 auto bin = static_cast<std::string>(src.to<runtime_t<kind::octet>>());
                 request.add_string(bin);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " bytes:" << utils::binary_printer{bin}.show_hyphen(false);
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
+                                   << " bytes:" << utils::binary_printer{bin}.show_hyphen(false);
                 break;
             }
             case data::any::index<accessor::text>: {
                 auto ch = static_cast<std::string>(src.to<runtime_t<kind::character>>());
                 request.add_string(ch);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " string:" << ch;
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " string:" << ch;
                 break;
             }
             case data::any::index<runtime_t<kind::decimal>>: {
@@ -255,25 +273,30 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 std::int32_t exp = value.exponent();
                 // NOLINTNEXTLINE(hicpp-signed-bitwise)
                 unsigned __int128 ucoeff = (static_cast<unsigned __int128>(hi) << 64) | lo;
-                __int128 coeff = (sign < 0) ? -static_cast<__int128>(ucoeff) : static_cast<__int128>(ucoeff);
+                __int128 coeff =
+                    (sign < 0) ? -static_cast<__int128>(ucoeff) : static_cast<__int128>(ucoeff);
                 std::string coeff_bytes = int128_to_bytes(coeff);
                 request.add_string(coeff_bytes);
                 request.add_int4(exp);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " decimal:(" << utils::binary_printer{coeff_bytes}.show_hyphen(false) << "," << exp << ")";
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " decimal:("
+                    << utils::binary_printer{coeff_bytes}.show_hyphen(false) << "," << exp << ")";
                 break;
             }
             case data::any::index<runtime_t<kind::date>>: {
                 auto value = src.to<runtime_t<kind::date>>();
                 auto days = static_cast<int32_t>(value.days_since_epoch());
                 request.add_int4(days);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " date:" << days;
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " date:" << days;
                 break;
             }
             case data::any::index<runtime_t<kind::time_of_day>>: {
                 auto value = src.to<runtime_t<kind::time_of_day>>();
                 auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
                 request.add_int8(nanos);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " time_of_day:" << nanos;
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
+                                   << " time_of_day:" << nanos;
                 break;
             }
             case data::any::index<runtime_t<kind::time_point>>: {
@@ -287,13 +310,14 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                     auto nano = static_cast<std::uint32_t>(value.subsecond().count());
                     request.add_int8(sec);
                     request.add_uint4(nano);
-                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " time_point:(" << sec << "," << nano << ")";
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
+                                       << " time_point:(" << sec << "," << nano << ")";
                 }
                 break;
             }
             case data::any::index<runtime_t<kind::blob>>: {
                 auto value = src.to<runtime_t<kind::blob>>();
-                auto storage = 1ULL;  // currently input args must be on datastore
+                auto storage = 1ULL; // currently input args must be on datastore
                 auto object = value.object_id();
                 auto tag = value.lob_reference::reference_tag().value();
                 auto prov = value.kind() == lob::lob_reference_kind::resolved;
@@ -301,12 +325,14 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 request.add_uint8(object);
                 request.add_uint8(tag);
                 request.add_bool(prov);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " blob:(" << storage
+                    << "," << object << "," << tag << "," << prov << ")";
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
                 auto value = src.to<runtime_t<kind::clob>>();
-                auto storage = 1ULL;  // currently input args must be on datastore
+                auto storage = 1ULL; // currently input args must be on datastore
                 auto object = value.object_id();
                 auto tag = value.lob_reference::reference_tag().value();
                 auto prov = value.kind() == lob::lob_reference_kind::resolved;
@@ -314,7 +340,9 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 request.add_uint8(object);
                 request.add_uint8(tag);
                 request.add_bool(prov);
-                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+                VLOG_LP(log_trace)
+                    << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " clob:(" << storage
+                    << "," << object << "," << tag << "," << prov << ")";
                 break;
             }
             default:
@@ -325,12 +353,14 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
 }
 std::shared_ptr<const takatori::type::data> determine_return_type(
     plugin::udf::record_descriptor const& output_record,
-    std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>> const& type_map
-) {
-    if(! output_record.columns().empty()) {
+    std::unordered_map<std::string_view,
+        std::function<std::shared_ptr<const takatori::type::data>()>> const& type_map) {
+    if (!output_record.columns().empty()) {
         auto nest = output_record.columns()[0]->nested();
-        if(nest != nullptr) {
-            if(auto it = type_map.find(nest->record_name()); it != type_map.end()) { return it->second(); }
+        if (nest != nullptr) {
+            if (auto it = type_map.find(nest->record_name()); it != type_map.end()) {
+                return it->second();
+            }
         }
         return jogasaki::udf::bridge::to_takatori_type(output_record.columns()[0]->type_kind());
     }
@@ -339,18 +369,18 @@ std::shared_ptr<const takatori::type::data> determine_return_type(
 }
 std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
     std::vector<plugin::udf::column_descriptor*> const& pattern,
-    std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>> const& type_map
-) {
+    std::unordered_map<std::string_view,
+        std::function<std::shared_ptr<const takatori::type::data>()>> const& type_map) {
     std::vector<std::shared_ptr<const takatori::type::data>> param_types;
     param_types.reserve(pattern.size());
 
-    for(auto* col: pattern) {
-        if(! col) continue;
+    for (auto* col : pattern) {
+        if (!col) continue;
 
-        if(col->type_kind() == plugin::udf::type_kind::message) {
-            if(auto nested = col->nested()) {
-                if(auto it = type_map.find(nested->record_name()); it != type_map.end()) {
-                    if(auto ptr = it->second()) { param_types.emplace_back(ptr); }
+        if (col->type_kind() == plugin::udf::type_kind::message) {
+            if (auto nested = col->nested()) {
+                if (auto it = type_map.find(nested->record_name()); it != type_map.end()) {
+                    if (auto ptr = it->second()) { param_types.emplace_back(ptr); }
                 }
             }
         } else {
@@ -368,72 +398,72 @@ void register_udf_function_patterns(yugawara::function::configurable_provider& f
     std::function<data::any(evaluator_context&, sequence_view<data::any>)> const& lambda_func,
     plugin::udf::function_descriptor const* fn) {
     std::string fn_name(fn->function_name());
-    std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), [](unsigned char c) { return std::tolower(c); });
+    std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(),
+        [](unsigned char c) { return std::tolower(c); });
     auto const& input_record = fn->input_record();
     auto const& output_record = fn->output_record();
     auto const& type_map = get_type_map();
 
     auto return_type = determine_return_type(output_record, type_map);
-    if(! return_type) return;
+    if (!return_type) return;
 
     // (Decimal / Date / LocalTime / LocalDatetime / OffsetDatetime / BlobReference)
-    if(auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
-        if(auto param_type = it->second()) {
-            register_function(functions, repo, current_id, fn_name, return_type, {param_type}, lambda_func);
+    if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
+        if (auto param_type = it->second()) {
+            register_function(
+                functions, repo, current_id, fn_name, return_type, {param_type}, lambda_func);
         }
         return;
     }
 
     // (argument_patterns)
-    for(auto const& pattern: input_record.argument_patterns()) {
+    for (auto const& pattern : input_record.argument_patterns()) {
         auto param_types = build_param_types(pattern, type_map);
-        if(! param_types.empty()) {
-            register_function(functions, repo, current_id, fn_name, return_type, param_types, lambda_func);
+        if (!param_types.empty()) {
+            register_function(
+                functions, repo, current_id, fn_name, return_type, param_types, lambda_func);
         }
     }
     if (jogasaki::udf::bridge::count_effective_columns(input_record) == 0) {
         register_function(functions, repo, current_id, fn_name, return_type, {}, lambda_func);
     }
 }
-std::vector<plugin::udf::column_descriptor*> const*
-find_matched_pattern(plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
+std::vector<plugin::udf::column_descriptor*> const* find_matched_pattern(
+    plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
     auto const& input = fn->input_record();
     auto const& type_map = jogasaki::udf::bridge::type_index_map();
     auto const& nested_map = nested_type_map();
-    for(auto const& pattern: input.argument_patterns()) {
-        if(pattern.size() != args.size()) continue;
+    for (auto const& pattern : input.argument_patterns()) {
+        if (pattern.size() != args.size()) continue;
         bool match = true;
-        for(std::size_t i = 0; i < args.size(); ++i) {
+        for (std::size_t i = 0; i < args.size(); ++i) {
             auto const& arg = args[i];
             auto const& col = pattern[i];
             auto kind = col->type_kind();
-            if(kind == plugin::udf::type_kind::string || kind == plugin::udf::type_kind::message) {
-                if(auto nested = col->nested()) {
+            if (kind == plugin::udf::type_kind::string || kind == plugin::udf::type_kind::message) {
+                if (auto nested = col->nested()) {
                     auto nested_it = nested_map.find(nested->record_name());
-                    match &= (nested_it != nested_map.end() && arg.type_index() == nested_it->second);
+                    match &=
+                        (nested_it != nested_map.end() && arg.type_index() == nested_it->second);
                 }
             } else {
                 auto it = type_map.find(kind);
                 match &= (it != type_map.end() && arg.type_index() == it->second);
             }
 
-            if(! match) break;
+            if (!match) break;
         }
 
-        if(match) return &pattern;
+        if (match) return &pattern;
     }
 
     return nullptr;
 }
 
-bool build_udf_request(
-    plugin::udf::generic_record_impl& request,
-    evaluator_context& ctx,
-    plugin::udf::function_descriptor const* fn,
-    sequence_view<data::any> args
-) {
+bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_context& ctx,
+    plugin::udf::function_descriptor const* fn, sequence_view<data::any> args) {
     auto const& record_name = fn->input_record().record_name();
-    if(record_name == jogasaki::udf::bridge::DECIMAL_RECORD) {
+    if (record_name == jogasaki::udf::bridge::DECIMAL_RECORD) {
         auto value = args[0].to<runtime_t<kind::decimal>>();
         std::int8_t sign = value.sign();
         std::uint64_t hi = value.coefficient_high();
@@ -442,48 +472,52 @@ bool build_udf_request(
 
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
         auto ucoeff = (static_cast<unsigned __int128>(hi) << 64) | lo;
-        if(sign < 0) ucoeff = -ucoeff;
+        if (sign < 0) ucoeff = -ucoeff;
 
         std::string bytes(16, '\0');
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        for(int i = 0; i < 16; ++i) { bytes[15 - i] = static_cast<char>((ucoeff >> (i * 8)) & 0xFFU); }
+        for (int i = 0; i < 16; ++i) {
+            bytes[15 - i] = static_cast<char>((ucoeff >> (i * 8)) & 0xFFU);
+        }
 
         request.add_string(bytes);
         request.add_int4(exp);
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "decimal:(" << utils::binary_printer{bytes}.show_hyphen(false) << "," << exp << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "decimal:("
+                           << utils::binary_printer{bytes}.show_hyphen(false) << "," << exp << ")";
         return true;
     }
-    if(record_name == jogasaki::udf::bridge::DATE_RECORD) {
+    if (record_name == jogasaki::udf::bridge::DATE_RECORD) {
         auto value = args[0].to<runtime_t<kind::date>>();
         auto days = static_cast<int32_t>(value.days_since_epoch());
         request.add_int4(days);
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "date:" << days;
         return true;
     }
-    if(record_name == jogasaki::udf::bridge::LOCALTIME_RECORD) {
+    if (record_name == jogasaki::udf::bridge::LOCALTIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_of_day>>();
         auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
         request.add_int8(nanos);
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "time_of_day:" << nanos;
         return true;
     }
-    if(record_name == jogasaki::udf::bridge::LOCALDATETIME_RECORD) {
+    if (record_name == jogasaki::udf::bridge::LOCALDATETIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_point>>();
         auto sec = static_cast<int64_t>(value.seconds_since_epoch().count());
         auto nano = static_cast<uint32_t>(value.subsecond().count());
         request.add_int8(sec);
         request.add_uint4(nano);
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "time_point:(" << sec << "," << nano << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "time_point:(" << sec << ","
+                           << nano << ")";
         return true;
     }
-    if(record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
+    if (record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
         add_time_point_args(request, args, 0, global::config_pool()->zone_offset());
         return true;
     }
     // @see include/jogasaki/lob/blob_reference.h
-    if(record_name == jogasaki::udf::bridge::BLOB_RECORD) {
+    if (record_name == jogasaki::udf::bridge::BLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::blob>>();
-        auto storage = 1ULL;  // currently input args must be on datastore
+        auto storage = 1ULL; // currently input args must be on datastore
         auto object = value.object_id();
         auto tag = value.lob_reference::reference_tag().value();
         auto prov = value.kind() == lob::lob_reference_kind::resolved;
@@ -491,7 +525,8 @@ bool build_udf_request(
         request.add_uint8(object);
         request.add_uint8(tag);
         request.add_bool(prov);
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "blob:(" << storage << ","
+                           << object << "," << tag << "," << prov << ")";
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
@@ -503,9 +538,9 @@ bool build_udf_request(
         return true;
     }
     // @see include/jogasaki/lob/clob_reference.h
-    if(record_name == jogasaki::udf::bridge::CLOB_RECORD) {
+    if (record_name == jogasaki::udf::bridge::CLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::clob>>();
-        auto storage = 1ULL;  // currently input args must be on datastore
+        auto storage = 1ULL; // currently input args must be on datastore
         auto object = value.object_id();
         auto tag = value.lob_reference::reference_tag().value();
         auto prov = value.kind() == lob::lob_reference_kind::resolved;
@@ -513,7 +548,8 @@ bool build_udf_request(
         request.add_uint8(object);
         request.add_uint8(tag);
         request.add_bool(prov);
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "clob:(" << storage << ","
+                           << object << "," << tag << "," << prov << ")";
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
@@ -525,20 +561,20 @@ bool build_udf_request(
         return true;
     }
     auto const* matched_pattern = find_matched_pattern(fn, args);
-    if (! matched_pattern) {
+    if (!matched_pattern) {
         bool null_arg_found = false;
         std::string fn_name(fn->function_name());
         for (std::size_t i = 0; i < args.size(); ++i) {
             if (args[i].empty()) {
                 std::string msg = "Function '" + fn_name + "', argument #" + std::to_string(i + 1) +
-                    " must not be NULL";
+                                  " must not be NULL";
                 VLOG_LP(log_error) << msg;
                 ctx.add_error({error_kind::invalid_input_value, msg});
                 null_arg_found = true;
                 break;
             }
         }
-        if (! null_arg_found) {
+        if (!null_arg_found) {
             std::string msg = fn_name + " : no matching argument pattern found for given arguments";
             VLOG_LP(log_error) << msg;
             ctx.add_error({error_kind::invalid_input_value, msg});
@@ -554,88 +590,88 @@ data::any build_decimal_data(std::string const& unscaled, std::int32_t exponent)
     return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple};
 }
 
-template<typename RuntimeT, typename FetchFn>
+template <typename RuntimeT, typename FetchFn>
 void fetch_and_emplace(std::vector<data::any>& result, FetchFn fetch_fn) {
-    if(auto v = fetch_fn()) {
+    if (auto v = fetch_fn()) {
         result.emplace_back(std::in_place_type<RuntimeT>, *v);
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":"
+                           << *v;
     } else {
         result.emplace_back();
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name()
+                           << ":NULL";
     }
 }
 
-template<typename RuntimeT, typename FetchFn, typename CastFn>
+template <typename RuntimeT, typename FetchFn, typename CastFn>
 void fetch_and_emplace_cast(std::vector<data::any>& result, FetchFn fetch_fn, CastFn cast_fn) {
-    if(auto v = fetch_fn()) {
+    if (auto v = fetch_fn()) {
         result.emplace_back(std::in_place_type<RuntimeT>, cast_fn(*v));
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":"
+                           << *v;
     } else {
         result.emplace_back();
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name()
+                           << ":NULL";
     }
 }
 
-std::vector<data::any> cursor_to_any_values(
-    plugin::udf::generic_record_impl& response,
-    std::vector<plugin::udf::column_descriptor*> const& cols,
-    evaluator_context& ctx
-) {
+std::vector<data::any> cursor_to_any_values(plugin::udf::generic_record_impl& response,
+    std::vector<plugin::udf::column_descriptor*> const& cols, evaluator_context& ctx) {
     std::vector<data::any> result;
 
-    if(auto cursor = response.cursor()) {
-        for(auto const* col: cols) {
+    if (auto cursor = response.cursor()) {
+        for (auto const* col : cols) {
             auto type_kind = col->type_kind();
 
-            switch(type_kind) {
+            switch (type_kind) {
                 case plugin::udf::type_kind::sfixed4:
                 case plugin::udf::type_kind::int4:
                 case plugin::udf::type_kind::sint4:
-                    fetch_and_emplace<runtime_t<kind::int4>>(result, [&] { return cursor->fetch_int4(); });
+                    fetch_and_emplace<runtime_t<kind::int4>>(
+                        result, [&] { return cursor->fetch_int4(); });
                     break;
 
                 case plugin::udf::type_kind::sfixed8:
                 case plugin::udf::type_kind::int8:
                 case plugin::udf::type_kind::sint8:
-                    fetch_and_emplace<runtime_t<kind::int8>>(result, [&] { return cursor->fetch_int8(); });
+                    fetch_and_emplace<runtime_t<kind::int8>>(
+                        result, [&] { return cursor->fetch_int8(); });
                     break;
 
                 case plugin::udf::type_kind::uint4:
                 case plugin::udf::type_kind::fixed4:
                     fetch_and_emplace_cast<runtime_t<kind::int4>>(
-                        result,
-                        [&] { return cursor->fetch_uint4(); },
-                        [](auto x) { return static_cast<std::int32_t>(x); }
-                    );
+                        result, [&] { return cursor->fetch_uint4(); },
+                        [](auto x) { return static_cast<std::int32_t>(x); });
                     break;
 
                 case plugin::udf::type_kind::uint8:
                 case plugin::udf::type_kind::fixed8:
                     fetch_and_emplace_cast<runtime_t<kind::int8>>(
-                        result,
-                        [&] { return cursor->fetch_uint8(); },
-                        [](auto x) { return static_cast<std::int64_t>(x); }
-                    );
+                        result, [&] { return cursor->fetch_uint8(); },
+                        [](auto x) { return static_cast<std::int64_t>(x); });
                     break;
 
                 case plugin::udf::type_kind::float4:
-                    fetch_and_emplace<runtime_t<kind::float4>>(result, [&] { return cursor->fetch_float(); });
+                    fetch_and_emplace<runtime_t<kind::float4>>(
+                        result, [&] { return cursor->fetch_float(); });
                     break;
 
                 case plugin::udf::type_kind::float8:
-                    fetch_and_emplace<runtime_t<kind::float8>>(result, [&] { return cursor->fetch_double(); });
+                    fetch_and_emplace<runtime_t<kind::float8>>(
+                        result, [&] { return cursor->fetch_double(); });
                     break;
 
                 case plugin::udf::type_kind::boolean:
-                    fetch_and_emplace<runtime_t<kind::boolean>>(result, [&] { return cursor->fetch_bool(); });
+                    fetch_and_emplace<runtime_t<kind::boolean>>(
+                        result, [&] { return cursor->fetch_bool(); });
                     break;
 
                 case plugin::udf::type_kind::string:
-                    if(auto v = cursor->fetch_string()) {
-                        result.emplace_back(
-                            std::in_place_type<runtime_t<kind::character>>,
-                            runtime_t<kind::character>{ctx.resource(), *v}
-                        );
+                    if (auto v = cursor->fetch_string()) {
+                        result.emplace_back(std::in_place_type<runtime_t<kind::character>>,
+                            runtime_t<kind::character>{ctx.resource(), *v});
                         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "string:" << *v;
                     } else {
                         result.emplace_back();
@@ -644,12 +680,12 @@ std::vector<data::any> cursor_to_any_values(
                     break;
 
                 case plugin::udf::type_kind::bytes:
-                    if(auto v = cursor->fetch_string()) {
-                        result.emplace_back(
-                            std::in_place_type<runtime_t<kind::octet>>,
-                            runtime_t<kind::octet>{ctx.resource(), *v}
-                        );
-                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "bytes:" << utils::binary_printer{*v}.show_hyphen(false);
+                    if (auto v = cursor->fetch_string()) {
+                        result.emplace_back(std::in_place_type<runtime_t<kind::octet>>,
+                            runtime_t<kind::octet>{ctx.resource(), *v});
+                        VLOG_LP(log_trace)
+                            << jogasaki::udf::log::udf_out_prefix
+                            << "bytes:" << utils::binary_printer{*v}.show_hyphen(false);
                     } else {
                         result.emplace_back();
                         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "bytes:NULL";
@@ -658,8 +694,9 @@ std::vector<data::any> cursor_to_any_values(
 
                 case plugin::udf::type_kind::group:
                 case plugin::udf::type_kind::message: {
-                    if(auto nested_cols = col->nested()) {
-                        auto nested_values = cursor_to_any_values(response, nested_cols->columns(), ctx);
+                    if (auto nested_cols = col->nested()) {
+                        auto nested_values =
+                            cursor_to_any_values(response, nested_cols->columns(), ctx);
                         result.insert(result.end(), nested_values.begin(), nested_values.end());
                     } else {
                         result.emplace_back();
@@ -677,11 +714,12 @@ std::vector<data::any> cursor_to_any_values(
 data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
     auto unscaled_opt = cursor.fetch_string();
     auto exponent_opt = cursor.fetch_int4();
-    if(unscaled_opt && exponent_opt) {
+    if (unscaled_opt && exponent_opt) {
         if (VLOG_IS_ON(log_trace)) {
             std::string_view bin_view{unscaled_opt->data(), unscaled_opt->size()};
-            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:(" << utils::binary_printer{bin_view}.show_hyphen(false)
-                               << "," << *exponent_opt << ")";
+            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:("
+                               << utils::binary_printer{bin_view}.show_hyphen(false) << ","
+                               << *exponent_opt << ")";
         }
         return build_decimal_data(*unscaled_opt, *exponent_opt);
     }
@@ -700,19 +738,18 @@ data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
 data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto nanos = cursor.fetch_int8()) {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:" << *nanos;
-        return data::any{
-            std::in_place_type<runtime_t<kind::time_of_day>>,
-            jogasaki::udf::data::decode_time_of_day_from_wire(*nanos)
-        };
+        return data::any{std::in_place_type<runtime_t<kind::time_of_day>>,
+            jogasaki::udf::data::decode_time_of_day_from_wire(*nanos)};
     }
     VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
-    auto offset_seconds  = cursor.fetch_int8();
+    auto offset_seconds = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
     if (offset_seconds && nano_adjustment) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:(" << *offset_seconds << "," << *nano_adjustment << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:("
+                           << *offset_seconds << "," << *nano_adjustment << ")";
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
@@ -724,7 +761,9 @@ data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& curs
     auto nano_adjustment = cursor.fetch_uint4();
     auto tz_offset = cursor.fetch_int4();
     if (offset_seconds && nano_adjustment && tz_offset) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:(" << *offset_seconds << "," << *nano_adjustment << "," << *tz_offset << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:("
+                           << *offset_seconds << "," << *nano_adjustment << "," << *tz_offset
+                           << ")";
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
@@ -737,25 +776,27 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto tag = cursor.fetch_uint8();
     auto provisioned = cursor.fetch_bool();
 
-    if (! storage_id || ! object_id || ! tag) {
+    if (!storage_id || !object_id || !tag) {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:NULL";
         return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
     if (VLOG_IS_ON(log_trace)) {
         std::string prov_str = provisioned ? (provisioned.value() ? "true" : "false") : "empty";
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:(" << *storage_id << "," << *object_id << "," << *tag << ","
-                           << prov_str << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:(" << *storage_id << ","
+                           << *object_id << "," << *tag << "," << prov_str << ")";
     }
     if (storage_id.value() == 1ULL) {
         if (provisioned && provisioned.value()) {
             return data::any{std::in_place_type<Ref>,
-                Ref{object_id.value(), jogasaki::lob::lob_data_provider::datastore}.reference_tag(tag)};
+                Ref{object_id.value(), jogasaki::lob::lob_data_provider::datastore}.reference_tag(
+                    tag)};
         }
         return data::any{std::in_place_type<Ref>, Ref{object_id.value()}.reference_tag(tag)};
     }
     if (storage_id.value() == 0ULL) {
         return data::any{std::in_place_type<Ref>,
-            Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session}.reference_tag(tag)};
+            Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session}
+                .reference_tag(tag)};
     }
 
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
@@ -766,26 +807,26 @@ data::any build_blob_response(plugin::udf::generic_record_cursor& cursor) {
 data::any build_clob_response(plugin::udf::generic_record_cursor& cursor) {
     return build_lob_response_impl<lob::clob_reference>(cursor);
 }
-std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> const& response_builder_map() {
-    static const std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> map{
-        {jogasaki::udf::bridge::DECIMAL_RECORD, &build_decimal_response},
-        {jogasaki::udf::bridge::DATE_RECORD, &build_date_response},
-        {jogasaki::udf::bridge::LOCALTIME_RECORD, &build_localtime_response},
-        {jogasaki::udf::bridge::LOCALDATETIME_RECORD, &build_localdatetime_response},
-        {jogasaki::udf::bridge::OFFSETDATETIME_RECORD, &build_offsetdatetime_response},
-        {jogasaki::udf::bridge::BLOB_RECORD, &build_blob_response},
-        {jogasaki::udf::bridge::CLOB_RECORD, &build_clob_response},
-    };
+std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> const&
+response_builder_map() {
+    static const std::unordered_map<std::string_view,
+        data::any (*)(plugin::udf::generic_record_cursor&)>
+        map{
+            {jogasaki::udf::bridge::DECIMAL_RECORD, &build_decimal_response},
+            {jogasaki::udf::bridge::DATE_RECORD, &build_date_response},
+            {jogasaki::udf::bridge::LOCALTIME_RECORD, &build_localtime_response},
+            {jogasaki::udf::bridge::LOCALDATETIME_RECORD, &build_localdatetime_response},
+            {jogasaki::udf::bridge::OFFSETDATETIME_RECORD, &build_offsetdatetime_response},
+            {jogasaki::udf::bridge::BLOB_RECORD, &build_blob_response},
+            {jogasaki::udf::bridge::CLOB_RECORD, &build_clob_response},
+        };
     return map;
 }
-data::any build_udf_response(
-    plugin::udf::generic_record_impl& response,
-    evaluator_context& ctx,
-    plugin::udf::function_descriptor const* fn
-) {
+data::any build_udf_response(plugin::udf::generic_record_impl& response, evaluator_context& ctx,
+    plugin::udf::function_descriptor const* fn) {
     auto const& output = fn->output_record();
     auto cursor = response.cursor();
-    if(! cursor) {
+    if (!cursor) {
         std::string msg = "Response has no cursor";
         VLOG_LP(log_error) << msg;
         ctx.add_error({error_kind::unknown, msg});
@@ -794,11 +835,13 @@ data::any build_udf_response(
     auto nest = output.columns()[0]->nested();
     auto const& map = response_builder_map();
 
-    if(nest != nullptr) {
-        if(auto it = map.find(nest->record_name()); it != map.end()) { return it->second(*cursor); }
+    if (nest != nullptr) {
+        if (auto it = map.find(nest->record_name()); it != map.end()) {
+            return it->second(*cursor);
+        }
     }
     auto output_values = cursor_to_any_values(response, output.columns(), ctx);
-    if(! output_values.empty()) { return output_values.front(); }
+    if (!output_values.empty()) { return output_values.front(); }
     std::string msg = "Invalid or missing UDF response";
     VLOG_LP(log_error) << msg;
     ctx.add_error({error_kind::invalid_input_value, msg});
@@ -853,7 +896,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             // build_udf_request already reports detailed error to ctx
             return {};
         }
-        auto context = std::make_unique<grpc::ClientContext>();
+        auto context = std::make_unique<plugin::udf::generic_client_context>();
 
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs);
@@ -863,15 +906,15 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             std::string(global::config_pool()->grpc_server_endpoint()),
             global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
 
-        if (!metadata.apply(*context)) {
+        if (!metadata.apply(context->grpc_context())) {
             std::string msg = "Failed to apply gRPC metadata";
             VLOG_LP(log_error) << msg;
             ctx.add_error({error_kind::unknown, msg});
             return {};
         }
 
-        auto udf_stream =
-            client->call_server_streaming_async(std::move(context), {0, fn->function_index()}, request);
+        auto udf_stream = client->call_server_streaming_async(
+            std::move(context), {0, fn->function_index()}, request);
 
         if (!udf_stream) {
             std::string msg = "Failed to start UDF server-streaming RPC";
@@ -915,15 +958,14 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
 std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_scalar_lambda(
     std::shared_ptr<plugin::udf::generic_client> const& client,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg,
-    plugin::udf::function_descriptor const* fn
-) {
+    plugin::udf::function_descriptor const* fn) {
     return [client, fn, cfg](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
         plugin::udf::generic_record_impl request;
-        if(! build_udf_request(request, ctx, fn, args)) {
+        if (!build_udf_request(request, ctx, fn, args)) {
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
         }
         plugin::udf::generic_record_impl response;
-        grpc::ClientContext context;
+        plugin::udf::generic_client_context context;
         // TODO: make these metadata configurable
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs, bs);
@@ -932,7 +974,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         blob_grpc_metadata metadata{session_id,
             std::string(global::config_pool()->grpc_server_endpoint()),
             global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
-        if (! metadata.apply(context)) {
+        if (!metadata.apply(context.grpc_context())) {
             std::string msg = "Failed to apply gRPC metadata";
             VLOG_LP(log_error) << msg;
             ctx.add_error({error_kind::unknown, msg});
@@ -941,9 +983,10 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
 
         client->call(context, {0, fn->function_index()}, request, response);
 
-        if(response.error()) {
-            std::string msg = "RPC failed: code=" + std::string(plugin::udf::to_string_view(response.error()->code())) +
-                     ", message=" + std::string(response.error()->message());
+        if (response.error()) {
+            std::string msg = "RPC failed: code=" +
+                              std::string(plugin::udf::to_string_view(response.error()->code())) +
+                              ", message=" + std::string(response.error()->message());
             VLOG_LP(log_error) << msg;
             ctx.add_error({error_kind::unknown, msg});
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
@@ -955,13 +998,14 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
 bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
     auto const& v = pkg.version();
     if (is_supported_version(v)) {
-        LOG_LP(INFO) << jogasaki::udf::log::grpc_prefix << "Package '" << pkg.file_name() << "' version " << v.major() << "."
-                     << v.minor() << "." << v.patch();
+        LOG_LP(INFO) << jogasaki::udf::log::grpc_prefix << "Package '" << pkg.file_name()
+                     << "' version " << v.major() << "." << v.minor() << "." << v.patch();
         return true;
     }
-    LOG_LP(WARNING) << jogasaki::udf::log::grpc_prefix  << "Package '" << pkg.file_name() << "' has unsupported version "
-                    << v.major() << "." << v.minor() << "." << v.patch() << ". Only version "
-                    << SUPPORTED_MAJOR << "." << SUPPORTED_MINOR << ".x is supported.";
+    LOG_LP(WARNING) << jogasaki::udf::log::grpc_prefix << "Package '" << pkg.file_name()
+                    << "' has unsupported version " << v.major() << "." << v.minor() << "."
+                    << v.patch() << ". Only version " << SUPPORTED_MAJOR << "." << SUPPORTED_MINOR
+                    << ".x is supported.";
 
     return false;
 }
@@ -990,7 +1034,8 @@ void append_table_cols(std::vector<takatori::type::table::column_type>& out,
                 if (auto it = type_map.find(rn); it != type_map.end()) {
                     out.emplace_back(full, it->second());
                 } else {
-                    out.emplace_back(full, jogasaki::udf::bridge::to_takatori_type(col->type_kind()));
+                    out.emplace_back(
+                        full, jogasaki::udf::bridge::to_takatori_type(col->type_kind()));
                 }
             } else {
                 append_table_cols(out, nested->columns(), full);
@@ -1001,7 +1046,8 @@ void append_table_cols(std::vector<takatori::type::table::column_type>& out,
     }
 }
 
-std::shared_ptr<takatori::type::table> build_table_return_type(plugin::udf::function_descriptor const* fn) {
+std::shared_ptr<takatori::type::table> build_table_return_type(
+    plugin::udf::function_descriptor const* fn) {
     namespace t = takatori::type;
 
     std::vector<t::table::column_type> cols;
@@ -1010,63 +1056,51 @@ std::shared_ptr<takatori::type::table> build_table_return_type(plugin::udf::func
     return std::make_shared<t::table>(std::move(cols));
 }
 
-void register_server_stream_function(
-    yugawara::function::configurable_provider& functions,
+void register_server_stream_function(yugawara::function::configurable_provider& functions,
     executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg,
-    plugin::udf::function_descriptor const* fn
-) {
+    plugin::udf::function_descriptor const* fn) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
 
     auto tvf_callable = make_udf_server_stream_lambda(client, cfg, fn);
-    auto return_type  = build_table_return_type(fn);
+    auto return_type = build_table_return_type(fn);
 
     auto const& input_record = fn->input_record();
-    auto const& type_map     = get_type_map();
+    auto const& type_map = get_type_map();
 
-    auto register_tvf =
-        [&](std::vector<std::shared_ptr<const takatori::type::data>> param_types) {
-            auto cols = jogasaki::udf::bridge::build_tvf_columns(*fn);
+    auto register_tvf = [&](std::vector<std::shared_ptr<const takatori::type::data>> param_types) {
+        auto cols = jogasaki::udf::bridge::build_tvf_columns(*fn);
 
-            ++current_id;
+        ++current_id;
 
-            auto info = std::make_shared<table_valued_function_info>(
-                table_valued_function_kind::user_defined,
-                tvf_callable,
-                param_types.size(),
-                std::move(cols)
-            );
-            tvf_repo.add(static_cast<std::size_t>(current_id), info);
+        auto info =
+            std::make_shared<table_valued_function_info>(table_valued_function_kind::user_defined,
+                tvf_callable, param_types.size(), std::move(cols));
+        tvf_repo.add(static_cast<std::size_t>(current_id), info);
 
-            functions.add(yugawara::function::declaration{
-                current_id,
-                fn_name,
-                return_type,
-                std::move(param_types),
-                {yugawara::function::function_feature::table_valued_function},
-            });
-        };
+        functions.add(yugawara::function::declaration{
+            current_id,
+            fn_name,
+            return_type,
+            std::move(param_types),
+            {yugawara::function::function_feature::table_valued_function},
+        });
+    };
 
     if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
-        if (auto param_type = it->second()) {
-            register_tvf({param_type});
-        }
+        if (auto param_type = it->second()) { register_tvf({param_type}); }
         return;
     }
 
     for (auto const& pattern : input_record.argument_patterns()) {
         auto param_types = build_param_types(pattern, type_map);
-        if (!param_types.empty()) {
-            register_tvf(std::move(param_types));
-        }
+        if (!param_types.empty()) { register_tvf(std::move(param_types)); }
     }
 
-    if (jogasaki::udf::bridge::count_effective_columns(input_record) == 0) {
-        register_tvf({});
-    }
+    if (jogasaki::udf::bridge::count_effective_columns(input_record) == 0) { register_tvf({}); }
 }
 
 void register_scalar_function(yugawara::function::configurable_provider& functions,
@@ -1098,7 +1132,7 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
     }
 }
 
-}  // namespace anonymous
+} // namespace
 
 bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-session", std::to_string(session_id_));
@@ -1107,9 +1141,10 @@ bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-transport", transport_);
     ctx.AddMetadata("x-tsurugi-blob-stream-chunk-size", std::to_string(chunk_size_));
     VLOG_LP(log_trace) << jogasaki::udf::log::grpc_prefix << "udf grpc metadata"
-        << " session=" << std::to_string(session_id_) << ", endpoint=" << endpoint_
-        << ", secure=" << (secure_ ? "true" : "false") << ", transport=" << transport_
-        << ", chunk_size=" << std::to_string(chunk_size_);
+                       << " session=" << std::to_string(session_id_) << ", endpoint=" << endpoint_
+                       << ", secure=" << (secure_ ? "true" : "false")
+                       << ", transport=" << transport_
+                       << ", chunk_size=" << std::to_string(chunk_size_);
     return true;
 }
 void add_udf_functions(::yugawara::function::configurable_provider& functions,
@@ -1120,18 +1155,16 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
     // @see
     // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
     yugawara::function::declaration::definition_id_type current_id = 19999;
-    for(auto const& tup: plugins) {
+    for (auto const& tup : plugins) {
         auto client = std::get<1>(tup);
         auto plugin = std::get<0>(tup);
         auto cfg = std::get<2>(tup);
         // plugin::udf::print_plugin_info(plugin);
         auto packages = plugin->packages();
-        for(auto const* pkg: packages) {
-            if (!check_supported_version(*pkg)) {
-                continue;
-            }
-            for(auto const* svc: pkg->services()) {
-                for(auto const* fn: svc->functions()) {
+        for (auto const* pkg : packages) {
+            if (!check_supported_version(*pkg)) { continue; }
+            for (auto const* svc : pkg->services()) {
+                for (auto const* fn : svc->functions()) {
                     register_udf_function(
                         functions, sf_repo, tvf_repo, current_id, client, cfg, fn);
                 }
@@ -1140,4 +1173,4 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
     }
 }
 
-}  // namespace jogasaki::executor::function
+} // namespace jogasaki::executor::function

@@ -160,6 +160,7 @@ std::string int128_to_bytes(__int128 coeff) {
     auto u = static_cast<unsigned __int128>(coeff);
     // NOLINTNEXTLINE(hicpp-signed-bitwise)
     for (int i = 0; i < 16; ++i) {
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
         bytes[15 - i] = static_cast<char>((u >> (i * 8)) & 0xFFU);
     }
     return bytes;
@@ -477,6 +478,7 @@ bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_cont
         std::string bytes(16, '\0');
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
         for (int i = 0; i < 16; ++i) {
+            // NOLINTNEXTLINE(hicpp-signed-bitwise)
             bytes[15 - i] = static_cast<char>((ucoeff >> (i * 8)) & 0xFFU);
         }
 

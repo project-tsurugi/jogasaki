@@ -67,9 +67,9 @@ using kind = meta::field_type_kind;
  *          after (apply_max_polls+1) such calls the apply operator yields and INSERT proceeds.
  *          INSERT duration therefore reflects how long the worker was busy polling:
  *
- *            apply_max_polls=0 → 1 try_next call  (10ms),   INSERT waits ~10ms
- *            apply_max_polls=2 → 3 try_next calls (30ms),   INSERT waits ~30ms
- *            apply_max_polls=4 → 5 try_next calls (50ms),   INSERT waits ~50ms
+ *            apply_max_polls=0 → 1 try_next call  (100ms),    INSERT waits ~100ms
+ *            apply_max_polls=2 → 3 try_next calls (300ms),    INSERT waits ~300ms
+ *            apply_max_polls=4 → 5 try_next calls (500ms),    INSERT waits ~500ms
  */
 class sql_apply_max_polls_test :
     public ::testing::Test,
@@ -101,7 +101,7 @@ public:
 
     /**
      * @brief registers the timing TVF and measures how long INSERT is blocked.
-     * @details each try_next call sleeps 10ms and returns not_ready.  after exactly
+     * @details each try_next call sleeps 100ms and returns not_ready.  after exactly
      *          (max_polls+1) not_ready calls the apply operator yields; the next call
      *          returns end_of_stream.  INSERT is submitted once the TVF signals that its
      *          first call has begun, guaranteeing it is queued while the single worker
@@ -155,8 +155,8 @@ public:
                                 tvf_started->store(true);
                             }
                             if (call < not_ready_count) {
-                                // each not_ready call sleeps 10ms to simulate a slow TVF
-                                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                                // each not_ready call sleeps 100ms to simulate a slow TVF
+                                std::this_thread::sleep_for(std::chrono::milliseconds(100));
                                 return data::any_sequence_stream::status_type::not_ready;
                             }
                             return data::any_sequence_stream::status_type::end_of_stream;
@@ -210,36 +210,36 @@ public:
 
 /**
  * @brief apply_max_polls=0: yields immediately after the first not_ready.
- * @details the TVF's first try_next call sleeps 10ms then returns not_ready, causing an
- *          immediate yield (1 try_next call).  INSERT waits only ~10ms before the worker
+ * @details the TVF's first try_next call sleeps 100ms then returns not_ready, causing an
+ *          immediate yield (1 try_next call).  INSERT waits only ~100ms before the worker
  *          is released.
  */
 TEST_F(sql_apply_max_polls_test, apply_max_polls_0_yields_immediately) {
-    // 1 try_next call (10ms), yield → INSERT waits ~10ms
+    // 1 try_next call (100ms), yield → INSERT waits ~100ms
     auto duration = measure_insert_wait_ms(0);
-    EXPECT_LT(duration, 50);
+    EXPECT_LT(duration, 200);
 }
 
 /**
- * @brief apply_max_polls=2: worker polls 3 times (3×10=30ms) before yielding.
- * @details INSERT cannot run until all 3 try_next calls (30ms total) complete before yielding.
+ * @brief apply_max_polls=2: worker polls 3 times (3×100=300ms) before yielding.
+ * @details INSERT cannot run until all 3 try_next calls (300ms total) complete before yielding.
  */
 TEST_F(sql_apply_max_polls_test, apply_max_polls_2_delays_insert) {
-    // 3 try_next calls (30ms), yield → INSERT waits ~30ms
+    // 3 try_next calls (300ms), yield → INSERT waits ~300ms
     auto duration = measure_insert_wait_ms(2);
-    EXPECT_GE(duration, 20);
-    EXPECT_LT(duration, 100);
+    EXPECT_GE(duration, 200);
+    EXPECT_LT(duration, 1000);
 }
 
 /**
- * @brief apply_max_polls=4: worker polls 5 times (5×10=50ms) before yielding.
- * @details INSERT cannot run until all 5 try_next calls (50ms total) complete before yielding.
+ * @brief apply_max_polls=4: worker polls 5 times (5×100=500ms) before yielding.
+ * @details INSERT cannot run until all 5 try_next calls (500ms total) complete before yielding.
  */
 TEST_F(sql_apply_max_polls_test, apply_max_polls_4_delays_insert_more) {
-    // 5 try_next calls (50ms), yield → INSERT waits ~50ms
+    // 5 try_next calls (500ms), yield → INSERT waits ~500ms
     auto duration = measure_insert_wait_ms(4);
-    EXPECT_GE(duration, 40);
-    EXPECT_LT(duration, 150);
+    EXPECT_GE(duration, 400);
+    EXPECT_LT(duration, 2000);
 }
 
 }  // namespace jogasaki::testing

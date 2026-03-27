@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,12 @@
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/decimal.h>
+
+#include <parquet/api/reader.h>
+#include <parquet/api/writer.h>
+#include <parquet/column_reader.h>
+#include <parquet/file_reader.h>
+#include <parquet/schema.h>
 
 namespace jogasaki::executor::file {
 

@@ -23,10 +23,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <arrow/io/file.h>
-#include <arrow/ipc/writer.h>
-#include <arrow/type_fwd.h>
-#include <arrow/util/logging.h>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -41,6 +37,14 @@
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+
+namespace arrow {
+    namespace io { class FileOutputStream; }
+    namespace ipc { class RecordBatchWriter; }
+    class Schema;
+    class ArrayBuilder;
+    class Array;
+}
 
 namespace jogasaki::executor::file {
 

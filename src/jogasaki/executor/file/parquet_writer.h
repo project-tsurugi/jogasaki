@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,6 @@
 #include <arrow/util/logging.h>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
-#include <parquet/api/reader.h>
-#include <parquet/api/writer.h>
-#include <parquet/column_writer.h>
-#include <parquet/file_writer.h>
-#include <parquet/schema.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -44,6 +39,14 @@
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+
+namespace arrow::io { class FileOutputStream; }
+namespace parquet {
+    class ParquetFileWriter;
+    class RowGroupWriter;
+    class ColumnWriter;
+    namespace schema { class GroupNode; }
+}
 
 namespace jogasaki::executor::file {
 

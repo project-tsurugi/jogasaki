@@ -60,6 +60,10 @@
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 
+#include <arrow/ipc/writer.h>
+#include <arrow/type_fwd.h>
+#include <arrow/util/logging.h>
+
 namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;

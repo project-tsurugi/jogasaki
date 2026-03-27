@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,11 +25,6 @@
 #include <arrow/util/logging.h>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
-#include <parquet/api/reader.h>
-#include <parquet/api/writer.h>
-#include <parquet/column_reader.h>
-#include <parquet/file_reader.h>
-#include <parquet/schema.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -38,6 +33,13 @@
 #include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/record_meta.h>
+
+namespace parquet {
+    class ParquetFileReader;
+    class RowGroupReader;
+    class ColumnReader;
+    class ColumnDescriptor;
+}
 
 namespace jogasaki::executor::file {
 

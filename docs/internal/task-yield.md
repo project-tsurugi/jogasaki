@@ -113,6 +113,47 @@
   - 今回のイールド処理(プロセスイールド)とは独立した処理
     - プロセスイールドで中断したタスクのコンテキストからも `writer_seat` は一旦releaseされ、再開後に再度acquireする
 
+## 既知の問題と解決案
+
+### aggregate_group::finish() でのイールド無視
+
+#### 問題
+
+COUNT(DISTICT) 処理を行う aggregate_group 演算子は、上流シャッフルからの入力が空であった場合でも新しい行をを生成して下流へ送る必要がある。
+この処理が `aggregate_group::finish()` で行われているが、 `finish()` 呼出時に下流の演算子がイールドする可能性を考慮していないために問題が生じている。具体的には下記。
+
+`aggregate_group::finish()` は、シャッフルからの入力が空であった場合(`empty_input_from_shuffle == true`)に、空グループの集計結果を生成し、下流の演算子に対して `process_record()` を呼び出す。
+この呼び出しで下流演算子がイールド(`operation_status_kind::yield`)を返した場合、現在の実装はその戻り値を無視して処理を継続し、`downstream->finish()` を呼び出す。
+
+結果として:
+- 下流演算子の `process_record()` がイールドしたまま完了していない状態で `finish()` が呼び出される
+- 下流演算子は処理途中(未完了)の状態でリソース解放される
+- タスクがリスケジュールされても `finish()` への再入パスが存在しないため、未処理のレコードはそのまま失われる
+
+**影響範囲:** `aggregate_group` の下流に `apply` 演算子など、`process_record()` でイールドし得る演算子が存在するクエリ。
+
+**再現テスト:** `test/jogasaki/api/sql_yield_finish_test.cpp` 内の  
+`sql_yield_finish_test.aggregate_group_finish_empty_shuffle_with_yield` を参照。  
+このテストは期待される正しい動作をアサートしているため、現在の実装では FAIL する。  
+同ファイルの `aggregate_group_finish_empty_shuffle_no_yield` は TVF がイールドしない基本ケースであり、現在の実装でも PASS する。
+
+**類似問題のある演算子:** 調査した結果、`finish()` 内で `process_record()` を下流呼出しているのは現時点では `aggregate_group` のみである。
+
+#### 解決案
+
+**案A: `finish()` のシグネチャを変更してイールド可能な関数として再設計する**
+
+`operator_base::finish(abstract::task_context*)` の戻り値を `void` から `operation_status` に変更し、`finish()` が下流の `process_record()` または `finish()` からイールドを受け取った場合に上流へ伝播する。  
+呼出元(activeな演算子)も `finish()` の戻り値を確認してイールド時にリスケジュールするよう変更する必要がある。  
+`aggregate_group_context` に「finish フェーズ内での下流呼出状態」を保存するための `context_state` 管理とフレーム保存が必要になる(`context_state` に `finishing` 状態を追加)。  
+`finish()` がイールドした場合はタスクコンテキストに `finishing` 状態を保存し、タスク再開時に `aggregate_group` がこの状態を検出して `finish()` の処理を再開できるようにする。  
+この場合も activeな演算子側が `finish()` の戻り値を確認してリスケジュールを行う変更が必要となる。
+
+**案B: `empty_input_from_shuffle` 時の処理を `process_group()` へ移行する**
+
+activeな演算子(`take_group` など)が `finish()` を呼び出す前に、`empty_input_from_shuffle` フラグを確認し、空入力時の代替グループを `process_group()` として合成して `aggregate_group::process_group()` を呼び出すようにする。  
+こうすることで、空入力時の下流 `process_record()` 呼び出しが `finish()` ではなく通常のイールド対応済みパスで行われる。
+
 ## その他
 
 - 現状では `buffer` 演算子が未実装のため、 関係演算子ツリーは実は線形なリストである

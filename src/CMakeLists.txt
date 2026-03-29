@@ -195,7 +195,7 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
-#        PRIVATE ${PARQUET_PREFIX}parquet_shared
+        PRIVATE $<TARGET_LINKER_FILE:${PARQUET_PREFIX}parquet_shared>
         PRIVATE mpdecpp
         PRIVATE ${GRPC_LIBRARIES}
         )

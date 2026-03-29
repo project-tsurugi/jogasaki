@@ -143,7 +143,7 @@ add_library(arrow_objs OBJECT ${ARROW_SOURCES})
 set_target_properties(arrow_objs PROPERTIES POSITION_INDEPENDENT_CODE ON)
 add_library(${ENGINE}
         ${SOURCES}
-        ${ARROW_SOURCES}
+        $<TARGET_OBJECTS:arrow_objs>
         ${GENERATED_SQL_PROTO_SRCS}
         ${GENERATED_METADATA_PROTO_SRCS}
         ${GENERATED_KVSSERVICE_PROTO_SRCS}

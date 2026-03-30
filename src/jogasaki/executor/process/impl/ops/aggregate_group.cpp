@@ -165,8 +165,7 @@ operation_status aggregate_group::operator()(
     if (ctx.state() != context_state::calling_child) {
         if (kind == member_kind::empty) {
             // empty group: generate default aggregate values using empty_value_generator
-            for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
-                auto& c = columns_[i];
+            for(auto&& c : columns_) {
                 auto& func = c.function_info_.empty_value_generator();
                 auto target = ctx.output_variables().store().ref();
                 func(target,

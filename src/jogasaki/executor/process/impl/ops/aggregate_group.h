@@ -118,22 +118,22 @@ public:
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
-     * @param last_member specify whether the current member is the last within the group
+     * @param kind specifies whether this is a normal member, the last member, or an empty group
      * @return status of the operation
      */
-    operation_status process_group(abstract::task_context* context, bool last_member) override;
+    operation_status process_group(abstract::task_context* context, member_kind kind) override;
 
     /**
      * @brief process record with context object
      * @details this operation is almost no-op because take_group already took records and assigned variables
      * @param ctx context object for the execution
-     * @param last_member specify whether the current member is the last within the group
+     * @param kind specifies whether this is a normal member, the last member, or an empty group
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      * @return status of the operation
      */
     operation_status operator()(
         aggregate_group_context& ctx,
-        bool last_member,
+        member_kind kind,
         abstract::task_context* context = nullptr
     );
 

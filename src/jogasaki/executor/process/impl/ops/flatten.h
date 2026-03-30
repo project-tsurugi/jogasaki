@@ -61,10 +61,10 @@ public:
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
-     * @param last_member specify whether the current member is the last within the group
+     * @param kind specifies whether this is a normal member, the last member, or an empty group
      * @return status of the operation
      */
-    operation_status process_group(abstract::task_context* context, bool last_member) override;
+    operation_status process_group(abstract::task_context* context, member_kind kind) override;
 
     /**
      * @brief process record with context object

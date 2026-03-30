@@ -181,6 +181,16 @@ TEST_F(service_api_test, cancel_take_group) {
     test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
+TEST_F(service_api_test, cancel_take_group_empty_input) {
+    enable_request_cancel(request_cancel_kind::take_group);
+    execute_statement("create table t0 (c0 int)");
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("select count(distinct c0) from t0", tx_handle);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
+}
+
 TEST_F(service_api_test, cancel_tx_begin) {
     enable_request_cancel(request_cancel_kind::transaction_begin_wait);
     api::transaction_handle tx_handle{};

@@ -16,6 +16,8 @@
 #pragma once
 
 #include <cstddef>
+#include <ostream>
+#include <string_view>
 
 #include <takatori/util/sequence_view.h>
 #include <yugawara/compiled_info.h>
@@ -168,6 +170,36 @@ public:
 };
 
 /**
+ * @brief kind of group member for process_group() dispatching
+ */
+enum class member_kind {
+    /// @brief regular group member (not the last one in the group)
+    normal,
+
+    /// @brief last member within the group
+    last_member,
+
+    /// @brief indicates that there are no input records at all from the shuffle (empty group input from shuffle).
+    /// When process_group() is called with this value, no input record has been delivered to the operator.
+    /// Implementations must not access the input record (its columns or values) in this case.
+    empty,
+};
+
+[[nodiscard]] inline std::string_view to_string_view(member_kind kind) noexcept {
+    using namespace std::string_view_literals;
+    switch(kind) {
+        case member_kind::normal: return "normal"sv;
+        case member_kind::last_member: return "last_member"sv;
+        case member_kind::empty: return "empty"sv;
+    }
+    std::abort();
+}
+
+inline std::ostream& operator<<(std::ostream& out, member_kind kind) {
+    return out << to_string_view(kind);
+}
+
+/**
  * @brief operator receiving group
  */
 class group_operator : public operator_base {
@@ -182,13 +214,13 @@ public:
 
     /**
      * @brief process a record that composes the group
-     * @details this function is called for each record in the group and the `last_member` flag indicates
-     * if the current group is finished.
+     * @details this function is called for each record in the group, or once with member_kind::empty
+     * when there is no input at all from the shuffle.
      * @param context the task context to process
-     * @param last_member specify whether the current member is the last within the group
+     * @param kind specifies whether this is a normal member, the last member, or an empty group
      * @return status of the operation
      */
-    virtual operation_status process_group(abstract::task_context* context, bool last_member) = 0;
+    virtual operation_status process_group(abstract::task_context* context, member_kind kind) = 0;
 };
 
 /**

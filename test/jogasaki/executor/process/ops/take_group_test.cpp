@@ -206,6 +206,7 @@ TEST_F(take_group_test, simple) {
         s_info.group_meta(),
         take_group_columns,
         0,
+        false,
         std::move(d)
     };
 

@@ -57,12 +57,14 @@ take_group::take_group(
     maybe_shared_ptr<meta::group_meta> meta,
     sequence_view<column const> columns,
     std::size_t reader_index,
+    bool whole_group,
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
     meta_(std::move(meta)),
     fields_(create_fields(meta_, order, columns)),
     reader_index_(reader_index),
+    whole_group_(whole_group),
     downstream_(std::move(downstream))
 {
     utils::assert_all_fields_nullable(meta_->key());
@@ -117,11 +119,11 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    if (context != nullptr && context->work_context() != nullptr) {
+    if (whole_group_ && context != nullptr && context->work_context() != nullptr) {
+        // if whole_group is set and upstream shuffle has no record, send empty group to downstream
         context_helper helper{*context};
         if (helper.empty_input_from_shuffle()) {
             if(ctx.state() == context_state::calling_child) {
-                // regardless of ctx.state(), we simply call downstream because there is no input to send.
                 // simply log we are resuming
                 VLOG_LP(log_trace) << "resuming take_group op. (with empty input) after downstream yield";
             }

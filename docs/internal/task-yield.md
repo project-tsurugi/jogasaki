@@ -33,8 +33,8 @@
   - 下流演算子から戻された `operation_status_kind` によって下流演算子の実行結果を確認
     - `ok`: 下流演算子が正常に実行された
       - `context_state` は `running_operator_body` に戻す
-    - `yielding`: 下流演算子がイールドを要求
-      - 下流呼出までのフレームを保管し、本演算子も `operation_status_kind::yielding` を上流へ戻し、タスクをリスケジュール
+    - `yield`: 下流演算子がイールドを要求
+      - 下流呼出までのフレームを保管し、本演算子も `operation_status_kind::yield` を上流へ戻し、タスクをリスケジュール
       - `context_state` は `calling_child` を維持
     - `aborted`: 下流演算子がエラーにより失敗
       - 本演算子も上流へ `operation_status_kind::aborted` を返し、リクエストの実行を中止する
@@ -51,7 +51,7 @@
         - 例
           - `filter_context::frame_calling_downstream`
           - `apply_context::frame_stream_next`
-    - 現在の演算子実行を `operation_status_kind::yielding` で終了し、スケジューラへリスケジュールを要求する
+    - 現在の演算子実行を `operation_status_kind::yield` で終了し、スケジューラへリスケジュールを要求する
 2. **タスクの再実行と復元**
   - スケジューラーが再度このタスクを選択したとき、タスクは root 演算子から呼び出しを開始
   - 呼び出された演算子は自身のコンテキスト状態を確認：
@@ -71,17 +71,17 @@
 
 - **演算子呼出の戻り値** ( `operation_status_kind` )
   - **`ok`**: 正常に処理が完了
-  - **`yielding`**: イールドしてタスクをリスケジュールする
+  - **`yield`**: イールドしてタスクをリスケジュールする
   - **`aborted`**: タスクを中止(エラー発生等)
 
 **状態遷移:**
 - 初期状態・通常処理時: `running_operator_body`
 - 子演算子呼び出し直前: `calling_child` に設定
 - 子演算子呼び出しから戻った場合: 戻り値により遷移
-  - `ok`: `running_operator_body` に戻す
-  - `yielding`: `calling_child` を維持して上流へ `yielding` を返す
-  - `aborted`: `aborted` に設定して上流へ `aborted` を返す
-- イールド時: `yielding` に設定。親演算子には `operation_status_kind::yielding` を返す
+  - `ok`: 状態を `running_operator_body` に戻して上流へも `ok` を返す
+  - `yield`: 状態を `calling_child` のまま維持して上流へ `yield` を返す
+  - `aborted`: 状態を `aborted` に設定して上流へ `aborted` を返す
+- イールド時: 状態を `yielding` に設定して上流へ `yield` を返す
 - 処理再開時
   - ツリーのルートから演算子呼出が再開され、 `yielding` 状態の演算子まで再帰的に呼び出される
   - `yielding` 状態の演算子は `running_operator_body` に設定され、保存した状態から処理を再開
@@ -120,7 +120,7 @@
 #### 問題と背景
 
 `COUNT(DISTICT)` 処理を行う `aggregate_group` 演算子は、上流シャッフルからの入力が空であった場合でも新しい行をを生成して下流へ送る必要がある。
-この処理が `aggregate_group::finish()` で行われているが、 `finish()` 呼出時に下流の演算子がイールドする可能性を考慮していないために問題が生じている。具体的には下記。
+この処理が `aggregate_group::finish()` で行われていたが、 `finish()` 呼出時に下流の演算子がイールドする可能性を考慮していないために問題が生じていた。具体的には下記。
 
 `aggregate_group::finish()` は、シャッフルからの入力が空であった場合(`empty_input_from_shuffle == true`)に、空グループの集計結果を生成し、下流の演算子に対して `process_record()` を呼び出す。
 この呼び出しで下流演算子がイールド(`operation_status_kind::yield`)を返した場合、現在の実装はその戻り値を無視して処理を継続し、`downstream->finish()` を呼び出す。

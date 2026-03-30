@@ -87,6 +87,7 @@ public:
         maybe_shared_ptr<meta::group_meta> meta,
         takatori::util::sequence_view<column const> columns,
         std::size_t reader_index,
+        bool whole_group = false,
         std::unique_ptr<operator_base> downstream = nullptr
     );
 
@@ -125,6 +126,7 @@ private:
     maybe_shared_ptr<meta::group_meta> meta_{};
     std::vector<details::take_group_field> fields_{};
     std::size_t reader_index_{};
+    bool whole_group_{};
     std::unique_ptr<operator_base> downstream_{};
 
     [[nodiscard]] std::vector<details::take_group_field> create_fields(

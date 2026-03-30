@@ -23,6 +23,9 @@
 #include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
+#include <takatori/plan/aggregate.h>
+#include <takatori/plan/group.h>
+#include <takatori/plan/group_mode.h>
 #include <takatori/relation/graph.h>
 #include <takatori/relation/step/dispatch.h>
 #include <takatori/relation/write_kind.h>
@@ -375,6 +378,24 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
     auto reader_index = relation_io_map_->input_index(node.source());
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& input = io_info_->input_at(reader_index);
+    auto& exchange = yugawara::binding::extract<takatori::plan::exchange>(node.source());
+    takatori::plan::group_mode exchange_mode = takatori::plan::group_mode::equivalence;
+    bool exchange_group_keys_empty = true;
+    if (exchange.kind() == takatori::plan::step_kind::group) {
+        auto& g = unsafe_downcast<takatori::plan::group const>(exchange);
+        exchange_mode = g.mode();
+        exchange_group_keys_empty = g.group_keys().empty();
+    } else if (exchange.kind() == takatori::plan::step_kind::aggregate) {
+        // Actually aggregate exchange itself handles the case whole_group == true,
+        // and generates new record representing empty group.
+        // So empty_input_from_shuffle is false in take_group,
+        // and take_group is not affected by the whole_group setting.
+        auto& a = unsafe_downcast<takatori::plan::aggregate const>(exchange);
+        exchange_mode = a.mode();
+        exchange_group_keys_empty = a.group_keys().empty();
+    }
+    bool whole_group = exchange_mode == takatori::plan::group_mode::equivalence_or_whole
+        && exchange_group_keys_empty;
     return std::make_unique<take_group>(
         index_++,
         *info_,
@@ -383,6 +404,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
         input.group_meta(),
         node.columns(),
         reader_index,
+        whole_group,
         std::move(downstream)
     );
 }

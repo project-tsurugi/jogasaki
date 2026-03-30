@@ -119,10 +119,10 @@ aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::
     return p;
 }
 
-operation_status aggregate_group::process_group(abstract::task_context* context, bool last_member) {
+operation_status aggregate_group::process_group(abstract::task_context* context, member_kind kind) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     auto p = create_context_if_not_found(context);
-    return (*this)(*p, last_member, context);
+    return (*this)(*p, kind, context);
 }
 
 static void copy_value(
@@ -155,7 +155,7 @@ static void copy_value(
 
 operation_status aggregate_group::operator()(
     aggregate_group_context& ctx,
-    bool last_member,
+    member_kind kind,
     abstract::task_context* context
 ) {
     assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
@@ -163,38 +163,55 @@ operation_status aggregate_group::operator()(
         return operation_status_kind::aborted;
     }
     if (ctx.state() != context_state::calling_child) {
-        for(std::size_t i=0, n=arguments_.size(); i < n; ++i) {
-            // append value store the values
-            auto& store = ctx.stores_[i];
-            auto& arg = arguments_[i];
-            auto src = ctx.input_variables().store().ref();
-            copy_value(
-                src,
-                arg.offset_,
-                arg.nullity_offset_,
-                arg.nullable_,
-                store
-            );
-        }
+        if (kind == member_kind::empty) {
+            // empty group: generate default aggregate values using empty_value_generator
+            for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
+                auto& c = columns_[i];
+                auto& func = c.function_info_.empty_value_generator();
+                auto target = ctx.output_variables().store().ref();
+                func(target,
+                    function::field_locator{
+                        c.type_,
+                        c.nullable_,
+                        c.offset_,
+                        c.nullity_offset_
+                    }
+                );
+            }
+        } else {
+            for(std::size_t i=0, n=arguments_.size(); i < n; ++i) {
+                // append value store the values
+                auto& store = ctx.stores_[i];
+                auto& arg = arguments_[i];
+                auto src = ctx.input_variables().store().ref();
+                copy_value(
+                    src,
+                    arg.offset_,
+                    arg.nullity_offset_,
+                    arg.nullable_,
+                    store
+                );
+            }
 
-        if (! last_member) {
-            return operation_status_kind::ok;
-        }
+            if (kind == member_kind::normal) {
+                return operation_status_kind::ok;
+            }
 
-        // do aggregation from value store and create column values
-        for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
-            auto& c = columns_[i];
-            auto& func = c.function_info_.aggregator();
-            auto target = ctx.output_variables().store().ref();
-            func(target,
-                function::field_locator{
-                    c.type_,
-                    c.nullable_,
-                    c.offset_,
-                    c.nullity_offset_
-                },
-                ctx.function_arg_stores_[i]
-            );
+            // last_member: do aggregation from value store and create column values
+            for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
+                auto& c = columns_[i];
+                auto& func = c.function_info_.aggregator();
+                auto target = ctx.output_variables().store().ref();
+                func(target,
+                    function::field_locator{
+                        c.type_,
+                        c.nullable_,
+                        c.offset_,
+                        c.nullity_offset_
+                    },
+                    ctx.function_arg_stores_[i]
+                );
+            }
         }
     } else {
         VLOG_LP(log_trace) << "resuming aggregate_group op. after downstream yield";
@@ -226,31 +243,8 @@ operator_kind aggregate_group::kind() const noexcept {
 
 void aggregate_group::finish(abstract::task_context* context) {
     auto& ctx = *create_context_if_not_found(context);
-    context_helper helper{*context};
     if (ctx.aborted()) {
         return;
-    }
-    if (helper.empty_input_from_shuffle()) {
-        // do aggregation from value store and create column values
-        for(auto & c : columns_) {
-            auto& func = c.function_info_.empty_value_generator();
-            auto target = ctx.output_variables().store().ref();
-            func(target,
-                function::field_locator{
-                    c.type_,
-                    c.nullable_,
-                    c.offset_,
-                    c.nullity_offset_
-                }
-            );
-        }
-
-        if (downstream_) {
-            auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
-            if (st.kind() == operation_status_kind::aborted) {
-                ctx.abort();
-            }
-        }
     }
     ctx.release();
     if (downstream_) {

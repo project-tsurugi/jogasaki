@@ -91,7 +91,6 @@ void flow::transfer() {
             empty = false;
         }
     }
-    updatable_info().empty_input(empty);
     if (generate_record_on_empty_ && empty && context_->status_code() == status::ok) {
         // generate a special record for empty input
         // unless an error happens on upstream of this exchange (in that case adding the record for empty input
@@ -100,7 +99,9 @@ void flow::transfer() {
         auto& partitions = sinks_[0]->input_partitions();
         auto& p = partitions.emplace_back(std::make_unique<input_partition>(info_));
         p->aggregate_empty_input();
+        empty = false; // now we generate a record for empty input, so shuffle output is not empty
     }
+    updatable_info().empty_input(empty);
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
         BOOST_ASSERT(partitions.size() <= sources_.size()); //NOLINT

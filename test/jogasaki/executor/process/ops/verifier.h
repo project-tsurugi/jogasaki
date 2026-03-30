@@ -44,17 +44,17 @@ public:
 class group_verifier : public group_operator {
 public:
     group_verifier() = default;
-    void body(std::function<void(bool)> f) {
+    void body(std::function<void(member_kind)> f) {
         f_ = std::move(f);
     }
-    operation_status process_group(abstract::task_context* context, bool last_member) override {
-        f_(last_member);
+    operation_status process_group(abstract::task_context* context, member_kind kind) override {
+        f_(kind);
         return {};
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
     }
-    std::function<void(bool)> f_{}; //NOLINT
+    std::function<void(member_kind)> f_{}; //NOLINT
 
     void finish(abstract::task_context*) override {}
 };

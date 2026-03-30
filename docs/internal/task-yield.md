@@ -113,6 +113,58 @@
   - 今回のイールド処理(プロセスイールド)とは独立した処理
     - プロセスイールドで中断したタスクのコンテキストからも `writer_seat` は一旦releaseされ、再開後に再度acquireする
 
+## 既知の問題と解決案
+
+### aggregate_group::finish() のイールド無視
+
+#### 問題と背景
+
+`COUNT(DISTICT)` 処理を行う `aggregate_group` 演算子は、上流シャッフルからの入力が空であった場合でも新しい行をを生成して下流へ送る必要がある。
+この処理が `aggregate_group::finish()` で行われているが、 `finish()` 呼出時に下流の演算子がイールドする可能性を考慮していないために問題が生じている。具体的には下記。
+
+`aggregate_group::finish()` は、シャッフルからの入力が空であった場合(`empty_input_from_shuffle == true`)に、空グループの集計結果を生成し、下流の演算子に対して `process_record()` を呼び出す。
+この呼び出しで下流演算子がイールド(`operation_status_kind::yield`)を返した場合、現在の実装はその戻り値を無視して処理を継続し、`downstream->finish()` を呼び出す。
+
+結果として:
+- 下流演算子の `process_record()` がイールドしたまま完了していない状態で `finish()` が呼び出される
+- 下流演算子は処理途中(未完了)の状態でリソース解放される
+- タスクがリスケジュールされても `finish()` への再入パスが存在しないため、未処理のレコードはそのまま失われる
+
+#### 解決案 (実装済み)
+
+`empty_input_from_shuffle` 時の処理を `process_group()` へ移行する
+
+groupを出力するactiveな演算子(つまり `take_group`) が `empty_input_from_shuffle` フラグを確認し、空グループを `process_group()` で下流へ通知する。  
+こうすることで、空入力時の下流 `process_record()` 呼び出しが `finish()` ではなく通常のイールド対応済みパスで行われる。
+
+具体的には下記のように `member_kind` を追加し `group_operator` の `process_group()` のシグネチャを下記のように変更する
+
+```cpp
+enum class member_kind {
+  normal, 
+  last_member,
+  empty, 
+}
+
+operation_status process_group(abstract::task_context* context, member_kind kind);
+
+```
+
+`take_group` は `empty_input_from_shuffle` がtrueの場合には空入力の処理として `member_kind::empty` で `process_group()` を呼び出す。
+これは下流の呼出を行うが、レコードは存在しない(わたさない)という特殊な呼出となる。
+
+`take_group` の下流の演算子は、 `member_kind::empty` の呼出を受け取った際には、空グループに対する処理を行う。現状で下流になり得る演算子は下記 `group_operator` のいずれかである。
+
+- `aggregate_group`: 空グループに対してデフォルトの集計結果を生成し、下流へ送る
+- `flatten`: 空グループに対しては何も出力しない。(下流呼出もおこなわない)
+
+#### その他の案
+
+`finish()` を変更してイールド可能な関数として再設計する案も検討したが下記の理由により採用しないこととする
+
+- 上流のエクスチェンジの入力が空のグループであった際、プロセスをどのように駆動すべきかというのは `take_group` の責務であり、現行実装のように `aggregate_group::finish()` で空グループを挿入するのはadhocな処理で適切でない
+- 将来的に `finish()` 時にバッファに残ったレコードを処理する必要性がでてくる可能性はあるが、シナリオが明確になった際に再度イールド可能とすることを検討する
+
 ## その他
 
 - 現状では `buffer` 演算子が未実装のため、 関係演算子ツリーは実は線形なリストである

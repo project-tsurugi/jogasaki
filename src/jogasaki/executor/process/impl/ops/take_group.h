@@ -132,6 +132,11 @@ private:
         meta::variable_order const& order,
         takatori::util::sequence_view<column const> columns
     );
+
+    [[nodiscard]] operation_status process_empty_group(
+        take_group_context& ctx,
+        abstract::task_context* context
+    );
 };
 
 }

@@ -315,8 +315,8 @@ TEST_F(aggregate_group_test, simple) {
         vars_ref.set_null(map.at(c1).nullity_offset(), false);
         vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), values[2]);
         vars_ref.set_null(map.at(c2).nullity_offset(), false);
-        bool last_member = count == 2 || count == 5;
-        s(ctx, last_member);
+        bool last = count == 2 || count == 5;
+        s(ctx, last ? member_kind::last_member : member_kind::normal);
         ++count;
     }
     ASSERT_EQ(2, called);

@@ -84,10 +84,54 @@ operation_status take_group::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
+operation_status take_group::process_empty_group(
+    take_group_context& ctx,
+    abstract::task_context* context
+) {
+    if (! downstream_) {
+        return operation_status_kind::ok;
+    }
+    if (ctx.state() != context_state::calling_child) {
+        auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_group);
+        if (cancel_enabled && cancel_if_needed(ctx)) {
+            finish(context);
+            return operation_status_kind::aborted;
+        }
+    }
+    ctx.state(context_state::calling_child);
+    auto st = unsafe_downcast<group_operator>(downstream_.get())->process_group(context, member_kind::empty);
+    if (st.kind() == operation_status_kind::yield) {
+        return operation_status_kind::yield;
+    }
+    if (st.kind() == operation_status_kind::aborted) {
+        ctx.abort();
+        finish(context);
+        return operation_status_kind::aborted;
+    }
+    ctx.state(context_state::running_operator_body);
+    return operation_status_kind::ok;
+}
+
 operation_status take_group::operator()(take_group_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
+    }
+    if (context != nullptr && context->work_context() != nullptr) {
+        context_helper helper{*context};
+        if (helper.empty_input_from_shuffle()) {
+            if(ctx.state() == context_state::calling_child) {
+                // regardless of ctx.state(), we simply call downstream because there is no input to send.
+                // simply log we are resuming
+                VLOG_LP(log_trace) << "resuming take_group op. (with empty input) after downstream yield";
+            }
+            auto st = process_empty_group(ctx, context);
+            if (st.kind() != operation_status_kind::ok) {
+                return st;
+            }
+            finish(context);
+            return operation_status_kind::ok;
+        }
     }
     auto target = ctx.output_variables().store().ref();
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_group);
@@ -150,7 +194,9 @@ resume_calling_child:
             if (downstream_) {
                 ctx.state(context_state::calling_child);
                 auto st = unsafe_downcast<group_operator>(
-                    downstream_.get())->process_group(context, !ctx.has_next_);
+                    downstream_.get())->process_group(
+                        context,
+                        ctx.has_next_ ? member_kind::normal : member_kind::last_member);
                 if (st.kind() == operation_status_kind::yield) {
                     // preserve ctx.group_cp_ and ctx.has_next_
                     return operation_status_kind::yield;

@@ -41,9 +41,12 @@ flatten::flatten(
     downstream_(std::move(downstream))
 {}
 
-operation_status flatten::process_group(abstract::task_context* context, bool last_member) {
+operation_status flatten::process_group(abstract::task_context* context, member_kind kind) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
-    (void)last_member;
+    if (kind == member_kind::empty) {
+        // empty group: flatten produces no output for an empty group
+        return operation_status_kind::ok;
+    }
     context_helper ctx{*context};
     auto* p = find_context<flatten_context>(index(), ctx.contexts());
     if (! p) {

@@ -15,6 +15,7 @@
  */
 #include "apply.h"
 
+#include <chrono>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -179,12 +180,29 @@ try_next:
 
         if (stream_status == data::any_sequence_stream_status::not_ready) {
             // Poll up to apply_max_polls times before yielding
+            using poll_clock = std::chrono::high_resolution_clock;
+            bool const timing_enabled = VLOG_IS_ON(log_debug);
+            std::chrono::time_point<poll_clock> poll_begin{};
+            std::size_t poll_count = 0;
+            if (timing_enabled) {
+                poll_begin = poll_clock::now();
+            }
             for (std::size_t i = 0; i < max_polls; ++i) {
                 sequence.clear();
                 stream_status = ctx.stream_->try_next(sequence);
+                if (timing_enabled) {
+                    ++poll_count;
+                }
                 if (stream_status != data::any_sequence_stream_status::not_ready) {
                     break;
                 }
+            }
+            if (timing_enabled) {
+                auto const took_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    poll_clock::now() - poll_begin).count();
+                VLOG_LP(log_debug) << "try_next polls"
+                    << " count:" << poll_count
+                    << " took_ns:" << took_ns;
             }
             if (stream_status == data::any_sequence_stream_status::not_ready) {
                 // TVF stream is not ready yet; yield the worker thread and retry later

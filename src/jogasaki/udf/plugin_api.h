@@ -59,6 +59,7 @@ private:
 class record_descriptor;
 class column_descriptor {
 public:
+
     using type_kind_type = plugin::udf::type_kind;
     using index_type = std::size_t;
     using oneof_index_type = std::size_t;
@@ -75,6 +76,8 @@ public:
     [[nodiscard]] virtual bool has_oneof() const noexcept = 0;
     [[nodiscard]] virtual std::optional<oneof_index_type> oneof_index() const noexcept = 0;
     [[nodiscard]] virtual std::optional<std::string_view> oneof_name() const noexcept = 0;
+    [[nodiscard]] virtual bool optional() const noexcept = 0;
+    [[nodiscard]] virtual bool proto3_optional() const noexcept = 0;
 };
 class record_descriptor {
 public:
@@ -92,6 +95,7 @@ public:
 
 class function_descriptor {
 public:
+
     using function_kind_type = plugin::udf::function_kind;
     function_descriptor() = default;
     using index_type = std::size_t;

@@ -32,7 +32,8 @@ public:
         type_kind_type k,
         record_descriptor* nested = nullptr,
         std::optional<oneof_index_type> oneof = std::nullopt,
-        std::optional<std::string_view> oneof_name_val = std::nullopt
+        std::optional<std::string_view> oneof_name_val = std::nullopt,
+        bool proto3_optional = false
     );
 
     [[nodiscard]] index_type index() const noexcept override;
@@ -42,6 +43,8 @@ public:
     [[nodiscard]] std::optional<oneof_index_type> oneof_index() const noexcept override;
     [[nodiscard]] bool has_oneof() const noexcept override;
     [[nodiscard]] std::optional<std::string_view> oneof_name() const noexcept override;
+    [[nodiscard]] bool optional() const noexcept override;
+    [[nodiscard]] bool proto3_optional() const noexcept override;
 
 private:
 
@@ -51,6 +54,7 @@ private:
     record_descriptor* _nested_record;
     std::optional<oneof_index_type> _oneof_idx;
     std::optional<std::string_view> _oneof_name;
+    bool _proto3_optional;
 };
 
 class record_descriptor_impl : public record_descriptor {

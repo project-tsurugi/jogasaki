@@ -33,14 +33,16 @@ column_descriptor_impl::column_descriptor_impl(
     type_kind_type k,
     record_descriptor* nested,
     std::optional<column_descriptor::oneof_index_type> oneof,
-    std::optional<std::string_view> oneof_name_val
+    std::optional<std::string_view> oneof_name_val,
+    bool proto3_optional
 ) :
     _idx(i),
     _name(n),
     _kind(k),
     _nested_record(nested),
     _oneof_idx(oneof),
-    _oneof_name(oneof_name_val) {}
+    _oneof_name(oneof_name_val),
+    _proto3_optional(proto3_optional) {}
 
 column_descriptor::index_type column_descriptor_impl::index() const noexcept { return _idx; }
 std::string_view column_descriptor_impl::column_name() const noexcept { return _name; }
@@ -51,7 +53,8 @@ std::optional<column_descriptor::oneof_index_type> column_descriptor_impl::oneof
 }
 bool column_descriptor_impl::has_oneof() const noexcept { return _oneof_idx.has_value(); }
 std::optional<std::string_view> column_descriptor_impl::oneof_name() const noexcept { return _oneof_name; }
-
+bool column_descriptor_impl::optional() const noexcept { return has_oneof() && _proto3_optional; }
+bool column_descriptor_impl::proto3_optional() const noexcept { return _proto3_optional; }
 // record_descriptor_impl
 record_descriptor_impl::record_descriptor_impl(std::string_view n, const std::vector<column_descriptor*>& c) :
     _name(n),

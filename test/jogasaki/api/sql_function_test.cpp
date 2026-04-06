@@ -719,4 +719,19 @@ TEST_F(sql_function_test, aggregate_crash_not_reproduced) {
     }
 }
 
+TEST_F(sql_function_test, aggregate_group_crash_when_columns_exceed_argument_size) {
+    // regression testcase for #1463
+    // there was a bug where the number of output columns was used instead of the number of arguments
+    // This testcase tests the following cases to test the fix.
+    // # of columns = 2 (two `count(distinct c0)` one for emit and the other for having filter)
+    // # of args = 1 (c0)
+    execute_statement("create table t (c0 INT)");
+    execute_statement("insert into t values (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT count(distinct c0) FROM t HAVING count(distinct c0) = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]);
+    }
+}
 }  // namespace jogasaki::testing

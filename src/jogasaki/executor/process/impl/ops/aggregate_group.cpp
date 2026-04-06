@@ -228,7 +228,7 @@ operation_status aggregate_group::operator()(
         ctx.state(context_state::running_operator_body);
     }
     // reset
-    for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
+    for(std::size_t i=0, n=arguments_.size(); i < n; ++i) {
         ctx.stores_[i].reset();
         ctx.resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
         ctx.nulls_resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);

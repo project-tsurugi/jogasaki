@@ -14,70 +14,36 @@
  * limitations under the License.
  */
 #include <cstdint>
-#include <string>
+#include <functional>
+#include <memory>
 #include <string_view>
-#include <utility>
 #include <vector>
-#include "gtest/gtest.h"
-#include <boost/container/container_fwd.hpp>
+
 #include <gtest/gtest.h>
 
-#include <takatori/graph/graph.h>
-#include <takatori/graph/port.h>
-#include <takatori/plan/forward.h>
-#include <takatori/plan/graph.h>
-#include <takatori/plan/process.h>
-#include <takatori/relation/expression.h>
-#include <takatori/relation/expression_kind.h>
 #include <takatori/relation/filter.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/step/offer.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/binary_operator.h>
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
-#include <takatori/scalar/expression_kind.h>
 #include <takatori/scalar/immediate.h>
-#include <takatori/scalar/unary.h>
-#include <takatori/scalar/unary_operator.h>
-#include <takatori/statement/statement_kind.h>
-#include <takatori/type/data.h>
 #include <takatori/type/primitive.h>
-#include <takatori/type/type_kind.h>
-#include <takatori/util/exception.h>
 #include <takatori/value/primitive.h>
-#include <takatori/value/value_kind.h>
-#include <yugawara/analyzer/expression_mapping.h>
-#include <yugawara/analyzer/variable_mapping.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/compiled_info.h>
-#include <yugawara/storage/basic_configurable_provider.h>
-#include <yugawara/storage/column.h>
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/storage/index.h>
-#include <yugawara/storage/sequence.h>
-#include <yugawara/storage/table.h>
-
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/accessor/text.h>
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/common/port.h>
-#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/impl/ops/filter.h>
 #include <jogasaki/executor/process/impl/ops/filter_context.h>
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/operator_test_utils.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-
-#include "verifier.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -88,183 +54,113 @@ using namespace accessor;
 using namespace takatori::util;
 using namespace std::string_view_literals;
 using namespace std::string_literals;
-using namespace yugawara::binding;
 
 using namespace jogasaki::memory;
+using namespace jogasaki::mock;
 using namespace boost::container::pmr;
 
 namespace type = ::takatori::type;
 namespace value = ::takatori::value;
-namespace statement = ::takatori::statement;
 namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
 
-namespace storage = yugawara::storage;
-
 using binary = takatori::scalar::binary;
 using binary_operator = takatori::scalar::binary_operator;
-using unary = takatori::scalar::unary;
-using unary_operator = takatori::scalar::unary_operator;
 using compare = takatori::scalar::compare;
 using comparison_operator = takatori::scalar::comparison_operator;
 using immediate = takatori::scalar::immediate;
-using compiled_info = yugawara::compiled_info;
 
-class filter_test : public test_root {
+class filter_test : public test_root, public operator_test_utils {
 public:
-
-    yugawara::analyzer::variable_mapping& variables() noexcept {
-        return *variables_;
+    immediate constant(int v, type::data&& type = type::int8()) {
+        return immediate{value::int8(v), std::move(type)};
     }
 
-    yugawara::analyzer::expression_mapping& expressions() noexcept {
-        return *expressions_;
-    }
+    /**
+     * @brief Bundle of runtime objects needed to invoke and inspect the filter operator.
+     * @details op, variables, task_ctx, and ctx are stored together.
+     *     ctx holds references into variables and task_ctx; the struct must not
+     *     be move- or copy-constructed.  Always create via make_filter_executor().
+     */
+    struct filter_executor {
+        filter op_;
+        variable_table variables_;
+        mock::task_context task_ctx_;
+        filter_context ctx_;
 
-    inline immediate constant(int v, type::data&& type = type::int8()) {
-        return immediate { value::int8(v), std::move(type) };
+        filter_executor(
+            filter op_arg,
+            variable_table_info const& block_info,
+            memory::lifo_paged_memory_resource* res,
+            memory::lifo_paged_memory_resource* varlen_res,
+            request_context* req_ctx
+        ) :
+            op_{std::move(op_arg)},
+            variables_{block_info},
+            task_ctx_{{}, {}, {}, {}},
+            ctx_{&task_ctx_, variables_, res, varlen_res}
+        {
+            ctx_.task_context().work_context(std::make_unique<impl::work_context>(
+                req_ctx, 0, op_.block_index(), nullptr, nullptr, nullptr, nullptr, false, false
+            ));
+        }
+    };
+
+    /**
+     * @brief Wire the process graph, build processor_info, construct the filter operator,
+     *     and return a filter_executor.
+     *
+     * @details Uses C++17 guaranteed copy elision: the returned prvalue is constructed
+     *     directly in the caller's variable, so the internal ctx references into
+     *     variables and task_ctx remain valid.
+     *
+     * @param flt  the filter relation node whose condition defines the operator
+     * @param up   the upstream take_flat node
+     * @param down downstream verifier sink (take() is called here)
+     * @return newly constructed filter_executor
+     */
+    filter_executor make_filter_executor(
+        relation::filter& flt,
+        relation::step::take_flat& up,
+        record_verifier_sink& down
+    ) {
+        up.output() >> flt.input();
+        flt.output() >> down.input();
+        create_processor_info(nullptr, true);
+        filter op{0, *processor_info_, 0, flt.condition(), down.take()};
+        auto const idx = op.block_index();
+        return filter_executor{std::move(op), processor_info_->vars_info_list()[idx],
+            &resource_, &varlen_resource_, &request_context_};
     }
-    std::shared_ptr<yugawara::analyzer::variable_mapping> variables_ = std::make_shared<yugawara::analyzer::variable_mapping>();
-    std::shared_ptr<yugawara::analyzer::expression_mapping> expressions_ = std::make_shared<yugawara::analyzer::expression_mapping>();
 };
 
 TEST_F(filter_test, simple) {
-    binding::factory bindings;
-    std::shared_ptr<storage::configurable_provider> storages = std::make_shared<storage::configurable_provider>();
-    std::shared_ptr<storage::table> t0 = storages->add_table({
-        "T0",
-        {
-            { "C0", t::int8() },
-            { "C1", t::int8() },
-            { "C2", t::int8() },
-        },
-    });
-    storage::column const& t0c0 = t0->columns()[0];
-    storage::column const& t0c1 = t0->columns()[1];
-    storage::column const& t0c2 = t0->columns()[2];
+    // c1 == c2 + 1
+    auto input_pass = create_nullable_record<kind::int8, kind::int8, kind::int8>(1, 11, 10);
+    auto [up, in] = add_upstream_record_provider(input_pass.record_meta());
 
-    std::shared_ptr<storage::index> i0 = storages->add_index({ t0, "I0", });
-
-    ::takatori::plan::forward f1 {
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-        bindings.exchange_column(),
-    };
-    auto&& f1c0 = f1.columns()[0];
-    auto&& f1c1 = f1.columns()[1];
-    auto&& f1c2 = f1.columns()[2];
-
-    takatori::plan::graph_type p;
-    auto&& p0 = p.insert(takatori::plan::process {});
-    auto c0 = bindings.stream_variable("C0");
-    auto c1 = bindings.stream_variable("C1");
-    auto c2 = bindings.stream_variable("C2");
-    auto& r0 = p0.operators().insert(relation::scan {
-        bindings(*i0),
-        {
-            { bindings(t0c0), c0 },
-            { bindings(t0c1), c1 },
-            { bindings(t0c2), c2 },
-        },
-    });
-    auto expr = std::make_unique<compare>(
+    auto& flt = emplace_operator<relation::filter>(std::make_unique<compare>(
         comparison_operator::equal,
-        varref(c1),
-        binary {
-            binary_operator::add,
-            varref(c2),
-            constant(1)
-        }
-    );
-    expressions().bind(*expr, t::boolean {});
-    expressions().bind(expr->left(), t::int8 {});
-    expressions().bind(expr->right(), t::int8 {});
-    auto& r = static_cast<binary&>(expr->right());
-    expressions().bind(r.left(), t::int8 {});
-    expressions().bind(r.right(), t::int8 {});
-
-    // use emplace to avoid copying expr, whose parts have been registered by bind() above
-    auto& r1 = p0.operators().emplace<relation::filter>(
-        std::move(expr)
-    );
-
-    auto&& r2 = p0.operators().insert(relation::step::offer {
-        bindings.exchange(f1),
-        {
-            { c0, f1c0 },
-            { c1, f1c1 },
-            { c2, f1c2 },
-        },
-    });
-
-    r0.output() >> r1.input();
-    r1.output() >> r2.input();
-
-    variables().bind(c0, t::int8{});
-    variables().bind(c1, t::int8{});
-    variables().bind(c2, t::int8{});
-    variables().bind(f1c0, t::int8{});
-    variables().bind(f1c1, t::int8{});
-    variables().bind(f1c2, t::int8{});
-    variables().bind(bindings(t0c0), t::int8{});
-    variables().bind(bindings(t0c1), t::int8{});
-    variables().bind(bindings(t0c2), t::int8{});
-
-    yugawara::compiled_info c_info{expressions_, variables_};
-    processor_info p_info{p0.operators(), c_info};
-
-    auto d = std::make_unique<verifier>();
-    auto downstream = d.get();
-    filter s{
-        0,
-        p_info,
-        0,
-        r1.condition(),
-        std::move(d)
-    };
-
-    ASSERT_EQ(1, p_info.vars_info_list().size());
-    auto& block_info = p_info.vars_info_list()[s.block_index()];
-    variable_table variables{block_info};
-
-    mock::task_context task_ctx{
-        {},
-        {},
-        {},
-        {},
-    };
-
-    memory::page_pool pool{};
-    memory::lifo_paged_memory_resource resource{&pool};
-    memory::lifo_paged_memory_resource varlen_resource{&pool};
-    filter_context ctx(&task_ctx, variables, &resource, &varlen_resource);
-
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
-    auto vars_meta = variables.meta();
-    vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 1);
-    vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 11);
-    vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 10);
-    vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    vars_ref.set_null(map.at(c1).nullity_offset(), false);
-    vars_ref.set_null(map.at(c2).nullity_offset(), false);
+        varref(in[1]),
+        binary{binary_operator::add, varref(in[2]), constant(1)}
+    ));
 
     bool called = false;
-    downstream->body([&]() {
-        called = true;
-    });
-    s(ctx);
+    auto down = add_downstream_record_verifier({in[0], in[1], in[2]});
+    auto ex = make_filter_executor(flt, up, down);
+    down.set_body([&]() { called = true; });
+
+    // c1 == c2 + 1: 11 == 10 + 1 → true
+    set_variables(ex.variables_, in, input_pass.ref());
+    ex.op_(ex.ctx_);
     ASSERT_TRUE(called);
 
+    // c1 == c2 + 1: 20 == 22 + 1 → false
     called = false;
-    vars_ref.set_value<std::int64_t>(map.at(c0).value_offset(), 2);
-    vars_ref.set_value<std::int64_t>(map.at(c1).value_offset(), 20);
-    vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 22);
-    vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    vars_ref.set_null(map.at(c1).nullity_offset(), false);
-    vars_ref.set_null(map.at(c2).nullity_offset(), false);
-    s(ctx);
-    ASSERT_FALSE(called);
+    auto input_fail = create_nullable_record<kind::int8, kind::int8, kind::int8>(2, 20, 22);
+    set_variables(ex.variables_, in, input_fail.ref());
+    ex.op_(ex.ctx_);
+    ASSERT_TRUE(! called);
 }
 
 }

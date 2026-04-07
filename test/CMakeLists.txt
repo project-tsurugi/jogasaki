@@ -108,8 +108,13 @@ if(${SHARKSFIN_IMPLEMENTATION} STREQUAL "memory")
     list(FILTER SRCS EXCLUDE REGEX ".*/exclusive_ddl_dml[^/]*$")
     # sql_lob_function_invocation depends on limestone and data-relay-grpc service and somehow fails with jogasaki-memory
     list(FILTER SRCS EXCLUDE REGEX ".*/sql_lob_function_invocation[^/]*$")
-    # sql_apply_blob_test depends on limestone and data-relay-grpc service and somehow fails with jogasaki-memory
+    # apply related test depends on limestone and data-relay-grpc service and somehow fails with jogasaki-memory
     list(FILTER SRCS EXCLUDE REGEX ".*/sql_apply_blob[^/]*$")
+    list(FILTER SRCS EXCLUDE REGEX ".*/sql_apply_max_polls[^/]*$")
+    list(FILTER SRCS EXCLUDE REGEX ".*/service_api_apply_lob_test[^/]*$")
+    # sql_yield_finish, sql_yield_resume and sql_yield_resume_varlen tests use yield and go into infinite loop with jogasaki-memory
+    list(FILTER SRCS EXCLUDE REGEX ".*/sql_yield_finish[^/]*$")
+    list(FILTER SRCS EXCLUDE REGEX ".*/sql_yield_resume[^/]*$")
 endif()
 
 # long tx specific testcases

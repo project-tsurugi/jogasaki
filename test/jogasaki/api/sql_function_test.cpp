@@ -734,4 +734,34 @@ TEST_F(sql_function_test, aggregate_group_crash_when_columns_exceed_argument_siz
         EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]);
     }
 }
+
+TEST_F(sql_function_test, aggregate_group_variations) {
+    // additional testcases for count distinct
+    execute_statement("create table t (c0 INT, c1 INT)");
+    execute_statement("insert into t values (1, 1), (1, 2), (2, 1)");
+    {
+        // count distinct expression with group by
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT count(distinct c1) FROM t GROUP BY c0", result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(2)), result[1]);
+    }
+    {
+        // count distinct with group by and having
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t GROUP BY c0 HAVING count(distinct c1) = 2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+    {
+        // using count distinct expression many times
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0, count(distinct c1) FROM t GROUP BY c0 HAVING count(distinct c1) = 2 or count(distinct c1) = 1 order by count(distinct c1)", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int8>(2, 1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int8>(1, 2)), result[1]);
+    }
+}
 }  // namespace jogasaki::testing

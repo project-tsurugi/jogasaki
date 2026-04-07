@@ -55,3 +55,26 @@ auto ft = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
 // NG: make_shared でオプションを渡して field_type コンストラクタを直接呼び出している
 auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
 ```
+
+---
+
+## テストマクロにテンプレート式を渡す場合は追加の括弧で囲む
+
+**ポリシー:** `ASSERT_EQ` / `EXPECT_EQ` などの gtest マクロにテンプレート引数を持つ式（`create_nullable_record<A, B>(...)` など）を直接渡す場合、テンプレート引数のカンマがマクロの引数区切りとして誤認される。式全体をさらに `()` で囲んで回避する。
+
+**良い例:**
+
+```cpp
+ASSERT_EQ((create_nullable_record<kind::int8, kind::int8>(2, 3)), result);
+```
+
+**悪い例:**
+
+```cpp
+// NG: プリプロセッサがカンマをマクロ引数の区切りと誤認してコンパイルエラーになる
+ASSERT_EQ(create_nullable_record<kind::int8, kind::int8>(2, 3), result);
+
+// NG: ローカル変数に逃がすのは冗長
+auto expected = create_nullable_record<kind::int8, kind::int8>(2, 3);
+ASSERT_EQ(expected, result);
+```

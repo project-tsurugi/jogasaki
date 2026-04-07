@@ -10,6 +10,22 @@
 
 ## external dependencies
 
+### build directory
+
+- building the project and running tests should be done in a separate build directory create at the root of the repository.
+
+- typical build directory name:
+
+`build-<build_type>-<sharksfin_implementation>`
+
+Here `<build_type>` is one of `debug`, `relwithdebinfo` or `release`. `<sharksfin_implementation>` is one of `shirakami` or `memory`.
+
+- for most of the development work, debug build with shirakami implementation (i.e. `build-debug-shirakami`) is recommended since it provides full functionality and better debugging experience.
+- for quick testing without shirakami functionality, you can use `memory` sharksfin implementation (e.g. `build-debug-memory`), which is faster to build and run but has some limitations
+- for performance testing, `relwithdebinfo` build can be used (e.g. `build-relwithdebinfo-shirakami`)
+
+### install directory
+
 - Following are Tsurugi components that jogasaki depends
     - takatori
     - yugawara
@@ -19,7 +35,11 @@
     - shirakami
     - yakushima
     - limestone
-- Header files for these dependencies are installed in `${HOME}/git/.debug-build/include` directory.
+- Header files for these dependencies are installed under `${HOME}/git/.local-debug/include/${component_name}/`. Here `${component_name}` is one of the actual component names above.
+- The compiler uses `-isystem ${HOME}/git/.local-debug/include/${component_name}` as the include search path, so an `#include` directive maps directly to a file path by prepending the search path. For example:
+  - `#include <takatori/plan/group.h>` → `${HOME}/git/.local-debug/include/takatori/takatori/plan/group.h`
+  - `#include <yugawara/aggregate/declaration.h>` → `${HOME}/git/.local-debug/include/yugawara/yugawara/aggregate/declaration.h`
+- refer to `compile_commands.json` in the build directory for the exact include paths used in the project.
 
 ## Coding Conventions
 
@@ -122,7 +142,7 @@
 
   - Do not rely on `has_foo()` accessors for oneof fields, since older versions of protoc do not generate them.
   - Instead, define project-level wrapper functions with the signature:
-      bool has_foo(const MyMessage& msg);
+      bool has_foo(MyMessage const& msg);
   - The wrapper must internally check the `*_opt_case()` method of the oneof and return true/false.
   - All project code must call these wrapper functions, not `*_opt_case()` directly.
   - This provides a stable API so that, if newer protobuf versions add `has_foo()`, only the wrapper implementation needs to change, not all call sites.

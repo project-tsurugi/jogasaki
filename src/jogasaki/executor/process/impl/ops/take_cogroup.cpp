@@ -19,7 +19,6 @@
 #include <queue>
 #include <type_traits>
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
@@ -36,6 +35,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/validation.h>
 
@@ -73,9 +73,9 @@ std::vector<group_field> group_element::create_fields(
     std::vector<group_field> fields{};
     auto& key_meta = meta->key();
     auto& value_meta = meta->value();
-    BOOST_ASSERT(order.size() == key_meta.field_count()+value_meta.field_count());  //NOLINT
-    BOOST_ASSERT(order.key_count() == key_meta.field_count());  //NOLINT
-    BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT
+    assert_with_exception(order.size() == key_meta.field_count()+value_meta.field_count(), order.size(), key_meta.field_count(), value_meta.field_count());
+    assert_with_exception(order.key_count() == key_meta.field_count(), order.key_count(), key_meta.field_count());
+    assert_with_exception(columns.size() <= key_meta.field_count()+value_meta.field_count(), columns.size(), key_meta.field_count(), value_meta.field_count());
                                                  // it's possible requested columns are only part of exchange fields
     fields.resize(columns.size());
     [[maybe_unused]] auto num_keys = 0;
@@ -116,13 +116,13 @@ take_cogroup::take_cogroup(
     (void)key_meta;
     for(auto&& g : groups_) {
         // key meta are identical on all inputs (except value offset)
-        BOOST_ASSERT(g.meta_->key() == key_meta);  //NOLINT
+        assert_with_exception(g.meta_->key() == key_meta, g.meta_->key(), key_meta);
         fields_.emplace_back(g.fields_);
     }
 }
 
 operation_status take_cogroup::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<take_cogroup_context>(index(), ctx.contexts());
     if (! p) {
@@ -168,7 +168,7 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
     if (ctx.readers_.empty()) {
         create_readers(ctx);
     }
-    BOOST_ASSERT(ctx.readers_.size() == groups_.size());  //NOLINT
+    assert_with_exception(ctx.readers_.size() == groups_.size(), ctx.readers_.size(), groups_.size());
 
     while(s != state::end) {
         if (cancel_enabled && cancel_if_needed(ctx)) {
@@ -182,7 +182,7 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
                     if(in.read_next_key()) {
                         queue.emplace(idx);
                     } else {
-                        BOOST_ASSERT(in.eof());  //NOLINT
+                        assert_with_exception(in.eof());
                     }
                 }
                 s = state::keys_filled;

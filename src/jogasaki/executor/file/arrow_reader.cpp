@@ -34,7 +34,6 @@
 #include <arrow/type_traits.h>
 #include <arrow/util/basic_decimal.h>
 #include <arrow/util/decimal.h>
-#include <boost/assert.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <glog/logging.h>
@@ -437,7 +436,7 @@ create_parameter_to_field(reader_option const& opt, arrow::Schema& schema) {
     std::vector<std::size_t> ret{};
     auto sz = opt.meta_->field_count();
     ret.reserve(sz);
-    BOOST_ASSERT(sz == opt.loc_.size()); //NOLINT
+    assert_with_exception(sz == opt.loc_.size(), sz, opt.loc_.size());
     std::vector<std::string> names{};
     names.reserve(schema.num_fields());
     for(std::size_t i=0, n=schema.num_fields(); i < n; ++i) {

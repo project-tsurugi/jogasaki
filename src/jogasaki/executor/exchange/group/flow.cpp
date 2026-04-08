@@ -17,7 +17,6 @@
 
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/executor/exchange/group/sink.h>
@@ -29,6 +28,7 @@
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/model/step_kind.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -100,7 +100,7 @@ void flow::transfer() {
     bool empty = true;
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
-        BOOST_ASSERT(partitions.size() <= sources_.size()); //NOLINT
+        assert_with_exception(partitions.size() <= sources_.size(), partitions.size(), sources_.size());
         for(std::size_t i=0, n=sources_.size(); i < n; ++i) {
             if (i >= partitions.size() || ! partitions[i]) continue;
             sources_[i]->receive(std::move(partitions[i]));

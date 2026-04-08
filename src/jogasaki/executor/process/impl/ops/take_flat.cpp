@@ -18,7 +18,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
@@ -39,6 +38,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/lazy_checkpoint_holder.h>
@@ -71,7 +71,7 @@ take_flat::take_flat(
 }
 
 operation_status take_flat::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<take_flat_context>(index(), ctx.contexts());
     if (! p) {

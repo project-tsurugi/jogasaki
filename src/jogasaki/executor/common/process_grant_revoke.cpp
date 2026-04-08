@@ -21,7 +21,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <takatori/statement/details/table_authorization_entry.h>
 #include <takatori/util/string_builder.h>
@@ -40,6 +39,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 
@@ -202,7 +202,7 @@ static std::string get_grantee(
             ret = tae.authorization_identifier() ;
             break;
         case takatori::statement::authorization_user_kind::current_user:
-            assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked in check_grant_revoke_preconditions //NOLINT
+            assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked in check_grant_revoke_preconditions
             ret = current_user.value();
             break;
         case takatori::statement::authorization_user_kind::all_users:
@@ -234,7 +234,7 @@ static std::pair<auth::action_set, auth::authorized_users_action_set> calculate_
     public_actions.remove_actions(from(tpe.default_privileges()));
     for(auto&& tae : tpe.authorization_entries()) {
         if(tae.user_kind() == takatori::statement::authorization_user_kind::all_users) {
-            assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked in check_grant_revoke_preconditions //NOLINT
+            assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked in check_grant_revoke_preconditions
             public_actions.clear();
             for(auto it = authorized_actions.begin(), end = authorized_actions.end(); it != end; ) {
                 if (it->first != current_user.value()) {
@@ -351,7 +351,7 @@ bool process_grant_revoke(  //NOLINT(readability-function-cognitive-complexity)
     request_context& context,
     std::vector<takatori::statement::details::table_privilege_element> const& elements
 ) {
-    BOOST_ASSERT(context.storage_provider());  //NOLINT
+    assert_with_exception(context.storage_provider());
     std::optional<std::string_view> current_user = context.req_info().request_source()
         ? context.req_info().request_source()->session_info().username()
         : std::nullopt;

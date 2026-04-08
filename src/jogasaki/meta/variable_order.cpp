@@ -15,10 +15,10 @@
  */
 #include "variable_order.h"
 
-#include <boost/assert.hpp>
-
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
+
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::meta {
 
@@ -93,7 +93,7 @@ variable_order::index_type variable_order::index(variable const& var) const {
 }
 
 std::pair<variable_order::index_type, bool> variable_order::key_value_index(variable const& var) const {
-    BOOST_ASSERT(for_group_);  //NOLINT
+    assert_with_exception(for_group_);
     return { entity_.at(var), key_bool_.at(var) };
 }
 
@@ -102,7 +102,7 @@ bool variable_order::for_group() const noexcept {
 }
 
 bool variable_order::is_key(variable const&var) const {
-    BOOST_ASSERT(for_group_);  //NOLINT
+    assert_with_exception(for_group_);
     return key_bool_.at(var);
 }
 
@@ -110,8 +110,8 @@ std::size_t variable_order::size() const noexcept {
     return entity_.size();
 }
 
-std::size_t variable_order::key_count() const noexcept {
-    BOOST_ASSERT(for_group_);  //NOLINT
+std::size_t variable_order::key_count() const {
+    assert_with_exception(for_group_);
     std::size_t ret = 0;
     for(auto&& k : key_bool_) {
         if (k.second) {
@@ -143,13 +143,13 @@ variable_order::const_iterator variable_order::end() const noexcept {
     return record_or_key_.end();
 }
 
-variable_order::const_iterator variable_order::value_begin() const noexcept {
-    BOOST_ASSERT(for_group_);  //NOLINT
+variable_order::const_iterator variable_order::value_begin() const {
+    assert_with_exception(for_group_);
     return value_.begin();
 }
 
-variable_order::const_iterator variable_order::value_end() const noexcept {
-    BOOST_ASSERT(for_group_);  //NOLINT
+variable_order::const_iterator variable_order::value_end() const {
+    assert_with_exception(for_group_);
     return value_.end();
 }
 

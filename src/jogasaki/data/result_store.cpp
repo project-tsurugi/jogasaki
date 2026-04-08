@@ -16,11 +16,11 @@
 #include "result_store.h"
 
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/fail.h>
 
 namespace jogasaki::data {
@@ -46,7 +46,7 @@ void result_store::add_partition_internal(maybe_shared_ptr<meta::record_meta> co
 }
 
 void result_store::initialize(std::size_t partitions, maybe_shared_ptr<meta::record_meta> const& meta) {
-    BOOST_ASSERT(partitions_.empty());  //NOLINT
+    assert_with_exception(partitions_.empty());
     meta_ = meta;
     partitions_.reserve(partitions);
     result_record_resources_.reserve(partitions);
@@ -150,7 +150,7 @@ result_store::iterator::iterator(
 {}
 
 result_store::iterator& result_store::iterator::operator++() {
-    BOOST_ASSERT(valid());  //NOLINT
+    assert_with_exception(valid());
     ++it_;
     if (it_ == container_->partition(partition_index_).end()) {
         auto idx = partition_index_;
@@ -177,8 +177,8 @@ result_store::iterator::value_type result_store::iterator::operator*() const {
     return ref();
 }
 
-accessor::record_ref result_store::iterator::ref() const noexcept {
-    BOOST_ASSERT(valid());  //NOLINT
+accessor::record_ref result_store::iterator::ref() const {
+    assert_with_exception(valid());
     return it_.ref();
 }
 

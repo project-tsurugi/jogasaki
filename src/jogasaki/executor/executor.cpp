@@ -22,7 +22,6 @@
 #include <sstream>
 #include <type_traits>
 #include <utility>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
@@ -110,7 +109,7 @@ static bool execute_internal(
     bool sync,
     request_info const& req_info
 ) {
-    BOOST_ASSERT(channel);  //NOLINT
+    assert_with_exception(channel);
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
     req->transaction_id(tx->transaction_id());

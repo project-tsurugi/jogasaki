@@ -20,13 +20,13 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 #include <boost/move/utility_core.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -50,7 +50,7 @@ group_info::group_info(
     compare_info_(group_->key()),
     sort_compare_info_(*sort_key_, sort_key_ordering_)
 {
-    BOOST_ASSERT(key_indices_for_sort.size() == key_ordering_for_sort.size());  //NOLINT
+    assert_with_exception(key_indices_for_sort.size() == key_ordering_for_sort.size(), key_indices_for_sort.size(), key_ordering_for_sort.size());
 }
 
 accessor::record_ref group_info::extract_key(accessor::record_ref record) const noexcept {

@@ -19,7 +19,6 @@
 #include <cmath>
 #include <map>
 #include <stdexcept>
-#include <boost/assert.hpp>
 
 #include <takatori/util/exception.h>
 
@@ -28,6 +27,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::utils {
 
@@ -101,7 +101,7 @@ static auto init_digits_map() {
 
 std::size_t bytes_required_for_digits(std::size_t digits) {
     static auto arr = init_digits_map();
-    BOOST_ASSERT(digits < arr.size());  //NOLINT
+    assert_with_exception(digits < arr.size(), digits, arr.size());
     return arr.at(digits);
 }
 

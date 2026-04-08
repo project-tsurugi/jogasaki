@@ -15,15 +15,16 @@
  */
 #pragma once
 
-#include <yugawara/storage/index.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/storage/index.h>
 
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/utils/field_types.h>
-#include <jogasaki/utils/interference_size.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
@@ -66,7 +67,7 @@ std::vector<details::search_key_field_info> create_search_key_fields(
     if (keys.empty()) {
         return {};
     }
-    BOOST_ASSERT(keys.size() <= primary_or_secondary_idx.keys().size());  //NOLINT // possibly partial keys
+    assert_with_exception(keys.size() <= primary_or_secondary_idx.keys().size(), keys.size(), primary_or_secondary_idx.keys().size()); // possibly partial keys
     using variable = takatori::descriptor::variable;
     yugawara::binding::factory bindings{};
 

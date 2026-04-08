@@ -23,6 +23,7 @@
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/octet_field_option.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor {
 
@@ -95,7 +96,7 @@ std::vector<dto::common_column> to_common_columns(meta::external_record_meta con
                 column.atom_type_ = atom_type::date;
                 break;
             case t::time_of_day:
-                BOOST_ASSERT(fld.option_unsafe<t::time_of_day>() != nullptr);  //NOLINT
+                assert_with_exception(fld.option_unsafe<t::time_of_day>() != nullptr);
                 if(fld.option_unsafe<t::time_of_day>()->with_offset_) {
                     column.atom_type_ = atom_type::time_of_day_with_time_zone;
                     break;
@@ -103,7 +104,7 @@ std::vector<dto::common_column> to_common_columns(meta::external_record_meta con
                 column.atom_type_ = atom_type::time_of_day;
                 break;
             case t::time_point:
-                BOOST_ASSERT(fld.option_unsafe<t::time_point>() != nullptr);  //NOLINT
+                assert_with_exception(fld.option_unsafe<t::time_point>() != nullptr);
                 if(fld.option_unsafe<t::time_point>()->with_offset_) {
                     column.atom_type_ = atom_type::time_point_with_time_zone;
                     break;

@@ -17,7 +17,6 @@
 
 #include <functional>
 #include <type_traits>
-#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/util/exception.h>
@@ -46,6 +45,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/plan/plan_exception.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 
@@ -120,7 +120,7 @@ aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::
 }
 
 operation_status aggregate_group::process_group(abstract::task_context* context, member_kind kind) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     auto p = create_context_if_not_found(context);
     return (*this)(*p, kind, context);
 }

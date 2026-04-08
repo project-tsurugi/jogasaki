@@ -15,19 +15,18 @@
  */
 #include "flow.h"
 
-#include <boost/assert.hpp>
-
 #include <jogasaki/executor/exchange/shuffle/run_info.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor::exchange::shuffle {
 
-run_info flow::info() const noexcept {
-    BOOST_ASSERT(transfer_completed_);  //NOLINT
+run_info flow::info() const {
+    assert_with_exception(transfer_completed_);
     return info_;
 }
 
-run_info& flow::updatable_info() noexcept {
-    BOOST_ASSERT(! transfer_completed_);  //NOLINT
+run_info& flow::updatable_info() {
+    assert_with_exception(! transfer_completed_);
     return info_;
 }
 

@@ -18,7 +18,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
@@ -32,6 +31,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
@@ -59,7 +59,7 @@ offer::offer(
 }
 
 operation_status offer::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<offer_context>(index(), ctx.contexts());
     if (! p) {
@@ -154,7 +154,7 @@ const maybe_shared_ptr<meta::record_meta>& offer::meta() const noexcept {
 }
 
 void offer::finish(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context->deactivate_writer(writer_index_);
     context_helper ctx{*context};
     if (auto* p = find_context<offer_context>(index(), ctx.contexts())) {

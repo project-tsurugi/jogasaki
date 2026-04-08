@@ -35,13 +35,13 @@ public:
     /**
      * @brief accessor for the run info. This must be used after transfer().
      */
-    [[nodiscard]] run_info info() const noexcept;
+    [[nodiscard]] run_info info() const;
 
 protected:
     /**
      * @brief accessor to shared run_info source. The update to the run info should be made before/during transfer().
      */
-    [[nodiscard]] run_info& updatable_info() noexcept;
+    [[nodiscard]] run_info& updatable_info();
 
     /**
      * @brief inform the completion of transfer so that the run_info is available for read

@@ -26,7 +26,6 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/datetime/date.h>
@@ -80,6 +79,7 @@
 #include <jogasaki/proto/metadata/common.pb.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/find_function.h>
 #include <jogasaki/utils/storage_metadata_exception.h>
@@ -519,7 +519,7 @@ static yugawara::storage::column_value default_value(
         case proto::metadata::storage::TableColumn::kSequenceNext: return {}; //TODO
         case proto::metadata::storage::TableColumn::kIdentityNext: {
             auto& v = column.identity_next();
-            BOOST_ASSERT(v.has_name());  //NOLINT
+            assert_with_exception(v.has_name());
             auto seq = std::make_shared<yugawara::storage::sequence>(
                 v.name().element_name(),
                 v.initial_value(),

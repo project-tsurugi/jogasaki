@@ -61,9 +61,9 @@ public:
         maybe_shared_ptr<meta::group_meta> meta
     );
 
-    [[nodiscard]] accessor::record_ref current_key() const noexcept;
+    [[nodiscard]] accessor::record_ref current_key() const;
 
-    [[nodiscard]] accessor::record_ref next_key() const noexcept;
+    [[nodiscard]] accessor::record_ref next_key() const;
 
     [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& meta();
 
@@ -86,7 +86,7 @@ public:
     /**
      * @brief fill values
      */
-    void fill() noexcept;
+    void fill();
 
     void reset_values();
 

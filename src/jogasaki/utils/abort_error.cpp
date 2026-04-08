@@ -19,7 +19,6 @@
 #include <ostream>
 #include <type_traits>
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
@@ -42,6 +41,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::utils {
@@ -82,7 +82,7 @@ static void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorL
         case ErrorCode::KVS_KEY_NOT_FOUND: // fall-thru
         case ErrorCode::CC_LTX_WRITE_ERROR: // fall-thru
         case ErrorCode::CC_OCC_READ_ERROR: {
-            BOOST_ASSERT(locator->kind() == sharksfin::ErrorLocatorKind::storage_key); //NOLINT
+            assert_with_exception(locator->kind() == sharksfin::ErrorLocatorKind::storage_key, locator->kind());
             auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);  //NOLINT
             data::aligned_buffer buf{default_record_buffer_size};
             auto stg = loc->storage().has_value() ? loc->storage().value() : "";

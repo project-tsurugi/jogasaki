@@ -17,7 +17,6 @@
 
 #include <ostream>
 #include <utility>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/relation/values.h>
@@ -36,6 +35,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/request_cancel_config.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/field_types.h>
 
@@ -74,7 +74,7 @@ values::values(
 }
 
 operation_status values::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<values_context>(index(), ctx.contexts());
     if (! p) {

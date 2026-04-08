@@ -21,7 +21,6 @@
 #include <cstdint>
 #include <decimal.hh>
 #include <memory>
-#include <boost/assert.hpp>
 
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
@@ -53,6 +52,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
 
@@ -681,10 +681,10 @@ void sum(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* // `sum` does not create new varlen data
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& arg_type = args[0].type();
     auto arg_offset = args[0].value_offset();
-    BOOST_ASSERT(target_loc.type().kind() == arg_type.kind());  //NOLINT
+    assert_with_exception(target_loc.type().kind() == arg_type.kind(), target_loc.type().kind(), arg_type.kind());
     auto src_nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
@@ -724,8 +724,8 @@ void count_pre(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* // `count` does not create new varlen data
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
-    BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
+    assert_with_exception(target_loc.type().kind() == kind::int8, target_loc.type().kind(), kind::int8);
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false); // `count` never returns null
@@ -745,9 +745,9 @@ void count_mid(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* // `count` does not create new varlen data
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
-    BOOST_ASSERT(args[0].type().kind() == kind::int8);  //NOLINT
-    BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
+    assert_with_exception(args[0].type().kind() == kind::int8, args[0].type().kind());
+    assert_with_exception(target_loc.type().kind() == kind::int8, target_loc.type().kind());
     (void)args;
     (void)source;
     auto arg_offset = args[0].value_offset();
@@ -770,8 +770,8 @@ void count_rows_pre(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* // `count` does not create new varlen data
 ) {
-    BOOST_ASSERT(args.size() == 0);  //NOLINT
-    BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
+    assert_with_exception(args.empty(), args.size());
+    assert_with_exception(target_loc.type().kind() == kind::int8, target_loc.type().kind());
     (void)args;
     (void)source;
     auto target_offset = target_loc.value_offset();
@@ -804,15 +804,15 @@ void avg_post(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* // `avg` does not create new varlen data
 ) {
-    BOOST_ASSERT(args.size() == 2);  //NOLINT
+    assert_with_exception(args.size() == 2, args.size());
     (void)initial;
     auto& sum_type = args[0].type();
     auto sum_offset = args[0].value_offset();
     auto sum_nullity_offset = args[0].nullity_offset();
     auto& count_type = args[1].type();
     (void)count_type;
-    BOOST_ASSERT(count_type.kind() == kind::int8);  //NOLINT
-    BOOST_ASSERT(sum_type.kind() == target_loc.type().kind());  //NOLINT
+    assert_with_exception(count_type.kind() == kind::int8, count_type.kind());
+    assert_with_exception(sum_type.kind() == target_loc.type().kind(), sum_type.kind(), target_loc.type().kind());
     auto count_offset = args[1].value_offset();
     auto count_nullity_offset = args[1].nullity_offset();
     (void)count_nullity_offset;
@@ -847,10 +847,10 @@ void max(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* varlen_resource // `max` needs to remember the maximum value
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& arg_type = args[0].type();
     auto arg_offset = args[0].value_offset();
-    BOOST_ASSERT(target_loc.type().kind() == arg_type.kind());  //NOLINT
+    assert_with_exception(target_loc.type().kind() == arg_type.kind(), target_loc.type().kind(), arg_type.kind());
     auto src_nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
@@ -899,10 +899,10 @@ void min(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* varlen_resource // `min` needs to remember the minimum value
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& arg_type = args[0].type();
     auto arg_offset = args[0].value_offset();
-    BOOST_ASSERT(target_loc.type().kind() == arg_type.kind());  //NOLINT
+    assert_with_exception(target_loc.type().kind() == arg_type.kind(), target_loc.type().kind(), arg_type.kind());
     auto src_nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
@@ -951,7 +951,7 @@ void identity_post(
     sequence_view<field_locator const> args,
     memory::paged_memory_resource* // assuming record is already copied to the exchange's varlen_resource in pre/mid
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     (void)initial;
     auto& type = args[0].type();
     auto offset = args[0].value_offset();

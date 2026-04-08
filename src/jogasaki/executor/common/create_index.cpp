@@ -20,7 +20,6 @@
 #include <string>
 #include <type_traits>
 #include <utility>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
@@ -48,6 +47,7 @@
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_transaction.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
@@ -106,7 +106,7 @@ bool create_index::validate_empty_table(request_context& context, std::string_vi
 
 bool create_index::operator()(request_context& context) const {
     (void)context;
-    BOOST_ASSERT(context.storage_provider());  //NOLINT
+    assert_with_exception(context.storage_provider());
     auto& provider = *context.storage_provider();
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->definition());
     if(i->simple_name().empty()) {

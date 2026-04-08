@@ -113,7 +113,7 @@ public:
     variable_table_info(
         entity_type map,
         maybe_shared_ptr<meta::record_meta> meta
-    ) noexcept;
+    );
 
     /**
      * @brief construct new instance with variable name support
@@ -125,7 +125,7 @@ public:
         variable_indices const& indices,
         std::unordered_map<std::string, takatori::descriptor::variable> const& names,
         maybe_shared_ptr<meta::record_meta> meta
-    ) noexcept;
+    );
 
     /**
      * @brief construct new instance
@@ -135,7 +135,7 @@ public:
     variable_table_info(
         variable_indices const& indices,
         maybe_shared_ptr<meta::record_meta> meta
-    ) noexcept;
+    );
 
     /**
      * @brief getter for value location info. for the given variable

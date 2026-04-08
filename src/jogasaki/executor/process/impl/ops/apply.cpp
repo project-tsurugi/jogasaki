@@ -19,7 +19,6 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/relation/apply.h>
@@ -48,6 +47,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
@@ -82,7 +82,7 @@ apply::apply(
 {}
 
 operation_status apply::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<apply_context>(index(), ctx.contexts());
     if (! p) {

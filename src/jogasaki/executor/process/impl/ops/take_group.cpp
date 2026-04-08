@@ -18,7 +18,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
@@ -37,6 +36,7 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/lazy_checkpoint_holder.h>
@@ -72,7 +72,7 @@ take_group::take_group(
 }
 
 operation_status take_group::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<take_group_context>(index(), ctx.contexts());
     if (! p) {
@@ -245,9 +245,9 @@ std::vector<details::take_group_field> take_group::create_fields(
     std::vector<details::take_group_field> fields{};
     auto& key_meta = meta->key();
     auto& value_meta = meta->value();
-    BOOST_ASSERT(order.size() == key_meta.field_count()+value_meta.field_count());  //NOLINT
-    BOOST_ASSERT(order.key_count() == key_meta.field_count());  //NOLINT
-    BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT
+    assert_with_exception(order.size() == key_meta.field_count()+value_meta.field_count(), order.size(), key_meta.field_count(), value_meta.field_count());
+    assert_with_exception(order.key_count() == key_meta.field_count(), order.key_count(), key_meta.field_count());
+    assert_with_exception(columns.size() <= key_meta.field_count()+value_meta.field_count(), columns.size(), key_meta.field_count(), value_meta.field_count());
                                                   // it's possible requested columns are only part of exchange fields
     fields.resize(columns.size());
     [[maybe_unused]] auto num_keys = 0;

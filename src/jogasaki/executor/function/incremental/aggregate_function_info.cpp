@@ -17,7 +17,6 @@
 
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/sequence_view.h>
@@ -26,6 +25,7 @@
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
 #include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/utils/assert.h>
 
 #include "builtin_functions.h"
 
@@ -44,7 +44,7 @@ aggregate_function_info_impl<aggregate_function_kind::sum>::aggregate_function_i
 
 std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_kind::sum>::intermediate_types(
     sequence_view<const meta::field_type> args) const {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     return {args.begin(), args.end()};
 }
 
@@ -95,7 +95,7 @@ aggregate_function_info_impl<aggregate_function_kind::avg>::aggregate_function_i
 
 std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_kind::avg>::intermediate_types(
     sequence_view<const meta::field_type> args) const {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     return {
         args[0],
         meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>}
@@ -113,7 +113,7 @@ aggregate_function_info_impl<aggregate_function_kind::max>::aggregate_function_i
 
 std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_kind::max>::intermediate_types(
     sequence_view<const meta::field_type> args) const {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     return {args.begin(), args.end()};
 }
 
@@ -128,7 +128,7 @@ aggregate_function_info_impl<aggregate_function_kind::min>::aggregate_function_i
 
 std::vector<meta::field_type> aggregate_function_info_impl<aggregate_function_kind::min>::intermediate_types(
     sequence_view<const meta::field_type> args) const {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     return {args.begin(), args.end()};
 }
 
@@ -145,7 +145,7 @@ aggregate_function_info::aggregate_function_info(
 {
     for(auto&& info : pre_) {
         (void)info;
-        BOOST_ASSERT(info.empty_value_generator());  //NOLINT
+        assert_with_exception(info.empty_value_generator());
     }
 }
 

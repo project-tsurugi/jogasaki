@@ -26,7 +26,6 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-#include <boost/assert.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <glog/logging.h>
@@ -34,9 +33,9 @@
 #include <parquet/types.h>
 
 #include <takatori/datetime/time_of_day.h>
+#include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -54,6 +53,7 @@
 #include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::executor::file {
@@ -512,7 +512,7 @@ create_parameter_to_parquet_field(reader_option const& opt, parquet::FileMetaDat
     std::vector<std::size_t> ret{};
     auto sz = opt.meta_->field_count();
     ret.reserve(sz);
-    BOOST_ASSERT(sz == opt.loc_.size()); //NOLINT
+    assert_with_exception(sz == opt.loc_.size(), sz, opt.loc_.size());
     std::vector<std::string> names{};
     names.reserve(pmeta.num_columns());
     for(std::size_t i=0, n=pmeta.num_columns(); i < n; ++i) {

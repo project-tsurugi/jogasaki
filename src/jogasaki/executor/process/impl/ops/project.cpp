@@ -17,7 +17,6 @@
 
 #include <ostream>
 #include <utility>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/relation/project.h>
@@ -34,6 +33,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/field_types.h>
 
 #include "context_helper.h"
@@ -62,7 +62,7 @@ project::project(
 }
 
 operation_status project::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<project_context>(index(), ctx.contexts());
     if (! p) {

@@ -22,7 +22,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 #include <tbb/concurrent_hash_map.h>
 
 #include <takatori/type/character.h>
@@ -38,6 +37,9 @@
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/reference_list_view.h>
 #include <takatori/util/stacktrace.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/table.h>
 #include <tateyama/api/configuration.h>
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/request.h>
@@ -46,9 +48,6 @@
 #include <tateyama/framework/service.h>
 #include <tateyama/status.h>
 #include <tateyama/utils/cache_align.h>
-#include <yugawara/storage/column.h>
-#include <yugawara/storage/table.h>
-#include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/error_info.h>
@@ -77,6 +76,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/transaction_state.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
@@ -332,7 +332,7 @@ inline void success<sql::response::DescribeTable>(
     executor::dto::describe_table* result,
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
-    BOOST_ASSERT(result != nullptr); //NOLINT
+    assert_with_exception(result != nullptr);
     sql::response::Response r{};
     auto* dt = r.mutable_describe_table();
     auto* success = dt->mutable_success();

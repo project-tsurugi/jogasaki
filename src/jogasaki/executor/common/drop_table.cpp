@@ -22,7 +22,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
@@ -50,6 +49,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/string_manipulation.h>
@@ -127,7 +127,7 @@ static bool drop_auto_generated_sequences(
 }
 
 bool drop_table::operator()(request_context& context) const {  //NOLINT(readability-function-cognitive-complexity)
-    BOOST_ASSERT(context.storage_provider());  //NOLINT
+    assert_with_exception(context.storage_provider());
     auto& provider = *context.storage_provider();
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
     auto t = provider.find_table(c.simple_name());

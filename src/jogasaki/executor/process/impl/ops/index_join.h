@@ -49,6 +49,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
@@ -298,7 +299,7 @@ public:
      * @return status of the operation
      */
     operation_status process_record(abstract::task_context* context) override {
-        BOOST_ASSERT(context != nullptr);  //NOLINT
+        assert_with_exception(context != nullptr, context);
         context_helper ctx{*context};
         ctx.acquire_strand_if_needed();
         auto* p = find_context<index_join_context<MatchInfo>>(index(), ctx.contexts());

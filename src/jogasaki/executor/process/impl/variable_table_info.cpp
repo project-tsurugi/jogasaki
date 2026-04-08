@@ -18,7 +18,6 @@
 #include <cstdint>
 #include <type_traits>
 #include <unordered_set>
-#include <boost/assert.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <boost/move/utility_core.hpp>
@@ -33,6 +32,7 @@
 
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/validation.h>
@@ -54,7 +54,7 @@ std::size_t value_info::index() const noexcept {
 variable_table_info::variable_table_info(
     variable_table_info::entity_type map,
     maybe_shared_ptr<meta::record_meta> meta
-) noexcept :
+) :
     map_(std::move(map)),
     meta_(std::move(meta))
 {
@@ -76,7 +76,7 @@ static variable_table_info::entity_type from_indices(
 variable_table_info::variable_table_info(
     variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> meta
-) noexcept :
+) :
     map_(from_indices(indices, meta)),
     meta_(std::move(meta))
 {
@@ -100,7 +100,7 @@ variable_table_info::variable_table_info(
     variable_indices const& indices,
     std::unordered_map<std::string, takatori::descriptor::variable> const& names,
     maybe_shared_ptr<meta::record_meta> meta
-) noexcept:
+) :
     variable_table_info(indices, std::move(meta))
 {
     for(auto& [name, v] : names) {
@@ -152,7 +152,7 @@ std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>> 
     boost::dynamic_bitset<std::uint64_t> nullability{};
     nullability.resize(fields.size(), true); // currently stream variables are all nullable
     auto meta = std::make_shared<meta::record_meta>(std::move(fields), std::move(nullability));
-    BOOST_ASSERT(meta->field_count() == variables.size()); //NOLINT
+    assert_with_exception(meta->field_count() == variables.size(), meta->field_count(), variables.size());
     for(std::size_t i=0, n = meta->field_count(); i < n; ++i) {
         auto& v = variables[i];
         map[v] = i;

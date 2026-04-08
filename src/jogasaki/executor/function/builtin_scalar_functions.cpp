@@ -23,7 +23,6 @@
 #include <string_view>
 #include <variant>
 #include <boost/algorithm/string.hpp>
-#include <boost/assert.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <tsl/hopscotch_hash.h>
 #include <tsl/hopscotch_set.h>
@@ -67,9 +66,10 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/base64_utils.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/round.h>
-#include <jogasaki/utils/base64_utils.h>
 #include <jogasaki/utils/string_utils.h>
 namespace jogasaki::executor::function {
 
@@ -873,14 +873,12 @@ data::any octet_length(
     evaluator_context&,
     sequence_view<data::any> args
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& src = static_cast<data::any&>(args[0]);
     if(src.empty()) {
         return {};
     }
-    BOOST_ASSERT(
-        (src.type_index() == data::any::index<accessor::text> || src.type_index() == data::any::index<accessor::binary>
-    ));  //NOLINT
+    assert_with_exception(src.type_index() == data::any::index<accessor::text> || src.type_index() == data::any::index<accessor::binary>);
     if(src.type_index() == data::any::index<accessor::binary>) {
         auto bin = src.to<runtime_t<kind::octet>>();
         return data::any{std::in_place_type<runtime_t<kind::int8>>, bin.size()};
@@ -909,7 +907,7 @@ data::any current_date(
     evaluator_context& ctx,
     sequence_view<data::any> args
 ) {
-    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    assert_with_exception(args.empty(), args.size());
     (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
@@ -926,7 +924,7 @@ data::any localtime(
     evaluator_context& ctx,
     sequence_view<data::any> args
 ) {
-    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    assert_with_exception(args.empty(), args.size());
     (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
@@ -944,7 +942,7 @@ data::any current_timestamp(
     sequence_view<data::any> args
 ) {
     // same as localtimestamp
-    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    assert_with_exception(args.empty(), args.size());
     (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
@@ -958,7 +956,7 @@ data::any localtimestamp(
     sequence_view<data::any> args
 ) {
     // same as current_timestamp
-    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    assert_with_exception(args.empty(), args.size());
     (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
@@ -1252,7 +1250,7 @@ static data::any round(data::any src, int32_t precision, evaluator_context& ctx)
 } // namespace impl
 
 data::any substring(evaluator_context&, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 2 || args.size() == 3); // NOLINT
+    assert_with_exception(args.size() == 2 || args.size() == 3, args.size());
 
     std::optional<std::reference_wrapper<data::any>> length;
     std::optional<runtime_t<kind::int8>> casted_length;
@@ -1307,7 +1305,7 @@ data::any lower(evaluator_context& ctx, sequence_view<data::any> args) {
 }
 
 data::any character_length(evaluator_context&, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 1); // NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
     if (src.type_index() == data::any::index<accessor::text>) {
@@ -1321,7 +1319,7 @@ data::any character_length(evaluator_context&, sequence_view<data::any> args) {
 }
 
 data::any abs(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 1); // NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
     switch (src.type_index()) {
@@ -1363,7 +1361,7 @@ data::any abs(evaluator_context& ctx, sequence_view<data::any> args) {
 }
 
 data::any position(evaluator_context&, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 2); // NOLINT
+    assert_with_exception(args.size() == 2, args.size());
 
     auto& lstr = static_cast<data::any&>(args[0]);
     if (lstr.empty()) { return {}; }
@@ -1386,7 +1384,7 @@ data::any position(evaluator_context&, sequence_view<data::any> args) {
 }
 
 data::any mod(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 2); // NOLINT
+    assert_with_exception(args.size() == 2, args.size());
     auto& first = static_cast<data::any&>(args[0]);
     if (first.empty()) { return {}; }
     auto& second = static_cast<data::any&>(args[1]);
@@ -1395,7 +1393,7 @@ data::any mod(evaluator_context& ctx, sequence_view<data::any> args) {
 }
 
 data::any ceil(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 1); // NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
     switch (src.type_index()) {
@@ -1435,7 +1433,7 @@ data::any ceil(evaluator_context& ctx, sequence_view<data::any> args) {
     std::abort();
 }
 data::any floor(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 1); // NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
     switch (src.type_index()) {
@@ -1476,7 +1474,7 @@ data::any floor(evaluator_context& ctx, sequence_view<data::any> args) {
 }
 
 data::any round(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 1 || args.size() == 2); // NOLINT
+    assert_with_exception(args.size() == 1 || args.size() == 2, args.size());
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
     runtime_t<kind::int4> scale_int4{0};
@@ -1510,7 +1508,7 @@ data::any round(evaluator_context& ctx, sequence_view<data::any> args) {
 }
 
 data::any encode(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 2); // NOLINT
+    assert_with_exception(args.size() == 2, args.size());
     auto& src_arg = static_cast<data::any&>(args[0]);
     auto& enc_arg = static_cast<data::any&>(args[1]);
     if (src_arg.empty()) { return {}; }
@@ -1547,7 +1545,7 @@ data::any encode(evaluator_context& ctx, sequence_view<data::any> args) {
     std::abort();
 }
 data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 2); // NOLINT
+    assert_with_exception(args.size() == 2, args.size());
     auto& src_arg = static_cast<data::any&>(args[0]);
     auto& enc_arg = static_cast<data::any&>(args[1]);
     if (src_arg.empty()) { return {}; }
@@ -1592,7 +1590,7 @@ data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
 }
 
 data::any rtrim(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 1); // NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& src_arg = static_cast<data::any&>(args[0]);
     if (src_arg.empty()) { return {}; }
     if (src_arg.type_index() == data::any::index<accessor::text>) {
@@ -1604,7 +1602,7 @@ data::any rtrim(evaluator_context& ctx, sequence_view<data::any> args) {
     std::abort();
 }
 data::any ltrim(evaluator_context& ctx, sequence_view<data::any> args) {
-    BOOST_ASSERT(args.size() == 1); // NOLINT
+    assert_with_exception(args.size() == 1, args.size());
     auto& src_arg = static_cast<data::any&>(args[0]);
     if (src_arg.empty()) { return {}; }
     if (src_arg.type_index() == data::any::index<accessor::text>) {

@@ -5,7 +5,6 @@
 #include <limits>
 #include <stdexcept>
 #include <tuple>
-#include <boost/assert.hpp>
 
 #include <takatori/datetime/date_interval.h>
 #include <takatori/datetime/time_interval.h>
@@ -14,6 +13,7 @@
 #include <takatori/util/exception.h>
 
 #include <jogasaki/serializer/value_output.h>
+#include <jogasaki/utils/assert.h>
 
 #include "base128v.h"
 #include "details/value_io_constants.h"
@@ -43,7 +43,7 @@ static void write_fixed8(
         std::uint64_t value,
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
-    BOOST_ASSERT(position < end); // NOLINT
+    assert_with_exception(position < end, position, end);
     (void) end;
     *position = static_cast<byte_type>(value);
     ++position;
@@ -64,7 +64,7 @@ static void write_bytes(
         std::size_t count,
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
-    BOOST_ASSERT(position + count <= end); // NOLINT
+    assert_with_exception(position + count <= end, position, count, end);
     (void) end;
     std::memcpy(position, data, count);
     position += count;
@@ -169,7 +169,7 @@ static bool has_small_coefficient(takatori::decimal::triple value) {
 }
 
 static std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_full(takatori::decimal::triple value) {
-    BOOST_ASSERT(!has_small_coefficient(value)); // NOLINT
+    assert_with_exception(!has_small_coefficient(value));
     std::uint64_t c_hi = value.coefficient_high();
     std::uint64_t c_lo = value.coefficient_low();
 
@@ -240,8 +240,8 @@ bool write_decimal(
 
     // for large coefficient
     auto [c_hi, c_lo, c_size] = make_signed_coefficient_full(value);
-    BOOST_ASSERT(c_size > sizeof(std::uint64_t)); // NOLINT
-    BOOST_ASSERT(c_size <= sizeof(std::uint64_t) * 2 + 1); // NOLINT
+    assert_with_exception(c_size > sizeof(std::uint64_t), c_size);
+    assert_with_exception(c_size <= sizeof(std::uint64_t) * 2 + 1, c_size);
 
     if (buffer_remaining(position, end) < 1
             + base128v::size_signed(value.exponent())
@@ -376,7 +376,7 @@ bool write_bit(
         throw_exception(std::out_of_range("too large number of bits"));
     }
     const_bitset_view bits { blocks.data(), number_of_bits };  //NOLINT(bugprone-suspicious-stringview-data-usage)
-    BOOST_ASSERT(bits.block_size() <= blocks.size()); // NOLINT
+    assert_with_exception(bits.block_size() <= blocks.size(), bits.block_size(), blocks.size());
     return write_bit(bits, position, end);
 }
 

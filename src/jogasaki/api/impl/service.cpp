@@ -69,10 +69,10 @@
 #include <jogasaki/executor/describe.h>
 #include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/executor/executor.h>
-#include <jogasaki/executor/to_common_columns.h>
-#include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
 #include <jogasaki/executor/io/dump_config.h>
+#include <jogasaki/executor/to_common_columns.h>
+#include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
@@ -84,6 +84,7 @@
 #include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/assign_reference_tag.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/convert_offset.h>
@@ -1438,7 +1439,7 @@ void service::execute_query(
     request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    BOOST_ASSERT(tx);  //NOLINT
+    assert_with_exception(tx);
     auto c = std::make_shared<callback_control>(res);
     auto& info = c->channel_info_;
     info = std::make_unique<details::channel_info>();
@@ -1608,7 +1609,7 @@ void service::execute_dump(
     request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
-    BOOST_ASSERT(tx);  //NOLINT
+    assert_with_exception(tx);
     auto c = std::make_shared<callback_control>(res);
     auto& info = c->channel_info_;
     info = std::make_unique<details::channel_info>();
@@ -1616,7 +1617,7 @@ void service::execute_dump(
     info->name_ += std::to_string(new_resultset_id());
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    BOOST_ASSERT(! q.has_sql());  //NOLINT
+    assert_with_exception(! q.has_sql());
     std::shared_ptr<error::error_info> err_info{};
     if(auto rc = get_impl(*db_).resolve(q.handle(), q.params(), e, err_info); rc != jogasaki::status::ok) {
         details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
@@ -1716,7 +1717,7 @@ void service::execute_load( //NOLINT
     for(auto&& f : files) {
         VLOG(log_info) << log_location_prefix << "load processing file: " << f;
     }
-    BOOST_ASSERT(! q.has_sql());  //NOLINT
+    assert_with_exception(! q.has_sql());
     auto statement = q.handle();
 
     auto c = std::make_shared<callback_control>(res);

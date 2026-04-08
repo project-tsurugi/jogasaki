@@ -107,7 +107,7 @@ public:
      * @param db database where the sequences are stored/saved
      * @param id_map definition id to sequence id map
      */
-    explicit manager(kvs::database& db, id_map_type const& id_map = {}) noexcept;
+    explicit manager(kvs::database& db, id_map_type const& id_map = {});
 
     /**
      * @brief load sequence id mapping from system_sequences table and initialize in-memory sequence objects.

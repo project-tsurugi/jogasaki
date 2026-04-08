@@ -53,6 +53,7 @@
 #include <jogasaki/model/statement_kind.h>
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
@@ -64,7 +65,7 @@ using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
 status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out) {
-    BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
+    assert_with_exception(ctx.sequence_manager() != nullptr, ctx.sequence_manager());
     auto& mgr = *ctx.sequence_manager();
     auto* seq = mgr.find_sequence(def_id);
     if(seq == nullptr) {

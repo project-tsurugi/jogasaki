@@ -92,7 +92,7 @@ public:
      * @param block_index the index to designate the block within the list
      * @return the variable table for the block
      */
-    [[nodiscard]] variable_table& variables(std::size_t block_index) noexcept;
+    [[nodiscard]] variable_table& variables(std::size_t block_index);
 
     /**
      * @brief accessor to memory resource

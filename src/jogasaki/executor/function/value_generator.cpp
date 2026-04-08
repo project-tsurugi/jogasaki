@@ -15,13 +15,12 @@
  */
 #include "value_generator.h"
 
-#include <boost/assert.hpp>
-
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::function {
@@ -32,7 +31,7 @@ void null_generator(
     accessor::record_ref target,
     field_locator const& target_loc
 ) {
-    BOOST_ASSERT(target_loc.nullable()); //NOLINT
+    assert_with_exception(target_loc.nullable());
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, true);
 }

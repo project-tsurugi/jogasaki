@@ -23,7 +23,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/descriptor/variable.h>
@@ -63,6 +62,7 @@
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
@@ -332,7 +332,7 @@ operation_status write_existing::do_delete(write_existing_context& ctx) {
 }
 
 operation_status write_existing::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<write_existing_context>(index(), ctx.contexts());
     if (! p) {
@@ -371,7 +371,7 @@ static std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
             false
         };
     }
-    BOOST_ASSERT(host_variables != nullptr && host_variables->exists(src));  //NOLINT
+    assert_with_exception(host_variables != nullptr && host_variables->exists(src), host_variables);
     return {
         host_variables->at(src).value_offset(),
         host_variables->at(src).nullity_offset(),

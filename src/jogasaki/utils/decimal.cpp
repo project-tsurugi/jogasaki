@@ -18,7 +18,8 @@
 #include <algorithm>
 #include <limits>
 #include <utility>
-#include <boost/assert.hpp>
+
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::utils {
 
@@ -170,7 +171,7 @@ takatori::decimal::triple read_decimal(std::string_view data, std::size_t scale)
             c_hi += 1; // carry up
         }
         // if negative, coefficient must not be zero
-        BOOST_ASSERT(c_lo != 0 || c_hi != 0); // NOLINT
+        assert_with_exception(c_lo != 0 || c_hi != 0, c_lo, c_hi);
     }
 
     return takatori::decimal::triple{

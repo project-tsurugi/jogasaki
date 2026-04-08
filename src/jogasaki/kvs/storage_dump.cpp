@@ -17,7 +17,6 @@
 
 #include <istream>
 #include <memory>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <jogasaki/kvs/database.h>
@@ -25,6 +24,7 @@
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/modify_status.h>
 
 namespace jogasaki::kvs {
@@ -195,7 +195,7 @@ status storage_dump::load(std::istream& stream, std::string_view storage_name, s
 }
 
 void storage_dump::append(std::ostream& stream, std::string_view key, std::string_view value) {
-    BOOST_ASSERT(key.size() != EOF_MARK);  // NOLINT
+    assert_with_exception(key.size() != EOF_MARK, key.size());
 
     auto key_size = static_cast<size_type>(key.size());
     stream.write(reinterpret_cast<char*>(&key_size), sizeof(key_size));  // NOLINT

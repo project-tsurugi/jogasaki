@@ -207,7 +207,7 @@ base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
 
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
-            assert_with_exception(!record.error(), "inconsistent status with record error state");
+            assert_with_exception(!record.error());
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
         case plugin::udf::generic_record_stream_status::error:
             if (record.error()) { // this must be true, but just in case
@@ -236,7 +236,7 @@ base_stream::status_type udf_any_sequence_stream::next(
 
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
-            assert_with_exception(!record.error(), "inconsistent status with record error state");
+            assert_with_exception(!record.error());
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
         case plugin::udf::generic_record_stream_status::error:
             if (record.error()) { // this must be true, but just in case

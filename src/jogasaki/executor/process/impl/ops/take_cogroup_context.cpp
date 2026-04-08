@@ -17,7 +17,6 @@
 
 #include <type_traits>
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/data/small_record_store.h>
@@ -26,6 +25,7 @@
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 
 #include "context_base.h"
 
@@ -56,14 +56,14 @@ group_input::group_input(
     next_key_(meta_->key_shared())
 {}
 
-accessor::record_ref group_input::current_key() const noexcept {
-    BOOST_ASSERT(values_filled_);  //NOLINT
+accessor::record_ref group_input::current_key() const {
+    assert_with_exception(values_filled_);
     return current_key_.ref();
 }
 
-accessor::record_ref group_input::next_key() const noexcept {
-    BOOST_ASSERT(next_key_read_);  //NOLINT
-    BOOST_ASSERT(! reader_eof_);  //NOLINT
+accessor::record_ref group_input::next_key() const {
+    assert_with_exception(next_key_read_);
+    assert_with_exception(! reader_eof_);
     return next_key_.ref();
 }
 
@@ -103,9 +103,9 @@ bool group_input::read_next_key() {
     return true;
 }
 
-void group_input::fill() noexcept {
-    BOOST_ASSERT(next_key_read_);  //NOLINT
-    BOOST_ASSERT(! reader_eof_);  //NOLINT
+void group_input::fill() {
+    assert_with_exception(next_key_read_);
+    assert_with_exception(! reader_eof_);
     while(reader_->next_member()) {
         auto rec = reader_->get_member();
         store_->append(rec);

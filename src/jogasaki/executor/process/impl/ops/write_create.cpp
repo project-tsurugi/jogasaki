@@ -23,7 +23,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/descriptor/variable.h>
@@ -62,11 +61,12 @@
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
-#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "context_helper.h"
 #include "details/error_abort.h"
@@ -177,7 +177,7 @@ operation_status write_create::operator()(write_create_context& ctx) {
 }
 
 operation_status write_create::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<write_create_context>(index(), ctx.contexts());
     if (! p) {

@@ -24,6 +24,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor::file {
 
@@ -60,11 +61,11 @@ public:
     reader_option(
         std::vector<reader_field_locator> loc,
         meta::record_meta const& meta
-    ) noexcept :
+    ) :
         loc_(std::move(loc)),
         meta_(std::addressof(meta))
     {
-        BOOST_ASSERT(loc_.size() ==  meta_->field_count());  //NOLINT
+        assert_with_exception(loc_.size() == meta_->field_count(), loc_.size(), meta_->field_count());
     }
 
     std::vector<reader_field_locator> loc_{};  //NOLINT

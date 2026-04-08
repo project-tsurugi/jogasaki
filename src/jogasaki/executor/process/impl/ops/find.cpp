@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/relation/sort_direction.h>
@@ -45,6 +44,7 @@
 #include <jogasaki/request_cancel_config.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
@@ -119,7 +119,7 @@ find::find(
 {}
 
 operation_status find::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     ctx.acquire_strand_if_needed();
     auto* p = find_context<class find_context>(index(), ctx.contexts());

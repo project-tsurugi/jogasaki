@@ -25,7 +25,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include <boost/assert.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <boost/move/utility_core.hpp>
@@ -141,6 +140,7 @@
 #include <jogasaki/plan/statement_work_level.h>
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/value_to_any.h>
@@ -876,7 +876,7 @@ executor::exchange::aggregate::step create(
         }
         auto& decl = yugawara::binding::extract<yugawara::aggregate::declaration>(e.function());
         auto f = repo.find(decl.definition_id());
-        BOOST_ASSERT(f != nullptr);  //NOLINT
+        assert_with_exception(f != nullptr, f);
         specs.emplace_back(
             *f,
             argument_indices,
@@ -1030,7 +1030,7 @@ static void create_mirror_for_write(
         info,
         vars.get()
     );
-    BOOST_ASSERT( //NOLINT
+    assert_with_exception(
         node.operator_kind() == relation::write_kind::insert ||
             node.operator_kind() == relation::write_kind::insert_overwrite ||
             node.operator_kind() == relation::write_kind::insert_skip
@@ -1226,7 +1226,7 @@ static void create_mirror_for_execute(
 static status create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
     using takatori::statement::statement_kind;
     auto p = ctx.prepared_statement();
-    BOOST_ASSERT(p != nullptr); //NOLINT
+    assert_with_exception(p != nullptr, p);
     if(auto res = validate_host_variables(ctx, parameters, p->mirrors()->host_variable_info()); res != status::ok) {
         return res;
     }

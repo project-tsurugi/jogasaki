@@ -19,7 +19,6 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/relation/join_kind.h>
@@ -106,7 +105,7 @@ public:
      * @return status of the operation
      */
     operation_status process_cogroup(abstract::task_context* context, cogroup<iterator>& cgrp) override {
-        BOOST_ASSERT(context != nullptr);  //NOLINT
+        assert_with_exception(context != nullptr, context);
         context_helper ctx{*context};
         auto* p = find_context<join_context<iterator>>(index(), ctx.contexts());
         if (! p) {
@@ -249,8 +248,8 @@ public:
             for(auto&& g : cgrp.groups()) {
                 iterators.emplace_back(g.begin(), g.end());
             }
-            assert_with_exception(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2, kind_, n); //NOLINT
-            assert_with_exception(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3), has_condition_, kind_, n); //NOLINT
+            assert_with_exception(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2, kind_, n);
+            assert_with_exception(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3), has_condition_, kind_, n);
             ctx.incr_ = iterator_incrementer{std::move(iterators)};
         }
         switch(kind_) {
@@ -337,7 +336,7 @@ resume_calling_child_3:
                 break;
             }
             case join_kind::full_outer: {
-                assert_with_exception(cgrp.groups().size() == 2, cgrp.groups().size()); //NOLINT
+                assert_with_exception(cgrp.groups().size() == 2, cgrp.groups().size());
                 // for now, we assume full outer join has only two groups
                 ctx.secondary_group_available_ = groups_available(cgrp, true);
                 ctx.right_group_size_ = ctx.secondary_group_available_ ? cgrp.groups()[1].size() : 0;

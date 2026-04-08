@@ -21,7 +21,6 @@
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/util/exception.h>
@@ -39,6 +38,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 
 #include "metadata_store.h"
 
@@ -52,7 +52,7 @@ static manager::sequences_type create_sequences(manager::id_map_type const& id_m
     manager::sequences_type ret{};
     for(auto& [def_id, id] : id_map) {
         auto [it, success] = ret.try_emplace(def_id, id);
-        BOOST_ASSERT(success);  //NOLINT
+        assert_with_exception(success);
         (void)success;
         (void)it;
     }
@@ -62,7 +62,7 @@ static manager::sequences_type create_sequences(manager::id_map_type const& id_m
 manager::manager(
     kvs::database& db,
     id_map_type const& id_map
-) noexcept :
+) :
     db_(std::addressof(db)),
     sequences_(create_sequences(id_map))
 {}

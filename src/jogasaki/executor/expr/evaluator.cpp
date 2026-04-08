@@ -21,7 +21,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/datetime/date.h>
@@ -63,6 +62,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/as_any.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/assign_reference_tag.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/utf8_utils.h>
@@ -290,7 +290,7 @@ any engine::concat(T const& l, U const& r) {
     return any{std::in_place_type<T>, accessor::text{resource_, l, r}};
 }
 any engine::concat_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
+    assert_with_exception(left && right, left, right);
     switch(left.type_index()) {
         case any::index<accessor::text>: return concat(left.to<accessor::text>(), right.to<accessor::text>());
         default: return return_unsupported();
@@ -466,7 +466,7 @@ create_any(accessor::record_ref ref, executor::process::impl::value_info const& 
 any engine::operator()(takatori::scalar::variable_reference const& exp) {
     auto b = variables_ && variables_.info().exists(exp.variable());
     auto h = host_variables_ != nullptr && *host_variables_ && host_variables_->info().exists(exp.variable());
-    BOOST_ASSERT(b || h); //NOLINT
+    assert_with_exception(b || h, b, h);
     (void)h;
     auto& info = b ? variables_.info().at(exp.variable()) : host_variables_->info().at(exp.variable());
     auto ref = b ? variables_.store().ref() : host_variables_->store().ref();
@@ -507,7 +507,7 @@ any sign_inversion<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::fi
 }
 
 any engine::sign_inversion_any(any const& exp) {
-    BOOST_ASSERT(exp);  //NOLINT
+    assert_with_exception(exp);
     switch(exp.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::int4>>());
         case any::index<runtime_t<meta::field_type_kind::int8>>: return sign_inversion(exp.to<runtime_t<meta::field_type_kind::int8>>());
@@ -524,7 +524,7 @@ static any conditional_not(T const& e) {
 }
 
 any engine::conditional_not_any(any const& exp) {
-    BOOST_ASSERT(exp);  //NOLINT
+    assert_with_exception(exp);
     switch(exp.type_index()) {
         case any::index<bool>: return conditional_not(exp.to<bool>());
         default: return return_unsupported();
@@ -537,7 +537,7 @@ static any length(T const& e) {
 }
 
 any engine::length_any(any const& exp) {
-    BOOST_ASSERT(exp);  //NOLINT
+    assert_with_exception(exp);
     switch(exp.type_index()) {
         case any::index<accessor::text>: return length(exp.to<accessor::text>());
         default: return return_unsupported();
@@ -1101,7 +1101,7 @@ any evaluate_bool(
 }
 
 any remainder_any(any const& left, any const& right, evaluator_context& ctx) {
-    BOOST_ASSERT(left && right); // NOLINT
+    assert_with_exception(left && right, left, right);
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch (l.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>:
@@ -1117,7 +1117,7 @@ any remainder_any(any const& left, any const& right, evaluator_context& ctx) {
     }
 }
 any add_any(any const& left, any const& right, evaluator_context& ctx) {
-    BOOST_ASSERT(left && right);  //NOLINT
+    assert_with_exception(left && right, left, right);
     auto [l,r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>: return details::add(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
@@ -1130,7 +1130,7 @@ any add_any(any const& left, any const& right, evaluator_context& ctx) {
 }
 
 any subtract_any(any const& left, any const& right, evaluator_context& ctx) {
-    BOOST_ASSERT(left && right);  //NOLINT
+    assert_with_exception(left && right, left, right);
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
@@ -1143,7 +1143,7 @@ any subtract_any(any const& left, any const& right, evaluator_context& ctx) {
 }
 
 any compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
+    assert_with_exception(left && right, left, right);
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
@@ -1160,7 +1160,7 @@ any compare_any(takatori::scalar::comparison_operator optype, any const& left, a
     }
 }
 any multiply_any(any const& left, any const& right, evaluator_context& ctx) {
-    BOOST_ASSERT(left && right);  //NOLINT
+    assert_with_exception(left && right, left, right);
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
@@ -1172,7 +1172,7 @@ any multiply_any(any const& left, any const& right, evaluator_context& ctx) {
     }
 }
 any divide_any(any const& left, any const& right, evaluator_context& ctx) {
-    BOOST_ASSERT(left && right);  //NOLINT
+    assert_with_exception(left && right, left, right);
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>: return details::divide(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>(), ctx);

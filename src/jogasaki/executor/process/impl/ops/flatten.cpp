@@ -16,12 +16,12 @@
 #include "flatten.h"
 
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
 
 #include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/utils/assert.h>
 
 #include "context_helper.h"
 #include "flatten_context.h"
@@ -42,7 +42,7 @@ flatten::flatten(
 {}
 
 operation_status flatten::process_group(abstract::task_context* context, member_kind kind) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     if (kind == member_kind::empty) {
         // empty group: flatten produces no output for an empty group
         return operation_status_kind::ok;

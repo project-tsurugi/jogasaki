@@ -131,7 +131,7 @@ public:
          * @brief dereference the iterator and return record ref
          * @return record ref to the record that the iterator is on
          */
-        [[nodiscard]] accessor::record_ref ref() const noexcept;
+        [[nodiscard]] accessor::record_ref ref() const;
 
         /// @brief equivalent comparison
         constexpr bool operator==(iterator const& r) const noexcept {

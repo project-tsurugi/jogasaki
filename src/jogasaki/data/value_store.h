@@ -24,7 +24,6 @@
 #include <ostream>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/print_support.h>
@@ -34,6 +33,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -170,12 +170,12 @@ public:
      * @return record ref to the record that the iterator is on
      */
     [[nodiscard]] value_type operator*() {
-        BOOST_ASSERT(valid());  //NOLINT
+        assert_with_exception(valid());
         return *(base_+offset_);
     }
 
-    [[nodiscard]] bool is_null() const noexcept {
-        BOOST_ASSERT(valid());  //NOLINT
+    [[nodiscard]] bool is_null() const {
+        assert_with_exception(valid());
         if (null_flag_base_ == nullptr) {
             return false;
         }
@@ -354,7 +354,7 @@ public:
      * @pre nulls_resource must be specified on construction
      */
     void append_null() override {
-        BOOST_ASSERT(nulls_resource_ != nullptr); //NOLINT
+        assert_with_exception(nulls_resource_ != nullptr);
         internal_append(nullptr);
     }
 
@@ -647,7 +647,7 @@ private:
     null_flag_pointer null_flag_base_{};
 
     void internal_append_null_flag(bool arg) {
-        BOOST_ASSERT(nulls_resource_ != nullptr);  //NOLINT
+        assert_with_exception(nulls_resource_ != nullptr);
         auto* p = static_cast<null_flag_pointer>(nulls_resource_->allocate(sizeof(null_flag_type), alignof(null_flag_type)));
         if (!p) fail_with_exception();
         if (null_prev_ != nullptr && p != null_prev_ + 1) { //NOLINT
@@ -666,11 +666,11 @@ private:
         if (!p) std::abort();
         if (src != nullptr) {
             if constexpr (std::is_same_v<T, accessor::text>) {  //NOLINT
-                BOOST_ASSERT(varlen_resource_ != nullptr);  //NOLINT
+                assert_with_exception(varlen_resource_ != nullptr);
                 accessor::text t{varlen_resource_, *reinterpret_cast<accessor::text*>(src)}; //NOLINT
                 std::memcpy(p, &t, value_length);
             } else if constexpr (std::is_same_v<T, accessor::binary>) {  //NOLINT
-                BOOST_ASSERT(varlen_resource_ != nullptr);  //NOLINT
+                assert_with_exception(varlen_resource_ != nullptr);
                 accessor::binary t{varlen_resource_, *reinterpret_cast<accessor::binary*>(src)}; //NOLINT
                 std::memcpy(p, &t, value_length);
             } else {  //NOLINT

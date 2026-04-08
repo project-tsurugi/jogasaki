@@ -26,8 +26,8 @@
 #include <jogasaki/utils/base_filename.h>
 
 //  NOLINTBEGIN(cppcoreguidelines-macro-usage)
-#define assert_with_exception(cond, ...) ::jogasaki::utils::assert_with_exception_impl(#cond, (cond), {stringify_va_args(__VA_ARGS__)}, __VA_ARGS__)
 
+// stringify_va_args: convert 1-9 macro arguments to a comma-separated list of string literals
 #define utils_details_stringify9(x,...) #x, utils_details_stringify8(__VA_ARGS__)
 #define utils_details_stringify8(x,...) #x, utils_details_stringify7(__VA_ARGS__)
 #define utils_details_stringify7(x,...) #x, utils_details_stringify6(__VA_ARGS__)
@@ -37,6 +37,7 @@
 #define utils_details_stringify3(x,...) #x, utils_details_stringify2(__VA_ARGS__)
 #define utils_details_stringify2(x,...) #x, utils_details_stringify1(__VA_ARGS__)
 #define utils_details_stringify1(x,...) #x
+#define utils_details_stringify0(...)   // zero args: expand to nothing
 
 #define utils_details_stringify_impl2(count, ...) utils_details_stringify ## count (__VA_ARGS__)
 #define utils_details_stringify_impl(count, ...) utils_details_stringify_impl2(count, __VA_ARGS__)
@@ -44,6 +45,39 @@
 #define utils_details_va_nargs_impl(_1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
 #define utils_details_va_nargs(...) utils_details_va_nargs_impl(__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 #define stringify_va_args(...) utils_details_stringify_impl(utils_details_va_nargs(__VA_ARGS__), __VA_ARGS__)
+
+// va_nargs_opt: count 0-9 args; 0 detected via the GNU ## extension (GCC/Clang, C++17 compatible)
+#define utils_details_va_nargs_opt_impl(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,N,...) N
+#define utils_details_va_nargs_opt(...) \
+    utils_details_va_nargs_opt_impl(dummy, ##__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+// stringify_va_args_opt: like stringify_va_args but produces empty token sequence for 0 args
+#define utils_details_stringify_opt_impl2(count, ...) utils_details_stringify ## count (__VA_ARGS__)
+#define utils_details_stringify_opt_impl(count, ...) \
+    utils_details_stringify_opt_impl2(count, ##__VA_ARGS__)
+#define stringify_va_args_opt(...) \
+    utils_details_stringify_opt_impl(utils_details_va_nargs_opt(__VA_ARGS__), ##__VA_ARGS__)
+
+// assert_with_exception dispatch: 0 extra args vs 1+ extra args.
+// Uses the GNU ## extension to detect empty __VA_ARGS__ (supported by GCC/Clang in C++17).
+#define utils_details_awe_has_args_impl(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,N,...) N
+#define utils_details_awe_has_args(...) \
+    utils_details_awe_has_args_impl(dummy, ##__VA_ARGS__, 1,1,1,1,1,1,1,1,1,0)
+// awe_0: no extra args. Uses static_cast<bool> to support explicit operator bool() and bit-fields.
+#define utils_details_awe_0(cond) \
+    ::jogasaki::utils::assert_with_exception_impl(#cond, static_cast<bool>(cond))
+// awe_1: extra args present. Uses ##__VA_ARGS__ and stringify_va_args_opt so it compiles
+// even if __VA_ARGS__ happens to be empty (e.g. when cond starts with a unary operator).
+// Uses static_cast<bool> to support explicit operator bool() and bit-fields.
+#define utils_details_awe_1(cond,...) \
+    ::jogasaki::utils::assert_with_exception_impl( \
+        #cond, static_cast<bool>(cond), {stringify_va_args_opt(__VA_ARGS__)}, ##__VA_ARGS__)
+#define utils_details_awe_dispatch2(N, cond, ...) \
+    utils_details_awe_ ## N(cond, ##__VA_ARGS__)
+#define utils_details_awe_dispatch(N, cond, ...) \
+    utils_details_awe_dispatch2(N, cond, ##__VA_ARGS__)
+#define assert_with_exception(cond, ...) \
+    utils_details_awe_dispatch(utils_details_awe_has_args(__VA_ARGS__), cond, ##__VA_ARGS__)
+
 //  NOLINTEND(cppcoreguidelines-macro-usage)
 
 namespace jogasaki::utils {
@@ -77,7 +111,16 @@ void add_var_name_value(string_builder& builder, std::vector<char const*> const&
 
 }  // namespace details
 
-template <class ...Args>
+inline void assert_with_exception_impl(char const* str, bool cond) {
+    if(! cond) {
+        auto builder = string_builder{}
+            << base_filename()
+            << " condition \'" << str << "\' failed";
+        throw_exception(std::logic_error{builder << string_builder::to_string});
+    }
+}
+
+template<class ...Args>
 void assert_with_exception_impl(char const* str, bool cond, std::initializer_list<char const*> names, Args&& ...args) {
     if(! cond) {
         std::vector<char const*> n{names};

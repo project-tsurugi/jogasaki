@@ -16,19 +16,18 @@
 #include "filter.h"
 
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
 
 #include <jogasaki/data/any.h>
-#include <jogasaki/utils/assert.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/utils/assert.h>
 
 #include "context_helper.h"
 #include "filter_context.h"
@@ -51,7 +50,7 @@ filter::filter(
 {}
 
 operation_status filter::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     auto* p = find_context<filter_context>(index(), ctx.contexts());
     if (! p) {

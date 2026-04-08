@@ -19,13 +19,13 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::accessor {
 
@@ -52,7 +52,7 @@ record_copier::record_copier(
 }
 
 void record_copier::operator()(void *dst, std::size_t size, accessor::record_ref src) {
-    BOOST_ASSERT(size <= src.size());  //NOLINT
+    assert_with_exception(size <= src.size(), size, src.size());
     std::memcpy(dst, src.data(), size);
     if (resource_ != nullptr) {
         for(std::size_t i = 0, n = varlen_field_offsets_.size(); i < n ; ++i) {

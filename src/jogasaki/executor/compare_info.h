@@ -62,7 +62,7 @@ public:
         meta::record_meta const& left,
         meta::record_meta const& right,
         std::vector<ordering> orders
-    ) noexcept;
+    );
 
     /**
      * @brief construct new object with separate metadata for lhs/rhs
@@ -74,7 +74,7 @@ public:
     compare_info(
         meta::record_meta const& left,
         meta::record_meta const& right
-    ) noexcept;
+    );
 
     /**
      * @brief construct new object
@@ -88,7 +88,7 @@ public:
     explicit compare_info(
         meta::record_meta const& meta,
         std::vector<ordering> orders = {}
-    ) noexcept;
+    );
 
     /**
      * @brief accessor to the lhs record meta

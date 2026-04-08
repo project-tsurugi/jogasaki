@@ -16,13 +16,13 @@
 #include "work_context.h"
 
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/relay/blob_session_container.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -58,8 +58,8 @@ work_context::variable_table_list& work_context::variable_tables() noexcept {
     return variables_;
 }
 
-variable_table& work_context::variables(std::size_t block_index) noexcept {
-    BOOST_ASSERT(block_index < variables_.size());  //NOLINT
+variable_table& work_context::variables(std::size_t block_index) {
+    assert_with_exception(block_index < variables_.size(), block_index, variables_.size());
     return variables_[block_index];
 }
 

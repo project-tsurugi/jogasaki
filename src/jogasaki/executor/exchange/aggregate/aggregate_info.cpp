@@ -19,7 +19,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 #include <boost/move/utility_core.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
@@ -34,6 +33,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -291,7 +291,7 @@ aggregate_info::output_info aggregate_info::create_output(
                 std::vector<size_t> arg_indices{vs.argument_indices().begin(), vs.argument_indices().end()};
                 auto ts = types(*phase_input, arg_indices);
                 auto seq = info.intermediate_types(ts);
-                BOOST_ASSERT(seq.size() == aggs.size());  //NOLINT
+                assert_with_exception(seq.size() == aggs.size(), seq.size(), aggs.size());
                 for(std::size_t i=0, n=aggs.size(); i < n; ++i) {
                     aggregator_specs.emplace_back(
                         aggs[i],
@@ -315,7 +315,7 @@ aggregate_info::output_info aggregate_info::create_output(
             }
             case output_kind::post: {
                 auto aggs = info.post();
-                BOOST_ASSERT(aggs.size() == 1);  //NOLINT
+                assert_with_exception(aggs.size() == 1, aggs.size());
                 std::vector<size_t> indices{};
                 for(std::size_t i=0, n=aggs[0].arg_count(); i < n; ++i, ++agg_index) {
                     indices.emplace_back(agg_index);

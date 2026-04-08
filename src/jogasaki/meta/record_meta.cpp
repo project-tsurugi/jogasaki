@@ -16,10 +16,10 @@
 #include "record_meta.h"
 
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/impl/record_layout_creator.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::meta {
 
@@ -39,9 +39,9 @@ record_meta::record_meta(
     record_alignment_(record_alignment),
     record_size_(record_size)
 {
-    BOOST_ASSERT(field_count_ == nullability_.size()); // NOLINT
-    BOOST_ASSERT(field_count_ == value_offset_table_.size()); // NOLINT
-    BOOST_ASSERT(field_count_ == nullity_offset_table_.size()); // NOLINT
+    assert_with_exception(field_count_ == nullability_.size(), field_count_, nullability_.size());
+    assert_with_exception(field_count_ == value_offset_table_.size(), field_count_, value_offset_table_.size());
+    assert_with_exception(field_count_ == nullity_offset_table_.size(), field_count_, nullity_offset_table_.size());
 }
 
 record_meta::record_meta(
@@ -57,7 +57,7 @@ record_meta::record_meta(
     value_offset_table_ = std::move(c.value_offset_table());
     nullity_offset_table_ = std::move(c.nullity_offset_table());
     record_alignment_ = c.record_alignment();
-    BOOST_ASSERT(record_size == npos || c.record_size() <= record_size);  //NOLINT
+    assert_with_exception(record_size == npos || c.record_size() <= record_size, record_size, c.record_size());
     record_size_ = record_size != npos ? record_size : c.record_size();
 }
 

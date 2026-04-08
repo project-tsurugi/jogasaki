@@ -29,8 +29,6 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
-
-#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/serializer/json_printer.h>
@@ -131,6 +129,7 @@
 #include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/udf/udf_loader.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/cancel_request.h>
@@ -993,7 +992,7 @@ scheduler::task_scheduler* database::task_scheduler() const noexcept {
 
 status database::do_create_table(std::shared_ptr<yugawara::storage::table> table, std::string_view schema) {
     (void)schema;
-    BOOST_ASSERT(table != nullptr);  //NOLINT
+    assert_with_exception(table != nullptr);
     // request context is just to call validate_table_definition and receive error info
     auto context = impl::create_request_context(
         *this,
@@ -1061,7 +1060,7 @@ static bool validate_primary_key_nullability(yugawara::storage::index const& ind
 
 status database::do_create_index(std::shared_ptr<yugawara::storage::index> index, std::string_view schema) {
     (void)schema;
-    BOOST_ASSERT(index != nullptr);  //NOLINT
+    assert_with_exception(index != nullptr);
     std::string name{index->simple_name()};
     std::uint64_t storage_id{kvs::database::undefined_storage_id};
     if(index->definition_id()) {
@@ -1170,7 +1169,7 @@ status database::do_drop_index(std::string_view name, std::string_view schema) {
 
 status database::do_create_sequence(std::shared_ptr<yugawara::storage::sequence> sequence, std::string_view schema) {
     (void)schema;
-    BOOST_ASSERT(sequence != nullptr);  //NOLINT
+    assert_with_exception(sequence != nullptr);
     if (auto id = sequence->definition_id(); !id) {
         VLOG_LP(log_error) << "The sequence definition id is not specified for sequence " <<
             sequence->simple_name() <<

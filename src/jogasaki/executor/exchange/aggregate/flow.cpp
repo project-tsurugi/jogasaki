@@ -17,7 +17,6 @@
 
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
 #include <jogasaki/executor/exchange/aggregate/sink.h>
@@ -29,6 +28,7 @@
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 
 #include <ext/alloc_traits.h>
 
@@ -104,7 +104,7 @@ void flow::transfer() {
     updatable_info().empty_input(empty);
     for(auto& sink : sinks_) {
         auto& partitions = sink->input_partitions();
-        BOOST_ASSERT(partitions.size() <= sources_.size()); //NOLINT
+        assert_with_exception(partitions.size() <= sources_.size(), partitions.size(), sources_.size());
         for(std::size_t i=0, n=sources_.size(); i < n; ++i) {
             if (i >= partitions.size() || !partitions[i]) continue;
             partitions[i]->release_hashtable();

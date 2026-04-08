@@ -23,7 +23,6 @@
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
-#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/descriptor/reference.h>
@@ -73,6 +72,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/as_any.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
@@ -166,7 +166,7 @@ bool write_statement::operator()(request_context& context) {
 }
 bool write_statement::process(request_context& context) {
     auto& tx = context.transaction();
-    BOOST_ASSERT(tx);  //NOLINT
+    assert_with_exception(tx);
     auto* db = tx->database();
 
     wrt::write_context wctx(context,

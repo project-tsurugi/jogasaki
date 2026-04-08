@@ -22,7 +22,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <takatori/type/character.h>
 #include <takatori/type/data.h>
@@ -48,10 +47,10 @@
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/create_default_value.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
-#include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/plan/storage_processor.h>
@@ -62,6 +61,7 @@
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/append_request_info.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -114,7 +114,7 @@ static bool create_generated_sequence(
 }
 
 bool create_table::operator()(request_context& context) const {
-    BOOST_ASSERT(context.storage_provider());  //NOLINT
+    assert_with_exception(context.storage_provider());
     auto& provider = *context.storage_provider();
     auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
     if(provider.find_table(c->simple_name())) {

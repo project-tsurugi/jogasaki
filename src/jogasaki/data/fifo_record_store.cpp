@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 
@@ -93,7 +94,9 @@ fifo_record_store::fifo_record_store(
     positive_record_size_(original_record_size_ == 0 ? 1 : original_record_size_)
 {
     // if record size is 0, the alignment must be 1
-    BOOST_ASSERT(original_record_size_ != 0 || meta_->record_alignment() == 1);  //NOLINT
+    assert_with_exception(
+        original_record_size_ != 0 || meta_->record_alignment() == 1, original_record_size_, meta_->record_alignment()
+    );
 }
 
 maybe_shared_ptr<meta::record_meta> const& fifo_record_store::meta() const noexcept {

@@ -22,7 +22,6 @@
 #include <string>
 #include <string_view>
 #include <variant>
-#include <boost/assert.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <tsl/hopscotch_hash.h>
 #include <tsl/hopscotch_set.h>
@@ -60,6 +59,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/round.h>
 
@@ -274,8 +274,8 @@ void count_distinct(
     field_locator const& target_loc,
     sequence_view<std::reference_wrapper<data::value_store> const> args
 ) {
-    BOOST_ASSERT(args.size() == 1);  //NOLINT
-    BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
+    assert_with_exception(args.size() == 1, args.size());
+    assert_with_exception(target_loc.type().kind() == kind::int8, target_loc.type().kind(), kind::int8);
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false);

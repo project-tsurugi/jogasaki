@@ -16,10 +16,10 @@
 #include "compare_info.h"
 
 #include <utility>
-#include <boost/assert.hpp>
 
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor {
 
@@ -27,34 +27,34 @@ compare_info::compare_info(
     meta::record_meta const& left,
     meta::record_meta const& right,
     std::vector<ordering> orders
-) noexcept:
+) :
     left_(std::addressof(left)),
     right_(std::addressof(right)),
     orders_(std::move(orders))
 {
-    BOOST_ASSERT(left_->field_count() == right_->field_count());  //NOLINT
-    BOOST_ASSERT(orders.size() == 0 || orders.size() == left_->field_count());  //NOLINT
+    assert_with_exception(left_->field_count() == right_->field_count(), left_->field_count(), right_->field_count());
+    assert_with_exception(orders_.empty() || orders_.size() == left_->field_count(), orders_.size(), left_->field_count());
     for(std::size_t i=0, n = left_->field_count(); i < n; ++i) {
         (void)i;
-        BOOST_ASSERT(left_->at(i) == right_->at(i));  //NOLINT
+        assert_with_exception(left_->at(i) == right_->at(i), left_->at(i), right_->at(i));
     }
 }
 
 compare_info::compare_info(
     meta::record_meta const& left,
     meta::record_meta const& right
-) noexcept:
+) :
     left_(std::addressof(left)),
     right_(std::addressof(right))
 {
-    BOOST_ASSERT(left_->field_count() == right_->field_count());  //NOLINT
+    assert_with_exception(left_->field_count() == right_->field_count(), left_->field_count(), right_->field_count());
     for(std::size_t i=0, n = left_->field_count(); i < n; ++i) {
         (void)i;
-        BOOST_ASSERT(left_->at(i) == right_->at(i));  //NOLINT
+        assert_with_exception(left_->at(i) == right_->at(i), left_->at(i), right_->at(i));
     }
 }
 
-compare_info::compare_info(const meta::record_meta& meta, std::vector<ordering> orders) noexcept:
+compare_info::compare_info(const meta::record_meta& meta, std::vector<ordering> orders) :
     compare_info(meta, meta, std::move(orders))
 {}
 

@@ -4,7 +4,6 @@
 #include <limits>
 #include <optional>
 #include <stdexcept>
-#include <boost/assert.hpp>
 
 #include <takatori/datetime/time_interval.h>
 #include <takatori/util/basic_buffer_view.h>
@@ -14,6 +13,7 @@
 #include <jogasaki/serializer/entry_type.h>
 #include <jogasaki/serializer/value_input.h>
 #include <jogasaki/serializer/value_input_exception.h>
+#include <jogasaki/utils/assert.h>
 
 #include "base128v.h"
 #include "details/value_io_constants.h"
@@ -203,7 +203,7 @@ std::int64_t read_int(buffer_view::const_iterator& position, buffer_view::const_
         return *value;
     }
 
-    BOOST_ASSERT(static_cast<unsigned char>(first) == header_int); // NOLINT
+    assert_with_exception(static_cast<unsigned char>(first) == header_int, static_cast<unsigned char>(first));
     buffer_view::const_iterator iter = position;
     ++iter;
     auto result = read_sint(iter, end);
@@ -288,7 +288,7 @@ takatori::decimal::triple read_decimal(buffer_view::const_iterator& position, bu
     }
 
     // full decimal value
-    BOOST_ASSERT(first == header_decimal); // NOLINT
+    assert_with_exception(first == header_decimal, first);
 
     auto exponent = read_sint32(iter, end);
     auto coefficient = read_decimal_coefficient(iter, end);
@@ -324,7 +324,7 @@ takatori::decimal::triple read_decimal(buffer_view::const_iterator& position, bu
     if (negative) {
         // sign extension
         if (coefficient.size() < sizeof(std::uint64_t) * 2) {
-            BOOST_ASSERT(coefficient.size() >= sizeof(std::uint64_t)); // NOLINT
+            assert_with_exception(coefficient.size() >= sizeof(std::uint64_t), coefficient.size());
             auto mask = std::numeric_limits<std::uint64_t>::max(); // 0xfff.....
             std::size_t rest = (coefficient.size() - sizeof(std::uint64_t)) * 8U;
             c_hi |= mask << rest;
@@ -336,7 +336,7 @@ takatori::decimal::triple read_decimal(buffer_view::const_iterator& position, bu
             c_hi += 1; // carry up
         }
         // if negative, coefficient must not be zero
-        BOOST_ASSERT(c_lo != 0 || c_hi != 0); // NOLINT
+        assert_with_exception(c_lo != 0 || c_hi != 0, c_lo, c_hi);
     }
 
     position = iter;
@@ -361,7 +361,7 @@ std::string_view read_character(buffer_view::const_iterator& position, buffer_vi
         size = *value;
         ++iter;
     } else {
-        BOOST_ASSERT(static_cast<unsigned char>(first) == header_character); // NOLINT
+        assert_with_exception(static_cast<unsigned char>(first) == header_character, static_cast<unsigned char>(first));
         ++iter;
         size = read_size(iter, end);
     }
@@ -384,7 +384,7 @@ std::string_view read_octet(buffer_view::const_iterator& position, buffer_view::
         size = *value;
         ++iter;
     } else {
-        BOOST_ASSERT(static_cast<unsigned char>(first) == header_octet); // NOLINT
+        assert_with_exception(static_cast<unsigned char>(first) == header_octet, static_cast<unsigned char>(first));
         ++iter;
         size = read_size(iter, end);
     }
@@ -407,7 +407,7 @@ const_bitset_view read_bit(buffer_view::const_iterator& position, buffer_view::c
         size = *value;
         ++iter;
     } else {
-        BOOST_ASSERT(static_cast<unsigned char>(first) == header_bit); // NOLINT
+        assert_with_exception(static_cast<unsigned char>(first) == header_bit, static_cast<unsigned char>(first));
         ++iter;
         size = read_size(iter, end);
     }
@@ -503,7 +503,7 @@ std::size_t read_array_begin(buffer_view::const_iterator& position, buffer_view:
         return *size;
     }
 
-    BOOST_ASSERT(static_cast<unsigned char>(first) == header_array); // NOLINT
+    assert_with_exception(static_cast<unsigned char>(first) == header_array, static_cast<unsigned char>(first));
     buffer_view::const_iterator iter = position;
     ++iter;
     auto size = read_size(iter, end);
@@ -523,7 +523,7 @@ std::size_t read_row_begin(buffer_view::const_iterator& position, buffer_view::c
         return *size;
     }
 
-    BOOST_ASSERT(static_cast<unsigned char>(first) == header_row); // NOLINT
+    assert_with_exception(static_cast<unsigned char>(first) == header_row, static_cast<unsigned char>(first));
     buffer_view::const_iterator iter = position;
     ++iter;
     auto size = read_size(iter, end);

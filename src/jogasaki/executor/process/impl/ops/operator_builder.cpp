@@ -20,7 +20,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/plan/aggregate.h>
@@ -43,6 +42,7 @@
 #include <jogasaki/dist/key_range.h>
 #include <jogasaki/dist/simple_key_distribution.h>
 #include <jogasaki/dist/uniform_key_distribution.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/bound.h>
 #include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
@@ -51,13 +51,13 @@
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
-#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/plan_exception.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/from_endpoint.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/scan_parallel_enabled.h>
@@ -125,7 +125,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::find
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-    BOOST_ASSERT(primary); //NOLINT
+    assert_with_exception(primary);
     return std::make_unique<find>(
         index_++,
         *info_,
@@ -359,7 +359,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
     auto reader_index = relation_io_map_->input_index(node.source());
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& input = io_info_->input_at(reader_index);
-    BOOST_ASSERT(! input.is_group_input());  //NOLINT
+    assert_with_exception(! input.is_group_input());
 
     return std::make_unique<take_flat>(
         index_++,

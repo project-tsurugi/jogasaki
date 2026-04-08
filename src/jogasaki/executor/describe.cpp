@@ -27,6 +27,7 @@
 #include <jogasaki/request_logging.h>
 #include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::executor {
@@ -118,7 +119,7 @@ static void fill_from_provider(
     std::shared_ptr<yugawara::storage::configurable_provider> provider,  //NOLINT(performance-unnecessary-value-param)
     dto::describe_table& out
 ) {
-    BOOST_ASSERT(tbl != nullptr); //NOLINT
+    assert_with_exception(tbl != nullptr);
     out.table_name_ = tbl->simple_name();
     out.schema_name_ = "";  //TODO schema resolution
     out.database_name_ = "";   //TODO database name resolution
@@ -239,4 +240,4 @@ status describe(
     return st;
 }
 
-}
+}  // namespace jogasaki::executor

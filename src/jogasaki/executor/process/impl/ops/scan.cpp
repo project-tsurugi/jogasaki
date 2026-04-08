@@ -19,7 +19,6 @@
 #include <cstddef>
 #include <utility>
 #include <vector>
-#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/relation/sort_direction.h>
@@ -121,12 +120,12 @@ scan::scan(
 {}
 
 operation_status scan::process_record(abstract::task_context* context) {
-    BOOST_ASSERT(context != nullptr);  //NOLINT
+    assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     ctx.acquire_strand_if_needed();
     auto* p = find_context<scan_context>(index(), ctx.contexts());
     auto stg = utils::get_storage_by_index_name(storage_name());
-    BOOST_ASSERT(stg);  //NOLINT //TODO handle error
+    assert_with_exception(stg); //TODO handle error
     if (! p) {
         p = ctx.make_context<scan_context>(index(),
             ctx.variable_table(block_index()),
@@ -150,7 +149,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
         return operation_status_kind::aborted;
     }
     if (ctx.state() == context_state::yielding) {
-        assert_with_exception(ctx.it_ != nullptr, "null iterator on scan resume");
+        assert_with_exception(ctx.it_ != nullptr);
         // scan is the top level operator (operators tree root), so the resume after yield is fairly simple than
         // other passive operators because there is no need to consider saving the contexts on the upstream operators.
         // We can resume simply by skipping open scan and calling next on the iterator.

@@ -16,15 +16,15 @@
 #pragma once
 #include <cstdint>
 
-#include <takatori/util/assertion.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::utils {
 
-inline void assert_all_fields_nullable(meta::record_meta const& meta) noexcept {
+inline void assert_all_fields_nullable(meta::record_meta const& meta) {
     for(std::size_t i=0, n = meta.field_count(); i < n; ++i) {
         (void)i;
-        BOOST_ASSERT(meta.nullable(i));  //NOLINT
+        assert_with_exception(meta.nullable(i));
     }
 }
 

@@ -142,7 +142,7 @@ public:
      * @brief return the number of key fields
      * @note this can be used only for the group ordering (i.e. for_group() returns true)
      */
-    [[nodiscard]] std::size_t key_count() const noexcept;
+    [[nodiscard]] std::size_t key_count() const;
 
     /**
      * @brief return the begin iterator of the key fields (for group ordering) or record fields (for flat record ordering)
@@ -158,13 +158,13 @@ public:
      * @brief return the begin iterator to iterate value fields
      * @note this can be used only for the group ordering (i.e. for_group() returns true)
      */
-    [[nodiscard]] const_iterator value_begin() const noexcept;
+    [[nodiscard]] const_iterator value_begin() const;
 
     /**
      * @brief return the end iterator of the value fields
      * @note this can be used only for the group ordering (i.e. for_group() returns true)
      */
-    [[nodiscard]] const_iterator value_end() const noexcept;
+    [[nodiscard]] const_iterator value_end() const;
 
 private:
     entity_type entity_;

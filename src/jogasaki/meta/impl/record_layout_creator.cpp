@@ -16,11 +16,11 @@
 #include "record_layout_creator.h"
 
 #include <algorithm>
-#include <boost/assert.hpp>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/round.h>
 
 namespace jogasaki::meta::impl {
@@ -31,7 +31,7 @@ record_layout_creator::record_layout_creator(
 ) {
     std::size_t nullity_offset = 0;
     auto field_count = fields.size();
-    BOOST_ASSERT(field_count == nullability.size()); // NOLINT
+    assert_with_exception(field_count == nullability.size(), field_count, nullability.size());
     for(std::size_t i = 0; i < field_count; ++i) {
         std::size_t pos = record_meta::npos;
         if (nullability[i]) {
@@ -55,8 +55,8 @@ record_layout_creator::record_layout_creator(
     }
     record_alignment_ = record_max_align;
     record_size_ = (cur + record_alignment_ - 1) / record_alignment_ * record_alignment_;
-    BOOST_ASSERT(record_max_align <= record_meta::max_alignment); //NOLINT
-    BOOST_ASSERT(record_meta::max_alignment % record_max_align == 0); //NOLINT
+    assert_with_exception(record_max_align <= record_meta::max_alignment, record_max_align, record_meta::max_alignment);
+    assert_with_exception(record_meta::max_alignment % record_max_align == 0, record_meta::max_alignment, record_max_align);
 }
 
 record_layout_creator::value_offset_table_type& record_layout_creator::value_offset_table() noexcept {

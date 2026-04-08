@@ -87,7 +87,7 @@ post_process_lob(data::any in, evaluator_context& ctx) {
     // check if the returned blob/clob references belong to the current blob session
     // and if it's on the blob session, register the data to limestone
     // before the session is disposed (at the end of task).
-    assert_with_exception(ctx.blob_session() != nullptr, "fail");
+    assert_with_exception(ctx.blob_session() != nullptr);
     auto s = ctx.blob_session()->get_or_create();
     if (! s) {
         // should not happen normally

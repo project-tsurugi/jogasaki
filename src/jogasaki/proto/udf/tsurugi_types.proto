@@ -1,0 +1,61 @@
+syntax = "proto3";
+package tsurugidb.udf;
+
+option java_package = "com.tsurugidb.udf";
+
+// buf format -w
+message Decimal {
+  // the signed unscaled value (2's complement, big endian).
+  bytes unscaled_value = 1;
+
+  // the exponent of the value (value = unscaled_value * 10^exponent).
+  sint32 exponent = 2;
+}
+message Date {
+  // the number of days since 1970-01-01.
+  sint32 days = 1;
+}
+message LocalTime {
+  // the number of nanoseconds since midnight.
+  sint64 nanos = 1;
+}
+message LocalDatetime {
+  // offset seconds from epoch (1970-01-01 00:00:00) at the local time zone.
+  sint64 offset_seconds = 1;
+  // nano-seconds adjustment [0, 10^9-1].
+  uint32 nano_adjustment = 2;
+}
+message OffsetDatetime {
+  // offset seconds from epoch (1970-01-01 00:00:00Z).
+  sint64 offset_seconds = 1;
+  // nano-seconds adjustment [0, 10^9-1].
+  uint32 nano_adjustment = 2;
+  // timezone offset in minute.
+  sint32 time_zone_offset = 3;
+}
+message BlobReference {
+  // the ID of the storage where the BLOB data is stored.
+  uint64 storage_id = 1;
+
+  // the ID of the object within the BLOB storage.
+  uint64 object_id = 2;
+
+  // a tag for additional access control.
+  uint64 tag = 3;
+
+  // whether the object is provisioned
+  bool provisioned = 4;
+}
+message ClobReference {
+  // the ID of the storage where the BLOB data is stored.
+  uint64 storage_id = 1;
+
+  // the ID of the object within the BLOB storage.
+  uint64 object_id = 2;
+
+  // a tag for additional access control.
+  uint64 tag = 3;
+
+  // whether the object is provisioned
+  bool provisioned = 4;
+}

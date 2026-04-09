@@ -59,7 +59,13 @@ TEST_F(assert_test, multi_args) {
         assert_with_exception(x+1 != 1, x, x+1, x+2, x+3);
     } catch(std::logic_error const& e) {
         caught = true;
-        std::cerr << e.what() << std::endl;
+        std::string msg{e.what()};
+        std::cerr << msg << std::endl;
+        EXPECT_NE(std::string::npos, msg.find("condition 'x+1 != 1' failed"));
+        EXPECT_NE(std::string::npos, msg.find("x:0"));
+        EXPECT_NE(std::string::npos, msg.find("x+1:1"));
+        EXPECT_NE(std::string::npos, msg.find("x+2:2"));
+        EXPECT_NE(std::string::npos, msg.find("x+3:3"));
     }
     ASSERT_TRUE(caught);
 }
@@ -91,13 +97,13 @@ TEST_F(assert_test, max_args) {
 
 TEST_F(assert_test, verify_stringify) {
     std::vector<std::string> exp{"x1", "x2", "x3"};
-    std::vector<std::string> v{stringify_va_args(x1, x2, x3)};
+    std::vector<std::string> v{utils_details_stringify(x1, x2, x3)};
     ASSERT_EQ(exp, v);
 }
 
 TEST_F(assert_test, verify_stringify_max) {
     std::vector<std::string> exp{"x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9"};
-    std::vector<std::string> v{stringify_va_args(x1, x2, x3, x4, x5, x6, x7, x8, x9)};
+    std::vector<std::string> v{utils_details_stringify(x1, x2, x3, x4, x5, x6, x7, x8, x9)};
     ASSERT_EQ(exp, v);
 }
 

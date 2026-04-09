@@ -27,56 +27,65 @@
 
 //  NOLINTBEGIN(cppcoreguidelines-macro-usage)
 
-// stringify_va_args: convert 1-9 macro arguments to a comma-separated list of string literals
-#define utils_details_stringify9(x,...) #x, utils_details_stringify8(__VA_ARGS__)
-#define utils_details_stringify8(x,...) #x, utils_details_stringify7(__VA_ARGS__)
-#define utils_details_stringify7(x,...) #x, utils_details_stringify6(__VA_ARGS__)
-#define utils_details_stringify6(x,...) #x, utils_details_stringify5(__VA_ARGS__)
-#define utils_details_stringify5(x,...) #x, utils_details_stringify4(__VA_ARGS__)
-#define utils_details_stringify4(x,...) #x, utils_details_stringify3(__VA_ARGS__)
-#define utils_details_stringify3(x,...) #x, utils_details_stringify2(__VA_ARGS__)
-#define utils_details_stringify2(x,...) #x, utils_details_stringify1(__VA_ARGS__)
-#define utils_details_stringify1(x,...) #x
-#define utils_details_stringify0(...)   // zero args: expand to nothing
+// ---------------------------------------------------------------------------
+// Internal helpers (utils_details_ prefix — not part of the public API)
+// ---------------------------------------------------------------------------
 
-#define utils_details_stringify_impl2(count, ...) utils_details_stringify ## count (__VA_ARGS__)
-#define utils_details_stringify_impl(count, ...) utils_details_stringify_impl2(count, __VA_ARGS__)
+// Stringify 0..9 arguments as a comma-separated list of string literals.
+//   utils_details_str0()        ->  (empty)
+//   utils_details_str1(a)       ->  "a"
+//   utils_details_str2(a, b)    ->  "a", "b"
+//   ...
+#define utils_details_str0(...)
+#define utils_details_str1(a,...)  #a
+#define utils_details_str2(a,...)  #a, utils_details_str1(__VA_ARGS__)
+#define utils_details_str3(a,...)  #a, utils_details_str2(__VA_ARGS__)
+#define utils_details_str4(a,...)  #a, utils_details_str3(__VA_ARGS__)
+#define utils_details_str5(a,...)  #a, utils_details_str4(__VA_ARGS__)
+#define utils_details_str6(a,...)  #a, utils_details_str5(__VA_ARGS__)
+#define utils_details_str7(a,...)  #a, utils_details_str6(__VA_ARGS__)
+#define utils_details_str8(a,...)  #a, utils_details_str7(__VA_ARGS__)
+#define utils_details_str9(a,...)  #a, utils_details_str8(__VA_ARGS__)
 
-#define utils_details_va_nargs_impl(_1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
-#define utils_details_va_nargs(...) utils_details_va_nargs_impl(__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-#define stringify_va_args(...) utils_details_stringify_impl(utils_details_va_nargs(__VA_ARGS__), __VA_ARGS__)
+// Count 0..9 arguments. Uses the GNU ##__VA_ARGS__ extension to handle the
+// zero-argument case (GCC/Clang, C++17 compatible).
+// TODO: Replace ##__VA_ARGS__ with __VA_OPT__ when C++20 is adopted by this project.
+#define utils_details_count_impl(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,N,...) N
+#define utils_details_count(...) \
+    utils_details_count_impl(x, ##__VA_ARGS__, 9,8,7,6,5,4,3,2,1,0)
 
-// va_nargs_opt: count 0-9 args; 0 detected via the GNU ## extension (GCC/Clang, C++17 compatible)
-#define utils_details_va_nargs_opt_impl(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,N,...) N
-#define utils_details_va_nargs_opt(...) \
-    utils_details_va_nargs_opt_impl(dummy, ##__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-// stringify_va_args_opt: like stringify_va_args but produces empty token sequence for 0 args
-#define utils_details_stringify_opt_impl2(count, ...) utils_details_stringify ## count (__VA_ARGS__)
-#define utils_details_stringify_opt_impl(count, ...) \
-    utils_details_stringify_opt_impl2(count, ##__VA_ARGS__)
-#define stringify_va_args_opt(...) \
-    utils_details_stringify_opt_impl(utils_details_va_nargs_opt(__VA_ARGS__), ##__VA_ARGS__)
+// Select the right strN helper for the given count.
+// Two levels of indirection are required: the outer level (stringify2) receives N as a
+// plain parameter so the preprocessor expands it to a literal; the inner level (str_pick)
+// then token-pastes the already-expanded literal with "str".  A single level would skip
+// expansion because ## suppresses it for adjacent parameters.
+#define utils_details_str_pick(N,...) utils_details_str ## N(__VA_ARGS__)
+#define utils_details_stringify2(N,...) utils_details_str_pick(N, ##__VA_ARGS__)
+#define utils_details_stringify(...) \
+    utils_details_stringify2(utils_details_count(__VA_ARGS__), ##__VA_ARGS__)
 
-// assert_with_exception dispatch: 0 extra args vs 1+ extra args.
-// Uses the GNU ## extension to detect empty __VA_ARGS__ (supported by GCC/Clang in C++17).
-#define utils_details_awe_has_args_impl(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,N,...) N
-#define utils_details_awe_has_args(...) \
-    utils_details_awe_has_args_impl(dummy, ##__VA_ARGS__, 1,1,1,1,1,1,1,1,1,0)
-// awe_0: no extra args. Uses static_cast<bool> to support explicit operator bool() and bit-fields.
-#define utils_details_awe_0(cond) \
-    ::jogasaki::utils::assert_with_exception_impl(#cond, static_cast<bool>(cond))
-// awe_1: extra args present. Uses ##__VA_ARGS__ and stringify_va_args_opt so it compiles
-// even if __VA_ARGS__ happens to be empty (e.g. when cond starts with a unary operator).
-// Uses static_cast<bool> to support explicit operator bool() and bit-fields.
-#define utils_details_awe_1(cond,...) \
-    ::jogasaki::utils::assert_with_exception_impl( \
-        #cond, static_cast<bool>(cond), {stringify_va_args_opt(__VA_ARGS__)}, ##__VA_ARGS__)
-#define utils_details_awe_dispatch2(N, cond, ...) \
-    utils_details_awe_ ## N(cond, ##__VA_ARGS__)
-#define utils_details_awe_dispatch(N, cond, ...) \
-    utils_details_awe_dispatch2(N, cond, ##__VA_ARGS__)
+// ---------------------------------------------------------------------------
+// Public macro
+// ---------------------------------------------------------------------------
+
+/**
+ * @brief Assert a condition; throw std::logic_error on failure.
+ * @details Usage:
+ *   @code
+ *   assert_with_exception(cond);            // assert condition only
+ *   assert_with_exception(cond, a, b);      // assert and print variables on failure
+ *   @endcode
+ *
+ * On failure the exception message includes the source file name, the stringified
+ * condition, and for each extra argument a "name:value" pair.
+ *
+ */
 #define assert_with_exception(cond, ...) \
-    utils_details_awe_dispatch(utils_details_awe_has_args(__VA_ARGS__), cond, ##__VA_ARGS__)
+    ::jogasaki::utils::assert_with_exception_impl(                        \
+        #cond,                                                             \
+        static_cast<bool>(cond),                                          \
+        {utils_details_stringify(__VA_ARGS__)},                       \
+        ##__VA_ARGS__)
 
 //  NOLINTEND(cppcoreguidelines-macro-usage)
 
@@ -104,32 +113,28 @@ void add_name_value_to_string(
     add_name_value_to_string<N+1>(builder, names, std::forward<Tails>(args)...);
 }
 
-template <class ... Args>
-void add_var_name_value(string_builder& builder, std::vector<char const*> const& names, Args&& ...args) {
-    add_name_value_to_string<0>(builder, names, std::forward<Args>(args)...);
-}
-
 }  // namespace details
 
-inline void assert_with_exception_impl(char const* str, bool cond) {
+/**
+ * @brief Implementation detail for assert_with_exception; do not call directly.
+ */
+template<class ...Args>
+void assert_with_exception_impl(
+    char const* str,
+    bool cond,
+    std::initializer_list<char const*> names,
+    Args&&... args
+) {
     if(! cond) {
         auto builder = string_builder{}
             << base_filename()
             << " condition \'" << str << "\' failed";
+        if(names.size() > 0) {
+            builder << " ";
+            std::vector<char const*> names_vec{names};
+            details::add_name_value_to_string<0>(builder, names_vec, std::forward<Args>(args)...);
+        }
         throw_exception(std::logic_error{builder << string_builder::to_string});
-    }
-}
-
-template<class ...Args>
-void assert_with_exception_impl(char const* str, bool cond, std::initializer_list<char const*> names, Args&& ...args) {
-    if(! cond) {
-        std::vector<char const*> n{names};
-        auto builder = string_builder{}
-            << base_filename()
-            << " condition \'" << str << "\' failed ";
-        details::add_var_name_value(builder, names, std::forward<Args>(args)...);
-        throw_exception(std::logic_error{builder << string_builder::to_string});
-
     }
 }
 

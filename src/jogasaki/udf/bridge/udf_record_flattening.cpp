@@ -123,7 +123,7 @@ void append_wire_kinds(std::vector<jogasaki::udf::data::udf_wire_kind>& out,
         out.emplace_back(to_wire_kind_from_column(*col));
     }
 }
-} // namespace anonymous
+} // namespace
 jogasaki::executor::function::table_valued_function_info::columns_type build_tvf_columns(
     plugin::udf::function_descriptor const& fn) {
     jogasaki::executor::function::table_valued_function_info::columns_type cols;
@@ -146,8 +146,8 @@ std::size_t count_effective_columns(plugin::udf::record_descriptor const& rec) {
     }
     return total;
 }
-std::vector<jogasaki::udf::data::udf_wire_kind>
-build_output_wire_kinds(plugin::udf::function_descriptor const& fn) {
+std::vector<jogasaki::udf::data::udf_wire_kind> build_output_wire_kinds(
+    plugin::udf::function_descriptor const& fn) {
     std::vector<jogasaki::udf::data::udf_wire_kind> out;
     out.reserve(count_effective_columns(fn.output_record()));
     append_wire_kinds(out, fn.output_record().columns());

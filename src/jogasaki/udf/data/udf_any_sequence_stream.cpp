@@ -73,7 +73,9 @@ void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor
     if (unscaled_opt && exponent_opt) {
         if (VLOG_IS_ON(log_trace)) {
             std::string_view bin_view{unscaled_opt->data(), unscaled_opt->size()};
-            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:(" << utils::binary_printer{bin_view}.show_hyphen(false) << "," << *exponent_opt << ")";
+            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:("
+                               << utils::binary_printer{bin_view}.show_hyphen(false) << ","
+                               << *exponent_opt << ")";
         }
         auto triple = jogasaki::udf::data::decode_decimal_triple(*unscaled_opt, *exponent_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, triple);
@@ -106,10 +108,11 @@ void append_time_of_day(std::vector<any>& values, plugin::udf::generic_record_cu
 }
 
 void append_time_point(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    auto sec_opt  = cursor.fetch_int8();
+    auto sec_opt = cursor.fetch_int8();
     auto nano_opt = cursor.fetch_uint4();
     if (sec_opt && nano_opt) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:(" << *sec_opt << "," << *nano_opt << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:(" << *sec_opt
+                           << "," << *nano_opt << ")";
         auto tp = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp);
     } else {
@@ -124,10 +127,11 @@ void append_time_point_with_time_zone(
     auto nano_opt = cursor.fetch_uint4();
     auto tz_offset = cursor.fetch_int4();
     if (sec_opt && nano_opt && tz_offset) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:("
-                           << *sec_opt << "," << *nano_opt << "," << *tz_offset << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:(" << *sec_opt
+                           << "," << *nano_opt << "," << *tz_offset << ")";
         auto tp_local = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
-        values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp_local);
+        values.emplace_back(
+            std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp_local);
     } else {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:NULL";
         values.emplace_back();
@@ -138,15 +142,15 @@ template <class Ref, class DecodeFn>
 void append_lob_reference(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor,
     DecodeFn const& decode_fn) {
     auto storage_opt = cursor.fetch_uint8();
-    auto object_opt  = cursor.fetch_uint8();
-    auto tag_opt     = cursor.fetch_uint8();
-    auto prov_opt    = cursor.fetch_bool();
+    auto object_opt = cursor.fetch_uint8();
+    auto tag_opt = cursor.fetch_uint8();
+    auto prov_opt = cursor.fetch_bool();
 
     if (storage_opt && object_opt && tag_opt) {
         if (VLOG_IS_ON(log_trace)) {
             std::string prov_str = prov_opt ? (prov_opt.value() ? "true" : "false") : "empty";
-            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:("
-                               << *storage_opt << "," << *object_opt << "," << *tag_opt << "," << prov_str << ")";
+            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:(" << *storage_opt
+                               << "," << *object_opt << "," << *tag_opt << "," << prov_str << ")";
         }
         auto ref = decode_fn(*storage_opt, *object_opt, *tag_opt, prov_opt);
         values.emplace_back(std::in_place_type<Ref>, ref);
@@ -187,7 +191,8 @@ std::shared_ptr<jogasaki::error::error_info> convert_udf_error(
     // For now, map all UDF errors to evaluation_exception with the message from UDF
     jogasaki::error_code code = jogasaki::error_code::evaluation_exception;
     std::ostringstream ss;
-    ss << "UDF error(" << plugin::udf::to_string_view(udf_error.code()) << "): " << udf_error.message();
+    ss << "UDF error(" << plugin::udf::to_string_view(udf_error.code())
+       << "): " << udf_error.message();
     return create_error_info(code, ss.str(), status::err_expression_evaluation_failure);
 }
 
@@ -212,8 +217,8 @@ base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
         case plugin::udf::generic_record_stream_status::error:
             if (record.error()) { // this must be true, but just in case
                 VLOG_LP(log_error) << "UDF stream error: code="
-                    << plugin::udf::to_string_view(record.error()->code())
-                    << ", message=" << record.error()->message();
+                                   << plugin::udf::to_string_view(record.error()->code())
+                                   << ", message=" << record.error()->message();
                 seq.error(convert_udf_error(*record.error()));
             } else {
                 // should not happen though
@@ -241,8 +246,8 @@ base_stream::status_type udf_any_sequence_stream::next(
         case plugin::udf::generic_record_stream_status::error:
             if (record.error()) { // this must be true, but just in case
                 VLOG_LP(log_error) << "UDF stream error: code="
-                    << plugin::udf::to_string_view(record.error()->code())
-                    << ", message=" << record.error()->message();
+                                   << plugin::udf::to_string_view(record.error()->code())
+                                   << ", message=" << record.error()->message();
                 seq.error(convert_udf_error(*record.error()));
             } else {
                 // should not happen though
@@ -291,7 +296,9 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
             case kind::date: append_date(values, *cursor); break;
             case kind::time_of_day: append_time_of_day(values, *cursor); break;
             case kind::time_point: append_time_point(values, *cursor); break;
-            case kind::time_point_with_time_zone: append_time_point_with_time_zone(values, *cursor); break;
+            case kind::time_point_with_time_zone:
+                append_time_point_with_time_zone(values, *cursor);
+                break;
             case kind::blob: append_blob(values, *cursor); break;
             case kind::clob: append_clob(values, *cursor); break;
 

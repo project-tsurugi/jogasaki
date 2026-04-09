@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,17 +29,18 @@ namespace plugin::udf {
 namespace {
 std::string_view to_string_view(plugin::udf::function_kind kind) {
     using namespace std::literals;
-    switch(kind) {
+    switch (kind) {
         case plugin::udf::function_kind::unary: return "unary"sv;
         case plugin::udf::function_kind::client_streaming: return "client_streaming"sv;
         case plugin::udf::function_kind::server_streaming: return "server_streaming"sv;
-        case plugin::udf::function_kind::bidirectional_streaming: return "bidirectional_streaming"sv;
+        case plugin::udf::function_kind::bidirectional_streaming:
+            return "bidirectional_streaming"sv;
         default: return "unknown_function_kind"sv;
     }
 }
 std::string_view to_string_view(plugin::udf::type_kind kind) {
     using namespace std::literals;
-    switch(kind) {
+    switch (kind) {
         case plugin::udf::type_kind::float8: return "float8"sv;
         case plugin::udf::type_kind::float4: return "float4"sv;
         case plugin::udf::type_kind::int8: return "int8"sv;
@@ -61,17 +62,21 @@ std::string_view to_string_view(plugin::udf::type_kind kind) {
         default: return "UnknownTypeKind"sv;
     }
 }
-} // namespace anonymous
-std::ostream& operator<<(std::ostream& out, plugin::udf::function_kind const& kind) { return out << to_string_view(kind); }
-std::ostream& operator<<(std::ostream& out, plugin::udf::type_kind const& kind) { return out << to_string_view(kind); }
+} // namespace
+std::ostream& operator<<(std::ostream& out, plugin::udf::function_kind const& kind) {
+    return out << to_string_view(kind);
+}
+std::ostream& operator<<(std::ostream& out, plugin::udf::type_kind const& kind) {
+    return out << to_string_view(kind);
+}
 void print_columns(std::vector<plugin::udf::column_descriptor*> const& cols, int indent = 0) {
     std::string indent_str(indent, ' ');
 
-    for(auto const* col: cols) {
+    for (auto const* col : cols) {
         std::cout << indent_str << "- column_name: " << col->column_name() << std::endl;
         std::cout << indent_str << "  type_kind: " << col->type_kind() << std::endl;
 
-        if(auto nested = col->nested()) {
+        if (auto nested = col->nested()) {
             std::cout << indent_str << "  nested_record:" << std::endl;
             std::cout << indent_str << "    record_name: " << nested->record_name() << std::endl;
             std::cout << indent_str << "    columns:" << std::endl;
@@ -82,15 +87,15 @@ void print_columns(std::vector<plugin::udf::column_descriptor*> const& cols, int
 
 void print_plugin_info(std::shared_ptr<plugin::udf::plugin_api> const& api) {
     auto const& pkgs = api->packages();
-    for(auto const* pkg: pkgs) {
+    for (auto const* pkg : pkgs) {
         std::cout << "  - package_name: " << pkg->package_name() << std::endl;
         std::cout << "    services:" << std::endl;
-        for(auto const* svc: pkg->services()) {
+        for (auto const* svc : pkg->services()) {
             std::cout << "      - service_name: " << svc->service_name() << std::endl;
             std::cout << "        service_index: " << svc->service_index() << std::endl;
             std::cout << "        functions:" << std::endl;
 
-            for(auto const* fn: svc->functions()) {
+            for (auto const* fn : svc->functions()) {
                 std::cout << "          - function_name: " << fn->function_name() << std::endl;
                 std::cout << "            function_index: " << fn->function_index() << std::endl;
                 std::cout << "            function_kind: " << fn->function_kind() << std::endl;
@@ -110,4 +115,4 @@ void print_plugin_info(std::shared_ptr<plugin::udf::plugin_api> const& api) {
         }
     }
 }
-}  // namespace plugin::udf
+} // namespace plugin::udf

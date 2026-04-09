@@ -30,23 +30,22 @@
 namespace jogasaki::udf::data {
 
 using any_sequence = ::jogasaki::data::any_sequence;
-using status_type  = ::jogasaki::data::any_sequence_stream::status_type;
+using status_type = ::jogasaki::data::any_sequence_stream::status_type;
 /**
  * @brief adapter class that wraps generic_record_stream to provide any_sequence_stream interface.
- * @details this adapter bridges the UDF world (generic_record_stream) and the jogasaki world (any_sequence_stream).
- *          it converts generic_record to any_sequence by mapping record fields to any values.
+ * @details this adapter bridges the UDF world (generic_record_stream) and the jogasaki world
+ * (any_sequence_stream). it converts generic_record to any_sequence by mapping record fields to any
+ * values.
  */
 class udf_any_sequence_stream : public ::jogasaki::data::any_sequence_stream {
-public:
+  public:
     /**
      * @brief constructs a new adapter with the specified generic_record_stream.
      * @param udf_stream the underlying UDF stream
      * @param column_types the types of the columns in the result table
      */
-    udf_any_sequence_stream(
-        std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
-        std::vector<jogasaki::udf::data::udf_wire_kind> column_types
-    );
+    udf_any_sequence_stream(std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
+        std::vector<jogasaki::udf::data::udf_wire_kind> column_types);
 
     /**
      * @brief attempts to retrieve the next record from the stream without blocking.
@@ -61,20 +60,22 @@ public:
     /**
      * @brief retrieves the next record from the stream, waiting up to the specified timeout.
      * @param seq the sequence to store the retrieved data
-     * @param timeout the maximum duration to wait for the next record, or std::nullopt to wait indefinitely
+     * @param timeout the maximum duration to wait for the next record, or std::nullopt to wait
+     * indefinitely
      * @return status_type::ok if a record was successfully retrieved
      * @return status_type::error if an error occurred
      * @return status_type::end_of_stream if the end of the stream has been reached
      * @return status_type::not_ready if the operation timed out before a record could be retrieved
      */
-    [[nodiscard]] status_type next(any_sequence& seq, std::optional<std::chrono::milliseconds> timeout) override;
+    [[nodiscard]] status_type next(
+        any_sequence& seq, std::optional<std::chrono::milliseconds> timeout) override;
 
     /**
      * @brief closes the stream and releases associated resources.
      */
     void close() override;
 
-private:
+  private:
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream_;
     std::vector<jogasaki::udf::data::udf_wire_kind> column_types_;
 
@@ -88,4 +89,4 @@ private:
     bool convert_record_to_sequence(plugin::udf::generic_record const& record, any_sequence& seq);
 };
 
-}  // namespace jogasaki::udf::data
+} // namespace jogasaki::udf::data

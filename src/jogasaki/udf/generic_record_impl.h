@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,11 +25,10 @@
 #include "generic_record.h"
 namespace plugin::udf {
 
-using value_type = std::
-    variant<std::monostate, bool, std::int32_t, std::int64_t, std::uint32_t, std::uint64_t, float, double, std::string>;
+using value_type = std::variant<std::monostate, bool, std::int32_t, std::int64_t, std::uint32_t,
+    std::uint64_t, float, double, std::string>;
 class generic_record_impl : public generic_record {
-public:
-
+  public:
     void reset() override;
     void add_bool(bool value) override;
     void add_bool_null() override;
@@ -53,15 +52,13 @@ public:
     void set_error(error_info const& status) override;
     void assign_from(generic_record_impl&& other) noexcept;
 
-private:
-
+  private:
     std::vector<value_type> values_;
     std::optional<error_info> err_;
 };
 
 class generic_record_cursor_impl : public generic_record_cursor {
-public:
-
+  public:
     explicit generic_record_cursor_impl(std::vector<value_type> const& values);
 
     [[nodiscard]] std::optional<bool> fetch_bool() override;
@@ -74,17 +71,14 @@ public:
     [[nodiscard]] std::optional<std::string> fetch_string() override;
     [[nodiscard]] bool has_next() override;
 
-private:
-
+  private:
     std::vector<value_type> const& values_;
     std::size_t index_ = 0;
 };
-template<class>
-struct always_false : std::false_type {};
+template <class> struct always_false : std::false_type {};
 
 class generic_record_stream_impl final : public generic_record_stream {
-public:
-
+  public:
     generic_record_stream_impl();
     ~generic_record_stream_impl() override;
 
@@ -101,10 +95,10 @@ public:
     void close() override;
 
     status_type try_next(generic_record& record) override;
-    status_type next(generic_record& record, std::optional<std::chrono::milliseconds> timeout) override;
+    status_type next(
+        generic_record& record, std::optional<std::chrono::milliseconds> timeout) override;
 
-private:
-
+  private:
     status_type extract_record_from_queue_unlocked(generic_record& record);
 
     std::queue<std::unique_ptr<generic_record_impl>> queue_;
@@ -115,4 +109,4 @@ private:
     std::condition_variable cv_;
 };
 
-}  // namespace plugin::udf
+} // namespace plugin::udf

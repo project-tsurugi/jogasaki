@@ -198,12 +198,119 @@ void add_time_point_args(plugin::udf::generic_record_impl& request, sequence_vie
                        << sec << "," << nano << "," << offset_min << ")";
 }
 
+
+bool is_null_allowed(plugin::udf::column_descriptor const& col) noexcept {
+    return col.optional();
+}
+
+void add_null_for_column(
+    plugin::udf::generic_record_impl& request,
+    plugin::udf::column_descriptor const& col,
+    std::int32_t offset_min
+) {
+    using K = plugin::udf::type_kind;
+
+    switch (col.type_kind()) {
+        case K::boolean:
+            request.add_bool_null();
+            return;
+
+        case K::int4:
+        case K::sint4:
+        case K::sfixed4:
+            request.add_int4_null();
+            return;
+
+        case K::uint4:
+        case K::fixed4:
+            request.add_uint4_null();
+            return;
+
+        case K::int8:
+        case K::sint8:
+        case K::sfixed8:
+            request.add_int8_null();
+            return;
+
+        case K::uint8:
+        case K::fixed8:
+            request.add_uint8_null();
+            return;
+
+        case K::float4:
+            request.add_float_null();
+            return;
+
+        case K::float8:
+            request.add_double_null();
+            return;
+
+        case K::string:
+        case K::bytes:
+            request.add_string_null();
+            return;
+
+        case K::message:
+        case K::group:
+            if (auto* nested = col.nested(); nested != nullptr) {
+                auto const record_name = nested->record_name();
+                if (record_name == jogasaki::udf::bridge::DECIMAL_RECORD) {
+                    request.add_string_null();
+                    request.add_int4_null();
+                    return;
+                }
+                if (record_name == jogasaki::udf::bridge::DATE_RECORD) {
+                    request.add_int4_null();
+                    return;
+                }
+                if (record_name == jogasaki::udf::bridge::LOCALTIME_RECORD) {
+                    request.add_int8_null();
+                    return;
+                }
+                if (record_name == jogasaki::udf::bridge::LOCALDATETIME_RECORD) {
+                    request.add_int8_null();
+                    request.add_uint4_null();
+                    return;
+                }
+                if (record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
+                    request.add_int8_null();
+                    request.add_uint4_null();
+                    request.add_int4_null();
+                    return;
+                }
+                if (record_name == jogasaki::udf::bridge::BLOB_RECORD ||
+                    record_name == jogasaki::udf::bridge::CLOB_RECORD) {
+                    request.add_uint8_null();
+                    request.add_uint8_null();
+                    request.add_uint8_null();
+                    request.add_bool_null();
+                    return;
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    (void) offset_min;
+    throw std::logic_error("unsupported null argument layout for UDF request");
+}
+
 void fill_request_with_args( // NOLINT(readability-function-cognitive-complexity)
     plugin::udf::generic_record_impl& request, sequence_view<data::any> args,
     std::vector<plugin::udf::column_descriptor*> const& columns) {
     for (std::size_t i = 0; i < columns.size(); ++i) {
         auto const& type = columns[i]->type_kind();
         auto const& src = args[i];
+
+        if (src.empty()) {
+            add_null_for_column(request, *columns[i], global::config_pool()->zone_offset());
+            VLOG_LP(log_trace)
+                << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " NULL";
+            continue;
+        }
+
         switch (src.type_index()) {
             case data::any::index<runtime_t<kind::boolean>>: {
                 auto value = static_cast<bool>(src.to<runtime_t<kind::boolean>>());
@@ -352,6 +459,7 @@ void fill_request_with_args( // NOLINT(readability-function-cognitive-complexity
         }
     }
 }
+
 std::shared_ptr<const takatori::type::data> determine_return_type(
     plugin::udf::record_descriptor const& output_record,
     std::unordered_map<std::string_view,
@@ -429,6 +537,7 @@ void register_udf_function_patterns(yugawara::function::configurable_provider& f
         register_function(functions, repo, current_id, fn_name, return_type, {}, lambda_func);
     }
 }
+
 std::vector<plugin::udf::column_descriptor*> const* find_matched_pattern(
     plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
     auto const& input = fn->input_record();
@@ -440,12 +549,21 @@ std::vector<plugin::udf::column_descriptor*> const* find_matched_pattern(
         for (std::size_t i = 0; i < args.size(); ++i) {
             auto const& arg = args[i];
             auto const& col = pattern[i];
+
+            if (arg.empty()) {
+                match &= is_null_allowed(*col);
+                if (!match) break;
+                continue;
+            }
+
             auto kind = col->type_kind();
-            if (kind == plugin::udf::type_kind::string || kind == plugin::udf::type_kind::message) {
+            if (kind == plugin::udf::type_kind::message || kind == plugin::udf::type_kind::group) {
                 if (auto nested = col->nested()) {
                     auto nested_it = nested_map.find(nested->record_name());
                     match &=
                         (nested_it != nested_map.end() && arg.type_index() == nested_it->second);
+                } else {
+                    match = false;
                 }
             } else {
                 auto it = type_map.find(kind);
@@ -461,10 +579,28 @@ std::vector<plugin::udf::column_descriptor*> const* find_matched_pattern(
     return nullptr;
 }
 
+
 bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_context& ctx,
     plugin::udf::function_descriptor const* fn, sequence_view<data::any> args) {
-    auto const& record_name = fn->input_record().record_name();
+    auto const& input = fn->input_record();
+    auto const& record_name = input.record_name();
+
+    auto add_special_null = [&]() -> bool {
+        if (input.columns().empty() || input.columns()[0] == nullptr) {
+            std::string msg = std::string(fn->function_name()) + " : invalid special record input";
+            VLOG_LP(log_error) << msg;
+            ctx.add_error({error_kind::invalid_input_value, msg});
+            return false;
+        }
+        add_null_for_column(request, *input.columns()[0], global::config_pool()->zone_offset());
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:0 NULL";
+        return true;
+    };
+
     if (record_name == jogasaki::udf::bridge::DECIMAL_RECORD) {
+        if (args[0].empty()) {
+            return add_special_null();
+        }
         auto value = args[0].to<runtime_t<kind::decimal>>();
         std::int8_t sign = value.sign();
         std::uint64_t hi = value.coefficient_high();
@@ -489,6 +625,9 @@ bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_cont
         return true;
     }
     if (record_name == jogasaki::udf::bridge::DATE_RECORD) {
+        if (args[0].empty()) {
+            return add_special_null();
+        }
         auto value = args[0].to<runtime_t<kind::date>>();
         auto days = static_cast<int32_t>(value.days_since_epoch());
         request.add_int4(days);
@@ -496,6 +635,9 @@ bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_cont
         return true;
     }
     if (record_name == jogasaki::udf::bridge::LOCALTIME_RECORD) {
+        if (args[0].empty()) {
+            return add_special_null();
+        }
         auto value = args[0].to<runtime_t<kind::time_of_day>>();
         auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
         request.add_int8(nanos);
@@ -503,6 +645,9 @@ bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_cont
         return true;
     }
     if (record_name == jogasaki::udf::bridge::LOCALDATETIME_RECORD) {
+        if (args[0].empty()) {
+            return add_special_null();
+        }
         auto value = args[0].to<runtime_t<kind::time_point>>();
         auto sec = static_cast<int64_t>(value.seconds_since_epoch().count());
         auto nano = static_cast<uint32_t>(value.subsecond().count());
@@ -513,11 +658,17 @@ bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_cont
         return true;
     }
     if (record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
+        if (args[0].empty()) {
+            return add_special_null();
+        }
         add_time_point_args(request, args, 0, global::config_pool()->zone_offset());
         return true;
     }
     // @see include/jogasaki/lob/blob_reference.h
     if (record_name == jogasaki::udf::bridge::BLOB_RECORD) {
+        if (args[0].empty()) {
+            return add_special_null();
+        }
         auto value = args[0].to<runtime_t<kind::blob>>();
         auto storage = 1ULL; // currently input args must be on datastore
         auto object = value.object_id();
@@ -541,6 +692,9 @@ bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_cont
     }
     // @see include/jogasaki/lob/clob_reference.h
     if (record_name == jogasaki::udf::bridge::CLOB_RECORD) {
+        if (args[0].empty()) {
+            return add_special_null();
+        }
         auto value = args[0].to<runtime_t<kind::clob>>();
         auto storage = 1ULL; // currently input args must be on datastore
         auto object = value.object_id();
@@ -564,23 +718,10 @@ bool build_udf_request(plugin::udf::generic_record_impl& request, evaluator_cont
     }
     auto const* matched_pattern = find_matched_pattern(fn, args);
     if (!matched_pattern) {
-        bool null_arg_found = false;
         std::string fn_name(fn->function_name());
-        for (std::size_t i = 0; i < args.size(); ++i) {
-            if (args[i].empty()) {
-                std::string msg = "Function '" + fn_name + "', argument #" + std::to_string(i + 1) +
-                                  " must not be NULL";
-                VLOG_LP(log_error) << msg;
-                ctx.add_error({error_kind::invalid_input_value, msg});
-                null_arg_found = true;
-                break;
-            }
-        }
-        if (!null_arg_found) {
-            std::string msg = fn_name + " : no matching argument pattern found for given arguments";
-            VLOG_LP(log_error) << msg;
-            ctx.add_error({error_kind::invalid_input_value, msg});
-        }
+        std::string msg = fn_name + " : no matching argument pattern found for given arguments";
+        VLOG_LP(log_error) << msg;
+        ctx.add_error({error_kind::invalid_input_value, msg});
         return false;
     }
     fill_request_with_args(request, args, *matched_pattern);
@@ -726,7 +867,7 @@ data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
         return build_decimal_data(*unscaled_opt, *exponent_opt);
     }
     VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:NULL";
-    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    return data::any{};
 }
 data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto days = cursor.fetch_int4()) {
@@ -735,7 +876,7 @@ data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
             jogasaki::udf::data::decode_date_from_wire(*days)};
     }
     VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:NULL";
-    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    return data::any{};
 }
 data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto nanos = cursor.fetch_int8()) {
@@ -744,7 +885,7 @@ data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
             jogasaki::udf::data::decode_time_of_day_from_wire(*nanos)};
     }
     VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:NULL";
-    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    return data::any{};
 }
 data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
     auto offset_seconds = cursor.fetch_int8();
@@ -756,7 +897,7 @@ data::any build_localdatetime_response(plugin::udf::generic_record_cursor& curso
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
     VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:NULL";
-    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    return data::any{};
 }
 data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& cursor) {
     auto offset_seconds = cursor.fetch_int8();
@@ -770,7 +911,7 @@ data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& curs
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
     VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:NULL";
-    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    return data::any{};
 }
 template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
@@ -780,7 +921,7 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
 
     if (!storage_id || !object_id || !tag) {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:NULL";
-        return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+        return data::any{};
     }
     if (VLOG_IS_ON(log_trace)) {
         std::string prov_str = provisioned ? (provisioned.value() ? "true" : "false") : "empty";
@@ -970,7 +1111,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         plugin::udf::generic_client_context context;
         // TODO: make these metadata configurable
         auto* bs = ctx.blob_session();
-        assert_with_exception(bs != nullptr, bs);
+        assert_with_exception(bs != nullptr, bs, bs);
         auto session_id = bs->get_or_create()->session_id();
         std::string transport = (cfg ? cfg->transport() : std::string{"stream"});
         blob_grpc_metadata metadata{session_id,

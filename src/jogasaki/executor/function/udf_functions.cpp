@@ -667,11 +667,7 @@ bool encode_decimal_request(plugin::udf::generic_record_impl& request, data::any
     auto coeff = (static_cast<unsigned __int128>(hi) << 64) | lo;
     if (sign < 0) coeff = -coeff;
 
-    std::string bytes(16, '\0');
-    for (int i = 0; i < 16; ++i) {
-        // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        bytes[15 - i] = static_cast<char>((coeff >> (i * 8)) & 0xFFU);
-    }
+    auto bytes = int128_to_bytes(coeff);
 
     request.add_string(bytes);
     request.add_int4(exp);

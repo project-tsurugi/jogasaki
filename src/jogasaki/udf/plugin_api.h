@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,13 +28,10 @@ namespace plugin::udf {
 [[nodiscard]] std::string to_string(function_kind kind);
 [[nodiscard]] std::string to_string(type_kind kind);
 class package_version final {
-public:
-
+  public:
     package_version() = default;
-    package_version(std::size_t maj, std::size_t min, std::size_t pat) noexcept :
-        major_(maj),
-        minor_(min),
-        patch_(pat) {}
+    package_version(std::size_t maj, std::size_t min, std::size_t pat) noexcept
+        : major_(maj), minor_(min), patch_(pat) {}
 
     [[nodiscard]] std::size_t major() const noexcept { return major_; }
     [[nodiscard]] std::size_t minor() const noexcept { return minor_; }
@@ -44,13 +41,12 @@ public:
     }
 
     bool operator<(package_version const& other) const noexcept {
-        if(major_ != other.major_) return major_ < other.major_;
-        if(minor_ != other.minor_) return minor_ < other.minor_;
+        if (major_ != other.major_) return major_ < other.major_;
+        if (minor_ != other.minor_) return minor_ < other.minor_;
         return patch_ < other.patch_;
     }
 
-private:
-
+  private:
     std::size_t major_{0};
     std::size_t minor_{0};
     std::size_t patch_{0};
@@ -58,8 +54,7 @@ private:
 
 class record_descriptor;
 class column_descriptor {
-public:
-
+  public:
     using type_kind_type = plugin::udf::type_kind;
     using index_type = std::size_t;
     using oneof_index_type = std::size_t;
@@ -80,8 +75,7 @@ public:
     [[nodiscard]] virtual bool proto3_optional() const noexcept = 0;
 };
 class record_descriptor {
-public:
-
+  public:
     record_descriptor() = default;
     virtual ~record_descriptor() = default;
     record_descriptor(record_descriptor const&) = delete;
@@ -90,12 +84,12 @@ public:
     record_descriptor& operator=(record_descriptor&&) = delete;
     [[nodiscard]] virtual std::string_view record_name() const noexcept = 0;
     [[nodiscard]] virtual const std::vector<column_descriptor*>& columns() const noexcept = 0;
-    [[nodiscard]] virtual const std::vector<std::vector<column_descriptor*>>& argument_patterns() const noexcept = 0;
+    [[nodiscard]] virtual const std::vector<std::vector<column_descriptor*>>&
+    argument_patterns() const noexcept = 0;
 };
 
 class function_descriptor {
-public:
-
+  public:
     using function_kind_type = plugin::udf::function_kind;
     function_descriptor() = default;
     using index_type = std::size_t;
@@ -113,8 +107,7 @@ public:
 };
 
 class service_descriptor {
-public:
-
+  public:
     service_descriptor() = default;
     using index_type = std::size_t;
     virtual ~service_descriptor() = default;
@@ -128,8 +121,7 @@ public:
 };
 
 class package_descriptor {
-public:
-
+  public:
     package_descriptor() = default;
     virtual ~package_descriptor() = default;
     package_descriptor(package_descriptor const&) = delete;
@@ -143,8 +135,7 @@ public:
 };
 
 class plugin_api {
-public:
-
+  public:
     plugin_api() = default;
     virtual ~plugin_api() = default;
     plugin_api(plugin_api const&) = delete;
@@ -158,4 +149,4 @@ void print_plugin_info(std::shared_ptr<plugin_api> const& api);
 extern "C" plugin_api* create_plugin_api();
 std::ostream& operator<<(std::ostream& out, type_kind const& kind);
 std::ostream& operator<<(std::ostream& out, function_kind const& kind);
-}  // namespace plugin::udf
+} // namespace plugin::udf

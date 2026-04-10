@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,7 @@ namespace plugin::udf {
 using plugin_entry = std::tuple<std::shared_ptr<plugin::udf::plugin_api>,
     std::shared_ptr<plugin::udf::generic_client>, std::shared_ptr<const plugin::udf::udf_config>>;
 class plugin_loader {
-public:
-
+  public:
     plugin_loader() = default;
     plugin_loader(plugin_loader const&) = delete;
     plugin_loader& operator=(plugin_loader const&) = delete;
@@ -38,7 +37,6 @@ public:
     virtual ~plugin_loader() = default;
     [[nodiscard]] virtual std::vector<load_result> load(std::string_view dir_path) = 0;
     virtual void unload_all() = 0;
-    [[nodiscard]] virtual std::vector<plugin_entry>&
-    get_plugins() noexcept = 0;
+    [[nodiscard]] virtual std::vector<plugin_entry>& get_plugins() noexcept = 0;
 };
-}  // namespace plugin::udf
+} // namespace plugin::udf

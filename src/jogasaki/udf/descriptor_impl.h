@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,17 +24,11 @@
 namespace plugin::udf {
 
 class column_descriptor_impl : public column_descriptor {
-public:
-
-    column_descriptor_impl(
-        index_type i,
-        std::string_view n,
-        type_kind_type k,
-        record_descriptor* nested = nullptr,
-        std::optional<oneof_index_type> oneof = std::nullopt,
+  public:
+    column_descriptor_impl(index_type i, std::string_view n, type_kind_type k,
+        record_descriptor* nested = nullptr, std::optional<oneof_index_type> oneof = std::nullopt,
         std::optional<std::string_view> oneof_name_val = std::nullopt,
-        bool proto3_optional = false
-    );
+        bool proto3_optional = false);
 
     [[nodiscard]] index_type index() const noexcept override;
     [[nodiscard]] std::string_view column_name() const noexcept override;
@@ -46,8 +40,7 @@ public:
     [[nodiscard]] bool optional() const noexcept override;
     [[nodiscard]] bool proto3_optional() const noexcept override;
 
-private:
-
+  private:
     index_type _idx;
     std::string_view _name;
     type_kind_type _kind;
@@ -58,33 +51,26 @@ private:
 };
 
 class record_descriptor_impl : public record_descriptor {
-public:
-
+  public:
     record_descriptor_impl(std::string_view n, const std::vector<column_descriptor*>& c);
 
     [[nodiscard]] std::vector<column_descriptor*> const& columns() const noexcept override;
     [[nodiscard]] std::string_view record_name() const noexcept override;
-    [[nodiscard]] std::vector<std::vector<column_descriptor*>> const& argument_patterns() const noexcept override;
+    [[nodiscard]] std::vector<std::vector<column_descriptor*>> const&
+    argument_patterns() const noexcept override;
 
-private:
-
+  private:
     std::string_view _name;
     std::vector<column_descriptor*> _cols;
     std::vector<std::vector<column_descriptor*>> _argument_patterns;
-    [[nodiscard]] std::vector<std::vector<column_descriptor*>>
-    build_argument_patterns(std::vector<column_descriptor*> const& cols) noexcept;
+    [[nodiscard]] std::vector<std::vector<column_descriptor*>> build_argument_patterns(
+        std::vector<column_descriptor*> const& cols) noexcept;
 };
 
 class function_descriptor_impl : public function_descriptor {
-public:
-
-    function_descriptor_impl(
-        index_type i,
-        std::string_view n,
-        function_kind_type k,
-        record_descriptor_impl* in,
-        record_descriptor_impl* out
-    );
+  public:
+    function_descriptor_impl(index_type i, std::string_view n, function_kind_type k,
+        record_descriptor_impl* in, record_descriptor_impl* out);
 
     [[nodiscard]] index_type function_index() const noexcept override;
     [[nodiscard]] std::string_view function_name() const noexcept override;
@@ -92,8 +78,7 @@ public:
     [[nodiscard]] record_descriptor const& input_record() const noexcept override;
     [[nodiscard]] record_descriptor const& output_record() const noexcept override;
 
-private:
-
+  private:
     index_type _idx;
     std::string_view _name;
     function_kind_type _kind;
@@ -102,41 +87,33 @@ private:
 };
 
 class service_descriptor_impl : public service_descriptor {
-public:
-
+  public:
     service_descriptor_impl(index_type i, std::string_view n, std::vector<function_descriptor*> f);
 
     [[nodiscard]] index_type service_index() const noexcept override;
     [[nodiscard]] std::string_view service_name() const noexcept override;
     [[nodiscard]] std::vector<function_descriptor*> const& functions() const noexcept override;
 
-private:
-
+  private:
     index_type _idx;
     std::string_view _name;
     std::vector<function_descriptor*> _funcs;
 };
 
 class package_descriptor_impl : public package_descriptor {
-public:
-
-    package_descriptor_impl(
-        std::string_view name,
-        std::string_view file_name,
-        package_version version,
-        std::vector<service_descriptor*> services
-    );
+  public:
+    package_descriptor_impl(std::string_view name, std::string_view file_name,
+        package_version version, std::vector<service_descriptor*> services);
 
     [[nodiscard]] std::string_view package_name() const noexcept override;
     [[nodiscard]] std::vector<service_descriptor*> const& services() const noexcept override;
     [[nodiscard]] std::string_view file_name() const noexcept override;
     [[nodiscard]] package_version version() const noexcept override;
 
-private:
-
+  private:
     std::string_view _name;
     std::string_view _file_name;
     package_version _version;
     std::vector<service_descriptor*> _svcs;
 };
-}  // namespace plugin::udf
+} // namespace plugin::udf

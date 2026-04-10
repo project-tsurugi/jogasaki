@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,22 +15,21 @@
  */
 #pragma once
 
+#include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
-#include <optional>
-#include <string>
-#include <condition_variable>
-#include <queue>
-#include <chrono>
 #include <mutex>
+#include <optional>
+#include <queue>
+#include <string>
 
 #include "error_info.h"
 namespace plugin::udf {
 
 // @see https://protobuf.dev/programming-guides/proto3/
 class generic_record_cursor {
-public:
-
+  public:
     generic_record_cursor() = default;
     generic_record_cursor(generic_record_cursor const&) = delete;
     generic_record_cursor& operator=(generic_record_cursor const&) = delete;
@@ -50,8 +49,7 @@ public:
 };
 
 class generic_record {
-public:
-
+  public:
     generic_record() = default;
     generic_record(generic_record const&) = delete;
     generic_record& operator=(generic_record const&) = delete;
@@ -93,7 +91,7 @@ public:
 };
 
 class generic_record_stream {
-public:
+  public:
     /// @brief represents the status of record retrieval.
     using status_type = generic_record_stream_status;
     generic_record_stream() = default;
@@ -104,9 +102,11 @@ public:
     virtual ~generic_record_stream() = default;
     /**
      * @brief attempts to retrieve the next record from the stream.
-     * @details if error occurs during retrieval, the resulting record will contain its error information.
+     * @details if error occurs during retrieval, the resulting record will contain its error
+     * information.
      * @param record the record to store the retrieved data, including its error information.
-     *               The contents will be modified if and only if the return value is status_type::ok or status_type::error.
+     *               The contents will be modified if and only if the return value is
+     * status_type::ok or status_type::error.
      * @return status_type::ok if a record was successfully retrieved
      * @return status_type::error if an erroneous record was retrieved
      * @return status_type::end_of_stream if the end of the stream has been reached
@@ -116,21 +116,24 @@ public:
 
     /**
      * @brief retrieves the next record from the stream, waiting up to the specified timeout.
-     * @details if error occurs during retrieval, the resulting record will contain its error information.
+     * @details if error occurs during retrieval, the resulting record will contain its error
+     * information.
      * @param record the record to store the retrieved data, including its error information.
-     *               The contents will be modified if and only if the return value is status_type::ok or status_type::error.
-     * @param timeout the maximum duration to wait for the next record, or `std::nullopt` to wait indefinitely
+     *               The contents will be modified if and only if the return value is
+     * status_type::ok or status_type::error.
+     * @param timeout the maximum duration to wait for the next record, or `std::nullopt` to wait
+     * indefinitely
      * @return status_type::ok if a record was successfully retrieved
      * @return status_type::error if an erroneous record was retrieved
      * @return status_type::end_of_stream if the end of the stream has been reached
      * @return status_type::not_ready if the operation timed out before a record could be retrieved
      */
-    [[nodiscard]] virtual status_type
-    next(generic_record& record, std::optional<std::chrono::milliseconds> timeout) = 0;
+    [[nodiscard]] virtual status_type next(
+        generic_record& record, std::optional<std::chrono::milliseconds> timeout) = 0;
 
     /**
      * @brief closes the stream and releases associated resources.
      */
     virtual void close() = 0;
 };
-}  // namespace plugin::udf
+} // namespace plugin::udf

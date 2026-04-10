@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@ namespace plugin::udf {
 
 // @see https://protobuf.dev/programming-guides/proto3/
 class error_info {
-public:
-
+  public:
     using error_code_type = grpc::StatusCode;
     ~error_info() = default;
-    explicit error_info(error_code_type code, std::string msg) : code_(code), message_(std::move(msg)) {}
+    explicit error_info(error_code_type code, std::string msg)
+        : code_(code), message_(std::move(msg)) {}
     error_info(error_info const&) = default;
     error_info(error_info&&) noexcept = default;
     error_info& operator=(error_info const&) = default;
@@ -39,18 +39,14 @@ public:
     [[nodiscard]] error_code_type code() const noexcept;
     [[nodiscard]] std::string_view message() const noexcept;
 
-private:
-
+  private:
     error_code_type code_{grpc::StatusCode::OK};
     std::string message_{};
 };
 class load_result {
-public:
-
-    load_result(load_status s, std::string f, std::string d) noexcept :
-        status_(s),
-        file_(std::move(f)),
-        detail_(std::move(d)) {}
+  public:
+    load_result(load_status s, std::string f, std::string d) noexcept
+        : status_(s), file_(std::move(f)), detail_(std::move(d)) {}
     load_result() = delete;
     ~load_result() = default;
     load_result(load_result const&) = default;
@@ -64,8 +60,7 @@ public:
     void set_file(std::string f) noexcept;
     void set_detail(std::string d) noexcept;
 
-private:
-
+  private:
     load_status status_{load_status::ok};
     std::string file_{};
     std::string detail_{};
@@ -79,4 +74,4 @@ std::ostream& operator<<(std::ostream& out, load_status const& status);
 std::ostream& operator<<(std::ostream& os, load_outcome outcome);
 [[nodiscard]] load_outcome classify(plugin::udf::load_status status) noexcept;
 
-}  // namespace plugin::udf
+} // namespace plugin::udf

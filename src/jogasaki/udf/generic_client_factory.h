@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,7 @@
 #include <grpcpp/channel.h>
 namespace plugin::udf {
 class generic_client_factory {
-public:
-
+  public:
     generic_client_factory() = default;
     virtual ~generic_client_factory() = default;
     generic_client_factory(generic_client_factory const&) = delete;
@@ -35,9 +34,10 @@ public:
 };
 
 extern "C" {
-[[nodiscard]] generic_client_factory* tsurugi_create_generic_client_factory(char const* service_name);
+[[nodiscard]] generic_client_factory* tsurugi_create_generic_client_factory(
+    char const* service_name);
 void tsurugi_destroy_generic_client_factory(generic_client_factory* ptr);
 void tsurugi_destroy_generic_client(generic_client* ptr);
 }
 
-}  // namespace plugin::udf
+} // namespace plugin::udf

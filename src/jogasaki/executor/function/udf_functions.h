@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,41 +32,32 @@
 
 #include <grpcpp/grpcpp.h>
 namespace jogasaki::executor::function {
-void add_udf_functions(
-    ::yugawara::function::configurable_provider& functions,
+void add_udf_functions(::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     executor::function::table_valued_function_repository& tvf_repo,
-    const std::vector<plugin::udf::plugin_entry>& plugins
-);
+    const std::vector<plugin::udf::plugin_entry>& plugins);
 
 class blob_grpc_metadata {
-public:
+  public:
     blob_grpc_metadata(const blob_grpc_metadata&) = delete;
     blob_grpc_metadata& operator=(const blob_grpc_metadata&) = delete;
     blob_grpc_metadata(blob_grpc_metadata&&) = delete;
     blob_grpc_metadata& operator=(blob_grpc_metadata&&) = delete;
 
-    explicit blob_grpc_metadata(
-        std::uint64_t session_id,
-        std::string endpoint,
-        bool secure,
-        std::string transport,
-        std::uint64_t chunk_size
-    ) noexcept :
-        session_id_(session_id),
-        endpoint_(std::move(endpoint)),
-        secure_(secure),
-        transport_(std::move(transport)),
-        chunk_size_(chunk_size) {}
+    explicit blob_grpc_metadata(std::uint64_t session_id, std::string endpoint, bool secure,
+        std::string transport, std::uint64_t chunk_size) noexcept
+        : session_id_(session_id), endpoint_(std::move(endpoint)), secure_(secure),
+          transport_(std::move(transport)), chunk_size_(chunk_size) {}
 
     [[nodiscard]] bool apply(grpc::ClientContext& ctx) const noexcept;
     ~blob_grpc_metadata() noexcept = default;
     blob_grpc_metadata() = delete;
-private:
+
+  private:
     std::uint64_t session_id_{};
     std::string endpoint_{};
     bool secure_{false};
     std::string transport_{"stream"};
-    const std::uint64_t chunk_size_{1048576};  // 1MB
+    const std::uint64_t chunk_size_{1048576}; // 1MB
 };
-}  // namespace jogasaki::executor::function
+} // namespace jogasaki::executor::function

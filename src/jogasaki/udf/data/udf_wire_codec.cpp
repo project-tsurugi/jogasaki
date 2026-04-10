@@ -25,12 +25,8 @@
 namespace jogasaki::udf::data {
 namespace {
 template <class Ref>
-Ref decode_lob_reference_from_wire(
-    std::uint64_t storage_id,
-    std::uint64_t object_id,
-    std::uint64_t tag,
-    std::optional<bool> provisioned
-) {
+Ref decode_lob_reference_from_wire(std::uint64_t storage_id, std::uint64_t object_id,
+    std::uint64_t tag, std::optional<bool> provisioned) {
     using provider = jogasaki::lob::lob_data_provider;
 
     if (storage_id == 1ULL) {
@@ -44,10 +40,10 @@ Ref decode_lob_reference_from_wire(
     }
     fail_with_exception_msg("invalid storage_id for lob_reference");
 }
-} // namespace anonymous
+} // namespace
 takatori::decimal::triple decode_decimal_triple(
     std::string const& unscaled, std::int32_t exponent) {
-    bool negative            = false;
+    bool negative = false;
     unsigned __int128 ucoeff = 0;
 
     bool is_negative =

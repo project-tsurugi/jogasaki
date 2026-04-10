@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,7 @@
 namespace plugin::udf {
 
 class udf_config {
-public:
-
+  public:
     udf_config() = default;
     udf_config(udf_config const&) = default;
     udf_config(udf_config&&) noexcept = default;
@@ -36,12 +35,11 @@ public:
     [[nodiscard]] std::string const& transport() const noexcept;
     [[nodiscard]] bool secure() const noexcept;
 
-private:
-
+  private:
     bool _enabled{true};
     std::string _endpoint{"dns:///localhost:50051"};
     std::string _transport{"stream"};
     bool _secure{false};
 };
 
-}  // namespace plugin::udf
+} // namespace plugin::udf

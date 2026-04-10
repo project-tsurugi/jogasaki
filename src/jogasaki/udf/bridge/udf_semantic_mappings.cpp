@@ -45,7 +45,7 @@ namespace jogasaki::udf::bridge {
 namespace {
 const std::unordered_map<plugin::udf::type_kind, jogasaki::udf::data::udf_semantic_type>&
 udf_semantic_map() {
-    using K   = plugin::udf::type_kind;
+    using K = plugin::udf::type_kind;
     using sem = jogasaki::udf::data::udf_semantic_type;
 
     static const std::unordered_map<K, sem> map{
@@ -84,7 +84,7 @@ udf_semantic_map() {
 const std::unordered_map<jogasaki::udf::data::udf_semantic_type, std::size_t>&
 semantic_index_map() {
     using sem = jogasaki::udf::data::udf_semantic_type;
-    using mf  = jogasaki::meta::field_type_kind;
+    using mf = jogasaki::meta::field_type_kind;
     static const std::unordered_map<jogasaki::udf::data::udf_semantic_type, std::size_t> map{
         {sem::boolean, ::jogasaki::data::any::index<runtime_t<mf::boolean>>},
         {sem::int4, ::jogasaki::data::any::index<runtime_t<mf::int4>>},
@@ -102,7 +102,7 @@ const std::unordered_map<jogasaki::udf::data::udf_semantic_type,
 semantic_type_map() {
 
     namespace t = takatori::type;
-    using sem   = jogasaki::udf::data::udf_semantic_type;
+    using sem = jogasaki::udf::data::udf_semantic_type;
 
     static const std::unordered_map<sem, std::function<std::shared_ptr<t::data const>()>> map{
         {sem::boolean, [] { return std::make_shared<t::simple_type<t::type_kind::boolean>>(); }},
@@ -119,7 +119,7 @@ semantic_type_map() {
 const std::unordered_map<jogasaki::udf::data::udf_semantic_type, jogasaki::meta::field_type_kind>&
 semantic_meta_kind_map() {
     using sem = jogasaki::udf::data::udf_semantic_type;
-    using k   = jogasaki::meta::field_type_kind;
+    using k = jogasaki::meta::field_type_kind;
 
     static const std::unordered_map<sem, k> map{
         {sem::boolean, k::boolean},
@@ -132,7 +132,7 @@ semantic_meta_kind_map() {
     };
     return map;
 }
-} // namespace anonymous
+} // namespace
 jogasaki::meta::field_type to_field_type(jogasaki::meta::field_type_kind k) {
     using mk = jogasaki::meta::field_type_kind;
 
@@ -173,7 +173,7 @@ const std::unordered_map<plugin::udf::type_kind, std::size_t>& type_index_map() 
 }
 std::shared_ptr<takatori::type::data const> to_takatori_type(plugin::udf::type_kind kind) {
 
-    auto const& sem_map  = udf_semantic_map();
+    auto const& sem_map = udf_semantic_map();
     auto const& type_map = semantic_type_map();
 
     auto sit = sem_map.find(kind);
@@ -188,11 +188,11 @@ std::shared_ptr<takatori::type::data const> to_takatori_type(plugin::udf::type_k
 jogasaki::meta::field_type_kind to_meta_kind(plugin::udf::type_kind k) {
 
     auto const& sem_map = jogasaki::udf::bridge::udf_semantic_map();
-    auto sit            = sem_map.find(k);
+    auto sit = sem_map.find(k);
     assert_with_exception(sit != sem_map.end(), k);
 
     auto const& meta_map = jogasaki::udf::bridge::semantic_meta_kind_map();
-    auto mit             = meta_map.find(sit->second);
+    auto mit = meta_map.find(sit->second);
     assert_with_exception(mit != meta_map.end(), k);
 
     return mit->second;

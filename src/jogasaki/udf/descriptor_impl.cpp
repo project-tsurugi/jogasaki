@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,70 +27,67 @@
 namespace plugin::udf {
 
 // column_descriptor_impl
-column_descriptor_impl::column_descriptor_impl(
-    index_type i,
-    std::string_view n,
-    type_kind_type k,
-    record_descriptor* nested,
-    std::optional<column_descriptor::oneof_index_type> oneof,
-    std::optional<std::string_view> oneof_name_val,
-    bool proto3_optional
-) :
-    _idx(i),
-    _name(n),
-    _kind(k),
-    _nested_record(nested),
-    _oneof_idx(oneof),
-    _oneof_name(oneof_name_val),
-    _proto3_optional(proto3_optional) {}
+column_descriptor_impl::column_descriptor_impl(index_type i, std::string_view n, type_kind_type k,
+    record_descriptor* nested, std::optional<column_descriptor::oneof_index_type> oneof,
+    std::optional<std::string_view> oneof_name_val, bool proto3_optional)
+    : _idx(i), _name(n), _kind(k), _nested_record(nested), _oneof_idx(oneof),
+      _oneof_name(oneof_name_val), _proto3_optional(proto3_optional) {}
 
 column_descriptor::index_type column_descriptor_impl::index() const noexcept { return _idx; }
 std::string_view column_descriptor_impl::column_name() const noexcept { return _name; }
 type_kind column_descriptor_impl::type_kind() const noexcept { return _kind; }
 record_descriptor* column_descriptor_impl::nested() const noexcept { return _nested_record; }
-std::optional<column_descriptor::oneof_index_type> column_descriptor_impl::oneof_index() const noexcept {
+std::optional<column_descriptor::oneof_index_type>
+column_descriptor_impl::oneof_index() const noexcept {
     return _oneof_idx;
 }
 bool column_descriptor_impl::has_oneof() const noexcept { return _oneof_idx.has_value(); }
-std::optional<std::string_view> column_descriptor_impl::oneof_name() const noexcept { return _oneof_name; }
+std::optional<std::string_view> column_descriptor_impl::oneof_name() const noexcept {
+    return _oneof_name;
+}
 bool column_descriptor_impl::optional() const noexcept { return has_oneof() && _proto3_optional; }
 bool column_descriptor_impl::proto3_optional() const noexcept { return _proto3_optional; }
 // record_descriptor_impl
-record_descriptor_impl::record_descriptor_impl(std::string_view n, const std::vector<column_descriptor*>& c) :
-    _name(n),
-    _cols(c),
-    _argument_patterns(build_argument_patterns(_cols)) {}
+record_descriptor_impl::record_descriptor_impl(
+    std::string_view n, const std::vector<column_descriptor*>& c)
+    : _name(n), _cols(c), _argument_patterns(build_argument_patterns(_cols)) {}
 
-std::vector<column_descriptor*> const& record_descriptor_impl::columns() const noexcept { return _cols; }
+std::vector<column_descriptor*> const& record_descriptor_impl::columns() const noexcept {
+    return _cols;
+}
 std::string_view record_descriptor_impl::record_name() const noexcept { return _name; }
-std::vector<std::vector<column_descriptor*>> const& record_descriptor_impl::argument_patterns() const noexcept {
+std::vector<std::vector<column_descriptor*>> const&
+record_descriptor_impl::argument_patterns() const noexcept {
     return _argument_patterns;
 }
 
-std::vector<std::vector<column_descriptor*>>
-record_descriptor_impl::build_argument_patterns(std::vector<column_descriptor*> const& cols) noexcept {
+std::vector<std::vector<column_descriptor*>> record_descriptor_impl::build_argument_patterns(
+    std::vector<column_descriptor*> const& cols) noexcept {
     std::vector<std::vector<column_descriptor*>> patterns(1);
-    std::unordered_map<column_descriptor::oneof_index_type, std::vector<column_descriptor*>> oneof_groups;
+    std::unordered_map<column_descriptor::oneof_index_type, std::vector<column_descriptor*>>
+        oneof_groups;
 
-    for(auto* col: cols) {
-        if(col->has_oneof()) { oneof_groups[*col->oneof_index()].push_back(col); }
+    for (auto* col : cols) {
+        if (col->has_oneof()) { oneof_groups[*col->oneof_index()].push_back(col); }
     }
 
     std::unordered_map<column_descriptor::oneof_index_type, bool> processed;
 
-    for(auto* col: cols) {
-        if(! col->has_oneof()) {
-            for(auto& p: patterns) { p.push_back(col); }
+    for (auto* col : cols) {
+        if (!col->has_oneof()) {
+            for (auto& p : patterns) {
+                p.push_back(col);
+            }
         } else {
             auto idx = *col->oneof_index();
-            if(processed[idx]) continue;
+            if (processed[idx]) continue;
             processed[idx] = true;
 
             auto& group = oneof_groups[idx];
             std::vector<std::vector<column_descriptor*>> next_patterns;
 
-            for(auto& p: patterns) {
-                for(auto* choice: group) {
+            for (auto& p : patterns) {
+                for (auto* choice : group) {
                     auto q = p;
                     q.push_back(choice);
                     next_patterns.push_back(q);
@@ -105,53 +102,42 @@ record_descriptor_impl::build_argument_patterns(std::vector<column_descriptor*> 
 }
 
 // function_descriptor_impl
-function_descriptor_impl::function_descriptor_impl(
-    index_type i,
-    std::string_view n,
-    function_kind_type k,
-    record_descriptor_impl* in,
-    record_descriptor_impl* out
-) :
-    _idx(i),
-    _name(n),
-    _kind(k),
-    _input(in),
-    _output(out) {}
+function_descriptor_impl::function_descriptor_impl(index_type i, std::string_view n,
+    function_kind_type k, record_descriptor_impl* in, record_descriptor_impl* out)
+    : _idx(i), _name(n), _kind(k), _input(in), _output(out) {}
 
-function_descriptor::index_type function_descriptor_impl::function_index() const noexcept { return _idx; }
+function_descriptor::index_type function_descriptor_impl::function_index() const noexcept {
+    return _idx;
+}
 std::string_view function_descriptor_impl::function_name() const noexcept { return _name; }
 function_kind function_descriptor_impl::function_kind() const noexcept { return _kind; }
 record_descriptor const& function_descriptor_impl::input_record() const noexcept { return *_input; }
-record_descriptor const& function_descriptor_impl::output_record() const noexcept { return *_output; }
+record_descriptor const& function_descriptor_impl::output_record() const noexcept {
+    return *_output;
+}
 
 // service_descriptor_impl
 service_descriptor_impl::service_descriptor_impl(
-    index_type i,
-    std::string_view n,
-    std::vector<function_descriptor*> f
-) :
-    _idx(i),
-    _name(n),
-    _funcs(std::move(f)) {}
+    index_type i, std::string_view n, std::vector<function_descriptor*> f)
+    : _idx(i), _name(n), _funcs(std::move(f)) {}
 
-service_descriptor::index_type service_descriptor_impl::service_index() const noexcept { return _idx; }
+service_descriptor::index_type service_descriptor_impl::service_index() const noexcept {
+    return _idx;
+}
 std::string_view service_descriptor_impl::service_name() const noexcept { return _name; }
-std::vector<function_descriptor*> const& service_descriptor_impl::functions() const noexcept { return _funcs; }
+std::vector<function_descriptor*> const& service_descriptor_impl::functions() const noexcept {
+    return _funcs;
+}
 
 // package_descriptor_impl
-package_descriptor_impl::package_descriptor_impl(
-    std::string_view name,
-    std::string_view file_name,
-    package_version version,
-    std::vector<service_descriptor*> services
-) :
-    _name(name),
-    _file_name(file_name),
-    _version(version),
-    _svcs(std::move(services)) {}
+package_descriptor_impl::package_descriptor_impl(std::string_view name, std::string_view file_name,
+    package_version version, std::vector<service_descriptor*> services)
+    : _name(name), _file_name(file_name), _version(version), _svcs(std::move(services)) {}
 
 std::string_view package_descriptor_impl::package_name() const noexcept { return _name; }
-std::vector<service_descriptor*> const& package_descriptor_impl::services() const noexcept { return _svcs; }
+std::vector<service_descriptor*> const& package_descriptor_impl::services() const noexcept {
+    return _svcs;
+}
 std::string_view package_descriptor_impl::file_name() const noexcept { return _file_name; }
 package_version package_descriptor_impl::version() const noexcept { return _version; }
-}  // namespace plugin::udf
+} // namespace plugin::udf

@@ -638,7 +638,14 @@ bool add_special_record_null(plugin::udf::generic_record_impl& request, evaluato
         ctx.add_error({error_kind::invalid_input_value, msg});
         return false;
     }
-    if (!add_null_for_column(request, *input.columns()[0], global::config_pool()->zone_offset())) {
+    auto const& col = *input.columns()[0];
+    if (!col.optional()) {
+        std::string msg = std::string(fn->function_name()) + " : argument #1 must not be NULL";
+        VLOG_LP(log_error) << msg;
+        ctx.add_error({error_kind::invalid_input_value, msg});
+        return false;
+    }
+    if (!add_null_for_column(request, col, global::config_pool()->zone_offset())) {
         std::string msg =
             std::string(fn->function_name()) + " : unsupported NULL layout for special record";
         VLOG_LP(log_error) << msg;
@@ -958,19 +965,34 @@ data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
 data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
     auto offset_seconds = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
+
+    if (!offset_seconds && !nano_adjustment) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:NULL";
+        return data::any{};
+    }
+
     if (offset_seconds && nano_adjustment) {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:("
                            << *offset_seconds << "," << *nano_adjustment << ")";
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
-    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:NULL";
-    return data::any{};
+
+    VLOG_LP(log_error) << "localdatetime response is malformed: seconds="
+                       << (offset_seconds ? "present" : "null")
+                       << " nanos=" << (nano_adjustment ? "present" : "null");
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& cursor) {
     auto offset_seconds = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
     auto tz_offset = cursor.fetch_int4();
+
+    if (!offset_seconds && !nano_adjustment && !tz_offset) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:NULL";
+        return data::any{};
+    }
+
     if (offset_seconds && nano_adjustment && tz_offset) {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:("
                            << *offset_seconds << "," << *nano_adjustment << "," << *tz_offset
@@ -978,8 +1000,12 @@ data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& curs
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
-    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:NULL";
-    return data::any{};
+
+    VLOG_LP(log_error) << "offsetdatetime response is malformed: seconds="
+                       << (offset_seconds ? "present" : "null")
+                       << " nanos=" << (nano_adjustment ? "present" : "null")
+                       << " tz_offset=" << (tz_offset ? "present" : "null");
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
@@ -987,9 +1013,7 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto tag = cursor.fetch_uint8();
     auto provisioned = cursor.fetch_bool();
 
-    if (!storage_id && !object_id && !tag && !provisioned) {
-        return data::any{};
-    }
+    if (!storage_id && !object_id && !tag && !provisioned) { return data::any{}; }
     if (!storage_id || !object_id || !tag) {
         VLOG_LP(log_error) << "lob response is malformed: storage_id="
                            << (storage_id ? "present" : "null")

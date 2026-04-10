@@ -180,7 +180,7 @@ void register_function(yugawara::function::configurable_provider& functions,
 }
 bool is_signed_int4(plugin::udf::type_kind k) noexcept {
     using K = plugin::udf::type_kind;
-    return k == K::int4 || k == K::sfixed4 || k == K::sint4;
+    return k == K::int4 || k == K::sfixed4 || k == K::sint4 || k == K::grpc_enum;
 }
 bool is_signed_int8(plugin::udf::type_kind k) noexcept {
     using K = plugin::udf::type_kind;
@@ -521,42 +521,10 @@ void register_udf_function_patterns(yugawara::function::configurable_provider& f
     }
 }
 
-std::string build_no_matching_pattern_message(
-    plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
-    std::string fn_name(fn->function_name());
-    bool has_null = false;
-    bool has_non_optional_null = false;
-
-    for (auto const& pattern : fn->input_record().argument_patterns()) {
-        if (pattern.size() != args.size()) { continue; }
-        bool pattern_has_non_optional_null = false;
-        for (std::size_t i = 0; i < args.size(); ++i) {
-            if (args[i].empty()) {
-                has_null = true;
-                if (!pattern[i]->optional()) { pattern_has_non_optional_null = true; }
-            }
-        }
-        if (pattern_has_non_optional_null) {
-            has_non_optional_null = true;
-            break;
-        }
-    }
-
-    if (has_null && has_non_optional_null) {
-        std::ostringstream oss{};
-        oss << fn_name << " : ";
-        bool first = true;
-        for (std::size_t i = 0; i < args.size(); ++i) {
-            if (!args[i].empty()) { continue; }
-            if (!first) { oss << ", "; }
-            oss << "argument #" << (i + 1);
-            first = false;
-        }
-        oss << " must not be NULL";
-        return oss.str();
-    }
-    return fn_name + " : no matching argument pattern found for given arguments";
-}
+struct pattern_match_diagnostics {
+    bool null_optionality_violation{};
+    std::vector<std::size_t> offending_null_positions{};
+};
 
 bool matches_nested_argument(plugin::udf::column_descriptor const& col, data::any const& arg,
     std::unordered_map<std::string_view, std::size_t> const& nested_map) {
@@ -590,6 +558,64 @@ bool matches_pattern(std::vector<plugin::udf::column_descriptor*> const& pattern
         if (!matches_argument(*pattern[i], args[i], type_map, nested_map)) { return false; }
     }
     return true;
+}
+
+bool matches_non_null_types_only(std::vector<plugin::udf::column_descriptor*> const& pattern,
+    sequence_view<data::any> const& args,
+    std::unordered_map<plugin::udf::type_kind, std::size_t> const& type_map,
+    std::unordered_map<std::string_view, std::size_t> const& nested_map) {
+    if (pattern.size() != args.size()) { return false; }
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        if (args[i].empty()) { continue; }
+        if (!matches_argument(*pattern[i], args[i], type_map, nested_map)) { return false; }
+    }
+    return true;
+}
+
+pattern_match_diagnostics diagnose_no_match(
+    plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
+    auto const& type_map = jogasaki::udf::bridge::type_index_map();
+    auto const& nested_map = nested_type_map();
+    pattern_match_diagnostics result{};
+
+    for (auto const& pattern : fn->input_record().argument_patterns()) {
+        if (!matches_non_null_types_only(pattern, args, type_map, nested_map)) { continue; }
+
+        std::vector<std::size_t> local{};
+        for (std::size_t i = 0; i < args.size(); ++i) {
+            if (args[i].empty() && !pattern[i]->optional()) { local.emplace_back(i); }
+        }
+        if (!local.empty()) {
+            result.null_optionality_violation = true;
+            result.offending_null_positions = std::move(local);
+            return result;
+        }
+    }
+    return result;
+}
+
+std::string build_no_matching_pattern_message(
+    plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
+    std::string fn_name(fn->function_name());
+    auto diag = diagnose_no_match(fn, args);
+
+    if (diag.null_optionality_violation) {
+        std::ostringstream oss{};
+        oss << fn_name << " : ";
+        if (diag.offending_null_positions.size() == 1) {
+            oss << "argument ";
+        } else {
+            oss << "arguments ";
+        }
+        for (std::size_t i = 0; i < diag.offending_null_positions.size(); ++i) {
+            if (i != 0) { oss << ", "; }
+            oss << "#" << (diag.offending_null_positions[i] + 1);
+        }
+        oss << " must not be NULL";
+        return oss.str();
+    }
+
+    return fn_name + " : no matching argument pattern found for given arguments";
 }
 
 std::vector<plugin::udf::column_descriptor*> const* find_matched_pattern(
@@ -890,6 +916,12 @@ std::vector<data::any> cursor_to_any_values(plugin::udf::generic_record_impl& re
 data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
     auto unscaled_opt = cursor.fetch_string();
     auto exponent_opt = cursor.fetch_int4();
+
+    if (!unscaled_opt && !exponent_opt) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:NULL";
+        return data::any{};
+    }
+
     if (unscaled_opt && exponent_opt) {
         if (VLOG_IS_ON(log_trace)) {
             std::string_view bin_view{unscaled_opt->data(), unscaled_opt->size()};
@@ -899,8 +931,11 @@ data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
         }
         return build_decimal_data(*unscaled_opt, *exponent_opt);
     }
-    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:NULL";
-    return data::any{};
+
+    VLOG_LP(log_error) << "decimal response is malformed: unscaled="
+                       << (unscaled_opt ? "present" : "null")
+                       << " exponent=" << (exponent_opt ? "present" : "null");
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto days = cursor.fetch_int4()) {
@@ -952,9 +987,16 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto tag = cursor.fetch_uint8();
     auto provisioned = cursor.fetch_bool();
 
-    if (!storage_id || !object_id || !tag) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:NULL";
+    if (!storage_id && !object_id && !tag && !provisioned) {
         return data::any{};
+    }
+    if (!storage_id || !object_id || !tag) {
+        VLOG_LP(log_error) << "lob response is malformed: storage_id="
+                           << (storage_id ? "present" : "null")
+                           << " object_id=" << (object_id ? "present" : "null")
+                           << " tag=" << (tag ? "present" : "null")
+                           << " provisioned=" << (provisioned ? "present" : "null");
+        return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
     if (VLOG_IS_ON(log_trace)) {
         std::string prov_str = provisioned ? (provisioned.value() ? "true" : "false") : "empty";

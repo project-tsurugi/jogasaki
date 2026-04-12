@@ -712,7 +712,7 @@ template <class Ref>
 bool encode_lob_request(
     plugin::udf::generic_record_impl& request, data::any const& arg, char const* label) {
     auto value = arg.to<Ref>();
-    auto storage = 1ULL;
+    auto storage = 1ULL; // currently input args must be on datastore
     auto object = value.object_id();
     auto tag = static_cast<lob::lob_reference const&>(value).reference_tag().value();
     auto prov = value.kind() == lob::lob_reference_kind::resolved;

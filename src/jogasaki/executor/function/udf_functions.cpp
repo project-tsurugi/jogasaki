@@ -200,8 +200,8 @@ void add_time_point_args(plugin::udf::generic_record_impl& request, sequence_vie
 
 bool is_null_allowed(plugin::udf::column_descriptor const& col) noexcept { return col.optional(); }
 
-bool add_null_for_column(plugin::udf::generic_record_impl& request,
-    plugin::udf::column_descriptor const& col, std::int32_t offset_min) {
+bool add_null_for_column(
+    plugin::udf::generic_record_impl& request, plugin::udf::column_descriptor const& col) {
     using K = plugin::udf::type_kind;
 
     if (!col.optional()) { return false; }
@@ -274,8 +274,9 @@ bool add_null_for_column(plugin::udf::generic_record_impl& request,
         default: break;
     }
 
-    LOG_LP(ERROR) << "unsupported null argument layout for UDF request: type_kind="
-                  << static_cast<int>(col.type_kind()) << " offset_min=" << offset_min;
+    LOG_LP(ERROR) << jogasaki::udf::log::udf_in_prefix
+                  << "unsupported null argument layout for UDF request: type_kind="
+                  << col.type_kind();
     return false;
 }
 
@@ -286,9 +287,7 @@ bool fill_request_with_args(plugin::udf::generic_record_impl& request,
         auto const& src = args[i];
 
         if (src.empty()) {
-            if (!add_null_for_column(request, *columns[i], global::config_pool()->zone_offset())) {
-                return false;
-            }
+            if (!add_null_for_column(request, *columns[i])) { return false; }
             VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " NULL";
             continue;
         }
@@ -645,7 +644,7 @@ bool add_special_record_null(plugin::udf::generic_record_impl& request, evaluato
         ctx.add_error({error_kind::invalid_input_value, msg});
         return false;
     }
-    if (!add_null_for_column(request, col, global::config_pool()->zone_offset())) {
+    if (!add_null_for_column(request, col)) {
         std::string msg =
             std::string(fn->function_name()) + " : unsupported NULL layout for special record";
         VLOG_LP(log_error) << msg;
@@ -1009,7 +1008,10 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto tag = cursor.fetch_uint8();
     auto provisioned = cursor.fetch_bool();
 
-    if (!storage_id && !object_id && !tag && !provisioned) { return data::any{}; }
+    if (!storage_id && !object_id && !tag && !provisioned) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:NULL";
+        return data::any{};
+    }
     if (!storage_id || !object_id || !tag) {
         VLOG_LP(log_error) << "lob response is malformed: storage_id="
                            << (storage_id ? "present" : "null")

@@ -26,13 +26,17 @@
 #include <vector>
 
 #include "error_info.h"
+
 namespace plugin::udf {
+
 std::optional<error_info>& generic_record_impl::error() noexcept { return err_; }
 std::optional<error_info> const& generic_record_impl::error() const noexcept { return err_; }
+
 void generic_record_impl::reset() {
     values_.clear();
     err_ = std::nullopt;
 }
+
 void generic_record_impl::set_error(error_info const& status) {
     err_ = error_info(status.code(), std::string(status.message()));
 }
@@ -71,66 +75,53 @@ generic_record_cursor_impl::generic_record_cursor_impl(std::vector<value_type> c
 bool generic_record_cursor_impl::has_next() { return index_ < values_.size(); }
 
 namespace {
-template <typename T> std::optional<T> fetch_value_as(value_type const& v) {
+
+template <typename T, typename Variant> std::optional<T> fetch_value_as(Variant const& v) {
     if (std::holds_alternative<std::monostate>(v)) { return std::nullopt; }
     if (auto p = std::get_if<T>(&v)) { return *p; }
     return std::nullopt;
 }
-} // anonymous namespace
-std::optional<bool> generic_record_cursor_impl::fetch_bool() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<bool>(values_[index_]);
-    if (value) { ++index_; }
+
+template <typename T, typename ValueVector>
+std::optional<T> fetch_and_advance(ValueVector const& values, std::size_t& index) {
+    if (index >= values.size()) { return std::nullopt; }
+    auto value = fetch_value_as<T>(values[index]);
+    ++index; // Always consume exactly one logical slot, even for NULL.
     return value;
+}
+
+} // anonymous namespace
+
+std::optional<bool> generic_record_cursor_impl::fetch_bool() {
+    return fetch_and_advance<bool>(values_, index_);
 }
 
 std::optional<std::int32_t> generic_record_cursor_impl::fetch_int4() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<std::int32_t>(values_[index_]);
-    if (value) { ++index_; }
-    return value;
+    return fetch_and_advance<std::int32_t>(values_, index_);
 }
 
 std::optional<std::int64_t> generic_record_cursor_impl::fetch_int8() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<std::int64_t>(values_[index_]);
-    if (value) { ++index_; }
-    return value;
+    return fetch_and_advance<std::int64_t>(values_, index_);
 }
 
 std::optional<std::uint32_t> generic_record_cursor_impl::fetch_uint4() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<std::uint32_t>(values_[index_]);
-    if (value) { ++index_; }
-    return value;
+    return fetch_and_advance<std::uint32_t>(values_, index_);
 }
 
 std::optional<std::uint64_t> generic_record_cursor_impl::fetch_uint8() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<std::uint64_t>(values_[index_]);
-    if (value) { ++index_; }
-    return value;
+    return fetch_and_advance<std::uint64_t>(values_, index_);
 }
 
 std::optional<float> generic_record_cursor_impl::fetch_float() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<float>(values_[index_]);
-    if (value) { ++index_; }
-    return value;
+    return fetch_and_advance<float>(values_, index_);
 }
 
 std::optional<double> generic_record_cursor_impl::fetch_double() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<double>(values_[index_]);
-    if (value) { ++index_; }
-    return value;
+    return fetch_and_advance<double>(values_, index_);
 }
 
 std::optional<std::string> generic_record_cursor_impl::fetch_string() {
-    if (!has_next()) { return std::nullopt; }
-    auto value = fetch_value_as<std::string>(values_[index_]);
-    if (value) { ++index_; }
-    return value;
+    return fetch_and_advance<std::string>(values_, index_);
 }
 
 generic_record_stream_impl::generic_record_stream_impl() = default;
@@ -234,4 +225,5 @@ generic_record_stream::status_type generic_record_stream_impl::next(
     if (!queue_.empty()) { return extract_record_from_queue_unlocked(record); }
     return status_type::end_of_stream;
 }
+
 } // namespace plugin::udf

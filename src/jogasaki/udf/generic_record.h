@@ -27,6 +27,18 @@
 #include "error_info.h"
 namespace plugin::udf {
 
+enum class runtime_type_kind {
+    null_value,
+    boolean,
+    int4,
+    int8,
+    uint4,
+    uint8,
+    float4,
+    float8,
+    string,
+};
+
 // @see https://protobuf.dev/programming-guides/proto3/
 class generic_record_cursor {
   public:
@@ -46,6 +58,8 @@ class generic_record_cursor {
     [[nodiscard]] virtual std::optional<double> fetch_double() = 0;
     [[nodiscard]] virtual std::optional<std::string> fetch_string() = 0;
     [[nodiscard]] virtual bool has_next() = 0;
+    [[nodiscard]] virtual runtime_type_kind current_kind() const = 0;
+    [[nodiscard]] virtual bool current_is_null() const = 0;
 };
 
 class generic_record {

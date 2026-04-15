@@ -15,6 +15,7 @@
  */
 #pragma once
 #include <cstdint>
+#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>
@@ -51,6 +52,8 @@ class generic_record_impl : public generic_record {
     [[nodiscard]] std::optional<error_info> const& error() const noexcept override;
     void set_error(error_info const& status) override;
     void assign_from(generic_record_impl&& other) noexcept;
+    [[nodiscard]] std::string debug_string() const;
+    void dump(std::ostream& os) const;
 
   private:
     std::vector<value_type> values_;
@@ -70,6 +73,8 @@ class generic_record_cursor_impl : public generic_record_cursor {
     [[nodiscard]] std::optional<double> fetch_double() override;
     [[nodiscard]] std::optional<std::string> fetch_string() override;
     [[nodiscard]] bool has_next() override;
+    [[nodiscard]] runtime_type_kind current_kind() const override;
+    [[nodiscard]] bool current_is_null() const override;
 
   private:
     std::vector<value_type> const& values_;
@@ -97,6 +102,8 @@ class generic_record_stream_impl final : public generic_record_stream {
     status_type try_next(generic_record& record) override;
     status_type next(
         generic_record& record, std::optional<std::chrono::milliseconds> timeout) override;
+    [[nodiscard]] std::string debug_string() const;
+    friend std::ostream& operator<<(std::ostream& os, generic_record_impl const& record);
 
   private:
     status_type extract_record_from_queue_unlocked(generic_record& record);
@@ -108,5 +115,7 @@ class generic_record_stream_impl final : public generic_record_stream {
     std::mutex mutex_;
     std::condition_variable cv_;
 };
+
+std::ostream& operator<<(std::ostream& os, generic_record_impl const& record);
 
 } // namespace plugin::udf

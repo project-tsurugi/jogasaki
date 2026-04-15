@@ -17,15 +17,70 @@
 #include "generic_record_impl.h"
 
 #include <chrono>
+#include <iomanip>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <queue>
+#include <sstream>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
 
 #include "error_info.h"
+
+namespace {
+
+std::string value_type_to_string(plugin::udf::value_type const& v) {
+    return std::visit(
+        [](auto const& x) -> std::string {
+            using T = std::decay_t<decltype(x)>;
+
+            if constexpr (std::is_same_v<T, std::monostate>) {
+                return "NULL";
+            } else if constexpr (std::is_same_v<T, bool>) {
+                return x ? "true" : "false";
+            } else if constexpr (std::is_same_v<T, std::int32_t>) {
+                return "int4(" + std::to_string(x) + ")";
+            } else if constexpr (std::is_same_v<T, std::int64_t>) {
+                return "int8(" + std::to_string(x) + ")";
+            } else if constexpr (std::is_same_v<T, std::uint32_t>) {
+                return "uint4(" + std::to_string(x) + ")";
+            } else if constexpr (std::is_same_v<T, std::uint64_t>) {
+                return "uint8(" + std::to_string(x) + ")";
+            } else if constexpr (std::is_same_v<T, float>) {
+                std::ostringstream os;
+                os << "float4(" << x << ")";
+                return os.str();
+            } else if constexpr (std::is_same_v<T, double>) {
+                std::ostringstream os;
+                os << "float8(" << x << ")";
+                return os.str();
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                return "string(\"" + x + "\")";
+            } else {
+                static_assert(plugin::udf::always_false<T>::value, "unsupported value_type");
+            }
+        },
+        v);
+}
+
+plugin::udf::runtime_type_kind to_runtime_type_kind(plugin::udf::value_type const& v) {
+    if (std::holds_alternative<std::monostate>(v))
+        return plugin::udf::runtime_type_kind::null_value;
+    if (std::holds_alternative<bool>(v)) return plugin::udf::runtime_type_kind::boolean;
+    if (std::holds_alternative<std::int32_t>(v)) return plugin::udf::runtime_type_kind::int4;
+    if (std::holds_alternative<std::int64_t>(v)) return plugin::udf::runtime_type_kind::int8;
+    if (std::holds_alternative<std::uint32_t>(v)) return plugin::udf::runtime_type_kind::uint4;
+    if (std::holds_alternative<std::uint64_t>(v)) return plugin::udf::runtime_type_kind::uint8;
+    if (std::holds_alternative<float>(v)) return plugin::udf::runtime_type_kind::float4;
+    if (std::holds_alternative<double>(v)) return plugin::udf::runtime_type_kind::float8;
+    return plugin::udf::runtime_type_kind::string;
+}
+
+} // namespace
 
 namespace plugin::udf {
 
@@ -67,6 +122,31 @@ void generic_record_impl::add_string_null() { values_.emplace_back(std::monostat
 
 std::unique_ptr<generic_record_cursor> generic_record_impl::cursor() const {
     return std::make_unique<generic_record_cursor_impl>(values_);
+}
+
+std::string generic_record_impl::debug_string() const {
+    std::ostringstream os;
+    os << "generic_record_impl{values=[";
+
+    for (std::size_t i = 0; i < values_.size(); ++i) {
+        if (i != 0) { os << ", "; }
+        os << "#" << i << "=" << value_type_to_string(values_[i]);
+    }
+
+    os << "]";
+
+    if (err_) {
+        os << ", error={code=" << err_->code() << ", message=\"" << err_->message() << "\"}";
+    } else {
+        os << ", error=null";
+    }
+
+    os << "}";
+    return os.str();
+}
+
+std::ostream& operator<<(std::ostream& os, generic_record_impl const& record) {
+    return os << record.debug_string();
 }
 
 generic_record_cursor_impl::generic_record_cursor_impl(std::vector<value_type> const& values)
@@ -122,6 +202,18 @@ std::optional<double> generic_record_cursor_impl::fetch_double() {
 
 std::optional<std::string> generic_record_cursor_impl::fetch_string() {
     return fetch_and_advance<std::string>(values_, index_);
+}
+
+plugin::udf::runtime_type_kind generic_record_cursor_impl::current_kind() const {
+    if (index_ >= values_.size()) {
+        throw std::out_of_range("generic_record_cursor: no current value");
+    }
+    return to_runtime_type_kind(values_[index_]);
+}
+
+bool generic_record_cursor_impl::current_is_null() const {
+    if (index_ >= values_.size()) { return false; }
+    return std::holds_alternative<std::monostate>(values_[index_]);
 }
 
 generic_record_stream_impl::generic_record_stream_impl() = default;

@@ -97,7 +97,6 @@ std::vector<std::vector<column_descriptor*>> record_descriptor_impl::build_argum
             patterns.swap(next_patterns);
         }
     }
-
     return patterns;
 }
 

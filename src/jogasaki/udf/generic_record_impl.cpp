@@ -23,6 +23,7 @@
 #include <optional>
 #include <queue>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -60,6 +61,30 @@ std::string value_type_to_string(plugin::udf::value_type const& v) {
                 return os.str();
             } else if constexpr (std::is_same_v<T, std::string>) {
                 return "string(\"" + x + "\")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::bytes_value>) {
+                return "bytes(size=" + std::to_string(x.value.size()) + ")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::decimal_value>) {
+                return "decimal(size=" + std::to_string(x.unscaled_value.size()) +
+                       ",exp=" + std::to_string(x.exponent) + ")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::date_value>) {
+                return "date(days=" + std::to_string(x.days) + ")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::local_time_value>) {
+                return "local_time(nanos=" + std::to_string(x.nanos) + ")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::local_datetime_value>) {
+                return "local_datetime(sec=" + std::to_string(x.offset_seconds) +
+                       ",nano=" + std::to_string(x.nano_adjustment) + ")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::offset_datetime_value>) {
+                return "offset_datetime(sec=" + std::to_string(x.offset_seconds) +
+                       ",nano=" + std::to_string(x.nano_adjustment) +
+                       ",tz=" + std::to_string(x.time_zone_offset) + ")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::blob_reference_value>) {
+                return "blob_reference(" + std::to_string(x.storage_id) + "," +
+                       std::to_string(x.object_id) + "," + std::to_string(x.tag) + "," +
+                       (x.provisioned ? "true" : "false") + ")";
+            } else if constexpr (std::is_same_v<T, plugin::udf::clob_reference_value>) {
+                return "clob_reference(" + std::to_string(x.storage_id) + "," +
+                       std::to_string(x.object_id) + "," + std::to_string(x.tag) + "," +
+                       (x.provisioned ? "true" : "false") + ")";
             } else {
                 static_assert(plugin::udf::always_false<T>::value, "unsupported value_type");
             }
@@ -77,7 +102,22 @@ plugin::udf::runtime_type_kind to_runtime_type_kind(plugin::udf::value_type cons
     if (std::holds_alternative<std::uint64_t>(v)) return plugin::udf::runtime_type_kind::uint8;
     if (std::holds_alternative<float>(v)) return plugin::udf::runtime_type_kind::float4;
     if (std::holds_alternative<double>(v)) return plugin::udf::runtime_type_kind::float8;
-    return plugin::udf::runtime_type_kind::string;
+    if (std::holds_alternative<std::string>(v)) return plugin::udf::runtime_type_kind::string;
+    if (std::holds_alternative<plugin::udf::bytes_value>(v))
+        return plugin::udf::runtime_type_kind::bytes;
+    if (std::holds_alternative<plugin::udf::decimal_value>(v))
+        return plugin::udf::runtime_type_kind::decimal;
+    if (std::holds_alternative<plugin::udf::date_value>(v))
+        return plugin::udf::runtime_type_kind::date;
+    if (std::holds_alternative<plugin::udf::local_time_value>(v))
+        return plugin::udf::runtime_type_kind::local_time;
+    if (std::holds_alternative<plugin::udf::local_datetime_value>(v))
+        return plugin::udf::runtime_type_kind::local_datetime;
+    if (std::holds_alternative<plugin::udf::offset_datetime_value>(v))
+        return plugin::udf::runtime_type_kind::offset_datetime;
+    if (std::holds_alternative<plugin::udf::blob_reference_value>(v))
+        return plugin::udf::runtime_type_kind::blob_reference;
+    return plugin::udf::runtime_type_kind::clob_reference;
 }
 
 } // namespace
@@ -120,6 +160,30 @@ void generic_record_impl::add_double_null() { values_.emplace_back(std::monostat
 void generic_record_impl::add_string(std::string v) { values_.emplace_back(std::move(v)); }
 void generic_record_impl::add_string_null() { values_.emplace_back(std::monostate{}); }
 
+void generic_record_impl::add_bytes(bytes_value v) { values_.emplace_back(std::move(v)); }
+void generic_record_impl::add_bytes_null() { values_.emplace_back(std::monostate{}); }
+
+void generic_record_impl::add_decimal(decimal_value v) { values_.emplace_back(std::move(v)); }
+void generic_record_impl::add_decimal_null() { values_.emplace_back(std::monostate{}); }
+
+void generic_record_impl::add_date(date_value v) { values_.emplace_back(v); }
+void generic_record_impl::add_date_null() { values_.emplace_back(std::monostate{}); }
+
+void generic_record_impl::add_local_time(local_time_value v) { values_.emplace_back(v); }
+void generic_record_impl::add_local_time_null() { values_.emplace_back(std::monostate{}); }
+
+void generic_record_impl::add_local_datetime(local_datetime_value v) { values_.emplace_back(v); }
+void generic_record_impl::add_local_datetime_null() { values_.emplace_back(std::monostate{}); }
+
+void generic_record_impl::add_offset_datetime(offset_datetime_value v) { values_.emplace_back(v); }
+void generic_record_impl::add_offset_datetime_null() { values_.emplace_back(std::monostate{}); }
+
+void generic_record_impl::add_blob_reference(blob_reference_value v) { values_.emplace_back(v); }
+void generic_record_impl::add_blob_reference_null() { values_.emplace_back(std::monostate{}); }
+
+void generic_record_impl::add_clob_reference(clob_reference_value v) { values_.emplace_back(v); }
+void generic_record_impl::add_clob_reference_null() { values_.emplace_back(std::monostate{}); }
+
 std::unique_ptr<generic_record_cursor> generic_record_impl::cursor() const {
     return std::make_unique<generic_record_cursor_impl>(values_);
 }
@@ -144,6 +208,8 @@ std::string generic_record_impl::debug_string() const {
     os << "}";
     return os.str();
 }
+
+void generic_record_impl::dump(std::ostream& os) const { os << debug_string(); }
 
 std::ostream& operator<<(std::ostream& os, generic_record_impl const& record) {
     return os << record.debug_string();
@@ -175,33 +241,50 @@ std::optional<T> fetch_and_advance(ValueVector const& values, std::size_t& index
 std::optional<bool> generic_record_cursor_impl::fetch_bool() {
     return fetch_and_advance<bool>(values_, index_);
 }
-
 std::optional<std::int32_t> generic_record_cursor_impl::fetch_int4() {
     return fetch_and_advance<std::int32_t>(values_, index_);
 }
-
 std::optional<std::int64_t> generic_record_cursor_impl::fetch_int8() {
     return fetch_and_advance<std::int64_t>(values_, index_);
 }
-
 std::optional<std::uint32_t> generic_record_cursor_impl::fetch_uint4() {
     return fetch_and_advance<std::uint32_t>(values_, index_);
 }
-
 std::optional<std::uint64_t> generic_record_cursor_impl::fetch_uint8() {
     return fetch_and_advance<std::uint64_t>(values_, index_);
 }
-
 std::optional<float> generic_record_cursor_impl::fetch_float() {
     return fetch_and_advance<float>(values_, index_);
 }
-
 std::optional<double> generic_record_cursor_impl::fetch_double() {
     return fetch_and_advance<double>(values_, index_);
 }
-
 std::optional<std::string> generic_record_cursor_impl::fetch_string() {
     return fetch_and_advance<std::string>(values_, index_);
+}
+std::optional<bytes_value> generic_record_cursor_impl::fetch_bytes() {
+    return fetch_and_advance<bytes_value>(values_, index_);
+}
+std::optional<decimal_value> generic_record_cursor_impl::fetch_decimal() {
+    return fetch_and_advance<decimal_value>(values_, index_);
+}
+std::optional<date_value> generic_record_cursor_impl::fetch_date() {
+    return fetch_and_advance<date_value>(values_, index_);
+}
+std::optional<local_time_value> generic_record_cursor_impl::fetch_local_time() {
+    return fetch_and_advance<local_time_value>(values_, index_);
+}
+std::optional<local_datetime_value> generic_record_cursor_impl::fetch_local_datetime() {
+    return fetch_and_advance<local_datetime_value>(values_, index_);
+}
+std::optional<offset_datetime_value> generic_record_cursor_impl::fetch_offset_datetime() {
+    return fetch_and_advance<offset_datetime_value>(values_, index_);
+}
+std::optional<blob_reference_value> generic_record_cursor_impl::fetch_blob_reference() {
+    return fetch_and_advance<blob_reference_value>(values_, index_);
+}
+std::optional<clob_reference_value> generic_record_cursor_impl::fetch_clob_reference() {
+    return fetch_and_advance<clob_reference_value>(values_, index_);
 }
 
 plugin::udf::runtime_type_kind generic_record_cursor_impl::current_kind() const {

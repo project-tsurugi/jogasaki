@@ -34,92 +34,127 @@
 
 namespace {
 
-std::string value_type_to_string(plugin::udf::value_type const& v) {
-    return std::visit(
-        [](auto const& x) -> std::string {
-            using T = std::decay_t<decltype(x)>;
+std::string value_type_string_of(std::monostate const&) { return "NULL"; }
 
-            if constexpr (std::is_same_v<T, std::monostate>) {
-                return "NULL";
-            } else if constexpr (std::is_same_v<T, bool>) {
-                return x ? "true" : "false";
-            } else if constexpr (std::is_same_v<T, std::int32_t>) {
-                return "int4(" + std::to_string(x) + ")";
-            } else if constexpr (std::is_same_v<T, std::int64_t>) {
-                return "int8(" + std::to_string(x) + ")";
-            } else if constexpr (std::is_same_v<T, std::uint32_t>) {
-                return "uint4(" + std::to_string(x) + ")";
-            } else if constexpr (std::is_same_v<T, std::uint64_t>) {
-                return "uint8(" + std::to_string(x) + ")";
-            } else if constexpr (std::is_same_v<T, float>) {
-                std::ostringstream os;
-                os << "float4(" << x << ")";
-                return os.str();
-            } else if constexpr (std::is_same_v<T, double>) {
-                std::ostringstream os;
-                os << "float8(" << x << ")";
-                return os.str();
-            } else if constexpr (std::is_same_v<T, std::string>) {
-                return "string(\"" + x + "\")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::bytes_value>) {
-                return "bytes(size=" + std::to_string(x.value.size()) + ")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::decimal_value>) {
-                return "decimal(size=" + std::to_string(x.unscaled_value.size()) +
-                       ",exp=" + std::to_string(x.exponent) + ")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::date_value>) {
-                return "date(days=" + std::to_string(x.days) + ")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::local_time_value>) {
-                return "local_time(nanos=" + std::to_string(x.nanos) + ")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::local_datetime_value>) {
-                return "local_datetime(sec=" + std::to_string(x.offset_seconds) +
-                       ",nano=" + std::to_string(x.nano_adjustment) + ")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::offset_datetime_value>) {
-                return "offset_datetime(sec=" + std::to_string(x.offset_seconds) +
-                       ",nano=" + std::to_string(x.nano_adjustment) +
-                       ",tz=" + std::to_string(x.time_zone_offset) + ")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::blob_reference_value>) {
-                return "blob_reference(" + std::to_string(x.storage_id) + "," +
-                       std::to_string(x.object_id) + "," + std::to_string(x.tag) + "," +
-                       (x.provisioned ? "true" : "false") + ")";
-            } else if constexpr (std::is_same_v<T, plugin::udf::clob_reference_value>) {
-                return "clob_reference(" + std::to_string(x.storage_id) + "," +
-                       std::to_string(x.object_id) + "," + std::to_string(x.tag) + "," +
-                       (x.provisioned ? "true" : "false") + ")";
-            } else {
-                static_assert(plugin::udf::always_false<T>::value, "unsupported value_type");
-            }
-        },
-        v);
+std::string value_type_string_of(bool x) { return x ? "true" : "false"; }
+
+std::string value_type_string_of(std::int32_t x) { return "int4(" + std::to_string(x) + ")"; }
+
+std::string value_type_string_of(std::int64_t x) { return "int8(" + std::to_string(x) + ")"; }
+
+std::string value_type_string_of(std::uint32_t x) { return "uint4(" + std::to_string(x) + ")"; }
+
+std::string value_type_string_of(std::uint64_t x) { return "uint8(" + std::to_string(x) + ")"; }
+
+std::string value_type_string_of(float x) {
+    std::ostringstream os;
+    os << "float4(" << x << ")";
+    return os.str();
+}
+
+std::string value_type_string_of(double x) {
+    std::ostringstream os;
+    os << "float8(" << x << ")";
+    return os.str();
+}
+
+std::string value_type_string_of(std::string const& x) { return "string(\"" + x + "\")"; }
+
+std::string value_type_string_of(plugin::udf::bytes_value const& x) {
+    return "bytes(size=" + std::to_string(x.value.size()) + ")";
+}
+
+std::string value_type_string_of(plugin::udf::decimal_value const& x) {
+    return "decimal(size=" + std::to_string(x.unscaled_value.size()) +
+           ",exp=" + std::to_string(x.exponent) + ")";
+}
+
+std::string value_type_string_of(plugin::udf::date_value const& x) {
+    return "date(days=" + std::to_string(x.days) + ")";
+}
+
+std::string value_type_string_of(plugin::udf::local_time_value const& x) {
+    return "local_time(nanos=" + std::to_string(x.nanos) + ")";
+}
+
+std::string value_type_string_of(plugin::udf::local_datetime_value const& x) {
+    return "local_datetime(sec=" + std::to_string(x.offset_seconds) +
+           ",nano=" + std::to_string(x.nano_adjustment) + ")";
+}
+
+std::string value_type_string_of(plugin::udf::offset_datetime_value const& x) {
+    return "offset_datetime(sec=" + std::to_string(x.offset_seconds) +
+           ",nano=" + std::to_string(x.nano_adjustment) +
+           ",tz=" + std::to_string(x.time_zone_offset) + ")";
+}
+
+std::string value_type_string_of(plugin::udf::blob_reference_value const& x) {
+    return "blob_reference(" + std::to_string(x.storage_id) + "," +
+           std::to_string(x.object_id) + "," + std::to_string(x.tag) + "," +
+           (x.provisioned ? "true" : "false") + ")";
+}
+
+std::string value_type_string_of(plugin::udf::clob_reference_value const& x) {
+    return "clob_reference(" + std::to_string(x.storage_id) + "," +
+           std::to_string(x.object_id) + "," + std::to_string(x.tag) + "," +
+           (x.provisioned ? "true" : "false") + ")";
+}
+
+std::string value_type_to_string(plugin::udf::value_type const& v) {
+    return std::visit([](auto const& x) { return value_type_string_of(x); }, v);
 }
 
 plugin::udf::runtime_type_kind to_runtime_type_kind(plugin::udf::value_type const& v) {
-    if (std::holds_alternative<std::monostate>(v))
+    if (std::holds_alternative<std::monostate>(v)) {
         return plugin::udf::runtime_type_kind::null_value;
-    if (std::holds_alternative<bool>(v)) return plugin::udf::runtime_type_kind::boolean;
-    if (std::holds_alternative<std::int32_t>(v)) return plugin::udf::runtime_type_kind::int4;
-    if (std::holds_alternative<std::int64_t>(v)) return plugin::udf::runtime_type_kind::int8;
-    if (std::holds_alternative<std::uint32_t>(v)) return plugin::udf::runtime_type_kind::uint4;
-    if (std::holds_alternative<std::uint64_t>(v)) return plugin::udf::runtime_type_kind::uint8;
-    if (std::holds_alternative<float>(v)) return plugin::udf::runtime_type_kind::float4;
-    if (std::holds_alternative<double>(v)) return plugin::udf::runtime_type_kind::float8;
-    if (std::holds_alternative<std::string>(v)) return plugin::udf::runtime_type_kind::string;
-    if (std::holds_alternative<plugin::udf::bytes_value>(v))
+    }
+    if (std::holds_alternative<bool>(v)) {
+        return plugin::udf::runtime_type_kind::boolean;
+    }
+    if (std::holds_alternative<std::int32_t>(v)) {
+        return plugin::udf::runtime_type_kind::int4;
+    }
+    if (std::holds_alternative<std::int64_t>(v)) {
+        return plugin::udf::runtime_type_kind::int8;
+    }
+    if (std::holds_alternative<std::uint32_t>(v)) {
+        return plugin::udf::runtime_type_kind::uint4;
+    }
+    if (std::holds_alternative<std::uint64_t>(v)) {
+        return plugin::udf::runtime_type_kind::uint8;
+    }
+    if (std::holds_alternative<float>(v)) {
+        return plugin::udf::runtime_type_kind::float4;
+    }
+    if (std::holds_alternative<double>(v)) {
+        return plugin::udf::runtime_type_kind::float8;
+    }
+    if (std::holds_alternative<std::string>(v)) {
+        return plugin::udf::runtime_type_kind::string;
+    }
+    if (std::holds_alternative<plugin::udf::bytes_value>(v)) {
         return plugin::udf::runtime_type_kind::bytes;
-    if (std::holds_alternative<plugin::udf::decimal_value>(v))
+    }
+    if (std::holds_alternative<plugin::udf::decimal_value>(v)) {
         return plugin::udf::runtime_type_kind::decimal;
-    if (std::holds_alternative<plugin::udf::date_value>(v))
+    }
+    if (std::holds_alternative<plugin::udf::date_value>(v)) {
         return plugin::udf::runtime_type_kind::date;
-    if (std::holds_alternative<plugin::udf::local_time_value>(v))
+    }
+    if (std::holds_alternative<plugin::udf::local_time_value>(v)) {
         return plugin::udf::runtime_type_kind::local_time;
-    if (std::holds_alternative<plugin::udf::local_datetime_value>(v))
+    }
+    if (std::holds_alternative<plugin::udf::local_datetime_value>(v)) {
         return plugin::udf::runtime_type_kind::local_datetime;
-    if (std::holds_alternative<plugin::udf::offset_datetime_value>(v))
+    }
+    if (std::holds_alternative<plugin::udf::offset_datetime_value>(v)) {
         return plugin::udf::runtime_type_kind::offset_datetime;
-    if (std::holds_alternative<plugin::udf::blob_reference_value>(v))
+    }
+    if (std::holds_alternative<plugin::udf::blob_reference_value>(v)) {
         return plugin::udf::runtime_type_kind::blob_reference;
+    }
     return plugin::udf::runtime_type_kind::clob_reference;
 }
-
 } // namespace
 
 namespace plugin::udf {

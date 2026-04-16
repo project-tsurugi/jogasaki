@@ -336,9 +336,9 @@ bool fill_request_with_args(plugin::udf::generic_record_impl& request,
             }
             case data::any::index<accessor::binary>: {
                 auto bin = static_cast<std::string>(src.to<runtime_t<kind::octet>>());
-                request.add_bytes(plugin::udf::bytes_value{std::move(bin)});
                 VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i
                                    << " bytes:" << utils::binary_printer{bin}.show_hyphen(false);
+                request.add_bytes(plugin::udf::bytes_value{std::move(bin)});
                 break;
             }
             case data::any::index<accessor::text>: {
@@ -359,10 +359,10 @@ bool fill_request_with_args(plugin::udf::generic_record_impl& request,
                 __int128 coeff =
                     (sign < 0) ? -static_cast<__int128>(ucoeff) : static_cast<__int128>(ucoeff);
                 std::string coeff_bytes = int128_to_bytes(coeff);
-                request.add_decimal(plugin::udf::decimal_value{std::move(coeff_bytes), exp});
                 VLOG_LP(log_trace)
                     << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " decimal:("
                     << utils::binary_printer{coeff_bytes}.show_hyphen(false) << "," << exp << ")";
+                request.add_decimal(plugin::udf::decimal_value{std::move(coeff_bytes), exp});
                 break;
             }
             case data::any::index<runtime_t<kind::date>>: {
@@ -656,9 +656,9 @@ bool encode_decimal_request(plugin::udf::generic_record_impl& request, data::any
 
     auto bytes = int128_to_bytes(coeff);
 
-    request.add_decimal(plugin::udf::decimal_value{std::move(bytes), exp});
     VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "decimal:("
                        << utils::binary_printer{bytes}.show_hyphen(false) << "," << exp << ")";
+    request.add_decimal(plugin::udf::decimal_value{std::move(bytes), exp});
     return true;
 }
 
@@ -811,6 +811,50 @@ void fetch_and_emplace_cast(std::vector<data::any>& result, FetchFn fetch_fn, Ca
 }
 
 std::vector<data::any> cursor_to_any_values(plugin::udf::generic_record_impl& response,
+    std::vector<plugin::udf::column_descriptor*> const& cols, evaluator_context& ctx);
+
+void append_string_result(std::vector<data::any>& result,
+    plugin::udf::generic_record_cursor& cursor, evaluator_context& ctx) {
+    if (auto v = cursor.fetch_string()) {
+        result.emplace_back(std::in_place_type<runtime_t<kind::character>>,
+            runtime_t<kind::character>{ctx.resource(), *v});
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "string:" << *v;
+        return;
+    }
+    result.emplace_back();
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "string:NULL";
+}
+
+void append_bytes_result(std::vector<data::any>& result, plugin::udf::generic_record_cursor& cursor,
+    evaluator_context& ctx) {
+    if (auto v = cursor.fetch_bytes()) {
+        result.emplace_back(std::in_place_type<runtime_t<kind::octet>>,
+            runtime_t<kind::octet>{ctx.resource(), v->value});
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix
+                           << "bytes:" << utils::binary_printer{v->value}.show_hyphen(false);
+        return;
+    }
+    result.emplace_back();
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "bytes:NULL";
+}
+
+void append_nested_result(std::vector<data::any>& result,
+    plugin::udf::generic_record_impl& response, plugin::udf::generic_record_cursor& cursor,
+    plugin::udf::column_descriptor const& col, evaluator_context& ctx) {
+    if (auto nested_cols = col.nested()) {
+        auto const& map = response_builder_map();
+        if (auto it = map.find(nested_cols->record_name()); it != map.end()) {
+            result.emplace_back(it->second(cursor));
+            return;
+        }
+        auto nested_values = cursor_to_any_values(response, nested_cols->columns(), ctx);
+        result.insert(result.end(), nested_values.begin(), nested_values.end());
+        return;
+    }
+    result.emplace_back();
+}
+
+std::vector<data::any> cursor_to_any_values(plugin::udf::generic_record_impl& response,
     std::vector<plugin::udf::column_descriptor*> const& cols, evaluator_context& ctx) {
     std::vector<data::any> result;
 
@@ -863,45 +907,17 @@ std::vector<data::any> cursor_to_any_values(plugin::udf::generic_record_impl& re
                     break;
 
                 case plugin::udf::type_kind::string:
-                    if (auto v = cursor->fetch_string()) {
-                        result.emplace_back(std::in_place_type<runtime_t<kind::character>>,
-                            runtime_t<kind::character>{ctx.resource(), *v});
-                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "string:" << *v;
-                    } else {
-                        result.emplace_back();
-                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "string:NULL";
-                    }
+                    append_string_result(result, *cursor, ctx);
                     break;
 
                 case plugin::udf::type_kind::bytes:
-                    if (auto v = cursor->fetch_bytes()) {
-                        result.emplace_back(std::in_place_type<runtime_t<kind::octet>>,
-                            runtime_t<kind::octet>{ctx.resource(), v->value});
-                        VLOG_LP(log_trace)
-                            << jogasaki::udf::log::udf_out_prefix
-                            << "bytes:" << utils::binary_printer{v->value}.show_hyphen(false);
-                    } else {
-                        result.emplace_back();
-                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "bytes:NULL";
-                    }
+                    append_bytes_result(result, *cursor, ctx);
                     break;
 
                 case plugin::udf::type_kind::group:
-                case plugin::udf::type_kind::message: {
-                    if (auto nested_cols = col->nested()) {
-                        auto const& map = response_builder_map();
-                        if (auto it = map.find(nested_cols->record_name()); it != map.end()) {
-                            result.emplace_back(it->second(*cursor));
-                        } else {
-                            auto nested_values =
-                                cursor_to_any_values(response, nested_cols->columns(), ctx);
-                            result.insert(result.end(), nested_values.begin(), nested_values.end());
-                        }
-                    } else {
-                        result.emplace_back();
-                    }
+                case plugin::udf::type_kind::message:
+                    append_nested_result(result, response, *cursor, *col, ctx);
                     break;
-                }
 
                 default: result.emplace_back(); break;
             }

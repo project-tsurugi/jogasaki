@@ -27,6 +27,7 @@
 #include <string_view>
 #include <tsl/hopscotch_hash.h>
 #include <tsl/hopscotch_set.h>
+#include <type_traits>
 #include <unordered_map>
 #include <variant>
 
@@ -695,20 +696,25 @@ bool encode_offsetdatetime_request(
 }
 
 template <class Ref>
-bool encode_lob_request(
-    plugin::udf::generic_record_impl& request, data::any const& arg, char const* label) {
+bool encode_lob_request(plugin::udf::generic_record_impl& request, data::any const& arg) {
     auto value = arg.to<Ref>();
     auto storage = 1ULL; // currently input args must be on datastore
     auto object = value.object_id();
     auto tag = static_cast<lob::lob_reference const&>(value).reference_tag().value();
     auto prov = value.kind() == lob::lob_reference_kind::resolved;
-    if (std::string_view(label) == "blob") {
+
+    if constexpr (std::is_same_v<Ref, runtime_t<kind::blob>>) {
         request.add_blob_reference(plugin::udf::blob_reference_value{storage, object, tag, prov});
-    } else {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "blob:(" << storage << ","
+                           << object << "," << tag << "," << prov << ")";
+    } else if constexpr (std::is_same_v<Ref, runtime_t<kind::clob>>) {
         request.add_clob_reference(plugin::udf::clob_reference_value{storage, object, tag, prov});
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "clob:(" << storage << ","
+                           << object << "," << tag << "," << prov << ")";
+    } else {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "unknown lob type:(" << storage
+                           << "," << object << "," << tag << "," << prov << ")";
     }
-    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << label << ":(" << storage << ","
-                       << object << "," << tag << "," << prov << ")";
     return true;
 }
 
@@ -739,14 +745,12 @@ bool try_build_special_udf_request(plugin::udf::generic_record_impl& request,
                                : encode_offsetdatetime_request(request, args);
     }
     if (record_name == jogasaki::udf::bridge::BLOB_RECORD) {
-        return args[0].empty()
-                   ? add_special_record_null(request, ctx, fn)
-                   : encode_lob_request<runtime_t<kind::blob>>(request, args[0], "blob");
+        return args[0].empty() ? add_special_record_null(request, ctx, fn)
+                               : encode_lob_request<runtime_t<kind::blob>>(request, args[0]);
     }
     if (record_name == jogasaki::udf::bridge::CLOB_RECORD) {
-        return args[0].empty()
-                   ? add_special_record_null(request, ctx, fn)
-                   : encode_lob_request<runtime_t<kind::clob>>(request, args[0], "clob");
+        return args[0].empty() ? add_special_record_null(request, ctx, fn)
+                               : encode_lob_request<runtime_t<kind::clob>>(request, args[0]);
     }
 
     handled = false;

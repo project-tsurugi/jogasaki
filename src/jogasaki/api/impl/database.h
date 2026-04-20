@@ -16,12 +16,15 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <cstddef>
 #include <functional>
 #include <iosfwd>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 #include <tbb/concurrent_hash_map.h>
@@ -361,6 +364,13 @@ private:
     std::shared_ptr<commit_stats> commit_stats_{std::make_shared<commit_stats>()};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<impl::transaction_store>> transaction_stores_{};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<impl::statement_store>> statement_stores_{};
+
+    std::thread maintenance_thread_{};
+    std::mutex maintenance_mutex_{};
+    std::condition_variable maintenance_cv_{};
+    bool maintenance_stop_requested_{false}; // protected by maintenance_mutex_
+
+    void maintenance_loop() noexcept;
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

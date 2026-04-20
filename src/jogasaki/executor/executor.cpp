@@ -671,7 +671,7 @@ static bool validate_authorization(
         auto res = status::err_illegal_operation;
         if(VLOG_IS_ON(log_error)) {
             auto& authorized = stg->authorized_actions().find_user_actions(user.value());
-            VLOG_LP(log_error) << "insufficient authorization user:\"" << user.value() << "\" table:\"" << stg->name()
+            VLOG_LP(log_error) << "insufficient authorization user:\"" << user.value() << "\" table:\"" << stg->name().value_or(stg->original_name())
                                << "\" requested:" << acts << " public:" << stg->public_actions()
                                << " authorized:" << authorized;
         }
@@ -737,6 +737,10 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
                 ), nullptr);
             utils::print_error(*rctx, msg);
             return true; // false is for unrecoverable abnormal error. This case is normal error.
+        }
+        // pin primary storages in the transaction so that lazy deletion waits for tx completion
+        if (rctx->transaction()) {
+            rctx->transaction()->add_storages_ref(e->mirrors()->storage_operation().storage());
         }
     }
 
@@ -1041,8 +1045,9 @@ scheduler::job_context::job_id_type commit_async(
                 rctx->transaction()->profile()->set_precommit_cb_invoked();
                 process_commit_callback(st, ec, marker, jobid, rctx, txid, database, option);
 
-                // release storage lock as soon as commit callback completes
+                // release storage lock and storage reference scope as soon as commit callback completes
                 // TODO when commit fails for tx with DDL, we need to repair storage metadata and then unlock
+                rctx->transaction()->reset_storage_ref_scope();
                 rctx->transaction()->storage_lock(nullptr);
             });
         return model::task_result::complete;

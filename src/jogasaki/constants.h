@@ -145,7 +145,7 @@ constexpr std::size_t dumped_decimal_default_scale = 5;
 /**
  * @brief serialized storage metadata version
  */
-constexpr std::size_t metadata_format_version = 13;
+constexpr std::size_t metadata_format_version = 14;
 
 /**
  * @brief storage metadata version minimum acceptable by the current code

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -34,6 +35,7 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/storage/maintenance_storage.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
@@ -73,6 +75,9 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+         // stop maintenace thread and call maintenance_storage() explicitly to control
+         // the timing of cleaning up
+        cfg->enable_maintenance_thread(false);
         db_setup(cfg);
     }
 
@@ -120,8 +125,16 @@ TEST_F(create_drop_test, drop0) {
     auto s = smgr.find_entry(e.value());
     ASSERT_TRUE(s);
     execute_statement("DROP TABLE TT");
-    ASSERT_TRUE(! smgr.find_by_name("TT").has_value());
-    ASSERT_TRUE(! smgr.find_entry(e.value()));
+    {
+        // deleting storage is lazy, not yet done - cannot find by name, but can find by id
+        ASSERT_TRUE(! smgr.find_by_name("TT").has_value());
+        ASSERT_TRUE(smgr.find_entry(e.value()));
+    }
+    ASSERT_EQ((std::vector<std::string>{"TT"}), storage::maintenance_storage()); // to delete the storage completely
+    {
+        ASSERT_TRUE(! smgr.find_by_name("TT").has_value());
+        ASSERT_TRUE(! smgr.find_entry(e.value()));
+    }
     execute_statement("CREATE TABLE TT2 (C0 INT NOT NULL PRIMARY KEY)");
     auto e2 = smgr.find_by_name("TT2");
     ASSERT_TRUE(e2.has_value());
@@ -176,6 +189,23 @@ TEST_F(create_drop_test, verify_storage_key_for_tables) {
     std::cerr << "******************* v0:" << v0 << " v1:" << v1 << std::endl;
     execute_statement("DROP TABLE t0");
     {
+        // deleting storage is lazy, not yet done
+        auto provider = db_impl()->tables();
+        auto i0 = provider->find_index("t0");
+        ASSERT_TRUE(! i0);
+        auto s0 = utils::get_storage_by_index_name("t0");
+        ASSERT_TRUE(! s0);
+        auto e = global::storage_manager()->find_by_name("t0");
+        ASSERT_TRUE(! e.has_value());
+        auto sk = global::storage_manager()->get_storage_key("t0");
+        ASSERT_TRUE(! sk);
+        auto n = global::storage_manager()->get_index_name(sk0.value());
+        ASSERT_TRUE(! n);  // name_ is nullopt after DROP → get_index_name returns nullopt
+        auto s = global::db()->get_storage(sk0.value());
+        ASSERT_TRUE(s);  // still we can see the storage
+    }
+    ASSERT_EQ((std::vector<std::string>{"t0"}), storage::maintenance_storage()); // to delete the storage completely
+    {
         auto provider = db_impl()->tables();
         auto i0 = provider->find_index("t0");
         ASSERT_TRUE(! i0);
@@ -187,6 +217,8 @@ TEST_F(create_drop_test, verify_storage_key_for_tables) {
         ASSERT_TRUE(! sk);
         auto n = global::storage_manager()->get_index_name(sk0.value());
         ASSERT_TRUE(! n);
+        auto s = global::db()->get_storage(sk0.value());
+        ASSERT_TRUE(! s);
     }
 }
 
@@ -240,6 +272,21 @@ TEST_F(create_drop_test, verify_storage_key_for_indices) {
     // verify indices dropped explicitly
     execute_statement("DROP INDEX i0");
     {
+        // deleting storage is lazy, not yet done
+        auto provider = db_impl()->tables();
+        auto i = provider->find_index("i0");
+        EXPECT_TRUE(! i);
+        auto s = utils::get_storage_by_index_name("i0");
+        EXPECT_TRUE(! s);
+        auto sk = global::storage_manager()->get_storage_key("i0");
+        EXPECT_TRUE(! sk);
+        auto n = global::storage_manager()->get_index_name(sk0.value());
+        EXPECT_TRUE(! n);  // name_ is nullopt after DROP → get_index_name returns nullopt
+        auto phys_s = global::db()->get_storage(sk0.value());
+        EXPECT_TRUE(phys_s); // still we can see the storage
+    }
+    ASSERT_EQ((std::vector<std::string>{"i0"}), storage::maintenance_storage()); // to delete the storage completely
+    {
         auto provider = db_impl()->tables();
         auto i = provider->find_index("i0");
         EXPECT_TRUE(! i);
@@ -249,10 +296,31 @@ TEST_F(create_drop_test, verify_storage_key_for_indices) {
         EXPECT_TRUE(! sk);
         auto n = global::storage_manager()->get_index_name(sk0.value());
         EXPECT_TRUE(! n);
+        auto phys_s = global::db()->get_storage(sk0.value());
+        EXPECT_TRUE(! phys_s);
     }
 
     // verify indices cascade-dropped
     execute_statement("DROP TABLE t0");
+    {
+        // deleting storage is lazy, not yet done
+        auto provider = db_impl()->tables();
+        auto i = provider->find_index("i1");
+        EXPECT_TRUE(! i);
+        auto s = utils::get_storage_by_index_name("i1");
+        EXPECT_TRUE(! s);
+        auto sk = global::storage_manager()->get_storage_key("i1");
+        EXPECT_TRUE(! sk);
+        auto n = global::storage_manager()->get_index_name(sk1.value());
+        EXPECT_TRUE(! n);  // name_ is nullopt after DROP → get_index_name returns nullopt
+        auto phys_s = global::db()->get_storage(sk1.value());
+        EXPECT_TRUE(phys_s);  // still we can see the storage
+    }
+    {
+        auto deleted = storage::maintenance_storage(); // to delete the storage completely
+        std::sort(deleted.begin(), deleted.end());
+        ASSERT_EQ((std::vector<std::string>{"i1", "t0"}), deleted);
+    }
     {
         auto provider = db_impl()->tables();
         auto i = provider->find_index("i1");
@@ -263,6 +331,8 @@ TEST_F(create_drop_test, verify_storage_key_for_indices) {
         EXPECT_TRUE(! sk);
         auto n = global::storage_manager()->get_index_name(sk1.value());
         EXPECT_TRUE(! n);
+        auto phys_s = global::db()->get_storage(sk1.value());
+        EXPECT_TRUE(! phys_s);
     }
 }
 
@@ -306,14 +376,33 @@ TEST_F(create_drop_test, tables_with_no_storage_key) {
         ASSERT_TRUE(n);
         EXPECT_EQ("t0", n.value());
     }
+    auto saved_sk0 = global::storage_manager()->get_storage_key("t0");
+    ASSERT_TRUE(saved_sk0);
     execute_statement("DROP TABLE t0");
+    {
+        // deleting storage is lazy, not yet done
+        auto provider = db_impl()->tables();
+        auto i0 = provider->find_index("t0");
+        EXPECT_TRUE(! i0);
+        auto s0 = utils::get_storage_by_index_name("t0");
+        EXPECT_TRUE(! s0);
+        auto e = global::storage_manager()->find_by_name("t0");
+        ASSERT_TRUE(! e.has_value());
+        auto sk0 = global::storage_manager()->get_storage_key("t0");
+        ASSERT_TRUE(! sk0);
+        auto n = global::storage_manager()->get_index_name("t0");
+        ASSERT_TRUE(! n);
+        auto s = global::db()->get_storage(saved_sk0.value());
+        EXPECT_TRUE(s);  // still we can see the storage
+    }
+    ASSERT_EQ((std::vector<std::string>{"t0"}), storage::maintenance_storage()); // to delete the storage completely
     {
         auto provider = db_impl()->tables();
         auto i0 = provider->find_index("t0");
         EXPECT_TRUE(! i0);
         auto s0 = utils::get_storage_by_index_name("t0");
         EXPECT_TRUE(! s0);
-        auto s = global::db()->get_storage("t0");
+        auto s = global::db()->get_storage(saved_sk0.value());
         EXPECT_TRUE(! s);
         auto e = global::storage_manager()->find_by_name("t0");
         ASSERT_TRUE(! e.has_value());
@@ -350,14 +439,33 @@ TEST_F(create_drop_test, index_with_no_storage_key) {
         ASSERT_TRUE(n);
         EXPECT_EQ("i0", n.value());
     }
+    auto saved_sk0 = global::storage_manager()->get_storage_key("i0");
+    ASSERT_TRUE(saved_sk0);
     execute_statement("DROP INDEX i0");
+    {
+        // deleting storage is lazy, not yet done
+        auto provider = db_impl()->tables();
+        auto i0 = provider->find_index("i0");
+        EXPECT_TRUE(! i0);
+        auto s0 = utils::get_storage_by_index_name("i0");
+        EXPECT_TRUE(! s0);
+        auto e = global::storage_manager()->find_by_name("i0");
+        ASSERT_TRUE(! e.has_value());
+        auto sk0 = global::storage_manager()->get_storage_key("i0");
+        ASSERT_TRUE(! sk0);
+        auto n = global::storage_manager()->get_index_name("i0");
+        ASSERT_TRUE(! n);
+        auto s = global::db()->get_storage(saved_sk0.value());
+        EXPECT_TRUE(s);  // still we can see the storage
+    }
+    ASSERT_EQ((std::vector<std::string>{"i0"}), storage::maintenance_storage()); // to delete the storage completely
     {
         auto provider = db_impl()->tables();
         auto i0 = provider->find_index("i0");
         EXPECT_TRUE(! i0);
         auto s0 = utils::get_storage_by_index_name("i0");
         EXPECT_TRUE(! s0);
-        auto s = global::db()->get_storage("i0");
+        auto s = global::db()->get_storage(saved_sk0.value());
         EXPECT_TRUE(! s);
         auto e = global::storage_manager()->find_by_name("i0");
         ASSERT_TRUE(! e.has_value());

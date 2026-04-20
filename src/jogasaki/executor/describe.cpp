@@ -170,7 +170,7 @@ static bool validate_describe_table_auth(
                 if(VLOG_IS_ON(log_error)) {
                     auto& authorized = stg->authorized_actions().find_user_actions(username.value());
                     VLOG_LP(log_error) << "insufficient authorization for describe table user:\"" << username.value()
-                                       << "\" table:\"" << stg->name() << "\" public:" << stg->public_actions()
+                                       << "\" table:\"" << stg->name().value_or(stg->original_name()) << "\" public:" << stg->public_actions()
                                        << " authorized:" << authorized;
                 }
             } else {

@@ -30,6 +30,7 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
@@ -42,6 +43,34 @@
 namespace jogasaki::recovery {
 
 using takatori::util::string_builder;
+
+std::shared_ptr<error::error_info> set_storage_option_delete_reserved(
+    yugawara::storage::index const& idx,
+    std::string_view storage_key
+) {
+    auto stg = global::db()->get_storage(storage_key);
+    if (! stg) {
+        return {}; // storage already gone, nothing to update
+    }
+    std::string payload{};
+    utils::metadata_serializer_option option{};
+    option.storage_key_ = storage_key;
+    option.delete_reserved_ = true;
+    // now no auth. info. needed for the entry with delete reservation
+    if (auto err = create_storage_option(idx, payload, option)) {
+        return err;
+    }
+    sharksfin::StorageOptions new_opts{};
+    new_opts.payload(payload);
+    if (auto res = stg->set_options(new_opts); res != status::ok) {
+        return create_error_info(
+            error_code::sql_execution_exception,
+            "failed to set storage options for delete reservation",
+            res
+        );
+    }
+    return {};
+}
 
 std::shared_ptr<error::error_info> create_storage_option(
     yugawara::storage::index const& idx,

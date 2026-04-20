@@ -344,6 +344,10 @@ static void serialize_index(
         idef.set_storage_key(std::string{*option.storage_key_});
     }
 
+    if(option.delete_reserved_.has_value()) {
+        idef.set_delete_reserved(*option.delete_reserved_);
+    }
+
     auto* keys = idef.mutable_keys();
     for(auto&& k : idx.keys()) {
         auto* ic = keys->Add();

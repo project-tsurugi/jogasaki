@@ -49,4 +49,18 @@ storage_list_view unique_lock::storage() {
     return storages_;
 }
 
+void unique_lock::release_storage(storage_entry entry) noexcept {
+    if (! storages_.remove(entry)) {
+        return;
+    }
+    try {
+        auto s = manager_->find_entry(entry);
+        if (s) {
+            s->release();
+        }
+    } catch (...) {
+        LOG_LP(ERROR) << "unexpected exception occurred while releasing storage:" << entry;
+    }
+}
+
 } // namespace jogasaki::storage

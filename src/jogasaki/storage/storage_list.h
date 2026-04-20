@@ -74,6 +74,20 @@ public:
         entries_.emplace_back(entry);
     }
 
+    /**
+     * @brief remove a storage entry from the list
+     * @param entry the entry to remove
+     * @return true if the entry was found and removed, false otherwise
+     */
+    bool remove(storage_entry entry) noexcept {
+        auto it = std::find(entries_.begin(), entries_.end(), entry);
+        if (it == entries_.end()) {
+            return false;
+        }
+        entries_.erase(it);
+        return true;
+    }
+
     [[nodiscard]] std::vector<storage_entry> const& entries() const noexcept {
         return entries_;
     }

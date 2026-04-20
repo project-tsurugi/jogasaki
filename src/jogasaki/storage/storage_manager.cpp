@@ -36,21 +36,28 @@ std::size_t storage_manager::size() const noexcept {
     return storages_.size();
 }
 
-bool storage_manager::add_entry(storage_entry entry, std::string_view name, std::optional<std::string_view> storage_key, bool is_primary) {
+bool storage_manager::add_entry(storage_entry entry, std::optional<std::string_view> name, std::optional<std::string_view> storage_key, bool is_primary, std::optional<storage_entry> primary_entry, std::optional<std::string_view> original_name) {
     bool ret = false;
     std::shared_ptr<impl::storage_control> control{};
     {
         decltype(storages_)::accessor acc;
         if (storages_.insert(acc, entry)) {
-            acc->second = std::make_shared<impl::storage_control>(std::string{name}, is_primary);
+            std::optional<std::string> name_str = name ? std::optional<std::string>{std::string{*name}} : std::nullopt;
+            std::optional<std::string> original_name_str = original_name ? std::optional<std::string>{std::string{*original_name}} : std::nullopt;
+            acc->second = std::make_shared<impl::storage_control>(std::move(name_str), is_primary, primary_entry, std::move(original_name_str));
             control = acc->second;
             control->storage_key(storage_key);
+            if (! name) {
+                control->delete_reserved(true);
+            }
             ret = true;
         }
     }
     if (ret) {
-        // add name after storages_ is updated successfully
-        storage_names_.emplace(std::string{name}, entry);
+        if (name) {
+            // add name after storages_ is updated successfully
+            storage_names_.emplace(std::string{*name}, entry);
+        }
         // add storage key mapping
         storage_keys_.emplace(std::string{control->derived_storage_key()}, entry);
     }
@@ -60,14 +67,56 @@ bool storage_manager::add_entry(storage_entry entry, std::string_view name, std:
 bool storage_manager::remove_entry(storage_entry entry) {
     decltype(storages_)::accessor acc;
     if (storages_.find(acc, entry)) {
-        auto name = acc->second->name();
-        auto storage_key = acc->second->derived_storage_key();
-        storage_names_.erase(std::string{name});
-        storage_keys_.erase(std::string{storage_key});
+        auto name_opt = acc->second->name();
+        // Only erase name/key maps if they still point to THIS entry.
+        // They may have been remapped by a new add_entry() after reserve_delete_entry().
+        if (name_opt) {
+            decltype(storage_names_)::const_accessor name_acc;
+            if (storage_names_.find(name_acc, std::string{name_opt.value()}) && name_acc->second == entry) {
+                storage_names_.erase(name_acc);
+            }
+        }
+        auto storage_key = std::string{acc->second->derived_storage_key()};
+        {
+            decltype(storage_keys_)::const_accessor key_acc;
+            if (storage_keys_.find(key_acc, storage_key) && key_acc->second == entry) {
+                storage_keys_.erase(key_acc);
+            }
+        }
         storages_.erase(acc);
         return true;
     }
     return false;
+}
+
+bool storage_manager::reserve_delete_entry(storage_entry entry) {
+    decltype(storages_)::accessor acc;
+    if (! storages_.find(acc, entry)) {
+        return false;
+    }
+    auto& ctrl = *acc->second;
+    // name() is still valid here - erase from name map before clearing
+    storage_names_.erase(std::string{*ctrl.name()});
+    // for pre-1.8 indices (no storage_key), promote name to storage_key before clearing name
+    // so that derived_storage_key() remains usable by the maintenance thread
+    if (! ctrl.storage_key()) {
+        ctrl.storage_key(ctrl.name());
+    }
+    // clear name so get_index_name() returns nullopt for this delete-reserved entry
+    ctrl.name(std::nullopt);
+    ctrl.delete_reserved(true);
+    return true;
+}
+
+std::vector<std::pair<storage_entry, std::shared_ptr<impl::storage_control>>>
+storage_manager::get_delete_reserved_entries() const {
+    std::vector<std::pair<storage_entry, std::shared_ptr<impl::storage_control>>> result{};
+    for (auto&& [e, ctrl] : storages_) {
+        if (ctrl->delete_reserved()) {
+            result.emplace_back(e, ctrl);
+        }
+    }
+    return result;
 }
 
 std::unique_ptr<unique_lock> storage_manager::create_unique_lock() {
@@ -231,7 +280,11 @@ std::optional<std::string> storage_manager::get_index_name(std::string_view stor
     if (! storages_.find(storages_acc, entry)) {
         return std::nullopt;
     }
-    return std::string{storages_acc->second->name()};
+    auto n = storages_acc->second->name();
+    if (! n) {
+        return std::nullopt;
+    }
+    return std::string{*n};
 }
 
 }

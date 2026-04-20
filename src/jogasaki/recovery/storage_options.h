@@ -25,6 +25,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
@@ -46,6 +47,18 @@ std::shared_ptr<error::error_info> create_storage_option(
     yugawara::storage::index const& idx,
     std::string& out,
     utils::metadata_serializer_option const& option
+);
+
+/**
+ * @brief serialize index metadata with delete_reserved flag set and write it to the KVS storage
+ * @param idx the index whose metadata to serialize
+ * @param storage_key the storage key used to locate the KVS storage and embed in the metadata
+ * @return nullptr on success
+ * @return an error_info if serializing or writing the metadata fails
+ */
+std::shared_ptr<error::error_info> set_storage_option_delete_reserved(
+    yugawara::storage::index const& idx,
+    std::string_view storage_key
 );
 
 /**

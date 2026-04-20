@@ -41,16 +41,14 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/string_manipulation.h>
 
@@ -159,28 +157,50 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
         return false;
     }
 
+    auto& smgr = *global::storage_manager();
+
     // drop secondary indices
     std::vector<std::string> indices{};
+    bool error = false;
     provider.each_table_index(*t, [&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
+        if(error) {
+            return;
+        }
         if(c.simple_name() == entry->simple_name()) {
             // skip primary
             return;
         }
         indices.emplace_back(id);
-    });
-
-    for(auto&& n : indices) {
-        if(auto stg = utils::get_storage_by_index_name(n)) {
-            if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-                handle_generic_error(context, status::err_unknown, error_code::sql_execution_exception);
-                return false;
+        auto sk = smgr.get_storage_key(id);
+        if(sk.has_value()) {
+            if(auto err = recovery::set_storage_option_delete_reserved(*entry, sk.value())) {
+                VLOG_LP(log_error) << "failed to update metadata for delete reservation of secondary index: " << id;
+                set_error_info(context, err);
+                error = true;
+                return;
             }
+        } else {
+            VLOG_LP(log_warning) << "failed to get storage key for index: " << id;
+            error = true;
+            return;
         }
+    });
+    if(error) {
+        return false;
     }
 
-    if(auto stg = utils::get_storage_by_index_name(c.simple_name())) {
-        if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-            handle_generic_error(context, status::err_unknown, error_code::sql_execution_exception);
+    auto primary_idx = provider.find_index(c.simple_name());
+    if (primary_idx) {
+        auto sk = smgr.get_storage_key(c.simple_name());
+        if(sk.has_value()) {
+            if(auto err = recovery::set_storage_option_delete_reserved(*primary_idx, sk.value())) {
+                VLOG_LP(log_warning) << "failed to update metadata for delete reservation of primary index: " << c.simple_name();
+                set_error_info(context, err);
+                return false;
+            }
+        } else {
+            // normally should not happen
+            VLOG_LP(log_warning) << "failed to get storage key for index: " << c.simple_name();
             return false;
         }
     }
@@ -211,9 +231,7 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
         VLOG_LP(log_warning) << "table '" << c.simple_name() << "' not found";
     }
 
-    auto& smgr = *global::storage_manager();
-
-    // remove storage entries for secondary
+    // remove storage entries for secondary (reserve for lazy deletion)
     for(auto&& n : indices) {
         auto e = smgr.find_by_name(n);
         if(! e) {
@@ -221,15 +239,11 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
             VLOG_LP(log_warning) << "failed to find storage entry name:" << n;
             continue;
         }
-        if(! smgr.remove_entry(e.value())) {
-            VLOG_LP(log_warning) << "failed to remove storage entry:" << e.value();
-        }
+        smgr.reserve_delete_entry(e.value());
     }
 
-    // remove storage entries for primary
-    if(! smgr.remove_entry(storage_id)) {
-        VLOG_LP(log_warning) << "failed to remove storage entry:" << storage_id;
-    }
+    // remove primary storage entry (reserve for lazy deletion)
+    smgr.reserve_delete_entry(storage_id);
     return true;
 }
 }

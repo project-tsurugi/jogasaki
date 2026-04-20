@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <initializer_list>
@@ -49,6 +50,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/maintenance_storage.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
@@ -143,6 +145,7 @@ TEST_F(recovery_old_storage_test, recover_old_table) {
         EXPECT_EQ("t0", n.value());
     }
     execute_statement("DROP TABLE t0");
+    ASSERT_EQ((std::vector<std::string>{"t0"}), storage::maintenance_storage()); // to remove storage completely
     {
         auto provider = db_impl()->tables();
         auto i0 = provider->find_index("t0");
@@ -197,6 +200,7 @@ TEST_F(recovery_old_storage_test, recover_old_index) {
         EXPECT_EQ("i0", n.value());
     }
     execute_statement("DROP INDEX i0");
+    ASSERT_EQ((std::vector<std::string>{"i0"}), storage::maintenance_storage()); // to remove storage completely
     {
         auto provider = db_impl()->tables();
         auto i0 = provider->find_index("i0");

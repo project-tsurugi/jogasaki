@@ -344,6 +344,9 @@ message IndexDefinition {
 
     // optional description
     string description = 50;
+
+    // whether the index deletion is reserved for background processing.
+    bool delete_reserved = 60;
 }
 
 /* For text-based table definition (deprecated). */

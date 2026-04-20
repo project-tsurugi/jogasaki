@@ -16,6 +16,7 @@
 #pragma once
 
 #include <initializer_list>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -41,12 +42,14 @@ struct metadata_serializer_option {
         bool synthesized = false,
         auth::authorized_users_action_set const* authorized_actions = nullptr,
         auth::action_set const* public_actions = nullptr,
-        std::optional<std::string_view> storage_key = std::nullopt
+        std::optional<std::string_view> storage_key = std::nullopt,
+        std::optional<bool> delete_reserved = std::nullopt
     ) :
         synthesized_(synthesized),
         authorized_actions_(authorized_actions),
         public_actions_(public_actions),
-        storage_key_(storage_key)
+        storage_key_(storage_key),
+        delete_reserved_(delete_reserved)
     {}
 
     // whether the object is synthesized or not
@@ -60,6 +63,9 @@ struct metadata_serializer_option {
 
     // optional storage key for the index
     std::optional<std::string_view> storage_key_{};  //NOLINT
+
+    // optional override for the delete_reserved flag
+    std::optional<bool> delete_reserved_{};  //NOLINT
 };
 
 /**

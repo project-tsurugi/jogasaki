@@ -47,6 +47,13 @@ public:
 
     storage_list_view storage();
 
+    /**
+     * @brief release the write lock for a single storage entry and remove it from this lock object
+     * @param entry the storage entry to release
+     * @details if the entry is not in this lock, this is a no-op.
+     */
+    void release_storage(storage_entry entry) noexcept;
+
     void set_storage_list(storage_list storages) {
         storages_ = std::move(storages);
     }

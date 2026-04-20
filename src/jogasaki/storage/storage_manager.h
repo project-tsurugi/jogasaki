@@ -71,16 +71,42 @@ public:
 
     /**
      * @brief create named object
-     * @param name the name of the index (storage)
+     * @param name the name of the index (storage), or std::nullopt if the entry is delete-reserved
      * @param is_primary whether this is a primary index (table) or secondary index
+     * @param primary_entry storage entry of the primary index that owns this secondary index.
+     * Set to std::nullopt for primary indices or when unknown.
+     * @param original_name the original name before deletion. Mandatory if `name` is std::nullopt.
      */
-    explicit storage_control(std::string name, bool is_primary = true) :
-        name_(std::move(name)),
-        is_primary_(is_primary)
-    {}
+    explicit storage_control(std::optional<std::string> name, bool is_primary = true, std::optional<storage_entry> primary_entry = std::nullopt, std::optional<std::string> original_name = std::nullopt) :
+        name_(name),
+        original_name_(original_name ? std::move(*original_name) : (name ? *name : std::string{})),
+        is_primary_(is_primary),
+        primary_entry_(primary_entry)
+    {
+        assert_with_exception(name || original_name);
+    }
 
-    [[nodiscard]] std::string_view name() const noexcept {
-        return name_;
+    [[nodiscard]] std::optional<std::string_view> name() const noexcept {
+        if (name_) {
+            return std::string_view{*name_};
+        }
+        return std::nullopt;
+    }
+
+    /**
+     * @brief getter for original name (always set, even after DROP clears name_)
+     * @return the original name of this storage
+     */
+    [[nodiscard]] std::string_view original_name() const noexcept {
+        return original_name_;
+    }
+
+    /**
+     * @brief setter for name
+     * @param n the name to set, or std::nullopt to clear (e.g. after DROP)
+     */
+    void name(std::optional<std::string> n) noexcept {
+        name_ = std::move(n);
     }
 
     /**
@@ -183,7 +209,10 @@ public:
         if (storage_key_) {
             return *storage_key_;
         }
-        return name_;
+        if (name_) {
+            return *name_;
+        }
+        return original_name_;
     }
 
     /**
@@ -200,13 +229,69 @@ public:
         storage_key_ = key;
     }
 
+    /**
+     * @brief return the storage entry of the primary index owning this secondary index
+     * @return the primary index storage entry, or std::nullopt if this is a primary or the primary is unknown
+     */
+    [[nodiscard]] std::optional<storage_entry> primary_entry() const noexcept {
+        return primary_entry_;
+    }
+
+    /**
+     * @brief set the primary index storage entry for this secondary index
+     * @param value the primary index storage entry, or std::nullopt for primary indices
+     */
+    void primary_entry(std::optional<storage_entry> value) noexcept {
+        primary_entry_ = value;
+    }
+
+    /**
+     * @brief return the number of transactions currently referencing this storage
+     */
+    [[nodiscard]] std::size_t ref_transaction_count() const noexcept {
+        return ref_transaction_count_.load();
+    }
+
+    /**
+     * @brief increment the transaction reference count
+     */
+    void increment_ref_transaction_count() noexcept {
+        ref_transaction_count_.fetch_add(1);
+    }
+
+    /**
+     * @brief decrement the transaction reference count
+     */
+    void decrement_ref_transaction_count() noexcept {
+        ref_transaction_count_.fetch_sub(1);
+    }
+
+    /**
+     * @brief return whether deletion of this storage is reserved for background processing
+     */
+    [[nodiscard]] bool delete_reserved() const noexcept {
+        return delete_reserved_.load();
+    }
+
+    /**
+     * @brief set the delete_reserved flag
+     * @param value true to reserve deletion, false to clear
+     */
+    void delete_reserved(bool value) noexcept {
+        delete_reserved_.store(value);
+    }
+
 private:
     std::atomic<lock_state> state_{};
-    std::string name_{};
+    std::optional<std::string> name_{};
+    std::string original_name_{};
     std::optional<std::string> storage_key_{};
     bool is_primary_{true};
+    std::optional<storage_entry> primary_entry_{};
     auth::authorized_users_action_set authorized_actions_{};
     auth::action_set public_actions_{};
+    std::atomic_size_t ref_transaction_count_{};
+    std::atomic_bool delete_reserved_{false};
 };
 
 } // namespace impl
@@ -237,13 +322,17 @@ public:
     /**
      * @brief add new storage entry with name
      * @param entry new storage entry to add
-     * @param name name of the storage (must be unique)
+     * @param name name of the storage (must be unique if provided). Pass std::nullopt to add an entry that is already
+     * marked for deletion (delete-reserved), in which case the entry is not registered in the name lookup map.
      * @param storage_key optional storage key for the index. if not provided, the name is used as the storage key
      * @param is_primary whether this is a primary index (table) or secondary index. default is true
+     * @param primary_entry the storage entry of the primary index owning this secondary index. std::nullopt for primary indices.
+     * @param original_name the original name of the storage before deletion. Used only when name is std::nullopt.
+     * If both name and original_name are std::nullopt, original_name in storage_control will be empty.
      * @return true if the entry was added successfully
      * @return false is the entry already exists
      */
-    bool add_entry(storage_entry entry, std::string_view name, std::optional<std::string_view> storage_key = std::nullopt, bool is_primary = true);
+    bool add_entry(storage_entry entry, std::optional<std::string_view> name, std::optional<std::string_view> storage_key = std::nullopt, bool is_primary = true, std::optional<storage_entry> primary_entry = std::nullopt, std::optional<std::string_view> original_name = std::nullopt);
 
     /**
      * @brief remove storage entry
@@ -252,6 +341,23 @@ public:
      * @return false is the entry doesn't exist
      */
     bool remove_entry(storage_entry entry);
+
+    /**
+     * @brief reserve deletion of a storage entry
+     * @param entry the storage entry to reserve for deletion
+     * @details removes the entry from the name and key lookup maps, sets delete_reserved flag,
+     * but keeps the entry in storages_ for the maintenance thread to complete the deletion.
+     * @return true if the entry was found and reserved
+     * @return false if the entry was not found
+     */
+    bool reserve_delete_entry(storage_entry entry);
+
+    /**
+     * @brief return all storage entries that have their delete_reserved flag set
+     * @return a snapshot of all delete-reserved storage entries
+     */
+    [[nodiscard]] std::vector<std::pair<storage_entry, std::shared_ptr<impl::storage_control>>>
+        get_delete_reserved_entries() const;
 
     /**
      * @brief find storage entry by its identifier

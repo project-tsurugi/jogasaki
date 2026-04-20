@@ -103,7 +103,8 @@ public:
         for(auto&& l : list.entity()) {
             auto s = global::storage_manager()->find_entry(l);
             [&]() { ASSERT_TRUE(s); }();
-            ret.emplace_back(s->name());
+            [&]() { ASSERT_TRUE(s->name()); }();
+            ret.emplace_back(*s->name());
         }
         std::sort(ret.begin(), ret.end());
         [&]() { ASSERT_EQ(status::ok, db_->destroy_statement(prepared)); }();

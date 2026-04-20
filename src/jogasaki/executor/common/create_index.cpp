@@ -152,7 +152,7 @@ bool create_index::operator()(request_context& context) const {
     auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
     auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
 
-    if(! smgr.add_entry(tid, i->simple_name(), opt, false)) {
+    if(! smgr.add_entry(tid, i->simple_name(), opt, false, storage_id)) {
         // should not happen normally
         set_error_context(
             context,

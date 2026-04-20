@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -37,6 +38,7 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/maintenance_storage.h>
 #include <jogasaki/utils/create_tx.h>
 
 #include "../api/api_test_base.h"
@@ -67,6 +69,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
+        cfg->enable_maintenance_thread(false);
         utils::set_global_tx_option(utils::create_tx_option{false, true});
     }
 
@@ -304,6 +307,7 @@ TEST_F(transaction_fail_ddl_test, drop_pkless_table_with_restart) {
         execute_statement("DROP TABLE t", *tx);
         ASSERT_EQ(status::ok, tx->abort());
     }
+    ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage()); // to remove the storage completely
     ASSERT_EQ(1, seq_count()); // left entry due to abort
     ASSERT_TRUE(! exists_seq(seqs[0])); // though table entry is left, sequence is removed correctly
 
@@ -365,12 +369,13 @@ TEST_F(transaction_fail_ddl_test, drop_table_with_identity_column_with_restart) 
         execute_statement("DROP TABLE t", *tx);
         ASSERT_EQ(status::ok, tx->abort());
     }
+    ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage()); // to remove the storage completely
     ASSERT_EQ(2, seq_count()); // left entry due to abort
     ASSERT_TRUE(! exists_seq(seqs[0]));
     ASSERT_TRUE(! exists_seq(seqs[1]));
 
     ASSERT_EQ(status::ok, db_->stop());
-    ASSERT_EQ(status::ok, db_->start());  // warning message should be shown
+    ASSERT_EQ(status::ok, db_->start());  // warning message should be shown about missing sequence values
 
     execute_statement("CREATE TABLE t (c0 int, c1 int generated always as identity)");
     ASSERT_EQ(4, seq_count());

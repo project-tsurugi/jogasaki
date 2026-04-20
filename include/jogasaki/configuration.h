@@ -538,6 +538,15 @@ public:
     void enable_storage_key(bool arg) noexcept {
         enable_storage_key_ = arg;
     }
+
+    [[nodiscard]] bool enable_maintenance_thread() const noexcept {
+        return enable_maintenance_thread_;
+    }
+
+    void enable_maintenance_thread(bool arg) noexcept {
+        enable_maintenance_thread_ = arg;
+    }
+
     [[nodiscard]] std::string_view plugin_directory() const noexcept {
         return plugin_directory_;
     }
@@ -664,6 +673,7 @@ public:
         print_non_default(max_result_set_writers);
         print_non_default(enable_session_store);
         print_non_default(enable_storage_key);
+        print_non_default(enable_maintenance_thread);
         print_non_default(plugin_directory);
         print_non_default(endpoint);
         print_non_default(secure);
@@ -738,6 +748,7 @@ private:
     std::size_t max_result_set_writers_ = 64;
     bool enable_session_store_ = true;
     bool enable_storage_key_ = true;
+    bool enable_maintenance_thread_ = true;
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;

@@ -26,6 +26,7 @@
 #include <jogasaki/commit_response.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -33,13 +34,22 @@
 
 namespace jogasaki {
 
+static std::unique_ptr<storage::reference_scope> make_reference_scope() {
+    return std::make_unique<storage::reference_scope>(*global::storage_manager());
+}
+
+transaction_context::transaction_context() :
+    storage_ref_scope_(make_reference_scope())
+{}
+
 transaction_context::transaction_context(
     std::shared_ptr<kvs::transaction> transaction,
     std::shared_ptr<api::transaction_option const> option
 ) :
     transaction_(std::move(transaction)),
     surrogate_id_(++surrogate_id_source_),  // begin from 1
-    option_(std::move(option))
+    option_(std::move(option)),
+    storage_ref_scope_(make_reference_scope())
 {}
 
 transaction_context::~transaction_context() noexcept {
@@ -69,7 +79,10 @@ transaction_context::operator bool() const noexcept {
 }
 
 status transaction_context::commit(bool async) {
-    return transaction_->commit(async);
+    auto ret = transaction_->commit(async);
+    storage_ref_scope_.reset(); // release storage refs so maintenance thread can clean up
+    storage_lock_.reset();      // release write lock so DML can proceed after DDL commit
+    return ret;
 }
 
 bool transaction_context::commit(transaction_context::commit_callback_type cb) {
@@ -79,6 +92,7 @@ bool transaction_context::commit(transaction_context::commit_callback_type cb) {
 
 status transaction_context::abort_transaction() {
     auto ret = transaction_->abort_transaction();
+    storage_ref_scope_.reset(); // release storage refs so maintenance thread can clean up
     storage_lock_.reset(); // release storage lock as soon as possible
     state_.set(transaction_state_kind::aborted);
     return ret;
@@ -172,6 +186,22 @@ std::unique_ptr<storage::unique_lock> const& transaction_context::storage_lock()
 
 void transaction_context::storage_lock(std::unique_ptr<storage::unique_lock> arg) noexcept {
     storage_lock_ = std::move(arg);
+}
+
+void transaction_context::reset_storage_ref_scope() noexcept {
+    storage_ref_scope_.reset();
+}
+
+void transaction_context::add_storage_ref(storage::storage_entry entry) {
+    if (storage_ref_scope_) {
+        storage_ref_scope_->add_storage(entry);
+    }
+}
+
+void transaction_context::add_storages_ref(storage::storage_list_view entries) {
+    for (auto&& e : entries) {
+        add_storage_ref(e);
+    }
 }
 
 std::shared_ptr<api::transaction_option const> const& transaction_context::option() const noexcept {

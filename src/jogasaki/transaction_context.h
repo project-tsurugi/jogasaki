@@ -33,6 +33,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/reference_scope.h>
 #include <jogasaki/storage/unique_lock.h>
 #include <jogasaki/termination_state.h>
 #include <jogasaki/transaction_state.h>
@@ -178,7 +179,7 @@ public:
     /**
      * @brief create empty object
      */
-    transaction_context() = default;
+    transaction_context();
 
     /**
      * @brief destruct object
@@ -439,6 +440,29 @@ public:
      */
     void storage_lock(std::unique_ptr<storage::unique_lock> arg) noexcept;
 
+    /**
+     * @brief release the storage reference scope
+     * @details Resets the reference scope, decrementing ref_transaction_count for all
+     * referenced storages. This allows the maintenance thread to proceed with lazy deletion.
+     */
+    void reset_storage_ref_scope() noexcept;
+
+    /**
+     * @brief add a storage entry to the transaction-level reference scope
+     * @param entry the storage entry to reference
+     * @details Increments the ref_transaction_count for the given storage entry so that
+     * lazy storage deletion waits until this transaction completes. Idempotent: adding
+     * the same entry more than once has no additional effect. Thread-safe.
+     */
+    void add_storage_ref(storage::storage_entry entry);
+
+    /**
+     * @brief add multiple storage entries to the transaction-level reference scope
+     * @param entries the storage entries to reference
+     * @details Calls add_storage_ref for each entry in the given view.
+     */
+    void add_storages_ref(storage::storage_list_view entries);
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t surrogate_id_{};
@@ -456,6 +480,7 @@ private:
     details::termination_manager term_mgr_{};
     transaction_state state_{};
     std::unique_ptr<storage::unique_lock> storage_lock_{};
+    std::unique_ptr<storage::reference_scope> storage_ref_scope_{};
 
     cache_align static inline std::atomic_size_t surrogate_id_source_{};  //NOLINT
 };

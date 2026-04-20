@@ -25,10 +25,13 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <thread>
 #include <type_traits>
 #include <utility>
+#include <boost/exception/diagnostic_information.hpp>
+#include <boost/exception/exception.hpp>
 #include <glog/logging.h>
 
 #include <takatori/serializer/json_printer.h>
@@ -121,6 +124,7 @@
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/maintenance_storage.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/udf/enum_types.h>
@@ -333,11 +337,28 @@ status database::start() {
     kvs_db_->register_durability_callback(durability_callback{*this});
 
     stop_requested_ = false;
+
+    if (cfg_->enable_maintenance_thread()) {
+        {
+            std::scoped_lock lk{maintenance_mutex_};
+            maintenance_stop_requested_ = false;
+        }
+        maintenance_thread_ = std::thread{[this]() { maintenance_loop(); }};
+    }
+
     return status::ok;
 }
 
 status database::stop() {
     stop_requested_ = true;
+    if (maintenance_thread_.joinable()) {
+        {
+            std::scoped_lock lk{maintenance_mutex_};
+            maintenance_stop_requested_ = true;
+        }
+        maintenance_cv_.notify_all();
+        maintenance_thread_.join();
+    }
     std::size_t cnt = 0;
     while(requests_inprocess_.count() != 1) {
         std::this_thread::sleep_for(std::chrono::milliseconds{1});
@@ -945,7 +966,7 @@ static bool validate_explain_auth(
         if(VLOG_IS_ON(log_error)) {
             auto& authorized = stg->authorized_actions().find_user_actions(username.value());
             VLOG_LP(log_error) << "insufficient authorization for explain user:\"" << username.value()
-                               << "\" table:\"" << stg->name() << "\" public:" << stg->public_actions()
+                               << "\" table:\"" << stg->name().value_or(stg->original_name()) << "\" public:" << stg->public_actions()
                                << " authorized:" << authorized;
         }
         return false;
@@ -1294,7 +1315,14 @@ status database::recover_index_metadata(  //NOLINT(readability-function-cognitiv
         std::optional<std::string_view> storage_key =
             has_storage_key ? std::optional<std::string_view>{idef.storage_key()} : std::nullopt;
 
-        if(! global::storage_manager()->add_entry(id, name, storage_key, is_primary)) {
+        // for secondary indices, link to the primary entry so the maintenance thread can check ref counts
+        std::optional<storage::storage_entry> primary_entry = std::nullopt;
+        if (! is_primary) {
+            auto const& primary_name = idef.table_reference().name().element_name();
+            primary_entry = global::storage_manager()->find_by_name(primary_name);
+        }
+
+        if(! global::storage_manager()->add_entry(id, idef.delete_reserved() ? std::nullopt : std::optional<std::string_view>{name}, storage_key, is_primary, primary_entry, idef.delete_reserved() ? std::optional<std::string_view>{name} : std::nullopt)) {
             LOG_LP(ERROR) << "Metadata recovery failed. conflicting name:" << name;
             return status::err_unknown;
         }
@@ -1309,10 +1337,13 @@ status database::recover_index_metadata(  //NOLINT(readability-function-cognitiv
             auth::from_authorization_list(idef.table_definition(), s->authorized_actions());
             auth::from_default_privilege(idef.table_definition(), s->public_actions());
         }
-        LOG_LP(INFO) << "Recovering metadata \"" << utils::binary_printer(n).cpp_literal(true) << "\" (v=" << v << ") : " << utils::to_debug_string(idef);
-        if(auto err = recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
-            LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata:" << *err;
-            return err->status();
+        if(! idef.delete_reserved()) {
+            // if delete reserved, the storage entry must exists in storage_manager, but not in the provider because it's already dropped.
+            LOG_LP(INFO) << "Recovering metadata \"" << utils::binary_printer(n).cpp_literal(true) << "\" (v=" << v << ") : " << utils::to_debug_string(idef);
+            if(auto err = recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
+                LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata:" << *err;
+                return err->status();
+            }
         }
     }
     return status::ok;
@@ -1701,6 +1732,34 @@ std::size_t database::transaction_count() const {
 
 bool database::stop_requested() const noexcept {
     return stop_requested_;
+}
+
+void database::maintenance_loop() noexcept {
+    while (true) {
+        std::unique_lock<std::mutex> lk{maintenance_mutex_};
+        auto stop_requested = maintenance_cv_.wait_for(lk, std::chrono::milliseconds{100}, [this](){
+            return maintenance_stop_requested_;
+        });
+        if (stop_requested) {
+            break;
+        }
+        lk.unlock();
+        try {  // must not throw exception, thread should log msg and continue running
+            storage::maintenance_storage();
+        } catch (boost::exception const& e) {
+            LOG_LP(ERROR) << "unhandled boost exception: "
+                          << boost::diagnostic_information(e);
+        } catch (std::exception const& e) {
+            std::stringstream ss{};
+            ss << "unhandled exception: " << e.what();
+            if (auto* tr = takatori::util::find_trace(e); tr != nullptr) {
+                ss << " " << *tr;
+            }
+            LOG_LP(ERROR) << ss.str();
+        } catch (...) {
+            LOG_LP(ERROR) << "unknown exception caught";
+        }
+    }
 }
 
 utils::use_counter const& database::requests_inprocess() const noexcept {

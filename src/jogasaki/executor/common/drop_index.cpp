@@ -30,14 +30,12 @@
 
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
-#include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "acquire_table_lock.h"
 #include "validate_alter_table_auth.h"
@@ -75,36 +73,29 @@ bool drop_index::operator()(request_context& context) const {
         return false;
     }
 
-    // try to delete stroage on kvs.
-
-    auto stg = utils::get_storage_by_index_name(name);
-    if (stg) {
-        if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-            VLOG_LP(log_error) << res << "  " << name;
-            set_error_context(
-                context,
-                error_code::sql_execution_exception,
-                string_builder{} << "An error occurred in deleting storage. status:" << res << string_builder::to_string,
-                status::err_unknown
-            );
+    auto& smgr = *global::storage_manager();
+    // try to update storage metadata with delete_reserved flag
+    auto sk = smgr.get_storage_key(name);
+    if (sk.has_value()) {
+        if(auto err = recovery::set_storage_option_delete_reserved(*i, sk.value_or(std::string{name}))) {
+            VLOG_LP(log_warning) << "failed to update metadata for delete reservation: " << name;
+            set_error_info(context, err);
             return false;
         }
     } else {
-        // kvs storage is already removed somehow, let's proceed and remove from metadata.
-        VLOG_LP(log_info) << "kvs storage '" << name << "' not found.";
+        // normally should not happen
+        VLOG_LP(log_warning) << "failed to get storage key for index: " << name;
+        return false;
     }
     provider.remove_index(name);
 
-    auto& smgr = *global::storage_manager();
     auto e = smgr.find_by_name(name);
     if(! e) {
         // normally should not happen
         VLOG_LP(log_warning) << "failed to find storage entry name:" << name;
         return true;
     }
-    if(! smgr.remove_entry(e.value())) {
-        VLOG_LP(log_warning) << "failed to remove storage entry:" << storage_id;
-    }
+    smgr.reserve_delete_entry(e.value());
     return true;
 }
 }

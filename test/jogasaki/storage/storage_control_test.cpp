@@ -117,4 +117,38 @@ TEST_F(storage_control_test, storage_control_mixed) {
     EXPECT_TRUE(ctrl.can_lock());
 }
 
+TEST_F(storage_control_test, ref_transaction_count_init) {
+    // ref_transaction_count starts at 0
+    impl::storage_control ctrl{};
+    EXPECT_EQ(0, ctrl.ref_transaction_count());
+}
+
+TEST_F(storage_control_test, ref_transaction_count_increment_decrement) {
+    // increment and decrement ref_transaction_count
+    impl::storage_control ctrl{};
+    ctrl.increment_ref_transaction_count();
+    EXPECT_EQ(1, ctrl.ref_transaction_count());
+    ctrl.increment_ref_transaction_count();
+    EXPECT_EQ(2, ctrl.ref_transaction_count());
+    ctrl.decrement_ref_transaction_count();
+    EXPECT_EQ(1, ctrl.ref_transaction_count());
+    ctrl.decrement_ref_transaction_count();
+    EXPECT_EQ(0, ctrl.ref_transaction_count());
+}
+
+TEST_F(storage_control_test, delete_reserved_init) {
+    // delete_reserved starts as false
+    impl::storage_control ctrl{};
+    EXPECT_TRUE(! ctrl.delete_reserved());
+}
+
+TEST_F(storage_control_test, delete_reserved_set) {
+    // delete_reserved(bool) changes the flag
+    impl::storage_control ctrl{};
+    ctrl.delete_reserved(true);
+    EXPECT_TRUE(ctrl.delete_reserved());
+    ctrl.delete_reserved(false);
+    EXPECT_TRUE(! ctrl.delete_reserved());
+}
+
 } //

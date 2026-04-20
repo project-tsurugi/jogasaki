@@ -68,16 +68,14 @@ void emplace_nullable_with(std::vector<any>& values, Opt const& opt, F const& f)
 }
 
 void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    auto unscaled_opt = cursor.fetch_string();
-    auto exponent_opt = cursor.fetch_int4();
-    if (unscaled_opt && exponent_opt) {
+    if (auto v = cursor.fetch_decimal()) {
         if (VLOG_IS_ON(log_trace)) {
-            std::string_view bin_view{unscaled_opt->data(), unscaled_opt->size()};
+            std::string_view bin_view{v->unscaled_value.data(), v->unscaled_value.size()};
             VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:("
                                << utils::binary_printer{bin_view}.show_hyphen(false) << ","
-                               << *exponent_opt << ")";
+                               << v->exponent << ")";
         }
-        auto triple = jogasaki::udf::data::decode_decimal_triple(*unscaled_opt, *exponent_opt);
+        auto triple = jogasaki::udf::data::decode_decimal_triple(v->unscaled_value, v->exponent);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, triple);
     } else {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:NULL";
@@ -86,9 +84,9 @@ void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor
 }
 
 void append_date(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    if (auto days_opt = cursor.fetch_int4()) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:" << *days_opt;
-        auto date = jogasaki::udf::data::decode_date_from_wire(*days_opt);
+    if (auto v = cursor.fetch_date()) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:" << v->days;
+        auto date = jogasaki::udf::data::decode_date_from_wire(v->days);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::date>>, date);
     } else {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:NULL";
@@ -97,9 +95,9 @@ void append_date(std::vector<any>& values, plugin::udf::generic_record_cursor& c
 }
 
 void append_time_of_day(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    if (auto nanos_opt = cursor.fetch_int8()) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:" << *nanos_opt;
-        auto tod = jogasaki::udf::data::decode_time_of_day_from_wire(*nanos_opt);
+    if (auto v = cursor.fetch_local_time()) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:" << v->nanos;
+        auto tod = jogasaki::udf::data::decode_time_of_day_from_wire(v->nanos);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, tod);
     } else {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:NULL";
@@ -108,12 +106,11 @@ void append_time_of_day(std::vector<any>& values, plugin::udf::generic_record_cu
 }
 
 void append_time_point(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    auto sec_opt = cursor.fetch_int8();
-    auto nano_opt = cursor.fetch_uint4();
-    if (sec_opt && nano_opt) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:(" << *sec_opt
-                           << "," << *nano_opt << ")";
-        auto tp = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
+    if (auto v = cursor.fetch_local_datetime()) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:("
+                           << v->offset_seconds << "," << v->nano_adjustment << ")";
+        auto tp =
+            jogasaki::udf::data::decode_time_point_from_wire(v->offset_seconds, v->nano_adjustment);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp);
     } else {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:NULL";
@@ -123,13 +120,12 @@ void append_time_point(std::vector<any>& values, plugin::udf::generic_record_cur
 
 void append_time_point_with_time_zone(
     std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    auto sec_opt = cursor.fetch_int8();
-    auto nano_opt = cursor.fetch_uint4();
-    auto tz_offset = cursor.fetch_int4();
-    if (sec_opt && nano_opt && tz_offset) {
-        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:(" << *sec_opt
-                           << "," << *nano_opt << "," << *tz_offset << ")";
-        auto tp_local = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
+    if (auto v = cursor.fetch_offset_datetime()) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:("
+                           << v->offset_seconds << "," << v->nano_adjustment << ","
+                           << v->time_zone_offset << ")";
+        auto tp_local =
+            jogasaki::udf::data::decode_time_point_from_wire(v->offset_seconds, v->nano_adjustment);
         values.emplace_back(
             std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp_local);
     } else {
@@ -138,40 +134,53 @@ void append_time_point_with_time_zone(
     }
 }
 
-template <class Ref, class DecodeFn>
-void append_lob_reference(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor,
-    DecodeFn const& decode_fn) {
-    auto storage_opt = cursor.fetch_uint8();
-    auto object_opt = cursor.fetch_uint8();
-    auto tag_opt = cursor.fetch_uint8();
-    auto prov_opt = cursor.fetch_bool();
+template <class Ref, class FetchFn>
+void append_lob_reference(std::vector<any>& values, FetchFn const& fetch_fn) {
+    auto value_opt = fetch_fn();
 
-    if (storage_opt && object_opt && tag_opt) {
-        if (VLOG_IS_ON(log_trace)) {
-            std::string prov_str = prov_opt ? (prov_opt.value() ? "true" : "false") : "empty";
-            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:(" << *storage_opt
-                               << "," << *object_opt << "," << *tag_opt << "," << prov_str << ")";
-        }
-        auto ref = decode_fn(*storage_opt, *object_opt, *tag_opt, prov_opt);
-        values.emplace_back(std::in_place_type<Ref>, ref);
-    } else {
+    if (!value_opt) {
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:NULL";
         values.emplace_back();
+        return;
     }
+
+    auto const& value = *value_opt;
+    if (VLOG_IS_ON(log_trace)) {
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:(" << value.storage_id
+                           << "," << value.object_id << "," << value.tag << ","
+                           << (value.provisioned ? "true" : "false") << ")";
+    }
+
+    if (value.storage_id == 1ULL) {
+        if (value.provisioned) {
+            values.emplace_back(std::in_place_type<Ref>,
+                Ref{value.object_id, jogasaki::lob::lob_data_provider::datastore}.reference_tag(
+                    value.tag));
+        } else {
+            values.emplace_back(
+                std::in_place_type<Ref>, Ref{value.object_id}.reference_tag(value.tag));
+        }
+        return;
+    }
+
+    if (value.storage_id == 0ULL) {
+        values.emplace_back(std::in_place_type<Ref>,
+            Ref{value.object_id, jogasaki::lob::lob_data_provider::relay_service_session}
+                .reference_tag(value.tag));
+        return;
+    }
+
+    values.emplace_back();
 }
 
 void append_blob(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    append_lob_reference<runtime_t<meta::field_type_kind::blob>>(values, cursor,
-        [](std::uint64_t s, std::uint64_t o, std::uint64_t t, std::optional<bool> p) {
-            return jogasaki::udf::data::decode_blob_reference_from_wire(s, o, t, p);
-        });
+    append_lob_reference<runtime_t<meta::field_type_kind::blob>>(
+        values, [&] { return cursor.fetch_blob_reference(); });
 }
 
 void append_clob(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    append_lob_reference<runtime_t<meta::field_type_kind::clob>>(values, cursor,
-        [](std::uint64_t s, std::uint64_t o, std::uint64_t t, std::optional<bool> p) {
-            return jogasaki::udf::data::decode_clob_reference_from_wire(s, o, t, p);
-        });
+    append_lob_reference<runtime_t<meta::field_type_kind::clob>>(
+        values, [&] { return cursor.fetch_clob_reference(); });
 }
 
 void fail_unsupported() {
@@ -264,6 +273,7 @@ base_stream::status_type udf_any_sequence_stream::next(
 void udf_any_sequence_stream::close() {
     if (udf_stream_) { udf_stream_->close(); }
 }
+
 bool udf_any_sequence_stream::convert_record_to_sequence(
     plugin::udf::generic_record const& record, any_sequence& seq) {
     auto cursor = record.cursor();

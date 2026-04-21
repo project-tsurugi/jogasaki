@@ -41,7 +41,11 @@ std::vector<std::string> maintenance_storage() {  //NOLINT(readability-function-
     }
     auto& smgr = *global::storage_manager();
     auto candidates = smgr.get_delete_reserved_entries();
-    for (auto&& [entry, ctrl] : candidates) {
+    for (auto&& entry : candidates) {
+        auto ctrl = smgr.find_entry(entry);
+        if (! ctrl) {
+            continue;
+        }
         bool can_delete = false;
         if (ctrl->is_primary()) {
             can_delete = ctrl->ref_transaction_count() == 0;

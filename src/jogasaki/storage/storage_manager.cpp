@@ -15,11 +15,13 @@
  */
 #include "storage_manager.h"
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <string_view>
 
 #include <tbb/concurrent_hash_map.h>
+#include <tbb/concurrent_queue.h>
 
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index.h>
@@ -54,6 +56,7 @@ bool storage_manager::add_entry(storage_entry entry, std::optional<std::string_v
         }
     }
     if (ret) {
+        candidate_entries_.push(entry);
         if (name) {
             // add name after storages_ is updated successfully
             storage_names_.emplace(std::string{*name}, entry);
@@ -108,15 +111,26 @@ bool storage_manager::reserve_delete_entry(storage_entry entry) {
     return true;
 }
 
-std::vector<std::pair<storage_entry, std::shared_ptr<impl::storage_control>>>
-storage_manager::get_delete_reserved_entries() const {
-    std::vector<std::pair<storage_entry, std::shared_ptr<impl::storage_control>>> result{};
-    for (auto&& [e, ctrl] : storages_) {
-        if (ctrl->delete_reserved()) {
-            result.emplace_back(e, ctrl);
+std::vector<storage_entry>
+storage_manager::get_delete_reserved_entries() {
+    std::vector<storage_entry> ret{};
+    std::deque<storage_entry> temp{};
+    storage_entry e{};
+    while (candidate_entries_.try_pop(e)) {
+        decltype(storages_)::const_accessor acc{};
+        if (! storages_.find(acc, e)) {
+            // entry no longer in storages_: skip entirely (do not re-queue)
+            continue;
         }
+        if (acc->second->delete_reserved()) {
+            ret.emplace_back(e);
+        }
+        temp.emplace_back(e);
     }
-    return result;
+    for (auto&& t : temp) {
+        candidate_entries_.push(t);
+    }
+    return ret;
 }
 
 std::unique_ptr<unique_lock> storage_manager::create_unique_lock() {
@@ -245,6 +259,8 @@ void storage_manager::clear() {
     storages_.clear();
     storage_names_.clear();
     storage_keys_.clear();
+    storage_entry e{};
+    while (candidate_entries_.try_pop(e)) {}
 }
 
 std::uint64_t storage_manager::generate_surrogate_id() {

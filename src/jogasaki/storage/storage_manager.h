@@ -21,7 +21,9 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 #include <tbb/concurrent_hash_map.h>
+#include <tbb/concurrent_queue.h>
 
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index.h>
@@ -354,10 +356,11 @@ public:
 
     /**
      * @brief return all storage entries that have their delete_reserved flag set
-     * @return a snapshot of all delete-reserved storage entries
+     * @details drains candidate_entries_, checks each against storages_, returns those with
+     * delete_reserved set, then re-queues entries that are still present in storages_.
+     * @return the list of delete-reserved storage entries
      */
-    [[nodiscard]] std::vector<std::pair<storage_entry, std::shared_ptr<impl::storage_control>>>
-        get_delete_reserved_entries() const;
+    [[nodiscard]] std::vector<storage_entry> get_delete_reserved_entries();
 
     /**
      * @brief find storage entry by its identifier
@@ -451,6 +454,7 @@ private:
     tbb::concurrent_hash_map<storage_entry, std::shared_ptr<impl::storage_control>> storages_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_names_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_keys_{};
+    tbb::concurrent_queue<storage_entry> candidate_entries_{};
     std::atomic<std::uint64_t> next_surrogate_id_{1000};
 
     std::pair<bool, storage_list> lock_internal(bool shared, storage_list_view storages, unique_lock* lock);

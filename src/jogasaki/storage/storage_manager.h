@@ -76,7 +76,8 @@ public:
      * @param name the name of the index (storage), or std::nullopt if the entry is delete-reserved
      * @param is_primary whether this is a primary index (table) or secondary index
      * @param primary_entry storage entry of the primary index that owns this secondary index.
-     * Set to std::nullopt for primary indices or when unknown.
+     * Must be set to std::nullopt for primary indices.
+     * If the primary index is delete reserved, the primary_entry can be nullopt.
      * @param original_name the original name before deletion. Mandatory if `name` is std::nullopt.
      */
     explicit storage_control(std::optional<std::string> name, bool is_primary = true, std::optional<storage_entry> primary_entry = std::nullopt, std::optional<std::string> original_name = std::nullopt) :
@@ -86,6 +87,7 @@ public:
         primary_entry_(primary_entry)
     {
         assert_with_exception(name || original_name);
+        assert_with_exception(! is_primary_ || ! primary_entry.has_value());
     }
 
     [[nodiscard]] std::optional<std::string_view> name() const noexcept {

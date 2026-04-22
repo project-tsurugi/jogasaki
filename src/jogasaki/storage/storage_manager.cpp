@@ -38,7 +38,10 @@ std::size_t storage_manager::size() const noexcept {
     return storages_.size();
 }
 
-bool storage_manager::add_entry(storage_entry entry, std::optional<std::string_view> name, std::optional<std::string_view> storage_key, bool is_primary, std::optional<storage_entry> primary_entry, std::optional<std::string_view> original_name) {
+bool storage_manager::add_entry(
+    storage_entry entry, std::optional<std::string_view> name, std::optional<std::string_view> storage_key,
+    bool is_primary, std::optional<storage_entry> primary_entry, std::optional<std::string_view> original_name
+) {
     bool ret = false;
     std::shared_ptr<impl::storage_control> control{};
     {

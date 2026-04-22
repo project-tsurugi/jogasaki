@@ -1322,10 +1322,16 @@ status database::recover_index_metadata(  //NOLINT(readability-function-cognitiv
         std::optional<storage::storage_entry> primary_entry = std::nullopt;
         if (! is_primary) {
             auto const& primary_name = idef.table_reference().name().element_name();
+            // The primary_entry can be nullopt if the primary index is delete reserved and the name is removed.
+            // This is ok because the secondary indices are not used affter recovery and
+            // there is no need to check ref count of primary entry.
             primary_entry = global::storage_manager()->find_by_name(primary_name);
         }
 
-        if(! global::storage_manager()->add_entry(id, idef.delete_reserved() ? std::nullopt : std::optional<std::string_view>{name}, storage_key, is_primary, primary_entry, idef.delete_reserved() ? std::optional<std::string_view>{name} : std::nullopt)) {
+        if(! global::storage_manager()->add_entry(
+               id, idef.delete_reserved() ? std::nullopt : std::optional<std::string_view>{name}, storage_key,
+               is_primary, primary_entry, idef.delete_reserved() ? std::optional<std::string_view>{name} : std::nullopt
+           )) {
             LOG_LP(ERROR) << "Metadata recovery failed. conflicting name:" << name;
             return status::err_unknown;
         }

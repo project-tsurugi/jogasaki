@@ -35,45 +35,35 @@ namespace jogasaki::storage {
 
 std::vector<std::string> maintenance_storage() {  //NOLINT(readability-function-cognitive-complexity)
     std::vector<std::pair<std::string, std::string>> deleted{}; // (name, readable_storage_key)
-    auto kvs_db = global::db();
-    if (! kvs_db) {
-        return {};
-    }
     auto& smgr = *global::storage_manager();
     auto candidates = smgr.get_delete_reserved_entries();
+    deleted.reserve(candidates.size());
     for (auto&& entry : candidates) {
         auto ctrl = smgr.find_entry(entry);
         if (! ctrl) {
+            // should not happen normally
             continue;
         }
         bool can_delete = false;
         if (ctrl->is_primary()) {
             can_delete = ctrl->ref_transaction_count() == 0;
         } else {
-            auto primary_ctrl = smgr.find_entry(ctrl->primary_entry().value_or(0));
-            can_delete = (! primary_ctrl) || primary_ctrl->ref_transaction_count() == 0;
+            // secondary index
+            if (ctrl->primary_entry().has_value()) {
+                auto primary_ctrl = smgr.find_entry(ctrl->primary_entry().value());
+                can_delete = (! primary_ctrl) || primary_ctrl->ref_transaction_count() == 0;
+            } else {
+                // secondary index without primary entry
+                // (e.g. because primary is also delete reserved and recovery has been done)
+                // can be deleted independently because there is no need to track ref count after recovery
+                can_delete = true;
+            }
         }
         if (! can_delete) {
             continue;
         }
-        auto stg = kvs_db->get_storage(ctrl->derived_storage_key());
+        auto stg = global::db()->get_storage(ctrl->derived_storage_key());
         if (stg) {
-            // Verify that the KVS metadata also has delete_reserved=true.
-            // An aborted DROP TABLE/INDEX rolls back the KVS metadata update but
-            // does NOT roll back the in-memory reserve_delete_entry() call, so we
-            // must not delete a storage whose KVS metadata says delete_reserved=false.
-            sharksfin::StorageOptions opt{};
-            if (stg->get_options(opt) == status::ok && ! opt.payload().empty()) {
-                proto::metadata::storage::IndexDefinition idef{};
-                std::uint64_t v{};
-                if (auto err = recovery::validate_extract(opt.payload(), idef, v); ! err) {
-                    if (! idef.delete_reserved()) {
-                        // KVS metadata does not confirm deletion (e.g. the DDL tx aborted).
-                        // Skip — the in-memory state will be corrected on next db restart.
-                        continue;
-                    }
-                }
-            }
             auto res = stg->delete_storage();
             if (res != status::ok && res != status::not_found) {
                 LOG_LP(ERROR) << "maintenance: failed to delete storage: " << ctrl->derived_storage_key();

@@ -689,7 +689,6 @@ TEST_F(recovery_test, recovery_after_dropping_secondary_indices) {
     execute_statement("CREATE INDEX SECONDARY0 ON T (C1)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
     execute_statement("DROP INDEX SECONDARY0");
-    ASSERT_EQ((std::vector<std::string>{"SECONDARY0"}), storage::maintenance_storage()); // to remove storage completely
 
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());

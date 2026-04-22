@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -119,6 +120,9 @@ TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_deletes_reserved_stor
 
 // maintenance_storage() should NOT delete a delete-reserved storage when ref count > 0.
 TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_keeps_reserved_storage_when_referenced) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support lazy delete with ref count";  // TODO check
+    }
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
     execute_statement("INSERT INTO t VALUES (1)");
 
@@ -143,10 +147,128 @@ TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_keeps_reserved_storag
     ASSERT_EQ(status::ok, tx_dml->commit());
 
     // Now maintenance can clean it up
-    if (jogasaki::kvs::implementation_id() != "memory") {
-        ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
-        EXPECT_TRUE(smgr.find_entry(e) == nullptr);
+    ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
+    EXPECT_TRUE(! smgr.find_entry(e));
+}
+
+// When DROP INDEX is executed, a TX that queries via the secondary index keeps the index storage alive.
+TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_keeps_index_storage_when_index_tx_open) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support lazy delete with ref count";  // TODO check
     }
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+
+    // verify that the SELECT uses idx0 via the secondary index find path
+    {
+        std::string plan{};
+        explain_statement("SELECT * FROM t WHERE c1 = 10", plan);
+        EXPECT_TRUE(plan.find(R"("simple_name":"idx0")") != std::string::npos);
+    }
+
+    auto& smgr = *global::storage_manager();
+    auto idx_entry = smgr.find_by_name("idx0");
+    ASSERT_TRUE(idx_entry.has_value());
+    auto e = idx_entry.value();
+
+    // Open a DML tx that uses the secondary index (query on indexed column)
+    auto tx_dml = utils::create_transaction(*db_, false, false);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE c1 = 10", *tx_dml, result);
+    ASSERT_EQ(1, result.size());
+
+    // Drop the index while the DML tx is still open
+    execute_statement("DROP INDEX idx0");
+
+    // ref count is still > 0 — maintenance must not delete yet
+    EXPECT_TRUE(storage::maintenance_storage().empty());
+
+    // Commit the DML tx — ref count drops to 0
+    ASSERT_EQ(status::ok, tx_dml->commit());
+
+    // Now maintenance can clean it up
+    ASSERT_EQ((std::vector<std::string>{"idx0"}), storage::maintenance_storage());
+    EXPECT_TRUE(! smgr.find_entry(e));
+}
+
+// When DROP INDEX is executed, a TX that queries the base table keeps the index storage alive.
+TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_keeps_index_storage_when_base_table_tx_open) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support lazy delete with ref count";  // TODO check
+    }
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+
+    auto& smgr = *global::storage_manager();
+    auto idx_entry = smgr.find_by_name("idx0");
+    ASSERT_TRUE(idx_entry.has_value());
+    auto e = idx_entry.value();
+
+    // Open a DML tx that scans the base table (primary storage)
+    auto tx_dml = utils::create_transaction(*db_, false, false);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", *tx_dml, result);
+    ASSERT_EQ(1, result.size());
+
+    // Drop the index while the DML tx is still open
+    execute_statement("DROP INDEX idx0");
+
+    // ref count is still > 0 — maintenance must not delete yet
+    EXPECT_TRUE(storage::maintenance_storage().empty());
+
+    // Commit the DML tx — ref count drops to 0
+    ASSERT_EQ(status::ok, tx_dml->commit());
+
+    // Now maintenance can clean it up
+    ASSERT_EQ((std::vector<std::string>{"idx0"}), storage::maintenance_storage());
+    EXPECT_TRUE(! smgr.find_entry(e));
+}
+
+// When a TX referencing an unrelated table/index is open, DROP TABLE on a different
+// table still succeeds and maintenance_storage() deletes the dropped table's storages.
+TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_deletes_storage_with_unrelated_tx_open) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support lazy delete with ref count";
+    }
+    execute_statement("CREATE TABLE other (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX other_idx ON other (c1)");
+    execute_statement("INSERT INTO other VALUES (1, 10)");
+
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (2, 20)");
+
+    auto& smgr = *global::storage_manager();
+    auto t_entry = smgr.find_by_name("t");
+    ASSERT_TRUE(t_entry.has_value());
+    auto t_e = t_entry.value();
+    auto idx_entry = smgr.find_by_name("idx0");
+    ASSERT_TRUE(idx_entry.has_value());
+    auto idx_e = idx_entry.value();
+
+    // Open a DML tx that only touches the unrelated table/index
+    auto tx_unrelated = utils::create_transaction(*db_, false, false);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM other WHERE c1 = 10", *tx_unrelated, result);
+    ASSERT_EQ(1, result.size());
+
+    // Drop the unrelated table while tx_unrelated is open — ref count on 'other' > 0
+    // but 't' and 'idx0' have ref count 0, so they should be cleaned up by maintenance
+    execute_statement("DROP TABLE t");
+
+    // 't' and 'idx0' ref counts are 0 — maintenance must delete them
+    auto deleted = storage::maintenance_storage();
+    std::sort(deleted.begin(), deleted.end());
+    ASSERT_EQ((std::vector<std::string>{"idx0", "t"}), deleted);
+    EXPECT_TRUE(! smgr.find_entry(t_e));
+    EXPECT_TRUE(! smgr.find_entry(idx_e));
+
+    // Commit the unrelated tx — 'other' and 'other_idx' are still intact
+    ASSERT_EQ(status::ok, tx_unrelated->commit());
+    EXPECT_TRUE(smgr.find_by_name("other").has_value());
+    EXPECT_TRUE(smgr.find_by_name("other_idx").has_value());
 }
 
 } // namespace jogasaki::testing

@@ -66,6 +66,18 @@ void emplace_nullable_with(std::vector<any>& values, Opt const& opt, F const& f)
         VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(T).name() << ":NULL";
     }
 }
+template <class F>
+void emplace_nullable_binary(std::vector<data::any>& values, F fetcher) {
+    auto v = fetcher();
+    if (!v) {
+        values.emplace_back();
+    } else {
+        values.emplace_back(
+            std::in_place_type<accessor::binary>,
+            accessor::binary{v->value.data(), v->value.size()}
+        );
+    }
+}
 
 void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     if (auto v = cursor.fetch_decimal()) {
@@ -298,8 +310,7 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
                 break;
 
             case kind::octet:
-                emplace_nullable_with<accessor::binary>(values, cursor->fetch_string(),
-                    [](auto const& s) { return accessor::binary{s}; });
+                emplace_nullable_binary(values, [&]() { return cursor->fetch_bytes(); });
                 break;
 
             case kind::decimal: append_decimal(values, *cursor); break;

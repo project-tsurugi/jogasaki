@@ -343,6 +343,12 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<std::size_t>("dev_apply_max_polls")) {
         ret->apply_max_polls(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_maintenance_thread")) {
+        ret->enable_maintenance_thread(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::size_t>("dev_maintenance_interval_ms")) {
+        ret->maintenance_interval_ms(v.value());
+    }
     return true;
 }
 

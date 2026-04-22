@@ -547,6 +547,14 @@ public:
         enable_maintenance_thread_ = arg;
     }
 
+    [[nodiscard]] std::size_t maintenance_interval_ms() const noexcept {
+        return maintenance_interval_ms_;
+    }
+
+    void maintenance_interval_ms(std::size_t arg) noexcept {
+        maintenance_interval_ms_ = arg;
+    }
+
     [[nodiscard]] std::string_view plugin_directory() const noexcept {
         return plugin_directory_;
     }
@@ -674,6 +682,7 @@ public:
         print_non_default(enable_session_store);
         print_non_default(enable_storage_key);
         print_non_default(enable_maintenance_thread);
+        print_non_default(maintenance_interval_ms);
         print_non_default(plugin_directory);
         print_non_default(endpoint);
         print_non_default(secure);
@@ -749,6 +758,7 @@ private:
     bool enable_session_store_ = true;
     bool enable_storage_key_ = true;
     bool enable_maintenance_thread_ = true;
+    std::size_t maintenance_interval_ms_ = 100;
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;

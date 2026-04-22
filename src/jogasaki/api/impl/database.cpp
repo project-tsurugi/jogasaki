@@ -220,6 +220,8 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(grpc_server_endpoint) " << cfg.grpc_server_endpoint() << " : gRPC server endpoint for communication with BLOB server.";
     LOGCFG << "(grpc_server_secure) " << cfg.grpc_server_secure() << " : Whether to use a secure gRPC communication channel for BLOB server.";
     LOGCFG << "(dev_apply_max_polls) " << cfg.apply_max_polls() << " : number of additional try_next polls before yielding in the apply operator";
+    LOGCFG << "(dev_enable_maintenance_thread) " << cfg.enable_maintenance_thread() << " : whether to start the maintenance background thread";
+    LOGCFG << "(dev_maintenance_interval_ms) " << cfg.maintenance_interval_ms() << " : interval (ms) between maintenance thread activations";
 }
 
 static bool validate_core_assignment_parameters(configuration const& cfg) {
@@ -1737,7 +1739,7 @@ bool database::stop_requested() const noexcept {
 void database::maintenance_loop() noexcept {
     while (true) {
         std::unique_lock<std::mutex> lk{maintenance_mutex_};
-        auto stop_requested = maintenance_cv_.wait_for(lk, std::chrono::milliseconds{100}, [this](){
+        auto stop_requested = maintenance_cv_.wait_for(lk, std::chrono::milliseconds{cfg_->maintenance_interval_ms()}, [this](){
             return maintenance_stop_requested_;
         });
         if (stop_requested) {

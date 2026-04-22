@@ -133,7 +133,7 @@ TEST_F(exclusive_ddl_dml_test, starting_ddls_blocked_by_dml_req) {
     execute_statement("INSERT INTO t0 values (1)");
     std::size_t t0_cnt = 1;
     std::size_t t1_cnt = 0;
-    for(std::size_t i=0; i < 7; ++i) { // choose count to make the query long enough (e.g. 100ms) to run ddl while query is on-going
+    for(std::size_t i=0; i < 10; ++i) { // choose count to make the query long enough (e.g. 100ms) to run ddl while query is on-going
         execute_statement("INSERT INTO t1 SELECT c0+"+std::to_string(t1_cnt)+" FROM t0");
         t1_cnt += t0_cnt;
         execute_statement("INSERT INTO t0 SELECT c0+"+std::to_string(t0_cnt)+" FROM t1");

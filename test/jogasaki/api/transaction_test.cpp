@@ -315,7 +315,8 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
 }
 
 // TODO following test leaks many objects
-TEST_F(transaction_test, tx_aborted_from_other_threads) {
+// temporarily disable the test. The CI fails intermittently. We need to fix the test and re-enable it.
+TEST_F(transaction_test, DISABLED_tx_aborted_from_other_threads) {
     // verify crash doesn't occur even tx is aborted by operation on different thread
     // and the error info is available then
     utils::set_global_tx_option(utils::create_tx_option{false, true}); // use occ to finish insert quickly

@@ -29,6 +29,7 @@
 #include <string_view>
 #include <thread>
 #include <type_traits>
+#include <unistd.h>
 #include <utility>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception/exception.hpp>
@@ -1737,6 +1738,9 @@ bool database::stop_requested() const noexcept {
 }
 
 void database::maintenance_loop() noexcept {
+    LOG_LP(INFO) << "SQL engine started maintenance thread tid:(" << std::this_thread::get_id() << ", " << ::gettid() << ")";
+    std::size_t total_deleted{};
+    std::size_t total_maintenance_us{};
     while (true) {
         std::unique_lock<std::mutex> lk{maintenance_mutex_};
         auto stop_requested = maintenance_cv_.wait_for(lk, std::chrono::milliseconds{cfg_->maintenance_interval_ms()}, [this](){
@@ -1747,7 +1751,12 @@ void database::maintenance_loop() noexcept {
         }
         lk.unlock();
         try {  // must not throw exception, thread should log msg and continue running
-            storage::maintenance_storage();
+            auto t0 = std::chrono::steady_clock::now();
+            auto deleted = storage::maintenance_storage();
+            auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - t0).count();
+            total_deleted += deleted.size();
+            total_maintenance_us += static_cast<std::size_t>(elapsed);
         } catch (boost::exception const& e) {
             LOG_LP(ERROR) << "unhandled boost exception: "
                           << boost::diagnostic_information(e);
@@ -1762,6 +1771,9 @@ void database::maintenance_loop() noexcept {
             LOG_LP(ERROR) << "unknown exception caught";
         }
     }
+    LOG_LP(INFO) << "SQL engine stopped maintenance thread tid:(" << std::this_thread::get_id() << ", " << ::gettid() << ")"
+                 << " deleted_storages:" << total_deleted
+                 << " maintenance_storage_us:" << total_maintenance_us;
 }
 
 utils::use_counter const& database::requests_inprocess() const noexcept {

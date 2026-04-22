@@ -76,8 +76,9 @@ message IndexDefinition {
     - 同時に `storage_control` の `name_` フィールドを `std::nullopt` にする (name_の型は `std::optional<std::string>` に変更する)
 - 順序としては、名前の抹消処理を行った後に、削除予約フラグを設定する
   - 逆になると、削除予約をしたものが再度使用開始される可能性があるため
-- 削除予約フラグを設定後、そのストレージに対する write lock を解放する
-  - これまでは storage entry の削除により行っていたが、これが delete_storage の呼び出しまで遅延するため
+- 削除予約フラグを設定後もそのストレージに対する write lock は維持する
+  - これまでは DROP実行のタイミングで storage entry が削除され write lock が解放されてしまっていたが厳密な想定挙動ではなかった
+    - 削除予約状態では storage entry は残るため、DROP を実行したトランザクションの完了まで正しく write lock を保持できるようになる
 
 ### トランザクション完了時の処理
 
@@ -107,7 +108,7 @@ message IndexDefinition {
     - 参照カウンタはプリマリインデックスのストレージ単位で管理し、セカンダリインデックスの参照状態は管理しないためこのような条件になる
     - これをおこなうために `storage_control` にプライマリストレージを探すための `storage_entry` を記憶する
     - 削除処理の順序は、セカンダリ -> プライマリの順になるとは限らず、プライマリが削除済みの場合は参照カウンタが 0 であるのと同じ状態とみなせる
-    - 特別なケースとして、プライマリストレージが削除予約されたあとに recovery が起きた場合は名前からプライマリストレージが特定できないため、セカンダリストレージにプライマリストレージを関連付けることができないが、recovery 後は参照状態を追跡する必要がないため、セカンダリストレージはプライマリストレージの状態に関わらず削除可能とする
+    - 特別なケースとして、プライマリストレージが削除予約されたあとに recovery が起きた場合は名前からプライマリストレージが特定できないため、セカンダリストレージにプライマリストレージを関連付けることができないが、recovery 後は参照状態を追跡する必要がないため、セカンダリストレージはプライマリストレージの状態に関わらず削除可能としてよい
 - `delete_storage` の実行完了時に `storages_` からエントリを削除する
 
 ## 初期見積もり
@@ -125,6 +126,29 @@ message IndexDefinition {
 
 - `storage_control` に使用トランザクションをカウントするための `std::atomic_size_t ref_transaction_count_` を追加し、`storage::reference_scope` のコンストラクタでインクリメント、デストラクタでデクリメントするようにする
 
+### `storage_control` の状態遷移
+
+`storage_control` は以下の状態を持つ。
+削除予約状態が今回の変更により追加されるもの。
+
+| 状態 | 説明 |
+|------|------|
+| Start/End | `storage_control` エントリが `storages_` に存在しない初期状態。DDL 実行前または `delete_storage` 完了後の最終状態。shirakami/sharksfin上のStorageが存在しない状態。|
+| 通常 | DDL によるテーブル/インデックス作成後、または再起動リカバリ後に復旧した状態。`storage_names_` や `database::tables_` に名前が登録されており、DML から参照可能。 |
+| 削除予約 | DROP DDL 実行後、`storage_names_` 及び `database::tables_` から名前が除外され `delete_reserved = true` が設定された状態。新規 DML からは参照不可だが `storages_` にはエントリが残っており、参照カウンタの管理対象となる。`storage_control::name_` は空になり、以前の名前は `storage_control::original_name_` に保持される(ログ表示用)。shirakami/sharksfin上のStorageは存在するが、新規にSQLからは参照不可。 |
+
+```mermaid
+stateDiagram-v2
+    Start --> 通常 : DDL によるテーブル/インデックス作成
+    通常 --> 通常 : DB再起動・リカバリ
+    通常 --> 削除予約 : DROP DDL 実行 (*1)
+    削除予約 --> 削除予約 : DB再起動・リカバリ
+    削除予約 --> End : 削除条件確定 (*2)
+```
+
+(*1) `storage_names_` から除外し、`delete_reserved = true` を設定
+(*2) プライマリストレージの参照カウンタが 0 となったら `delete_storage`を実行。完了後に `storages_` から `storage_control` を除外
+
 ## テスト
 
 - テスト用に `configuration` に `enable_maintenance_thread` オプションを追加し、メンテナンススレッドの有効/無効を切り替えられるようにする
@@ -133,12 +157,13 @@ message IndexDefinition {
 
 ## その他・要調査事項
 
-- 本設計ではインデックスに関する使用カウントをベーステーブルに対するものと一体化させた。このため、DROP INDEX したストレージが消されるまでにベーステーブルに絶え間なくクエリが実行されているような状況ではインデックスの delete_storage が遅延することになる。
+- 本設計ではインデックスに関する使用カウントをベーステーブルに対するものと一体化させた。
+  - このため、DROP INDEX したストレージが消されるまでにベーステーブルに絶え間なくクエリが実行されているような状況ではインデックスの delete_storage が遅延することになる。
   - 厳密にやるならば、セカンダリインデックスごとに使用カウントを持ち、インデックスの使用カウンタを個別に計算する必要があるが、実装コストを考慮して今回は見送ることとする
     - 例えばDMLが使っているインデックスを厳密に特定する必要がある (INSERTならば全セカンダリインデックスを使用するが、SELECTならば特定のインデックスのみ、など)
 
-- storage metadata の削除予約フラグのセットは shirakami::set_storage_options()によって実行される
+- storage metadata の削除予約フラグのセットは `shirakami::set_storage_options()` によって実行される
   - 現状ではこれは呼出完了時点での永続化を保証しない
   - DROP文の完了時点から削除予約フラグの永続化完了までの間にクラッシュした場合、削除予約フラグが永続化されない可能性がある
   - その場合、再度 DROP文を呼出して削除を行う必要がある
-  - 将来的にはトランザクション経由でset_storage_options()の呼び出しを行い、呼出側が永続化完了を待つといった対応が必要
+  - 将来的にはトランザクション経由で `set_storage_options()` の呼び出しを行い、呼出側が永続化完了を待つといった対応が必要

@@ -205,7 +205,7 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
         }
     }
 
-    // kvs storages are deleted successfully
+    // kvs storages are delete reserved successfully
     // Going forward, try to clean up metadata as much as possible even if there is some inconsistency/missing parts.
 
     // drop auto-generated sequences

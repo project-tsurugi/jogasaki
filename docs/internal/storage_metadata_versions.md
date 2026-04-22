@@ -24,4 +24,4 @@ jogasakiのストレージメタデータ (`src/jogasaki/proto/metadata/storage.
 |  11 | 2025-04-29 | 1.4.0 | [7b2dd1a5498f2cec3be068b29268e6c0fd3deccb](https://github.com/project-tsurugi/jogasaki/commit/7b2dd1a5498f2cec3be068b29268e6c0fd3deccb) | `description` の追加など |
 |  12 | 2025-07-30 | 1.6.0 | [bc8d04c1d035af1d52e96ea84f574bf533c18c82](https://github.com/project-tsurugi/jogasaki/commit/bc8d04c1d035af1d52e96ea84f574bf533c18c82) | テーブルへ認証情報の追加など |
 |  13 | 2025-11-28 | 1.8.0 | [e23f0c317afbbc49f1065c630d8d745a604d4ecd](https://github.com/project-tsurugi/jogasaki/commit/e23f0c317afbbc49f1065c630d8d745a604d4ecd) | `storage_key` フィールドの追加 |
-|  14 | 2026-04-21 | 1.11.0 | | `delete_reserved` フィールドの追加 |
+|  14 | 2026-04-21 | 1.11.0 | [fb0827102f173ab2cb824ad7ac2f1213981a18c0](https://github.com/project-tsurugi/jogasaki/commit/fb0827102f173ab2cb824ad7ac2f1213981a18c0) | `delete_reserved` フィールドの追加 |

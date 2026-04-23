@@ -100,7 +100,20 @@ void kvs_test_utils::put_secondary(
     mock::basic_record key,
     std::string_view encoded_primary_key
 ) {
+    auto& key_meta = key.record_meta();
+    std::vector<kvs::coding_spec> specs(key_meta->field_count(), spec_asc);
+    put_secondary(db, storage_name, std::move(key), encoded_primary_key, specs);
+}
+
+void kvs_test_utils::put_secondary(
+    kvs::database& db,
+    std::string_view storage_name,
+    mock::basic_record key,
+    std::string_view encoded_primary_key,
+    std::vector<kvs::coding_spec> const& specs
+) {
     BOOST_ASSERT(key);  //NOLINT
+    BOOST_ASSERT(specs.size() == key.record_meta()->field_count());  //NOLINT
     auto stg = db.get_or_create_storage(storage_name);  // allow this for testing
     auto tx = db.create_transaction();
 
@@ -113,10 +126,10 @@ void kvs_test_utils::put_secondary(
         if (key_meta->nullable(i)) {
             kvs::encode_nullable(
                 key.ref(), key_meta->value_offset(i), key_meta->nullity_offset(i),
-                key_meta->at(i), spec_asc, ctx, key_stream);
+                key_meta->at(i), specs[i], ctx, key_stream);
             continue;
         }
-        kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, ctx, key_stream);
+        kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), specs[i], ctx, key_stream);
     }
     key_stream.write(encoded_primary_key.data(), encoded_primary_key.size());
     if(auto res = stg->content_put(*tx,

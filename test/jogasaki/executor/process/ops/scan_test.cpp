@@ -13,75 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <algorithm>
-#include <cstddef>
 #include <cstdint>
-#include <initializer_list>
+#include <memory>
 #include <string>
-#include <tuple>
 #include <unordered_map>
-#include <boost/container/container_fwd.hpp>
-#include <boost/move/utility_core.hpp>
+#include <utility>
+#include <vector>
+
 #include <gtest/gtest.h>
 
-#include <takatori/descriptor/element.h>
-#include <takatori/descriptor/variable.h>
-#include <takatori/graph/graph.h>
-#include <takatori/graph/port.h>
-#include <takatori/plan/process.h>
-#include <takatori/relation/buffer.h>
-#include <takatori/relation/endpoint_kind.h>
-#include <takatori/relation/expression.h>
-#include <takatori/relation/expression_kind.h>
-#include <takatori/relation/step/offer.h>
-#include <takatori/relation/step/take_flat.h>
-#include <takatori/scalar/expression_kind.h>
 #include <takatori/scalar/immediate.h>
 #include <takatori/scalar/variable_reference.h>
-#include <takatori/tree/tree_fragment_vector.h>
 #include <takatori/type/character.h>
 #include <takatori/type/primitive.h>
 #include <takatori/type/varying.h>
-#include <takatori/util/exception.h>
 #include <takatori/value/character.h>
 #include <takatori/value/primitive.h>
-#include <yugawara/analyzer/expression_mapping.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/storage/sequence.h>
-#include <yugawara/storage/table.h>
-#include <yugawara/variable/criteria.h>
-#include <yugawara/variable/nullity.h>
 
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/api/kvsservice/transaction_option.h>
 #include <jogasaki/api/kvsservice/transaction_type.h>
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/process/abstract/range.h>
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/ops/operator_builder.h>
-#include <jogasaki/executor/process/impl/ops/scan.h>
-#include <jogasaki/executor/process/impl/ops/scan_context.h>
-#include <jogasaki/executor/process/impl/scan_range.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/io_exchange_map.h>
-#include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/storage.h>
-#include <jogasaki/kvs_test_base.h>
-#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/api/transaction_option.h>
+#include <jogasaki/executor/process/ops/scan_test_common.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/operator_test_utils.h>
-#include <jogasaki/plan/compiler_context.h>
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
-#include <jogasaki/transaction_context.h>
-#include <jogasaki/error/error_info.h>
-#include <jogasaki/error/error_info_factory.h>
-
-#include "verifier.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -97,987 +52,858 @@ using namespace std::string_literals;
 using namespace jogasaki::memory;
 using namespace boost::container::pmr;
 
-namespace relation = ::takatori::relation;
-namespace scalar = ::takatori::scalar;
-using take = relation::step::take_flat;
-using buffer = relation::buffer;
-
-namespace storage = yugawara::storage;
-
 using yugawara::variable::nullity;
-using yugawara::variable::criteria;
 
-class scan_test :
-    public test_root,
-    public kvs_test_base,
-    public operator_test_utils {
-
+class scan_test : public scan_test_base {
 public:
+    /**
+     * @brief Set up and run a scan-ranges RTX test.
+     *
+     * @details Creates a standard 3-column table with composite primary key,
+     *     inserts a scan node with fixed bounded key ranges, then builds scan
+     *     ranges with an RTX transaction and passes them to the check function.
+     *
+     * @param default_parallel  value for configuration scan_default_parallel
+     * @param opt               transaction options for the RTX transaction
+     * @param check             callback receiving the generated scan range vector
+     */
+    void do_rtx_range_test(
+        int default_parallel,
+        std::shared_ptr<api::transaction_option> opt,
+        std::function<void(std::vector<std::shared_ptr<impl::scan_range>> const&)> const& check
+    ) {
+        auto cfg = std::make_shared<configuration>();
+        cfg->scan_default_parallel(default_parallel);
+        cfg->key_distribution(key_distribution_kind::simple);
+        global::config_pool(cfg);
 
-    void SetUp() override {
-        kvs_db_setup();
+        auto setup = prepare_indices(
+            {"T0", {
+                {"C0", t::int4(), nullity{false}},
+                {"C1", t::int8(), nullity{false}},
+                {"C2", t::int8(), nullity{false}},
+            }},
+            {0, 1}, {}
+        );
+
+        using ek = relation::endpoint_kind;
+        namespace tv = takatori::value;
+        namespace tt = takatori::type;
+        auto& target = add_scan_node(
+            setup,
+            false,
+            make_scan_endpoint(setup, {0, 1}, make_exprs(
+                std::make_unique<scalar::immediate>(tv::int4(100), tt::int4()),
+                std::make_unique<scalar::immediate>(tv::int8(200), tt::int8())
+            ), ek::prefixed_exclusive),
+            make_scan_endpoint(setup, {0, 1}, make_exprs(
+                std::make_unique<scalar::immediate>(tv::int4(251658240), tt::int4()),
+                std::make_unique<scalar::immediate>(tv::int8(INT64_MIN), tt::int8())
+            ), ek::prefixed_exclusive)
+        );
+
+        auto down = add_downstream_record_verifier(destinations(target.columns()));
+        target.output() >> down.input();
+        create_processor_info();
+
+        std::shared_ptr<kvs::transaction> tra;
+        auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt));
+        transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
+        request_context_.transaction(transaction_ctx);
+
+        io_exchange_map exchange_map{};
+        operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
+        check(builder.create_scan_ranges(target));
     }
-    void TearDown() override {
-        kvs_db_teardown();
+
+    /**
+     * @brief Create a two-column table with a single int4 primary key (C0) and an int4 value (C1).
+     * @return the table_setup for the created table and primary index.
+     */
+    table_setup prepare_single_col_pk_table() {
+        return prepare_indices(
+            {"T0", {
+                {"C0", t::int4(), nullity{false}},
+                {"C1", t::int4(), nullity{false}},
+            }},
+            {0}, {}
+        );
+    }
+
+    /**
+     * @brief Insert rows (10,1),(20,2),(30,3),(40,4) into the given setup.
+     * @param setup table_setup to insert into.
+     */
+    void insert_endpoint_test_rows(table_setup const& setup) {
+        put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 1), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 2), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 3), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4>(40, 4), *db_);
+    }
+
+    /**
+     * @brief Build a scan endpoint for column 0 (int4) with a single immediate value.
+     * @param setup table and index configuration.
+     * @param val   endpoint key value.
+     * @param kind  endpoint kind.
+     * @return the scan endpoint.
+     */
+    relation::scan::endpoint make_int4_endpoint(
+        table_setup const& setup,
+        std::int32_t val,
+        relation::endpoint_kind kind
+    ) {
+        namespace tv = takatori::value;
+        namespace tt = takatori::type;
+        return make_scan_endpoint(setup, {0}, make_exprs(
+            std::make_unique<scalar::immediate>(tv::int4(val), tt::int4())
+        ), kind);
+    }
+
+    /**
+     * @brief Wire, build, and execute a primary-index scan on setup with the given endpoints.
+     * @param setup  table and index configuration.
+     * @param lower  lower bound endpoint (use {} for unbound).
+     * @param upper  upper bound endpoint (use {} for unbound).
+     * @return the result rows from the scan.
+     */
+    std::vector<basic_record> run_single_col_pk_scan(
+        table_setup const& setup,
+        relation::scan::endpoint lower,
+        relation::scan::endpoint upper
+    ) {
+        auto& target = add_scan_node(setup, false, std::move(lower), std::move(upper));
+        auto out = create_nullable_record<kind::int4, kind::int4>();
+        auto down = add_downstream_record_verifier(destinations(target.columns()));
+        auto tx = wrap(db_->create_transaction());
+        auto ex = make_scan_executor(target, setup, false, down, out, tx);
+        std::vector<basic_record> result{};
+        down.set_body([&]() {
+            result.emplace_back(
+                get_variables(ex.output_variables_, destinations(target.columns())));
+        });
+        EXPECT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+        ex.ctx_.release();
+        EXPECT_EQ(status::ok, tx->commit());
+        return result;
+    }
+
+    /**
+     * @brief Create a three-column table with composite int4 primary key (C0, C1) and int4 value column (C2).
+     * @return the table_setup for the created table and primary index.
+     */
+    table_setup prepare_composite_pk_table() {
+        return prepare_indices(
+            {"T0", {
+                {"C0", t::int4(), nullity{false}},
+                {"C1", t::int4(), nullity{false}},
+                {"C2", t::int4(), nullity{false}},
+            }},
+            {0, 1}, {}
+        );
+    }
+
+    /**
+     * @brief Build a scan endpoint for columns C0 and C1 (both int4) with immediate values.
+     * @param setup  table and index configuration.
+     * @param v0     value for column C0.
+     * @param v1     value for column C1.
+     * @param kind   endpoint kind.
+     * @return the scan endpoint.
+     */
+    relation::scan::endpoint make_int4_2col_endpoint(
+        table_setup const& setup,
+        std::int32_t v0,
+        std::int32_t v1,
+        relation::endpoint_kind kind
+    ) {
+        namespace tv = takatori::value;
+        namespace tt = takatori::type;
+        return make_scan_endpoint(setup, {0, 1}, make_exprs(
+            std::make_unique<scalar::immediate>(tv::int4(v0), tt::int4()),
+            std::make_unique<scalar::immediate>(tv::int4(v1), tt::int4())
+        ), kind);
+    }
+
+    /**
+     * @brief Insert rows with distinct C0 values into the composite PK setup.
+     * @details Inserts (C0=10,C1=10,C2=1),(C0=20,C1=10,C2=2),(C0=30,C1=10,C2=3),(C0=40,C1=10,C2=4).
+     * @param setup table_setup to insert into.
+     */
+    void insert_composite_pk_c0_rows(table_setup const& setup) {
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 10, 1), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(20, 10, 2), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(30, 10, 3), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(40, 10, 4), *db_);
+    }
+
+    /**
+     * @brief Insert rows with distinct C1 values (C0 fixed at 10) into the composite PK setup.
+     * @details Inserts (C0=10,C1=10,C2=1),(C0=10,C1=20,C2=2),(C0=10,C1=30,C2=3),(C0=10,C1=40,C2=4).
+     * @param setup table_setup to insert into.
+     */
+    void insert_composite_pk_c1_rows(table_setup const& setup) {
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 10, 1), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 20, 2), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 30, 3), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 40, 4), *db_);
+    }
+
+    /**
+     * @brief Wire, build, and execute a primary-index scan on the composite PK setup with the given endpoints.
+     * @param setup  table and index configuration.
+     * @param lower  lower bound endpoint (use {} for unbound).
+     * @param upper  upper bound endpoint (use {} for unbound).
+     * @return the result rows (C0, C1, C2) from the scan.
+     */
+    std::vector<basic_record> run_composite_pk_scan(
+        table_setup const& setup,
+        relation::scan::endpoint lower,
+        relation::scan::endpoint upper
+    ) {
+        auto& target = add_scan_node(setup, false, std::move(lower), std::move(upper));
+        auto out = create_nullable_record<kind::int4, kind::int4, kind::int4>();
+        auto down = add_downstream_record_verifier(destinations(target.columns()));
+        auto tx = wrap(db_->create_transaction());
+        auto ex = make_scan_executor(target, setup, false, down, out, tx);
+        std::vector<basic_record> result{};
+        down.set_body([&]() {
+            result.emplace_back(
+                get_variables(ex.output_variables_, destinations(target.columns())));
+        });
+        EXPECT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+        ex.ctx_.release();
+        EXPECT_EQ(status::ok, tx->commit());
+        return result;
     }
 };
 
 TEST_F(scan_test, simple) {
-    auto t0 = create_table({
-        "T0",
-        {
-            { "C0", t::int4(), nullity{false} },
-            { "C1", t::float8(), nullity{false}  },
-            { "C2", t::int8(), nullity{false}  },
-        },
-    });
+    auto setup = prepare_indices(
+        {"T0", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 200), *db_);
 
-    auto primary_idx = create_primary_index(t0, {0}, {1,2});
-
-    auto& target = process_.operators().insert(relation::scan {
-        bindings_(*primary_idx),
-        {
-            { bindings_(t0->columns()[0]), bindings_.stream_variable("c0") },
-            { bindings_(t0->columns()[1]), bindings_.stream_variable("c1") },
-            { bindings_(t0->columns()[2]), bindings_.stream_variable("c2") },
-        },
-    });
-
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
-    create_processor_info();
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>();
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-    scan op{
-        0,
-        *processor_info_,
-        0,
-        *primary_idx,
-        target.columns(),
-        nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), out.record_meta()));
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-
+    auto& target = add_scan_node(setup);
+    auto out = create_nullable_record<kind::int4, kind::int4>();
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto transaction_ctx = std::make_shared<transaction_context>();
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = (builder.create_scan_ranges(target))[0];
-    mock::task_context task_ctx{ {}, {}, {},{range}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
-    ctx.release();
+    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+    });
+    ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+    ex.ctx_.release();
     ASSERT_EQ(2, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100)), result[0]);
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 100)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 200)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(scan_test, nullable_fields) {
-    auto t0 = create_table({
-        "T0",
-        {
-            { "C0", t::int4(), nullity{false} },
-            { "C1", t::float8(), nullity{true}  },
-            { "C2", t::int8(), nullity{true}  },
-        },
-    });
-    auto primary_idx = create_primary_index(t0, {0}, {1,2});
+    auto setup = prepare_indices(
+        {"T0", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{true}},
+        }},
+        {0}, {}
+    );
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, std::nullopt), *db_);
 
-    auto& target = process_.operators().insert(relation::scan {
-        bindings_(*primary_idx),
-        {
-            { bindings_(t0->columns()[0]), bindings_.stream_variable("c0") },
-            { bindings_(t0->columns()[1]), bindings_.stream_variable("c1") },
-            { bindings_(t0->columns()[2]), bindings_.stream_variable("c2") },
-        },
-    });
-
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
-    create_processor_info();
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>();
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-    scan op{
-        0,
-        *processor_info_,
-        0,
-        *primary_idx,
-        target.columns(),
-        nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(std::nullopt, std::nullopt));
-
+    auto& target = add_scan_node(setup);
+    auto out = create_nullable_record<kind::int4, kind::int4>();
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto transaction_ctx = std::make_shared<transaction_context>();
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = (builder.create_scan_ranges(target))[0];
-    mock::task_context task_ctx{ {}, {}, {},{range}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
-    ctx.release();
+    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(
+            get_variables(ex.output_variables_, destinations(target.columns())));
+    });
+    ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+    ex.ctx_.release();
     ASSERT_EQ(2, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100)), result[0]);
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, std::nullopt, std::nullopt)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 100)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, std::nullopt)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(scan_test, scan_info) {
-    auto t1 = create_table({
-        "T1",
-        {
-            { "C0", t::int8(), nullity{false} },
-            { "C1", t::character(t::varying, 100), nullity{false}  },
-            { "C2", t::float8(), nullity{false}  },
-        },
-    });
-    auto primary_idx = create_primary_index(t1, {0,1}, {2});
+    namespace tv = takatori::value;
+    namespace tt = takatori::type;
+    using ek = relation::endpoint_kind;
 
-    using key = relation::scan::key;
-    auto& target = process_.operators().insert(relation::scan {
-        bindings_(*primary_idx),
-        {
-            { bindings_(t1->columns()[0]), bindings_.stream_variable("c0") },
-            { bindings_(t1->columns()[1]), bindings_.stream_variable("c1") },
-            { bindings_(t1->columns()[2]), bindings_.stream_variable("c2") },
-        },
-        {
-            {
-                key {
-                    bindings_(t1->columns()[0]),
-                    scalar::immediate { takatori::value::int8(100), takatori::type::int8() }
-                },
-                key {
-                    bindings_(t1->columns()[1]),
-                    scalar::immediate { takatori::value::character("123456789012345678901234567890/B"), takatori::type::character(t::varying, 100) }
-                },
-            },
-            relation::endpoint_kind::inclusive,
-        },
-        {
-            {
-                key {
-                    bindings_(t1->columns()[0]),
-                    scalar::immediate { takatori::value::int8(100), takatori::type::int8() }
-                },
-                key {
-                    bindings_(t1->columns()[1]),
-                    scalar::immediate { takatori::value::character("123456789012345678901234567890/D"), takatori::type::character(t::varying, 100) }
-                },
-            },
-            relation::endpoint_kind::exclusive,
-        }
-    });
+    auto setup = prepare_indices(
+        {"T0", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
 
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
+    auto& target = add_scan_node(setup, false,
+        make_scan_endpoint(setup, {0}, make_exprs(
+            std::make_unique<scalar::immediate>(tv::int4(10), tt::int4())
+        ), ek::prefixed_exclusive),
+        make_scan_endpoint(setup, {0}, make_exprs(
+            std::make_unique<scalar::immediate>(tv::int4(40), tt::int4())
+        ), ek::prefixed_exclusive));
 
-    add_column_types(target, t::int8{}, t::character{t::varying, 100}, t::float8{});
-    expression_map_->bind(target.lower().keys()[0].value(), t::int8{});
-    expression_map_->bind(target.lower().keys()[1].value(), t::character{t::varying, 100});
-    expression_map_->bind(target.upper().keys()[0].value(), t::int8{});
-    expression_map_->bind(target.upper().keys()[1].value(), t::character{t::varying, 100});
-    create_processor_info();
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 1), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 2), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 3), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(40, 4), *db_);
 
-    auto out = jogasaki::mock::create_nullable_record<kind::int8, kind::character, kind::float8>();
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    scan op{
-        0,
-        *processor_info_,
-        0,
-        *primary_idx,
-        target.columns(),
-        nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-
-    auto transaction_ctx = std::make_shared<transaction_context>();
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = (builder.create_scan_ranges(target))[0];
-    mock::task_context task_ctx{ {}, {}, {},{range}};
-
-    put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/B"}), create_record<kind::float8>(1.0));
-    put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/C"}), create_record<kind::float8>(2.0));
-    put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"}), create_record<kind::float8>(3.0));
-
+    auto out = create_nullable_record<kind::int4, kind::int4>();
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
-    ctx.release();
+    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(
+            get_variables(ex.output_variables_, destinations(target.columns())));
+    });
+    ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+    ex.ctx_.release();
     ASSERT_EQ(2, result.size());
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::character, kind::float8>(100, accessor::text("123456789012345678901234567890/B"), 1.0)), result[0]);
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::character, kind::float8>(100, accessor::text("123456789012345678901234567890/C"), 2.0)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
-TEST_F(scan_test, secondary_index) {
-    auto t0 = create_table({
-        "T0",
-        {
-            { "C0", t::int4(), nullity{false} },
-            { "C1", t::float8(), nullity{false}  },
-            { "C2", t::int8(), nullity{false}  },
-        },
-    });
+TEST_F(scan_test, multiple_types) {
+    namespace tv = takatori::value;
+    namespace tt = takatori::type;
+    using ek = relation::endpoint_kind;
 
-    auto primary_idx = create_primary_index(t0, {0}, {1,2});
-    auto secondary_idx = create_secondary_index(t0, "I1", {2}, {});
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int8(), nullity{false}},
+            {"C1", t::character(t::varying, 100), nullity{false}},
+            {"C2", t::float8(), nullity{false}},
+        }},
+        {0, 1}, {}
+    );
 
-    auto& target = process_.operators().insert(relation::scan {
-        bindings_(*secondary_idx),
-        {
-            { bindings_(t0->columns()[0]), bindings_.stream_variable("c0") },
-            { bindings_(t0->columns()[1]), bindings_.stream_variable("c1") },
-            { bindings_(t0->columns()[2]), bindings_.stream_variable("c2") },
-        },
-        {
-            {
-                relation::scan::key {
-                    bindings_(t0->columns()[2]),
-                    scalar::immediate { takatori::value::int8(100), takatori::type::int8() }
-                },
-            },
-            relation::endpoint_kind::exclusive,
-        },
-        {
-            {
-                relation::scan::key {
-                    bindings_(t0->columns()[2]),
-                    scalar::immediate { takatori::value::int8(300), takatori::type::int8() }
-                },
-            },
-            relation::endpoint_kind::exclusive,
-        }
-    });
+    auto& target = add_scan_node(setup, false,
+        make_scan_endpoint(setup, {0, 1}, make_exprs(
+            std::make_unique<scalar::immediate>(tv::int8(100), tt::int8()),
+            std::make_unique<scalar::immediate>(
+                tv::character("123456789012345678901234567890/B"), tt::character(tt::varying, 100))
+        ), ek::prefixed_inclusive),
+        make_scan_endpoint(setup, {0, 1}, make_exprs(
+            std::make_unique<scalar::immediate>(tv::int8(100), tt::int8()),
+            std::make_unique<scalar::immediate>(
+                tv::character("123456789012345678901234567890/D"), tt::character(tt::varying, 100))
+        ), ek::prefixed_exclusive));
 
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
+    put_row(setup,
+        create_nullable_record<kind::int8, kind::character, kind::float8>(
+            100, accessor::text{"123456789012345678901234567890/B"}, 1.0),
+        *db_);
+    put_row(setup,
+        create_nullable_record<kind::int8, kind::character, kind::float8>(
+            100, accessor::text{"123456789012345678901234567890/C"}, 2.0),
+        *db_);
+    put_row(setup,
+        create_nullable_record<kind::int8, kind::character, kind::float8>(
+            100, accessor::text{"123456789012345678901234567890/D"}, 3.0),
+        *db_);
 
-    add_column_types(target, t::int4{}, t::float8{}, t::int8{});
-    expression_map_->bind(target.lower().keys()[0].value(), t::int8{});
-    expression_map_->bind(target.upper().keys()[0].value(), t::int8{});
-    create_processor_info();
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>();
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-    scan op{
-        0,
-        *processor_info_,
-        0,
-        *primary_idx,
-        target.columns(),
-        secondary_idx.get(),
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-    auto transaction_ctx = std::make_shared<transaction_context>();
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = (builder.create_scan_ranges(target))[0];
-    mock::task_context task_ctx{ {}, {}, {} ,{range}};
-
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(100, 10), {});
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
-    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(200, 20), {});
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(21), create_record<kind::float8, kind::int8>(2.1, 201));
-    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(201, 21), {});
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(30), create_record<kind::float8, kind::int8>(3.0, 300));
-    put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(300, 30), {});
-
+    auto out = create_nullable_record<kind::int8, kind::character, kind::float8>();
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
-    ctx.release();
+    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(
+            get_variables(ex.output_variables_, destinations(target.columns())));
+    });
+    ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+    ex.ctx_.release();
     ASSERT_EQ(2, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200)), result[0]);
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(21, 2.1, 201)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int8, kind::character, kind::float8>(
+        100, accessor::text("123456789012345678901234567890/B"), 1.0)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int8, kind::character, kind::float8>(
+        100, accessor::text("123456789012345678901234567890/C"), 2.0)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(scan_test, host_variables) {
-    auto t0 = create_table({
-        "T0",
-        {
-            { "C0", t::int4(), nullity{false} },
-            { "C1", t::int8(), nullity{false}  },
-            { "C2", t::int8(), nullity{false}  },
-        },
-    });
-    auto primary_idx = create_primary_index(t0, {0,1}, {2});
+    auto setup = prepare_indices(
+        {"T0", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
 
-    auto host_variable_record = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(100, 10, 100, 30);
-    auto p0 = bindings_(register_variable("p0", kind::int4));
-    auto p1 = bindings_(register_variable("p1", kind::int8));
-    auto p2 = bindings_(register_variable("p2", kind::int4));
-    auto p3 = bindings_(register_variable("p3", kind::int8));
+    auto host_variable_record = create_nullable_record<kind::int4, kind::int4>(10, 30);
+    auto p_lo = bindings_(register_variable("p_lo", kind::int4));
+    auto p_hi = bindings_(register_variable("p_hi", kind::int4));
     variable_table_info host_variable_info{
-        std::unordered_map<variable, std::size_t>{
-            {p0, 0},
-            {p1, 1},
-            {p2, 2},
-            {p3, 3},
-        },
+        std::unordered_map<variable, std::size_t>{{p_lo, 0}, {p_hi, 1}},
         std::unordered_map<std::string, takatori::descriptor::variable>{
-            {"p0", p0},
-            {"p1", p1},
-            {"p2", p2},
-            {"p3", p3},
-        },
+            {"p_lo", p_lo}, {"p_hi", p_hi}},
         host_variable_record.record_meta()
     };
     variable_table host_variables{host_variable_info};
     host_variables.store().set(host_variable_record.ref());
 
-    using key = relation::scan::key;
-    auto& target = process_.operators().insert(relation::scan {
-        bindings_(*primary_idx),
-        {
-            { bindings_(t0->columns()[0]), bindings_.stream_variable("c0") },
-            { bindings_(t0->columns()[1]), bindings_.stream_variable("c1") },
-            { bindings_(t0->columns()[2]), bindings_.stream_variable("c2") },
-        },
-        {
-            {
-                key {
-                    bindings_(t0->columns()[0]),
-                    scalar::variable_reference{ p0 }
-                },
-                key {
-                    bindings_(t0->columns()[1]),
-                    scalar::variable_reference{ p1 }
-                },
-            },
-            relation::endpoint_kind::exclusive,
-        },
-        {
-            {
-                key {
-                    bindings_(t0->columns()[0]),
-                    scalar::variable_reference{ p2 }
-                },
-                key {
-                    bindings_(t0->columns()[1]),
-                    scalar::variable_reference{ p3 }
-                },
-            },
-            relation::endpoint_kind::exclusive,
-        }
-    });
+    using ek = relation::endpoint_kind;
+    auto& target = add_scan_node(
+        setup,
+        false,
+        make_scan_endpoint(setup, {0}, make_exprs(
+            std::make_unique<scalar::variable_reference>(p_lo)
+        ), ek::prefixed_exclusive),
+        make_scan_endpoint(setup, {0}, make_exprs(
+            std::make_unique<scalar::variable_reference>(p_hi)
+        ), ek::prefixed_exclusive)
+    );
 
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 1), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 2), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 3), *db_);
 
-    add_column_types(target, t::int4{}, t::int8{}, t::int8{});
-    expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
-    expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.upper().keys()[1].value(), t::int8{});
-    create_processor_info(&host_variables);
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>();
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    scan op{
-        0,
-        *processor_info_,
-        0,
-        *primary_idx,
-        target.columns(),
-        nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-    auto transaction_ctx = std::make_shared<transaction_context>();
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = (builder.create_scan_ranges(target))[0];
-    mock::task_context task_ctx{ {}, {}, {},{range}};
-
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 10), create_record<kind::int8>(1));
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 20), create_record<kind::int8>(2));
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
-
+    auto out = create_nullable_record<kind::int4, kind::int4>();
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
-
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
-    ctx.release();
+    auto ex = make_scan_executor(target, setup, false, down, out, tx, &host_variables);
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(
+            get_variables(ex.output_variables_, destinations(target.columns())));
+    });
+    ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+    ex.ctx_.release();
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>(100, 20, 2)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[0]);
     ASSERT_EQ(status::ok, tx->commit());
 }
+
 /**
  * @brief Scan information test for #1180 (RTX scan with parallelism of 1)
  *
- * This test is a **scan information validation test related to #1180**, and
- * `scan_test::scan_info_rtx_parallel_1` ensures that the **RTX scan with parallelism of 1**
- * functions correctly.
- *
- * - Ensures that both the **start and end endpoints of the range scan are `exclusive`**
+ * Ensures that the start and end endpoints of the range scan are exclusive.
  */
 TEST_F(scan_test, scan_info_rtx_parallel_1) {
     // issues #1180
-    const int parallel = 1;
-    auto cfg           = std::make_shared<configuration>();
-    cfg->scan_default_parallel(parallel);
-    cfg->key_distribution(key_distribution_kind::simple);
-    global::config_pool(cfg);
-    auto t0          = create_table({
-                 "T0",
-                 {
-                     {"C0", t::int4(), nullity{false}},
-                     {"C1", t::int8(), nullity{false}},
-                     {"C2", t::int8(), nullity{false}},
-        },
-    });
-    auto primary_idx = create_primary_index(t0, {0, 1}, {2});
-
-    auto host_variable_record =
-        jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
-            100, 10, 100, 30);
-    auto p0 = bindings_(register_variable("p0", kind::int4));
-    auto p1 = bindings_(register_variable("p1", kind::int8));
-    auto p2 = bindings_(register_variable("p2", kind::int4));
-    auto p3 = bindings_(register_variable("p3", kind::int8));
-    variable_table_info host_variable_info{std::unordered_map<variable, std::size_t>{
-                                               {p0, 0},
-                                               {p1, 1},
-                                               {p2, 2},
-                                               {p3, 3},
-                                           },
-        std::unordered_map<std::string, takatori::descriptor::variable>{
-            {"p0", p0},
-            {"p1", p1},
-            {"p2", p2},
-            {"p3", p3},
-        },
-        host_variable_record.record_meta()};
-    variable_table host_variables{host_variable_info};
-    host_variables.store().set(host_variable_record.ref());
-
-    using key    = relation::scan::key;
-    auto first   = relation::endpoint_kind::exclusive;
-    auto end     = relation::endpoint_kind::exclusive;
-    auto& target = process_.operators().insert(relation::scan{bindings_(*primary_idx),
-        {
-            {bindings_(t0->columns()[0]), bindings_.stream_variable("c0")},
-            {bindings_(t0->columns()[1]), bindings_.stream_variable("c1")},
-            {bindings_(t0->columns()[2]), bindings_.stream_variable("c2")},
-        },
-        {
-            {
-                key{bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(100), takatori::type::int8()}},
-                key{bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(200), takatori::type::int8()}},
-            },
-            first,
-        },
-        {
-            {
-                key{bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(251658240), takatori::type::int8()}},
-                key{bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(INT64_MIN), takatori::type::int8()}},
-            },
-            relation::endpoint_kind::exclusive,
-        }});
-
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int4{}, t::int8{}, t::int8{});
-    expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
-    expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.upper().keys()[1].value(), t::int8{});
-    create_processor_info(&host_variables);
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>();
-    variable_table_info output_variable_info{
-        create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    scan op{0, *processor_info_, 0, *primary_idx, target.columns(), nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(
-                output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info, &output_variable_info};
-    std::shared_ptr<kvs::transaction> tra;
-    jogasaki::api::kvsservice::table_areas wp{};
-    std::vector<std::string> write_preserves      = {"table1", "table2"};
-    std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
-    std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
-    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
-        transaction_type_kind::rtx,
-        std::move(write_preserves),
-        "",
-        std::move(read_areas_inclusive), std::move(read_areas_exclusive)
-        );
-    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto zzz = builder.create_scan_ranges(target);
-    ASSERT_EQ(parallel, zzz.size());
-    EXPECT_EQ(zzz[0]->begin().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
-    EXPECT_EQ(zzz[0]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
+    do_rtx_range_test(
+        1,
+        std::make_shared<api::transaction_option>(
+            transaction_type_kind::rtx,
+            std::vector<std::string>{"table1", "table2"},
+            "",
+            std::vector<std::string>{"area1", "area2"},
+            std::vector<std::string>{"area3", "area4"}),
+        [](auto const& ranges) {
+            ASSERT_EQ(1, ranges.size());
+            EXPECT_EQ(ranges[0]->begin().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+            EXPECT_EQ(ranges[0]->end().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+        });
 }
+
 /**
  * @brief Scan information test for #1180 (RTX scan with parallelism of 2)
  *
- * This test is a **scan information validation test related to #1180**, and
- * `scan_test::scan_info_rtx_parallel_2` ensures that the **RTX scan with parallelism of 2**
- * functions correctly.
- *
- * - Ensures that the **start endpoint is `exclusive`** for the first range and the **end endpoint is `inclusive`** for the second range.
+ * Ensures that the first range starts exclusive and the second ends exclusive with
+ * an inclusive start.
  */
 TEST_F(scan_test, scan_info_rtx_parallel_2) {
     // issues #1180
-    const int parallel = 2;
-    auto cfg           = std::make_shared<configuration>();
-    cfg->scan_default_parallel(parallel);
-    cfg->key_distribution(key_distribution_kind::simple);
-    global::config_pool(cfg);
-    auto t0          = create_table({
-                 "T0",
-                 {
-                     {"C0", t::int4(), nullity{false}},
-                     {"C1", t::int8(), nullity{false}},
-                     {"C2", t::int8(), nullity{false}},
-        },
-    });
-    auto primary_idx = create_primary_index(t0, {0, 1}, {2});
-
-    auto host_variable_record =
-        jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
-            100, 10, 100, 30);
-    auto p0 = bindings_(register_variable("p0", kind::int4));
-    auto p1 = bindings_(register_variable("p1", kind::int8));
-    auto p2 = bindings_(register_variable("p2", kind::int4));
-    auto p3 = bindings_(register_variable("p3", kind::int8));
-    variable_table_info host_variable_info{std::unordered_map<variable, std::size_t>{
-                                               {p0, 0},
-                                               {p1, 1},
-                                               {p2, 2},
-                                               {p3, 3},
-                                           },
-        std::unordered_map<std::string, takatori::descriptor::variable>{
-            {"p0", p0},
-            {"p1", p1},
-            {"p2", p2},
-            {"p3", p3},
-        },
-        host_variable_record.record_meta()};
-    variable_table host_variables{host_variable_info};
-    host_variables.store().set(host_variable_record.ref());
-
-    using key    = relation::scan::key;
-    auto first   = relation::endpoint_kind::exclusive;
-    auto end     = relation::endpoint_kind::exclusive;
-    auto& target = process_.operators().insert(relation::scan{bindings_(*primary_idx),
-        {
-            {bindings_(t0->columns()[0]), bindings_.stream_variable("c0")},
-            {bindings_(t0->columns()[1]), bindings_.stream_variable("c1")},
-            {bindings_(t0->columns()[2]), bindings_.stream_variable("c2")},
-        },
-        {
-            {
-                key{
-                    bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(100), takatori::type::int8()}
-                    /*scalar::variable_reference{ p0 }*/
-                },
-                key{
-                    bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(200), takatori::type::int8()}
-                    /*scalar::variable_reference{ p1 }*/
-                },
-            },
-            first,
-        },
-        {
-            {
-                key{bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(251658240), takatori::type::int8()}},
-                key{bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(INT64_MIN), takatori::type::int8()}},
-            },
-            relation::endpoint_kind::exclusive,
-        }});
-
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int4{}, t::int8{}, t::int8{});
-    expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
-    expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.upper().keys()[1].value(), t::int8{});
-    create_processor_info(&host_variables);
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>();
-    variable_table_info output_variable_info{
-        create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    scan op{0, *processor_info_, 0, *primary_idx, target.columns(), nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(
-                output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info, &output_variable_info};
-    std::shared_ptr<kvs::transaction> tra;
-    jogasaki::api::kvsservice::table_areas wp{};
-    std::vector<std::string> write_preserves      = {"table1", "table2"};
-    std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
-    std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
-    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
-        transaction_type_kind::rtx,
-        std::move(write_preserves),
-        "",
-        std::move(read_areas_inclusive), std::move(read_areas_exclusive)
-        );
-    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto zzz = builder.create_scan_ranges(target);
-    ASSERT_EQ(parallel, zzz.size());
-    EXPECT_EQ(zzz[0]->begin().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
-    EXPECT_EQ(zzz[0]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
-    EXPECT_EQ(zzz[1]->begin().endpointkind(), jogasaki::kvs::end_point_kind::inclusive);
-    EXPECT_EQ(zzz[1]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
+    do_rtx_range_test(
+        2,
+        std::make_shared<api::transaction_option>(
+            transaction_type_kind::rtx,
+            std::vector<std::string>{"table1", "table2"},
+            "",
+            std::vector<std::string>{"area1", "area2"},
+            std::vector<std::string>{"area3", "area4"}),
+        [](auto const& ranges) {
+            ASSERT_EQ(2, ranges.size());
+            EXPECT_EQ(ranges[0]->begin().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+            EXPECT_EQ(ranges[0]->end().endpointkind(), kvs::end_point_kind::exclusive);
+            EXPECT_EQ(ranges[1]->begin().endpointkind(), kvs::end_point_kind::inclusive);
+            EXPECT_EQ(ranges[1]->end().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+        });
 }
+
 /**
- * @brief #1180 Scan Information Test (RTX Scan with Parallelism 4)
+ * @brief Scan information test for #1180 (RTX scan with parallelism of 4)
  *
- * This test is related to **issue #1180**, which verifies the correct functionality of
- * the **RTX scan with parallelism 4**. The test ensures that scan ranges are properly
- * divided into 4 parts when `scan_default_parallel(4)` is used.
- *
- * - Checks that the `begin` and `end` endpoints of the ranges are correctly assigned:
- *   - The first range begins with an **exclusive** endpoint, while the following ranges
- *     have an **inclusive** start and **exclusive** end.
- * - Verifies the accuracy of endpoint kinds in the created scan ranges.
+ * Ensures that scan ranges are properly divided into 4 parts with correct endpoint kinds.
  */
 TEST_F(scan_test, scan_info_rtx_parallel_4) {
     // issues #1180
-    const int parallel = 4;
-    auto cfg           = std::make_shared<configuration>();
-    cfg->scan_default_parallel(parallel);
-    cfg->key_distribution(key_distribution_kind::simple);
-    global::config_pool(cfg);
-    auto t0          = create_table({
-                 "T0",
-                 {
-                     {"C0", t::int4(), nullity{false}},
-                     {"C1", t::int8(), nullity{false}},
-                     {"C2", t::int8(), nullity{false}},
-        },
-    });
-    auto primary_idx = create_primary_index(t0, {0, 1}, {2});
-
-    auto host_variable_record =
-        jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
-            100, 10, 100, 30);
-    auto p0 = bindings_(register_variable("p0", kind::int4));
-    auto p1 = bindings_(register_variable("p1", kind::int8));
-    auto p2 = bindings_(register_variable("p2", kind::int4));
-    auto p3 = bindings_(register_variable("p3", kind::int8));
-    variable_table_info host_variable_info{std::unordered_map<variable, std::size_t>{
-                                               {p0, 0},
-                                               {p1, 1},
-                                               {p2, 2},
-                                               {p3, 3},
-                                           },
-        std::unordered_map<std::string, takatori::descriptor::variable>{
-            {"p0", p0},
-            {"p1", p1},
-            {"p2", p2},
-            {"p3", p3},
-        },
-        host_variable_record.record_meta()};
-    variable_table host_variables{host_variable_info};
-    host_variables.store().set(host_variable_record.ref());
-
-    using key    = relation::scan::key;
-    auto first   = relation::endpoint_kind::exclusive;
-    auto end     = relation::endpoint_kind::exclusive;
-    auto& target = process_.operators().insert(relation::scan{bindings_(*primary_idx),
-        {
-            {bindings_(t0->columns()[0]), bindings_.stream_variable("c0")},
-            {bindings_(t0->columns()[1]), bindings_.stream_variable("c1")},
-            {bindings_(t0->columns()[2]), bindings_.stream_variable("c2")},
-        },
-        {
-            {
-                key{bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(100), takatori::type::int8()}},
-                key{bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(200), takatori::type::int8()}},
-            },
-            first,
-        },
-        {
-            {
-                key{bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(251658240), takatori::type::int8()}},
-                key{bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(INT64_MIN), takatori::type::int8()}},
-            },
-            relation::endpoint_kind::exclusive,
-        }});
-
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int4{}, t::int8{}, t::int8{});
-    expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
-    expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.upper().keys()[1].value(), t::int8{});
-    create_processor_info(&host_variables);
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>();
-    variable_table_info output_variable_info{
-        create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    scan op{0, *processor_info_, 0, *primary_idx, target.columns(), nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(
-                output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info, &output_variable_info};
-    std::shared_ptr<kvs::transaction> tra;
-    jogasaki::api::kvsservice::table_areas wp{};
-    std::vector<std::string> write_preserves      = {"table1", "table2"};
-    std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
-    std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
-    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
-        transaction_type_kind::rtx,
-        std::move(write_preserves),
-        "",
-        std::move(read_areas_inclusive), std::move(read_areas_exclusive)
-        );
-    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto zzz = builder.create_scan_ranges(target);
-    ASSERT_EQ(parallel, zzz.size());
-    EXPECT_EQ(zzz[0]->begin().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
-    EXPECT_EQ(zzz[0]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
-    EXPECT_EQ(zzz[1]->begin().endpointkind(), jogasaki::kvs::end_point_kind::inclusive);
-    EXPECT_EQ(zzz[1]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
-    EXPECT_EQ(zzz[2]->begin().endpointkind(), jogasaki::kvs::end_point_kind::inclusive);
-    EXPECT_EQ(zzz[2]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
-    EXPECT_EQ(zzz[3]->begin().endpointkind(), jogasaki::kvs::end_point_kind::inclusive);
-    EXPECT_EQ(zzz[3]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
+    do_rtx_range_test(
+        4,
+        std::make_shared<api::transaction_option>(
+            transaction_type_kind::rtx,
+            std::vector<std::string>{"table1", "table2"},
+            "",
+            std::vector<std::string>{"area1", "area2"},
+            std::vector<std::string>{"area3", "area4"}),
+        [](auto const& ranges) {
+            ASSERT_EQ(4, ranges.size());
+            EXPECT_EQ(ranges[0]->begin().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+            EXPECT_EQ(ranges[0]->end().endpointkind(), kvs::end_point_kind::exclusive);
+            EXPECT_EQ(ranges[1]->begin().endpointkind(), kvs::end_point_kind::inclusive);
+            EXPECT_EQ(ranges[1]->end().endpointkind(), kvs::end_point_kind::exclusive);
+            EXPECT_EQ(ranges[2]->begin().endpointkind(), kvs::end_point_kind::inclusive);
+            EXPECT_EQ(ranges[2]->end().endpointkind(), kvs::end_point_kind::exclusive);
+            EXPECT_EQ(ranges[3]->begin().endpointkind(), kvs::end_point_kind::inclusive);
+            EXPECT_EQ(ranges[3]->end().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+        });
 }
 
 TEST_F(scan_test, scan_info_rtx_parallel_enabled_by_transaction_context) {
-    // issues #1196 add new functionality to enable rtx parallel scan by optional setting in transaction context
-    const int parallel = 0;
-    auto cfg           = std::make_shared<configuration>();
-    cfg->scan_default_parallel(parallel);
-    cfg->key_distribution(key_distribution_kind::simple);
-    global::config_pool(cfg);
-    auto t0          = create_table({
-                 "T0",
-                 {
-                     {"C0", t::int4(), nullity{false}},
-                     {"C1", t::int8(), nullity{false}},
-                     {"C2", t::int8(), nullity{false}},
-        },
-    });
-    auto primary_idx = create_primary_index(t0, {0, 1}, {2});
-
-    auto host_variable_record =
-        jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
-            100, 10, 100, 30);
-    auto p0 = bindings_(register_variable("p0", kind::int4));
-    auto p1 = bindings_(register_variable("p1", kind::int8));
-    auto p2 = bindings_(register_variable("p2", kind::int4));
-    auto p3 = bindings_(register_variable("p3", kind::int8));
-    variable_table_info host_variable_info{std::unordered_map<variable, std::size_t>{
-                                               {p0, 0},
-                                               {p1, 1},
-                                               {p2, 2},
-                                               {p3, 3},
-                                           },
-        std::unordered_map<std::string, takatori::descriptor::variable>{
-            {"p0", p0},
-            {"p1", p1},
-            {"p2", p2},
-            {"p3", p3},
-        },
-        host_variable_record.record_meta()};
-    variable_table host_variables{host_variable_info};
-    host_variables.store().set(host_variable_record.ref());
-
-    using key    = relation::scan::key;
-    auto first   = relation::endpoint_kind::exclusive;
-    auto end     = relation::endpoint_kind::exclusive;
-    auto& target = process_.operators().insert(relation::scan{bindings_(*primary_idx),
-        {
-            {bindings_(t0->columns()[0]), bindings_.stream_variable("c0")},
-            {bindings_(t0->columns()[1]), bindings_.stream_variable("c1")},
-            {bindings_(t0->columns()[2]), bindings_.stream_variable("c2")},
-        },
-        {
-            {
-                key{bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(100), takatori::type::int8()}},
-                key{bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(200), takatori::type::int8()}},
-            },
-            first,
-        },
-        {
-            {
-                key{bindings_(t0->columns()[0]),
-                    scalar::immediate{takatori::value::int8(251658240), takatori::type::int8()}},
-                key{bindings_(t0->columns()[1]),
-                    scalar::immediate{takatori::value::int8(INT64_MIN), takatori::type::int8()}},
-            },
-            relation::endpoint_kind::exclusive,
-        }});
-
-    auto& offer = add_offer(destinations(target.columns()));
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int4{}, t::int8{}, t::int8{});
-    expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
-    expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
-    expression_map_->bind(target.upper().keys()[1].value(), t::int8{});
-    create_processor_info(&host_variables);
-
-    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>();
-    variable_table_info output_variable_info{
-        create_variable_table_info(destinations(target.columns()), out)};
-    variable_table_info input_variable_info{};
-    variable_table input_variables{input_variable_info};
-    variable_table output_variables{output_variable_info};
-    std::vector<jogasaki::mock::basic_record> result{};
-
-    scan op{0, *processor_info_, 0, *primary_idx, target.columns(), nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(
-                output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
-        }),
-        &input_variable_info, &output_variable_info};
-    std::shared_ptr<kvs::transaction> tra;
-    jogasaki::api::kvsservice::table_areas wp{};
-    std::vector<std::string> write_preserves      = {"table1", "table2"};
-    std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
-    std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
-    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
-        transaction_type_kind::rtx,
-        std::move(write_preserves),
-        "",
-        std::move(read_areas_inclusive),
-        std::move(read_areas_exclusive),
-        false,
-        10  // parallelism set for this transaction
-        );
-    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
-    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
-    request_context_.transaction(transaction_ctx);
-    jogasaki::plan::compiler_context compiler_ctx{};
-    io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto zzz = builder.create_scan_ranges(target);
-    ASSERT_EQ(10, zzz.size());
+    // issues #1196: enable rtx parallel scan via optional setting in transaction context
+    do_rtx_range_test(
+        0,
+        std::make_shared<api::transaction_option>(
+            transaction_type_kind::rtx,
+            std::vector<std::string>{"table1", "table2"},
+            "",
+            std::vector<std::string>{"area1", "area2"},
+            std::vector<std::string>{"area3", "area4"},
+            false,
+            10),  // parallelism set for this transaction
+        [](auto const& ranges) {
+            ASSERT_EQ(10, ranges.size());
+        });
 }
 
-} // namespace jogasaki::executor::process::impl::ops
+/**
+ * @brief Scan with lower inclusive bound and upper unbound on a single int4 primary key.
+ *
+ * Rows (10,1),(20,2),(30,3),(40,4). Lower inclusive 20 returns rows with key >= 20.
+ */
+TEST_F(scan_test, endpoint_lower_prefixed_inclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_single_col_pk_table();
+    insert_endpoint_test_rows(setup);
+    auto result = run_single_col_pk_scan(
+        setup,
+        make_int4_endpoint(setup, 20, ek::prefixed_inclusive),
+        {}
+    );
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(40, 4)), result[2]);
+}
+
+/**
+ * @brief Scan with lower prefixed_exclusive bound and upper unbound on a single int4 primary key.
+ *
+ * Rows (10,1),(20,2),(30,3),(40,4). Prefixed exclusive 20 skips all entries with the prefix key,
+ * which for a fixed-size single column is equivalent to exclusive (key > 20).
+ */
+TEST_F(scan_test, endpoint_lower_prefixed_exclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_single_col_pk_table();
+    insert_endpoint_test_rows(setup);
+    auto result = run_single_col_pk_scan(
+        setup,
+        make_int4_endpoint(setup, 20, ek::prefixed_exclusive),
+        {}
+    );
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(40, 4)), result[1]);
+}
+
+/**
+ * @brief Scan with lower unbound and upper inclusive bound on a single int4 primary key.
+ *
+ * Rows (10,1),(20,2),(30,3),(40,4). Upper inclusive 30 returns rows with key <= 30.
+ */
+TEST_F(scan_test, endpoint_upper_prefixed_inclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_single_col_pk_table();
+    insert_endpoint_test_rows(setup);
+    auto result = run_single_col_pk_scan(
+        setup,
+        {},
+        make_int4_endpoint(setup, 30, ek::prefixed_inclusive)
+    );
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[2]);
+}
+
+/**
+ * @brief Scan with lower unbound and upper prefixed_exclusive bound on a single int4 primary key.
+ *
+ * Rows (10,1),(20,2),(30,3),(40,4). Prefixed exclusive 30 stops before entries with the prefix key,
+ * which for a fixed-size single column is equivalent to exclusive (key < 30).
+ */
+TEST_F(scan_test, endpoint_upper_prefixed_exclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_single_col_pk_table();
+    insert_endpoint_test_rows(setup);
+    auto result = run_single_col_pk_scan(
+        setup,
+        {},
+        make_int4_endpoint(setup, 30, ek::prefixed_exclusive)
+    );
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+}
+
+// ─── Composite PK (C0, C1) endpoint tests ──────────────────────────────────
+//
+// Valid lower/upper patterns per fix-scan-secondary-indices.md:
+//   The number of columns in lower and upper may differ by at most 1.
+//   Range search occurs only on the trailing column of the longer endpoint.
+//
+// For a 2-column composite PK (C0, C1), the valid (lower_cols, upper_cols)
+// structural patterns are: (1,0), (0,1), (1,1), (1,2), (2,1), (2,2).
+// (0,0) is the full scan, already covered by scan_test.simple.
+// (0,2) and (2,0) are invalid (diff > 1) and are not tested here.
+//
+// Partial-key endpoint semantics on composite keys (byte-string ordering):
+// A 4-byte partial key for C0 compares as strictly less than any 8-byte
+// composite key sharing that C0 prefix.  As a result:
+//   lower inclusive  ≈ lower exclusive  ≈ lower prefixed_inclusive
+//     → all include the C0=value row  (8-byte key > 4-byte begin key)
+//   lower prefixed_exclusive
+//     → skips all rows with this C0 prefix
+//   upper inclusive  ≈ upper exclusive  ≈ upper prefixed_exclusive
+//     → all exclude the C0=value rows  (8-byte key > 4-byte end key)
+//   upper prefixed_inclusive
+//     → includes all rows with this C0 prefix
+//
+// ─── (lower=1col, upper=unbound) — range on C0 ─────────────────────────────
+// Data: (C0=10,C1=10,C2=1),(C0=20,C1=10,C2=2),(C0=30,C1=10,C2=3),(C0=40,C1=10,C2=4)
+
+/**
+ * @brief Composite PK lower=1col inclusive, upper=unbound.
+ *
+ * For a partial (C0-only) lower bound on a (C0,C1) composite key, `inclusive`
+ * starts from entries whose key >= 4-byte encoded(C0).  All composite entries
+ * with C0=20 have 8-byte keys that exceed the 4-byte key, so they are
+ * included.  Returns rows with C0 >= 20.
+ */
+TEST_F(scan_test, composite_pk_lower_prefixed_inclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_composite_pk_table();
+    insert_composite_pk_c0_rows(setup);
+    auto result = run_composite_pk_scan(
+        setup, make_int4_endpoint(setup, 20, ek::prefixed_inclusive), {});
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(20, 10, 2)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(30, 10, 3)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(40, 10, 4)), result[2]);
+}
+
+/**
+ * @brief Composite PK lower=1col prefixed_exclusive, upper=unbound.
+ *
+ * `prefixed_exclusive` skips all entries whose key starts with the prefix
+ * encoded(C0=20), resuming from the first entry with C0 > 20.
+ * Returns rows with C0 > 20.
+ */
+TEST_F(scan_test, composite_pk_lower_prefixed_exclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_composite_pk_table();
+    insert_composite_pk_c0_rows(setup);
+    auto result = run_composite_pk_scan(
+        setup, make_int4_endpoint(setup, 20, ek::prefixed_exclusive), {});
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(30, 10, 3)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(40, 10, 4)), result[1]);
+}
+
+// ─── (lower=unbound, upper=1col) — range on C0 ─────────────────────────────
+
+/**
+ * @brief Composite PK lower=unbound, upper=1col inclusive.
+ *
+ * For a partial (C0-only) upper bound, `inclusive` stops at entries whose key
+ * <= 4-byte encoded(C0).  All composite entries with C0=30 have 8-byte keys
+ * that exceed the 4-byte end key, so they are excluded.
+ * Returns rows with C0 < 30.
+ */
+TEST_F(scan_test, composite_pk_upper_prefixed_inclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_composite_pk_table();
+    insert_composite_pk_c0_rows(setup);
+    auto result = run_composite_pk_scan(
+        setup, {}, make_int4_endpoint(setup, 30, ek::prefixed_inclusive));
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(20, 10, 2)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(30, 10, 3)), result[2]);
+}
+
+/**
+ * @brief Composite PK lower=unbound, upper=1col prefixed_exclusive.
+ *
+ * `prefixed_exclusive` stops before entries whose key starts with the prefix
+ * encoded(C0=30), so C0=30 rows are excluded — same result as inclusive/exclusive
+ * for partial upper keys.
+ * Returns rows with C0 < 30.
+ */
+TEST_F(scan_test, composite_pk_upper_prefixed_exclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_composite_pk_table();
+    insert_composite_pk_c0_rows(setup);
+    auto result = run_composite_pk_scan(
+        setup, {}, make_int4_endpoint(setup, 30, ek::prefixed_exclusive));
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(20, 10, 2)), result[1]);
+}
+
+// ─── (lower=1col, upper=1col) — range on C0 ────────────────────────────────
+
+/**
+ * @brief Composite PK lower=1col inclusive, upper=1col exclusive.
+ *
+ * lower inclusive on C0=20: includes all C0=20 rows (8-byte key > 4-byte key).
+ * upper exclusive on C0=30: stops before 4-byte key, excluding C0=30 rows.
+ * Returns C0=20 row only.
+ */
+TEST_F(scan_test, composite_pk_lower1_upper1_prefixed_exclusive_prefixed_inclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_composite_pk_table();
+    insert_composite_pk_c0_rows(setup);
+    auto result = run_composite_pk_scan(
+        setup,
+        make_int4_endpoint(setup, 20, ek::prefixed_exclusive),
+        make_int4_endpoint(setup, 30, ek::prefixed_inclusive));
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(30, 10, 3)), result[0]);
+}
+
+/**
+ * @brief Composite PK lower=1col inclusive, upper=1col prefixed_inclusive.
+ *
+ * lower inclusive on C0=20: includes C0=20 and above.
+ * upper prefixed_inclusive on C0=30: includes all C0=30 rows.
+ * Returns C0=20 and C0=30 rows.
+ */
+TEST_F(scan_test, composite_pk_lower2col_upper1col_prefixed_inclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_composite_pk_table();
+    insert_composite_pk_c1_rows(setup);
+    auto result = run_composite_pk_scan(
+        setup,
+        make_int4_2col_endpoint(setup, 10, 20, ek::prefixed_inclusive),
+        make_int4_endpoint(setup, 10, ek::prefixed_inclusive));
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 20, 2)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 30, 3)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 40, 4)), result[2]);
+}
+
+/**
+ * @brief Composite PK lower=2col prefixed_exclusive, upper=1col(C0) prefixed_inclusive.
+ *
+ * lower is (C0=10, C1=20, prefixed_exclusive); upper C1=+INF.
+ * For fixed-size int4, prefixed_exclusive equals exclusive on a full key.
+ * Returns rows with C0=10 and C1 > 20.
+ */
+TEST_F(scan_test, composite_pk_lower2col_upper1col_prefixed_exclusive) {
+    using ek = relation::endpoint_kind;
+    auto setup = prepare_composite_pk_table();
+    insert_composite_pk_c1_rows(setup);
+    auto result = run_composite_pk_scan(
+        setup,
+        make_int4_2col_endpoint(setup, 10, 20, ek::prefixed_exclusive),
+        make_int4_endpoint(setup, 10, ek::prefixed_inclusive));
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 30, 3)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 40, 4)), result[1]);
+}
+
+/**
+ * @brief Full scan with both endpoints explicitly passed as unbound.
+ *
+ * Equivalent to passing no endpoints at all; all rows including null C1 values
+ * are returned.
+ */
+TEST_F(scan_test, full_scan_explicit_unbound) {
+    auto setup = prepare_indices(
+        {"T0", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{true}},
+        }},
+        {0}, {}
+    );
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, std::nullopt), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 300), *db_);
+
+    auto& target = add_scan_node(setup, false, {}, {});
+    auto out = create_nullable_record<kind::int4, kind::int4>();
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+    });
+    ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+    ex.ctx_.release();
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 100)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, std::nullopt)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 300)), result[2]);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+/**
+ * @brief Scan with lower > upper (reversed bounds) returns empty result.
+ */
+TEST_F(scan_test, reversed_bounds) {
+    namespace tv = takatori::value;
+    namespace tt = takatori::type;
+    using ek = relation::endpoint_kind;
+
+    auto setup = prepare_indices(
+        {"T0", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 300), *db_);
+
+    auto& target = add_scan_node(
+        setup, false,
+        make_scan_endpoint(
+            setup, {0}, make_exprs(std::make_unique<scalar::immediate>(tv::int4(30), tt::int4())), ek::prefixed_inclusive
+        ),
+        make_scan_endpoint(
+            setup, {0}, make_exprs(std::make_unique<scalar::immediate>(tv::int4(10), tt::int4())), ek::prefixed_inclusive
+        )
+    );
+    auto out = create_nullable_record<kind::int4, kind::int4>();
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+    });
+    ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
+    ex.ctx_.release();
+    ASSERT_EQ(0, result.size());
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+}  // namespace jogasaki::executor::process::impl::ops

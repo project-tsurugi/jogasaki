@@ -64,11 +64,22 @@ public:
     );
 
     // put secondary index key by concatenating secondary keys with encoded primary key
+    // using spec_asc for all key columns
     void put_secondary(
         kvs::database& db,
         std::string_view storage_name,
         mock::basic_record key,
         std::string_view encoded_primary_key
+    );
+
+    // put secondary index key with per-column encoding specs;
+    // specs.size() must equal the number of key fields
+    void put_secondary(
+        kvs::database& db,
+        std::string_view storage_name,
+        mock::basic_record key,
+        std::string_view encoded_primary_key,
+        std::vector<kvs::coding_spec> const& specs
     );
     void get(
         kvs::database& db,

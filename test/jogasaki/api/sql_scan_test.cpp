@@ -56,7 +56,7 @@ public:
     }
 
     bool has_scan(std::string_view query);
-    bool uses_secondary(std::string_view query);
+    bool has_filter(std::string_view query);
 };
 
 using namespace std::string_view_literals;
@@ -71,10 +71,10 @@ bool sql_scan_test::has_scan(std::string_view query) {
     return contains(plan, "scan") && ! contains(plan, "join_scan");
 }
 
-bool sql_scan_test::uses_secondary(std::string_view query) {
+bool sql_scan_test::has_filter(std::string_view query) {
     std::string plan{};
     explain_statement(query, plan);
-    return contains(plan, "\"i1\"");
+    return contains(plan, "\"filter\"");
 }
 
 TEST_F(sql_scan_test, simple) {
@@ -84,6 +84,7 @@ TEST_F(sql_scan_test, simple) {
 
     auto query = "SELECT c0, c1 FROM t WHERE c0 >= 2 AND c0 <= 4";
     EXPECT_TRUE(has_scan(query));
+    EXPECT_TRUE(! has_filter(query));
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(3, result.size());
@@ -93,80 +94,288 @@ TEST_F(sql_scan_test, simple) {
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 40)), result[2]);
 }
 
-TEST_F(sql_scan_test, secondary_index) {
-    // range scan targeting a secondary index
+TEST_F(sql_scan_test, simple_range_both_bounded) {
+    // verify all four combinations of inclusive/exclusive endpoints on both sides
+    // data: c0 in {1,2,3,4,5}
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
-    execute_statement("CREATE INDEX i1 ON t(c1)");
-    execute_statement("INSERT INTO t VALUES (10, 1), (20, 2), (30, 3), (40, 1), (50, 2)");
+    execute_statement("INSERT INTO t VALUES (1, 10), (2, 20), (3, 30), (4, 40), (5, 50)");
 
-    auto query = "SELECT c0, c1 FROM t WHERE c1 >= 1 AND c1 <= 2";
-    EXPECT_TRUE(has_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(4, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(40, 1)), result[2]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(50, 2)), result[3]);
+    {
+        // exclusive on both sides: only c0=3
+        auto query = "SELECT c0, c1 FROM t WHERE c0 > 2 AND c0 < 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[0]);
+    }
+
+    {
+        // inclusive lower, exclusive upper: c0 in {2,3}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 >= 2 AND c0 < 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 20)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[1]);
+    }
+
+    {
+        // exclusive lower, inclusive upper: c0 in {3,4}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 > 2 AND c0 <= 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 40)), result[1]);
+    }
+
+    {
+        // inclusive on both sides: c0 in {2,3,4}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 >= 2 AND c0 <= 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 20)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 40)), result[2]);
+    }
 }
 
-TEST_F(sql_scan_test, secondary_index_with_null) {
-    // verify that NULL values stored in a secondary-indexed column are not
-    // spuriously returned when performing a range scan via the secondary index
-    // (primary key columns cannot be NULL, so secondary index is used here)
+TEST_F(sql_scan_test, simple_range_half_open) {
+    // verify half-open range scans (only a lower bound or only an upper bound)
+    // data: c0 in {1,2,3,4,5}
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
-    execute_statement("CREATE INDEX i1 ON t(c1)");
-    execute_statement("INSERT INTO t VALUES (10, NULL), (11, 1), (12, 2), (13, NULL)");
+    execute_statement("INSERT INTO t VALUES (1, 10), (2, 20), (3, 30), (4, 40), (5, 50)");
 
-    auto query = "SELECT c0, c1 FROM t WHERE c1 >= 1 AND c1 <= 2";
-    EXPECT_TRUE(has_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(2, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(11, 1)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(12, 2)), result[1]);
+    {
+        // lower bound exclusive: c0 in {3,4,5}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 > 2";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 40)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(5, 50)), result[2]);
+    }
+
+    {
+        // lower bound inclusive: c0 in {2,3,4,5}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 >= 2";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 20)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 40)), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(5, 50)), result[3]);
+    }
+
+    {
+        // upper bound exclusive: c0 in {1,2,3}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 < 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 20)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[2]);
+    }
+
+    {
+        // upper bound inclusive: c0 in {1,2,3,4}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 <= 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 20)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 40)), result[3]);
+    }
 }
 
-// commented out due to existing issue
-TEST_F(sql_scan_test, DISABLED_secondary_index_with_null_less_than) {
-    // verify that NULL values are not matched by an upper-open range scan
-    // (NULL < 1 is UNKNOWN in SQL, so NULL rows must not appear in the result)
-    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
-    execute_statement("CREATE INDEX i1 ON t(c1)");
-    execute_statement("INSERT INTO t VALUES (10, NULL), (11, 0), (12, 1), (13, NULL)");
+TEST_F(sql_scan_test, composite_pk_simple) {
+    // basic range scan on the leading column of a composite primary key
+    execute_statement("CREATE TABLE t (c0 INT, c1 INT, c2 INT, PRIMARY KEY(c0, c1))");
+    execute_statement("INSERT INTO t VALUES (1, 0, 10), (2, 0, 20), (3, 0, 30), (4, 0, 40), (5, 0, 50)");
 
-    auto query = "SELECT c1 FROM t WHERE c1 < 1";
+    auto query = "SELECT c0, c1, c2 FROM t WHERE c0 >= 2 AND c0 <= 4";
     EXPECT_TRUE(has_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(11, 0)), result[0]);
-}
-
-TEST_F(sql_scan_test, secondary_index_prefix_condition) {
-    // verify that a condition on only the leading column of a composite secondary index
-    // (c1, c2) causes the planner to emit a scan operator using that index.
-    // WHERE c1 = 1 constrains only the prefix of the index key, so the planner
-    // must perform a range scan (not a find) on i1.
-    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT, c2 INT)");
-    execute_statement("CREATE INDEX i1 ON t(c1, c2)");
-    execute_statement("INSERT INTO t VALUES (10, 1, 100), (11, 1, 200), (12, 2, 100), (13, 1, 300)");
-
-    auto query = "SELECT c0, c1, c2 FROM t WHERE c1 = 1";
-    EXPECT_TRUE(has_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
+    EXPECT_TRUE(! has_filter(query));
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(3, result.size());
     std::sort(result.begin(), result.end());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 1, 100)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(11, 1, 200)), result[1]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(13, 1, 300)), result[2]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 0, 20)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(3, 0, 30)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(4, 0, 40)), result[2]);
+}
+
+TEST_F(sql_scan_test, composite_pk_range_both_bounded) {
+    // verify all four combinations of inclusive/exclusive endpoints on both sides
+    // using a range condition on the leading column of a composite primary key
+    // data: c0 in {1,2,3,4,5}
+    execute_statement("CREATE TABLE t (c0 INT, c1 INT, PRIMARY KEY(c0, c1))");
+    execute_statement("INSERT INTO t VALUES (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)");
+
+    {
+        // exclusive on both sides: only c0=3
+        auto query = "SELECT c0, c1 FROM t WHERE c0 > 2 AND c0 < 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[0]);
+    }
+
+    {
+        // inclusive lower, exclusive upper: c0 in {2,3}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 >= 2 AND c0 < 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[1]);
+    }
+
+    {
+        // exclusive lower, inclusive upper: c0 in {3,4}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 > 2 AND c0 <= 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 4)), result[1]);
+    }
+
+    {
+        // inclusive on both sides: c0 in {2,3,4}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 >= 2 AND c0 <= 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 4)), result[2]);
+    }
+}
+
+TEST_F(sql_scan_test, composite_pk_range_half_open) {
+    // verify half-open range scans on the leading column of a composite primary key
+    // data: c0 in {1,2,3,4,5}
+    execute_statement("CREATE TABLE t (c0 INT, c1 INT, PRIMARY KEY(c0, c1))");
+    execute_statement("INSERT INTO t VALUES (1, 1), (2, 2), (3, 3), (4, 4), (5, 5)");
+
+    {
+        // lower bound exclusive: c0 in {3,4,5}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 > 2";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 4)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(5, 5)), result[2]);
+    }
+
+    {
+        // lower bound inclusive: c0 in {2,3,4,5}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 >= 2";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 4)), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(5, 5)), result[3]);
+    }
+
+    {
+        // upper bound exclusive: c0 in {1,2,3}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 < 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[2]);
+    }
+
+    {
+        // upper bound inclusive: c0 in {1,2,3,4}
+        auto query = "SELECT c0, c1 FROM t WHERE c0 <= 4";
+        EXPECT_TRUE(has_scan(query));
+        EXPECT_TRUE(! has_filter(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 3)), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(4, 4)), result[3]);
+    }
+}
+
+TEST_F(sql_scan_test, composite_pk_prefix_condition) {
+    // verify that a condition on only the leading column of a composite primary key
+    // (c0, c1) causes the planner to emit a scan operator using the primary key index.
+    // WHERE c0 = 1 constrains only the prefix of the key, so the planner
+    // must perform a range scan (not a find) on the primary key index.
+    execute_statement("CREATE TABLE t (c0 INT, c1 INT, c2 INT, PRIMARY KEY(c0, c1))");
+    execute_statement("INSERT INTO t VALUES (1, 10, 100), (1, 20, 200), (2, 10, 100), (1, 30, 300)");
+
+    auto query = "SELECT c0, c1, c2 FROM t WHERE c0 = 1";
+    EXPECT_TRUE(has_scan(query));
+    EXPECT_TRUE(! has_filter(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(3, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 100)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 20, 200)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 30, 300)), result[2]);
 }
 
 } // namespace jogasaki::testing

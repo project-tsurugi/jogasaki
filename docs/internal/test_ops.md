@@ -338,7 +338,7 @@ TEST_F(filter_test, simple) {
 | `filter_test.cpp` | passive | record | `add_upstream_record_provider` | 移行対象 |
 | `project_test.cpp` | passive | record | `add_upstream_record_provider` | 移行対象 |
 | `offer_test.cpp` | passive | record | `add_upstream_record_provider` | 移行対象 |
-| `find_test.cpp` | active | record | 不要（KVS が入力源） | 移行対象 |
+| `find_test.cpp` | active | record | 不要（KVS が入力源） | 移行済み |
 | `join_scan_test.cpp` | passive | record | `add_upstream_record_provider` | 移行対象 |
 | `join_find_test.cpp` | passive | record | `add_upstream_record_provider` | 移行対象 |
 | `join_test.cpp` | passive | cogroup | `add_upstream_cogroup_provider` | 移行対象 |
@@ -466,3 +466,77 @@ ASSERT_EQ(expected, result);
 ```
 
 内部では `utils::copy_nullable_field()` を使って nullable フィールドをコピーする。
+
+---
+
+### `find` テスト（active operator + 2変数テーブル）の固有パターン
+
+`find` は active operator だが、passive operator と異なる点が 2 つある。
+
+#### 1. `input_variable_info_` と `output_variable_info_` の 2 つの変数テーブル
+
+passive record operator のテストでは変数テーブルが 1 つだが、`find` は以下の 2 つを持つ。
+
+| フィールド | 役割 |
+|---|---|
+| `input_variable_info_` / `input_variables_` | host variable（プリペアドステートメントのパラメータ）の格納先 |
+| `output_variable_info_` / `output_variables_` | KVS から読み出した列を格納するストリーム変数の格納先 |
+
+`output_variable_info_` は `create_variable_table_info(destinations(target.columns()), out_schema)` で構築する。`out_schema` は出力列のメタを定義する `basic_record`。
+
+```cpp
+variable_table_info out_info{
+    create_variable_table_info(destinations(target.columns()), out_schema)};
+```
+
+#### 2. `find` 名前衝突と elaborated type specifier
+
+`jogasaki::executor::process::impl::ops` 名前空間内で `find_executor` 構造体を定義すると、メンバ `find_context ctx_` の宣言時に `find`（同名前空間内の演算子クラス）との名前衝突が起きる。elaborated type specifier `class find_context` を使うことで解決できる。
+
+```cpp
+struct find_executor {
+    // ...
+    class find_context ctx_;  // 'class' キーワードで find と区別
+    // ...
+};
+```
+
+---
+
+### `add_downstream_record_verifier` の 2 つの使い方
+
+`add_downstream_record_verifier` には 2 種類のシグネチャがある。
+
+| シグネチャ | 返り値 | 使い方 |
+|---|---|---|
+| `add_downstream_record_verifier(fn)` | `record_operator*` | passive operator のテスト：ラムダを即時指定し、演算子の downstream として渡す |
+| `add_downstream_record_verifier(destinations)` | `record_verifier_sink&` | active operator のテスト：先に sink を確保し、後から `set_body()` でラムダを設定する |
+
+active operator（`find`, `scan` など）では、downstream sink を先に作って operator の出力端子に接続し、その後でラムダを設定する形になる。
+
+```cpp
+// find_test での典型的な使い方
+auto down = add_downstream_record_verifier(destinations(target.columns()));
+// ... executor 構築 ...
+std::vector<basic_record> result{};
+down.set_body([&]() {
+    result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+});
+```
+
+---
+
+### host variable を使う active operator のテスト
+
+host variable（プリペアドステートメントのパラメータ）を持つ active operator（`find` など）のテストでは、以下の手順が必要。
+
+1. `variable_table_info` と `variable_table` を手動で構築し、値をセットする。
+2. `make_find_executor(..., &host_variables)` に host variable table を渡す。`create_processor_info(host_vars)` が内部で呼ばれ、input variable info に host variable info が使われる。
+3. executor 構築後、`ex.input_variables_.store().set(host_variable_record.ref())` で実際の値をコピーする。
+
+```cpp
+// host variable の値を executor の input_variables_ に反映する
+ex.input_variables_.store().set(host_variable_record.ref());
+```
+
+このコピーは `make_find_executor` 内では行われない（構築時点では executor が未確定なため）。必ず executor 構築後に呼ぶ。

@@ -41,13 +41,24 @@
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 
+#include <algorithm>
+#include <cstddef>
+#include <vector>
+
+#include <boost/assert.hpp>
+
+#include <takatori/relation/sort_direction.h>
+
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/ops/verifier.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/kvs_test_utils.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -713,6 +724,223 @@ public:
             default: fail();
         }
         return {};
+    }
+
+    /**
+     * @brief Bundle of a table and its primary/secondary indices for a test case.
+     * @details Stores the column-index vectors so that put_row() can automatically
+     *     derive which fields to write to each storage without the caller spelling it out.
+     */
+    struct table_setup {
+        std::shared_ptr<yugawara::storage::table> table;
+        std::shared_ptr<index> primary_idx;
+        std::shared_ptr<index> secondary_idx;  ///< nullptr if no secondary index
+        std::vector<std::size_t> primary_key_cols;
+        std::vector<std::size_t> secondary_key_cols;
+        std::vector<relation::sort_direction> secondary_key_dirs;  ///< one entry per secondary key column
+    };
+
+    /**
+     * @brief Convert a sort_direction to the corresponding KVS coding spec.
+     * @param dir sort direction
+     * @return kvs::coding_spec for key encoding
+     */
+    static kvs::coding_spec to_spec(relation::sort_direction dir) {
+        switch (dir) {
+            case relation::sort_direction::ascendant:  return kvs::spec_key_ascending;
+            case relation::sort_direction::descendant: return kvs::spec_key_descending;
+        }
+        fail();
+    }
+
+    /**
+     * @brief Build a record_meta whose nullability matches the table column definitions.
+     * @param col_indices 0-based table column indices to include
+     * @param all_types   meta::field_type for every table column in order
+     * @param t           table whose column criteria supply the nullability flags
+     * @return shared_ptr to the new record_meta
+     */
+    static std::shared_ptr<meta::record_meta> make_col_record_meta(
+        std::vector<std::size_t> const& col_indices,
+        std::vector<meta::field_type> const& all_types,
+        yugawara::storage::table const& t
+    ) {
+        std::size_t const n = col_indices.size();
+        std::vector<meta::field_type> types;
+        std::vector<std::size_t> val_offs, null_offs;
+        types.reserve(n);
+        val_offs.reserve(n);
+        null_offs.reserve(n);
+        boost::dynamic_bitset<std::uint64_t> nullability{n};
+        for (std::size_t j = 0; j < n; ++j) {
+            auto i = col_indices[j];
+            types.push_back(all_types[i]);
+            val_offs.push_back(j * basic_record_field_size);
+            null_offs.push_back(n * basic_record_field_size * bits_per_byte + j);
+            if (t.columns()[i].criteria().nullity().nullable()) {
+                nullability.set(j);
+            }
+        }
+        return std::make_shared<meta::record_meta>(
+            std::move(types),
+            std::move(nullability),
+            std::move(val_offs),
+            std::move(null_offs),
+            basic_record_field_alignment,
+            (n + 1) * basic_record_field_size);
+    }
+
+    /**
+     * @brief Extract a subset of columns from a source record into a new basic_record.
+     * @param src         source record whose layout matches the table column order
+     * @param col_indices 0-based indices into @p src to extract
+     * @param all_types   meta::field_type for every table column in order
+     * @param t           table owning the columns (for nullability information)
+     * @return new basic_record containing the extracted fields
+     */
+    basic_record extract_cols(
+        basic_record const& src,
+        std::vector<std::size_t> const& col_indices,
+        std::vector<meta::field_type> const& all_types,
+        yugawara::storage::table const& t
+    ) {
+        auto out_meta = make_col_record_meta(col_indices, all_types, t);
+        basic_record rec{out_meta};
+        auto const& src_meta = *src.record_meta();
+        for (std::size_t j = 0; j < col_indices.size(); ++j) {
+            auto i = col_indices[j];
+            utils::copy_nullable_field(
+                all_types[i],
+                rec.ref(), out_meta->value_offset(j), out_meta->nullity_offset(j),
+                src.ref(), src_meta.value_offset(i), src_meta.nullity_offset(i),
+                &varlen_resource_);
+        }
+        return rec;
+    }
+
+    /**
+     * @brief Create a table and its primary and optional secondary index.
+     *
+     * @details The primary value columns are inferred as all columns not in
+     *     primary_key_cols.  Pass an empty vector for secondary_key_cols to
+     *     create no secondary index.  When secondary_key_dirs is shorter than
+     *     secondary_key_cols the remaining columns default to ascendant; it must
+     *     not be longer than secondary_key_cols.
+     *
+     * @param t_desc              table definition (moved in)
+     * @param primary_key_cols    0-based column indices used as the primary key
+     * @param secondary_key_cols  0-based column indices used as the secondary key
+     * @param secondary_key_dirs  sort direction per secondary key column (may be
+     *                            shorter than secondary_key_cols; defaults to all ascendant)
+     * @return newly created table_setup
+     */
+    table_setup prepare_indices(
+        yugawara::storage::table t_desc,
+        std::vector<std::size_t> const& primary_key_cols,
+        std::vector<std::size_t> const& secondary_key_cols,
+        std::vector<relation::sort_direction> const& secondary_key_dirs = {}
+    ) {
+        BOOST_ASSERT(secondary_key_dirs.size() <= secondary_key_cols.size());  //NOLINT
+        auto t = create_table(std::move(t_desc));
+
+        std::vector<std::size_t> value_cols;
+        for (std::size_t i = 0; i < t->columns().size(); ++i) {
+            if (std::find(primary_key_cols.begin(), primary_key_cols.end(), i)
+                    == primary_key_cols.end()) {
+                value_cols.push_back(i);
+            }
+        }
+
+        std::vector<index::key> pk_keys;
+        for (auto i : primary_key_cols) { pk_keys.emplace_back(t->columns()[i]); }
+        std::vector<index::column_ref> pk_values;
+        for (auto i : value_cols) { pk_values.emplace_back(t->columns()[i]); }
+        auto primary = tables_->add_index(std::make_shared<index>(
+            t,
+            index::simple_name_type(t->simple_name()),
+            std::move(pk_keys),
+            std::move(pk_values),
+            index_feature_set{
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            }
+        ));
+
+        std::vector<relation::sort_direction> dirs(secondary_key_cols.size(),
+            relation::sort_direction::ascendant);
+        for (std::size_t i = 0; i < secondary_key_dirs.size(); ++i) {
+            dirs[i] = secondary_key_dirs[i];
+        }
+
+        std::shared_ptr<index> secondary{};
+        if (! secondary_key_cols.empty()) {
+            std::vector<index::key> sk_keys;
+            for (std::size_t i = 0; i < secondary_key_cols.size(); ++i) {
+                sk_keys.emplace_back(t->columns()[secondary_key_cols[i]], dirs[i]);
+            }
+            secondary = tables_->add_index(std::make_shared<index>(
+                t,
+                "I1",
+                std::move(sk_keys),
+                std::vector<index::column_ref>{},
+                index_feature_set{
+                    ::yugawara::storage::index_feature::find,
+                    ::yugawara::storage::index_feature::scan,
+                }
+            ));
+        }
+        return {t, primary, secondary, primary_key_cols, secondary_key_cols, dirs};
+    }
+
+    /**
+     * @brief Insert a full table row into KVS, automatically populating both primary
+     *     and secondary storages.
+     *
+     * @details The caller provides one record with all table columns in declaration
+     *     order.  Internally the row is split according to setup.primary_key_cols
+     *     and setup.secondary_key_cols, and put_secondary() is called for the
+     *     secondary index if one exists.
+     *
+     * @param setup    table and index configuration created by prepare_indices()
+     * @param all_cols basic_record whose fields correspond 1:1 to table columns
+     * @param db       KVS database to write into
+     */
+    void put_row(table_setup const& setup, basic_record const& all_cols, kvs::database& db) {
+        auto& tbl_cols = setup.table->columns();
+        std::size_t const n = tbl_cols.size();
+
+        std::vector<meta::field_type> all_types;
+        all_types.reserve(n);
+        for (std::size_t i = 0; i < n; ++i) {
+            all_types.push_back(utils::type_for(tbl_cols[i].type()));
+        }
+
+        std::vector<std::size_t> value_cols;
+        for (std::size_t i = 0; i < n; ++i) {
+            if (std::find(setup.primary_key_cols.begin(), setup.primary_key_cols.end(), i)
+                    == setup.primary_key_cols.end()) {
+                value_cols.push_back(i);
+            }
+        }
+
+        jogasaki::kvs_test_utils ktu{};
+        auto pk_rec = extract_cols(all_cols, setup.primary_key_cols, all_types, *setup.table);
+        auto pv_rec = extract_cols(all_cols, value_cols, all_types, *setup.table);
+        auto enc_pk = ktu.put(db, setup.primary_idx->simple_name(),
+            std::move(pk_rec), std::move(pv_rec));
+
+        if (setup.secondary_idx) {
+            auto sk_rec = extract_cols(all_cols, setup.secondary_key_cols, all_types, *setup.table);
+            std::vector<kvs::coding_spec> specs;
+            specs.reserve(setup.secondary_key_dirs.size());
+            for (auto const& d : setup.secondary_key_dirs) {
+                specs.push_back(to_spec(d));
+            }
+            ktu.put_secondary(db, setup.secondary_idx->simple_name(),
+                std::move(sk_rec), enc_pk, specs);
+        }
     }
 
 };

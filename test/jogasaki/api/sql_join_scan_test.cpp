@@ -85,7 +85,6 @@ public:
         db_teardown();
     }
     bool has_join_scan(std::string_view query);
-    bool uses_secondary(std::string_view query);
 };
 
 using namespace std::string_view_literals;
@@ -98,12 +97,6 @@ bool sql_join_scan_test::has_join_scan(std::string_view query) {
     std::string plan{};
     explain_statement(query, plan);
     return contains(plan, "join_scan");
-}
-
-bool sql_join_scan_test::uses_secondary(std::string_view query) {
-    std::string plan{};
-    explain_statement(query, plan);
-    return contains(plan, "\"i1\"");
 }
 
 TEST_F(sql_join_scan_test, simple) {
@@ -204,59 +197,6 @@ TEST_F(sql_join_scan_test, outer_join_with_condition_on_right_column_null) {
     }
 }
 
-TEST_F(sql_join_scan_test, use_secondary_index) {
-    execute_statement("CREATE TABLE t0 (c0 int)");
-    execute_statement("INSERT INTO t0 VALUES (1),(2)");
-    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
-    execute_statement("CREATE INDEX i1 on t1 (c0, c1)");
-    execute_statement("INSERT INTO t1 VALUES (1,10),(3,30)");
-
-    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
-    EXPECT_TRUE(has_join_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 10)), result[0]);
-}
-
-TEST_F(sql_join_scan_test, left_outer_with_secondary_index) {
-    execute_statement("CREATE TABLE t0 (c0 int)");
-    execute_statement("INSERT INTO t0 VALUES (1),(2)");
-    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
-    execute_statement("CREATE INDEX i1 on t1(c1, c0)");
-    execute_statement("INSERT INTO t1 VALUES (10,1),(11,1)");
-
-    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 left outer join t1 on t0.c0=t1.c1";
-    EXPECT_TRUE(has_join_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(3, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 1)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 11, 1)), result[1]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(2, std::nullopt, std::nullopt)), result[2]);
-}
-
-TEST_F(sql_join_scan_test, use_secondary_index_with_null) {
-    // verify null does not match with anything
-    // primary index does not allow null on key columns, so test only with secondary index
-    execute_statement("CREATE TABLE t0 (c0 int)");
-    execute_statement("INSERT INTO t0 VALUES (null),(1)");
-    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
-    execute_statement("CREATE INDEX i1 on t1(c1, c0)");
-    execute_statement("INSERT INTO t1 VALUES (10,null),(11,1)");
-
-    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c1";
-    EXPECT_TRUE(has_join_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 11, 1)), result[0]);
-}
-
 TEST_F(sql_join_scan_test, join_scan_disabled) {
     // verify fallback to shuffle join when join scan is disabled
     global::config_pool()->enable_join_scan(false);
@@ -290,22 +230,6 @@ TEST_F(sql_join_scan_test, join_scan_multiple_records) {
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 2, 20)), result[2]);
 }
 
-TEST_F(sql_join_scan_test, join_scan_secondary_with_nulls) {
-    execute_statement("CREATE TABLE t0 (c0 int)");
-    execute_statement("INSERT INTO t0 VALUES (1),(null)");
-    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
-    execute_statement("CREATE INDEX i1 on t1 (c0, c1)");
-    execute_statement("INSERT INTO t1 VALUES (1,10),(null,999)");
-
-    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
-    EXPECT_TRUE(has_join_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 10)), result[0]);
-}
-
 TEST_F(sql_join_scan_test, join_scan_multiple_columns) {
     execute_statement("CREATE TABLE t0 (c0 int, c1 bigint)");
     execute_statement("INSERT INTO t0 VALUES (1,11),(2,12)");
@@ -314,25 +238,6 @@ TEST_F(sql_join_scan_test, join_scan_multiple_columns) {
 
     auto query = "SELECT t0.c0, t0.c1, t1.c0, t1.c1, t1.c2 FROM t0 join t1 on t0.c0=t1.c0 and t0.c1=t1.c1";
     EXPECT_TRUE(has_join_scan(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(2, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8, kind::int4>(1,11,1,11,100)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8, kind::int4>(1,11,1,11,101)), result[1]);
-}
-
-TEST_F(sql_join_scan_test, join_scan_secondary_multiple_columns) {
-    // similar as join_scan_multiple_columns but using secondary index
-    execute_statement("CREATE TABLE t0 (c0 int, c1 bigint)");
-    execute_statement("INSERT INTO t0 VALUES (1,11),(2,12)");
-    execute_statement("CREATE TABLE t1 (c0 int, c1 bigint, c2 int)");
-    execute_statement("CREATE INDEX i1 on t1 (c0, c1, c2)");
-    execute_statement("INSERT INTO t1 VALUES (1,10,100),(1,11,100),(1,11,101),(2,20,200)");
-
-    auto query = "SELECT t0.c0, t0.c1, t1.c0, t1.c1, t1.c2 FROM t0 join t1 on t0.c0=t1.c0 and t0.c1=t1.c1";
-    EXPECT_TRUE(has_join_scan(query));
-    EXPECT_TRUE(uses_secondary(query));
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(2, result.size());

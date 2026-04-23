@@ -15,44 +15,37 @@
  */
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
 #include <unordered_map>
-#include <boost/container/container_fwd.hpp>
-#include <boost/move/utility_core.hpp>
+#include <utility>
+#include <vector>
+
 #include <gtest/gtest.h>
 
-#include <takatori/descriptor/element.h>
 #include <takatori/descriptor/variable.h>
-#include <takatori/graph/graph.h>
-#include <takatori/graph/port.h>
-#include <takatori/plan/process.h>
-#include <takatori/relation/expression.h>
-#include <takatori/relation/expression_kind.h>
 #include <takatori/relation/join_find.h>
 #include <takatori/relation/join_kind.h>
-#include <takatori/relation/step/offer.h>
 #include <takatori/relation/step/take_flat.h>
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
-#include <takatori/scalar/expression_kind.h>
+#include <takatori/scalar/immediate.h>
 #include <takatori/scalar/variable_reference.h>
 #include <takatori/type/primitive.h>
-#include <takatori/util/exception.h>
-#include <yugawara/analyzer/expression_mapping.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/storage/sequence.h>
-#include <yugawara/storage/table.h>
-#include <yugawara/variable/criteria.h>
+#include <takatori/value/primitive.h>
+#include <takatori/util/clonable.h>
+#include <takatori/util/optional_ptr.h>
+#include <yugawara/analyzer/expression_resolution.h>
+#include <yugawara/analyzer/variable_resolution.h>
 #include <yugawara/variable/nullity.h>
 
-#include <jogasaki/accessor/text.h>
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/process/impl/ops/index_join.h>
 #include <jogasaki/executor/process/impl/ops/index_join_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/impl/work_context.h>
-#include <jogasaki/executor/process/mock/group_reader.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs_test_base.h>
@@ -60,8 +53,11 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/operator_test_utils.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
+#include <jogasaki/transaction_context.h>
 
 #include "verifier.h"
 
@@ -82,23 +78,85 @@ using namespace boost::container::pmr;
 namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
 
-namespace storage = yugawara::storage;
-
 using kind = field_type_kind;
-using group_reader = mock::basic_group_reader;
-using group_type = group_reader::group_type;
-using keys_type = group_type::key_type;
-using values_type = group_type::value_type;
-
 using yugawara::variable::nullity;
-using yugawara::variable::criteria;
 using scalar::compare;
 using scalar::comparison_operator;
+using varref = scalar::variable_reference;
+
+/**
+ * @brief Bundle of runtime objects needed to invoke the join_find operator.
+ * @details join_find is a passive record operator: upstream records supply
+ *     KVS key values; the operator looks them up and writes results back into
+ *     the single combined variable block shared by all stream variables.
+ *     match_info_ is a member (not a local variable) so that the join_find_matcher
+ *     stored in ctx_ holds a valid reference throughout the executor's lifetime.
+ *     ctx_ is emplaced in the constructor body after op_ and match_info_ are
+ *     fully initialised.  The struct must not be copy- or move-constructed.
+ *     Always create via join_find_test::make_join_find_executor().
+ */
+struct join_find_executor {
+    join_find op_;
+    details::match_info_find match_info_;
+    variable_table variables_;
+    mock::task_context task_ctx_;
+    std::optional<join_find_context> ctx_;
+
+    join_find_executor(
+        processor_info const& pinfo,
+        relation::join_kind kind,
+        yugawara::storage::index const& primary_idx,
+        takatori::util::sequence_view<relation::join_find::column const> columns,
+        takatori::tree::tree_fragment_vector<relation::join_find::key> const& keys,
+        takatori::util::optional_ptr<scalar::expression const> condition,
+        yugawara::storage::index const* secondary_idx,
+        std::unique_ptr<operator_base> downstream,
+        std::unique_ptr<kvs::storage> primary_stg,
+        std::unique_ptr<kvs::storage> secondary_stg,
+        transaction_context* tx_raw,
+        std::shared_ptr<transaction_context> tx_shared,
+        memory::lifo_paged_memory_resource* res,
+        memory::lifo_paged_memory_resource* varlen_res,
+        request_context* req_ctx
+    ) :
+        op_{kind, 0, pinfo, 0, primary_idx, columns, keys,
+            condition, secondary_idx, std::move(downstream)},
+        match_info_{op_.match_info().key_fields_,
+            details::create_secondary_key_fields(secondary_idx)},
+        variables_{pinfo.vars_info_list()[op_.block_index()]},
+        task_ctx_{{}, {}, {}, {}}
+    {
+        ctx_.emplace(
+            &task_ctx_,
+            variables_,
+            variables_,
+            std::move(primary_stg),
+            std::move(secondary_stg),
+            tx_raw,
+            std::make_unique<join_find_matcher>(
+                secondary_idx != nullptr, match_info_, op_.key_columns(), op_.value_columns()),
+            res,
+            varlen_res,
+            nullptr
+        );
+        ctx_->task_context().work_context(std::make_unique<impl::work_context>(
+            req_ctx, 0, op_.block_index(), nullptr, nullptr, nullptr, tx_shared, false, false
+        ));
+    }
+
+    join_find_executor(join_find_executor const&) = delete;
+    join_find_executor& operator=(join_find_executor const&) = delete;
+    join_find_executor(join_find_executor&&) = delete;
+    join_find_executor& operator=(join_find_executor&&) = delete;
+};
 
 class join_find_test :
     public test_root,
     public kvs_test_base,
     public operator_test_utils {
+public:
+    static constexpr auto asc = relation::sort_direction::ascendant;
+    static constexpr auto desc = relation::sort_direction::descendant;
 
     void SetUp() override {
         kvs_db_setup();
@@ -106,340 +164,607 @@ class join_find_test :
     void TearDown() override {
         kvs_db_teardown();
     }
-public:
+
+    /**
+     * @brief Insert a join_find relation node into the process graph.
+     *
+     * @details All table columns are mapped to fresh stream variables as output
+     *     columns.  Column and key-expression types are derived from the table
+     *     metadata.  If condition_factory is provided it is called with the
+     *     column destination variables so the condition can reference them; the
+     *     returned expression is bound assuming a top-level int4 compare.
+     *
+     * @param setup              table and index configuration
+     * @param key_col_indices    0-based table column indices used as join keys
+     * @param key_source_vars    upstream stream variables supplying key values,
+     *                           one per entry in key_col_indices
+     * @param use_secondary      if true, targets setup.secondary_idx; otherwise
+     *                           setup.primary_idx
+     * @param condition_factory  optional factory called with column destinations
+     *                           to produce a condition expression (int4 compare)
+     * @return reference to the newly inserted node
+     */
+    using condition_factory_t =
+        std::function<std::unique_ptr<scalar::expression>(std::vector<descriptor::variable> const&)>;
+
+    relation::join_find& add_join_find_node(
+        table_setup const& setup,
+        std::vector<std::size_t> const& key_col_indices,
+        std::vector<descriptor::variable> const& key_source_vars,
+        bool use_secondary = false,
+        condition_factory_t condition_factory = nullptr
+    ) {
+        auto& tbl_cols = setup.table->columns();
+        yugawara::storage::index const& idx =
+            use_secondary ? *setup.secondary_idx : *setup.primary_idx;
+        std::vector<relation::join_find::column> cols;
+        std::vector<descriptor::variable> dests;
+        for (std::size_t i = 0; i < tbl_cols.size(); ++i) {
+            auto dest = bindings_.stream_variable("c" + std::to_string(i));
+            cols.emplace_back(bindings_(tbl_cols[i]), dest);
+            dests.push_back(dest);
+        }
+        std::vector<relation::join_find::key> keys;
+        for (std::size_t i = 0; i < key_col_indices.size(); ++i) {
+            keys.emplace_back(
+                bindings_(tbl_cols[key_col_indices[i]]),
+                varref{key_source_vars[i]}
+            );
+        }
+        std::unique_ptr<scalar::expression> condition;
+        if (condition_factory) {
+            condition = condition_factory(dests);
+        }
+        auto& target = emplace_operator<relation::join_find>(
+            relation::join_kind::inner,
+            bindings_(idx),
+            std::move(cols),
+            std::move(keys),
+            std::move(condition)
+        );
+        for (std::size_t i = 0; i < target.columns().size(); ++i) {
+            yugawara::analyzer::variable_resolution r{
+                takatori::util::clone_shared(tbl_cols[i].type())};
+            variable_map_->bind(target.columns()[i].source(), r, true);
+            variable_map_->bind(target.columns()[i].destination(), r, true);
+        }
+        for (std::size_t i = 0; i < key_col_indices.size(); ++i) {
+            expression_map_->bind(
+                target.keys()[i].value(),
+                yugawara::analyzer::expression_resolution{
+                    takatori::util::clone_shared(tbl_cols[key_col_indices[i]].type())});
+        }
+        if (target.condition()) {
+            bind_int4_compare_condition(*target.condition());
+        }
+        return target;
+    }
+
+    /**
+     * @brief Bind a compare condition expression assuming int4 operands.
+     * @param condition  the condition expression; must be a scalar::compare node
+     */
+    void bind_int4_compare_condition(scalar::expression& condition) {
+        expression_map_->bind(condition, t::boolean{});
+        auto& cmp = static_cast<scalar::compare&>(condition);
+        expression_map_->bind(cmp.left(), t::int4{});
+        expression_map_->bind(cmp.right(), t::int4{});
+    }
+
+    /**
+     * @brief Wire the process graph, build processor_info, construct the join_find
+     *     operator, and return a join_find_executor.
+     *
+     * @details Uses C++17 guaranteed copy elision: the returned prvalue is
+     *     constructed directly in the caller's variable so ctx_ references into
+     *     variables_ and task_ctx_ remain valid.  Graph wiring happens before
+     *     create_processor_info() to ensure all stream variables appear in the
+     *     single processor_info block.
+     *
+     * @param up           upstream take_flat node
+     * @param target       the join_find relation node
+     * @param primary_idx  primary index
+     * @param secondary_idx secondary index pointer, or nullptr
+     * @param down         downstream verifier sink (take() is called here)
+     * @param primary_stg  KVS storage for the primary index
+     * @param secondary_stg KVS storage for the secondary index, or nullptr
+     * @param tx           active transaction (shared ownership)
+     * @param host_vars    optional host variable table for prepared-statement
+     *                     parameters used in condition expressions
+     * @param jk           join kind; defaults to inner
+     * @return newly constructed join_find_executor
+     */
+    join_find_executor make_join_find_executor(
+        relation::step::take_flat& up,
+        relation::join_find& target,
+        yugawara::storage::index const& primary_idx,
+        yugawara::storage::index const* secondary_idx,
+        record_verifier_sink& down,
+        std::unique_ptr<kvs::storage> primary_stg,
+        std::unique_ptr<kvs::storage> secondary_stg,
+        std::shared_ptr<transaction_context> tx,
+        variable_table* host_vars = nullptr,
+        relation::join_kind jk = relation::join_kind::inner
+    ) {
+        up.output() >> target.left();
+        target.output() >> down.input();
+        create_processor_info(host_vars);
+        request_context_.transaction(tx);
+        return join_find_executor{
+            *processor_info_,
+            jk,
+            primary_idx,
+            target.columns(),
+            target.keys(),
+            target.condition(),
+            secondary_idx,
+            down.take(),
+            std::move(primary_stg),
+            std::move(secondary_stg),
+            tx.get(),
+            tx,
+            &resource_,
+            &varlen_resource_,
+            &request_context_
+        };
+    }
+
+    /**
+     * @brief Run a composite secondary index join_find test.
+     *
+     * @details Table has three int4 columns: C0 (primary key, non-nullable),
+     *     C1 and C2 forming the composite secondary key with the given directions.
+     *     When first_col_nullable is true, C1 is nullable and C2 is non-nullable;
+     *     otherwise C1 is non-nullable and C2 is nullable.  A null row is inserted
+     *     for the nullable column to confirm it does not appear in the results.
+     *
+     * @param first_col_nullable  when true C1 is nullable and C2 is non-nullable;
+     *                            when false C1 is non-nullable and C2 is nullable
+     * @param first_dir           sort direction for C1 in the secondary index
+     * @param second_dir          sort direction for C2 in the secondary index
+     */
+    void do_composite_secondary_key_test(
+        bool first_col_nullable,
+        relation::sort_direction first_dir,
+        relation::sort_direction second_dir
+    ) {
+        nullity c1_nullity{first_col_nullable};
+        nullity c2_nullity{! first_col_nullable};
+        auto setup = prepare_indices(
+            {"T1", {
+                {"C0", t::int4(), nullity{false}},
+                {"C1", t::int4(), c1_nullity},
+                {"C2", t::int4(), c2_nullity},
+            }},
+            {0}, {1, 2}, {first_dir, second_dir}
+        );
+        auto input = create_nullable_record<kind::int4, kind::int4>(1, 2);
+        auto [up, in] = add_upstream_record_provider(input.record_meta());
+        auto& target = add_join_find_node(setup, {1, 2}, {in[0], in[1]}, true);
+        auto verifier_vars = in.vars_;
+        auto out_vars = destinations(target.columns());
+        verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+        auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 1, 2), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(20, 1, 2), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(30, 1, 3), *db_);
+        put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(40, 2, 2), *db_);
+        if (first_col_nullable) {
+            put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(
+                std::optional<int32_t>{50}, std::optional<int32_t>{}, std::optional<int32_t>{2}
+            ), *db_);
+        } else {
+            put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(
+                std::optional<int32_t>{60}, std::optional<int32_t>{1}, std::optional<int32_t>{}
+            ), *db_);
+        }
+
+        auto tx = wrap(db_->create_transaction());
+        auto ex = make_join_find_executor(
+            up, target, *setup.primary_idx, setup.secondary_idx.get(), down,
+            get_storage(*db_, setup.primary_idx->simple_name()),
+            get_storage(*db_, setup.secondary_idx->simple_name()),
+            tx
+        );
+
+        std::vector<basic_record> result{};
+        down.set_body([&]() {
+            result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        });
+
+        set_variables(ex.variables_, in, input.ref());
+        ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+        ex.ctx_->release();
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 1, 2)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(20, 1, 2)), result[1]);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
 };
 
-std::pair<std::shared_ptr<mock::task_context>, std::shared_ptr<request_context>> create_task_context(
-    std::vector<io::reader_container> readers = {},
-    std::vector<std::shared_ptr<io::record_writer>> downstream_writers = {},
-    std::shared_ptr<io::record_writer> external_writer = {},
-    std::shared_ptr<abstract::range> range = {},
-    std::shared_ptr<transaction_context> tx = {}
-) {
-    auto ret = std::make_shared<mock::task_context>(
-        std::move(readers),
-        std::move(downstream_writers),
-        std::move(external_writer),
-        std::move(range)
-    );
-
-    auto rctx = std::make_shared<request_context>();
-    rctx->transaction(tx);
-    ret->work_context(
-        std::make_unique<impl::work_context>(rctx.get(), 0, 0, nullptr, nullptr, nullptr, tx, false, false)
-    );
-    return {ret, rctx};
-}
-
 TEST_F(join_find_test, simple) {
-    auto t1 = create_table({
-        "T1",
-        {
-            { "C0", t::int8(), nullity{false} },
-            { "C1", t::int8(), nullity{false} },
-        },
-    });
-    auto primary_idx_t1 = create_primary_index(t1, {0}, {1});
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
+    auto input = create_nullable_record<kind::int4, kind::int4>(1, 10);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto& target = add_join_find_node(setup, {0}, {in[0]});
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
 
-    auto& take = add_take(2);
-    add_column_types(take, t::int8{}, t::int8{});
-    auto& target = process_.operators().insert(relation::join_find {
-        relation::join_kind::inner,
-        bindings_(*primary_idx_t1),
-        {
-            { bindings_(t1->columns()[0]), bindings_.stream_variable("c2") },
-            { bindings_(t1->columns()[1]), bindings_.stream_variable("c3")  },
-        },
-        {
-            relation::join_find::key{
-                bindings_(t1->columns()[0]),
-                varref{take.columns()[0].destination()},
-            }
-        },
-    });
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(2, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(3, 300), *db_);
 
-    auto& offer = add_offer(destinations(target.columns()));
-    take.output() >> target.left();
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int8{}, t::int8{});
-    expression_map_->bind(target.keys()[0].value(), t::int8{});
-    create_processor_info();
-
-    auto input = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 10);
-    auto output = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 100);
-    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), output)};
-    variable_table input_variables{input_variable_info};
-    input_variables.store().set(input.ref());
-    variable_table output_variables{output_variable_info};
-
-    std::vector<jogasaki::mock::basic_record> result{};
-    join_find op{
-        relation::join_kind::inner,
-        0,
-        *processor_info_,
-        0,
-        *primary_idx_t1,
-        target.columns(),
-        target.keys(),
-        target.condition(),
-        nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), output.record_meta()));
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-
-    put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
-    put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
-    put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
-    auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-
-    auto match_info =
-        details::match_info_find{op.match_info().key_fields_, details::create_secondary_key_fields(nullptr)};
-    join_find_context ctx(
-        task_ctx.get(),
-        input_variables,
-        output_variables,
-        get_storage(*db_, primary_idx_t1->simple_name()),
-        nullptr,
-        tx.get(),
-        std::make_unique<join_find_matcher>(
-            false,
-            match_info,
-            op.key_columns(),
-            op.value_columns()
-        ),
-        &resource_,
-        &varlen_resource_,
-        nullptr
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx
     );
 
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(output, result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 100)), result[0]);
     ASSERT_EQ(status::ok, tx->commit());
-    ctx.release();
 }
 
 TEST_F(join_find_test, secondary_index) {
-    auto t1 = create_table({
-        "T1",
-        {
-            { "C0", t::int8(), nullity{false} },
-            { "C1", t::int8(), nullity{false} },
-        },
-    });
-    auto primary_idx_t1 = create_primary_index(t1, {0}, {1});
-    auto secondary_idx_t1 = create_secondary_index(t1, "T1_SECONDARY", {1}, {});
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {1}
+    );
+    auto input = create_nullable_record<kind::int4, kind::int4>(2, 20);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto& target = add_join_find_node(setup, {1}, {in[1]}, true);
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
 
-    auto& take = add_take(2);
-    add_column_types(take, t::int8{}, t::int8{});
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(100, 10), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(200, 20), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(201, 20), *db_);
 
-    auto& target = process_.operators().insert(relation::join_find {
-        relation::join_kind::inner,
-        bindings_(*secondary_idx_t1),
-        {
-            { bindings_(t1->columns()[0]), bindings_.stream_variable("c2") },
-            { bindings_(t1->columns()[1]), bindings_.stream_variable("c3")  },
-        },
-        {
-            relation::join_find::key{
-                bindings_(t1->columns()[1]),
-                varref{take.columns()[1].destination()},
-            }
-        },
-    });
-    auto& offer = add_offer(destinations(target.columns()));
-    take.output() >> target.left();
-    target.output() >> offer.input();
-
-    add_column_types(target, t::int8{}, t::int8{});
-    expression_map_->bind(target.keys()[0].value(), t::int8{});
-    create_processor_info();
-
-    auto input = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(2, 20);
-    auto output = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(200, 20);
-    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), output)};
-    variable_table input_variables{input_variable_info};
-    input_variables.store().set(input.ref());
-    variable_table output_variables{output_variable_info};
-
-    std::vector<jogasaki::mock::basic_record> result{};
-    join_find op{
-        relation::join_kind::inner,
-        0,
-        *processor_info_,
-        0,
-        *primary_idx_t1,
-        target.columns(),
-        target.keys(),
-        target.condition(),
-        secondary_idx_t1.get(),
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), output.record_meta()));
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-
-    auto k100 = put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(100), create_record<kind::int8>(10));
-    put_secondary(*db_, secondary_idx_t1->simple_name(), create_record<kind::int8>(10), k100);
-    auto k200 = put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(200), create_record<kind::int8>(20));
-    put_secondary(*db_, secondary_idx_t1->simple_name(), create_record<kind::int8>(20), k200);
-    auto k201 = put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(201), create_record<kind::int8>(20));
-    put_secondary(*db_, secondary_idx_t1->simple_name(), create_record<kind::int8>(20), k201);
     auto tx = wrap(db_->create_transaction());
-    auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    auto match_info =
-        details::match_info_find{op.match_info().key_fields_, details::create_secondary_key_fields(secondary_idx_t1.get())};
-    join_find_context ctx(
-        task_ctx.get(),
-        input_variables,
-        output_variables,
-        get_storage(*db_, primary_idx_t1->simple_name()),
-        get_storage(*db_, secondary_idx_t1->simple_name()),
-        tx.get(),
-        std::make_unique<join_find_matcher>(
-            true,
-            match_info,
-            op.key_columns(),
-            op.value_columns()
-        ),
-        &resource_,
-        &varlen_resource_,
-        nullptr
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, setup.secondary_idx.get(), down,
+        get_storage(*db_, setup.primary_idx->simple_name()),
+        get_storage(*db_, setup.secondary_idx->simple_name()),
+        tx
     );
 
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
     ASSERT_EQ(2, result.size());
     std::sort(result.begin(), result.end());
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(200, 20)), result[0]);
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(201, 20)), result[1]);
-
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(200, 20)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(201, 20)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
-    ctx.release();
 }
 
 TEST_F(join_find_test, host_variable_with_condition_expr) {
-    auto t1 = create_table({
-        "T1",
-        {
-            { "C0", t::int8(), nullity{false} },
-            { "C1", t::int8(), nullity{false} },
-        },
-    });
-    auto primary_idx_t1 = create_primary_index(t1, {0}, {1});
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
 
-    auto& take = add_take(2);
-    add_column_types(take, t::int8{}, t::int8{});
-
-    auto host_variable_record = jogasaki::mock::create_nullable_record<kind::int8>(10);
-    auto p0 = bindings_(register_variable("p0", kind::int8));
+    auto host_variable_record = create_nullable_record<kind::int4>(10);
+    auto p0 = bindings_(register_variable("p0", kind::int4));
     variable_table_info host_variable_info{
-        std::unordered_map<variable, std::size_t>{
-            {p0, 0},
-        },
-        std::unordered_map<std::string, takatori::descriptor::variable>{
-            {"p0", p0},
-        },
+        std::unordered_map<descriptor::variable, std::size_t>{{p0, 0}},
+        std::unordered_map<std::string, descriptor::variable>{{"p0", p0}},
         host_variable_record.record_meta()
     };
     variable_table host_variables{host_variable_info};
     host_variables.store().set(host_variable_record.ref());
 
-    auto& target = process_.operators().insert(relation::join_find {
-        relation::join_kind::inner,
-        bindings_(*primary_idx_t1),
-        {
-            { bindings_(t1->columns()[0]), bindings_.stream_variable("c2") },
-            { bindings_(t1->columns()[1]), bindings_.stream_variable("c3")  },
-        },
-        {
-            relation::join_find::key{
-                bindings_(t1->columns()[0]),
-                varref{take.columns()[0].destination()},
-            }
-        },
-        compare {
-            comparison_operator::equal,
-            varref{take.columns()[1].destination()},
-            scalar::variable_reference{p0}
-        }
-    });
+    auto input = create_nullable_record<kind::int4, kind::int4>(1, 10);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto& target = add_join_find_node(setup, {0}, {in[0]}, false,
+        [&](auto const&) {
+            return std::make_unique<compare>(
+                comparison_operator::equal, varref{in[1]}, varref{p0});
+        });
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
 
-    auto& offer = add_offer(destinations(target.columns()));
-    take.output() >> target.left();
-    target.output() >> offer.input();
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(2, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(3, 300), *db_);
 
-    add_column_types(target, t::int8{}, t::int8{});
-    expression_map_->bind(target.keys()[0].value(), t::int8{});
-    expression_map_->bind(*target.condition(), t::boolean{});
-    auto& c = static_cast<scalar::compare&>(*target.condition());
-    expression_map_->bind(c.left(), t::int8 {});
-    expression_map_->bind(c.right(), t::int8 {});
-    create_processor_info(&host_variables);
-
-    auto input = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 10);
-    auto output = jogasaki::mock::create_nullable_record<kind::int8, kind::int8>();
-    variable_table_info input_variable_info{create_variable_table_info(destinations(take.columns()), input)};
-    variable_table_info output_variable_info{create_variable_table_info(destinations(target.columns()), output)};
-    variable_table input_variables{input_variable_info};
-    input_variables.store().set(input.ref());
-    variable_table output_variables{output_variable_info};
-
-    std::vector<jogasaki::mock::basic_record> result{};
-    join_find op{
-        relation::join_kind::inner,
-        0,
-        *processor_info_,
-        0,
-        *primary_idx_t1,
-        target.columns(),
-        target.keys(),
-        target.condition(),
-        nullptr,
-        std::make_unique<verifier>([&]() {
-            result.emplace_back(jogasaki::mock::basic_record(output_variables.store().ref(), output.record_meta()));
-        }),
-        &input_variable_info,
-        &output_variable_info
-    };
-
-    put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(1), create_record<kind::int8>(100));
-    put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
-    put(*db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
-    auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    auto match_info =
-        details::match_info_find{op.match_info().key_fields_, details::create_secondary_key_fields(nullptr)};
-    join_find_context ctx(
-        task_ctx.get(),
-        input_variables,
-        output_variables,
-        get_storage(*db_, primary_idx_t1->simple_name()),
-        nullptr,
-        tx.get(),
-        std::make_unique<join_find_matcher>(
-            false,
-            match_info,
-            op.key_columns(),
-            op.value_columns()
-        ),
-        &resource_,
-        &varlen_resource_,
-        nullptr
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        &host_variables
     );
 
-    ASSERT_TRUE(static_cast<bool>(op(ctx)));
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int8, kind::int8>(1, 100)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 100)), result[0]);
     ASSERT_EQ(status::ok, tx->commit());
-    ctx.release();
+}
+
+TEST_F(join_find_test, multiple_types) {
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::float8(), nullity{false}},
+            {"C2", t::int8(), nullity{false}},
+        }},
+        {0}, {}
+    );
+    auto input = create_nullable_record<kind::int4>(20);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto& target = add_join_find_node(setup, {0}, {in[0]});
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::float8, kind::int8>(30, 3.0, 300), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200)), result[0]);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_find_test, left_outer) {
+    // inner join emits only matched rows; left_outer also emits a null-padded
+    // row for inputs that have no match in the table.
+    // semi and anti are not handled in index_join and are not tested here.
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
+    auto input_match    = create_nullable_record<kind::int4>(10);
+    auto input_no_match = create_nullable_record<kind::int4>(30);
+    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto& target = add_join_find_node(setup, {0}, {in[0]});
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 200), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        nullptr, relation::join_kind::left_outer
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 100)), result[0]);
+
+    set_variables(ex.variables_, in, input_no_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, std::nullopt)), result[1]);
+
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_find_test, left_outer_condition_filtered) {
+    // Row is found by key but the condition is false; left_outer emits null-padded output.
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
+
+    auto input = create_nullable_record<kind::int4>(1);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    // condition: C1 == 999 is false for the inserted row (C1=100)
+    auto& target = add_join_find_node(setup, {0}, {in[0]}, false,
+        [](auto const& dests) {
+            return std::make_unique<compare>(
+                comparison_operator::equal,
+                varref{dests[1]},
+                scalar::immediate{takatori::value::int4{999}, takatori::type::int4{}}
+            );
+        });
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 100), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        nullptr, relation::join_kind::left_outer
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, std::nullopt)),
+        result[0]);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_find_test, composite_key_primary) {
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+            {"C2", t::int4(), nullity{false}},
+        }},
+        {0, 1}, {}
+    );
+    auto input = create_nullable_record<kind::int4, kind::int4>(1, 10);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto& target = add_join_find_node(setup, {0, 1}, {in[0], in[1]});
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 20, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 10, 300), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 100)), result[0]);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_find_test, secondary_index_desc) {
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {1}, {desc}
+    );
+    auto input = create_nullable_record<kind::int4, kind::int4>(2, 20);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto& target = add_join_find_node(setup, {1}, {in[1]}, true);
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(100, 10), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(200, 20), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(201, 20), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_find_executor(
+        up, target, *setup.primary_idx, setup.secondary_idx.get(), down,
+        get_storage(*db_, setup.primary_idx->simple_name()),
+        get_storage(*db_, setup.secondary_idx->simple_name()),
+        tx
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(200, 20)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(201, 20)), result[1]);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_find_test, composite_key_secondary_nullable_nonnullable_asc_asc) {
+    do_composite_secondary_key_test(true, asc, asc);
+}
+
+TEST_F(join_find_test, composite_key_secondary_nullable_nonnullable_asc_desc) {
+    do_composite_secondary_key_test(true, asc, desc);
+}
+
+TEST_F(join_find_test, composite_key_secondary_nullable_nonnullable_desc_asc) {
+    do_composite_secondary_key_test(true, desc, asc);
+}
+
+TEST_F(join_find_test, composite_key_secondary_nullable_nonnullable_desc_desc) {
+    do_composite_secondary_key_test(true, desc, desc);
+}
+
+TEST_F(join_find_test, composite_key_secondary_nonnullable_nullable_asc_asc) {
+    do_composite_secondary_key_test(false, asc, asc);
+}
+
+TEST_F(join_find_test, composite_key_secondary_nonnullable_nullable_asc_desc) {
+    do_composite_secondary_key_test(false, asc, desc);
+}
+
+TEST_F(join_find_test, composite_key_secondary_nonnullable_nullable_desc_asc) {
+    do_composite_secondary_key_test(false, desc, asc);
+}
+
+TEST_F(join_find_test, composite_key_secondary_nonnullable_nullable_desc_desc) {
+    do_composite_secondary_key_test(false, desc, desc);
 }
 
 } // namespace jogasaki::executor::process::impl::ops

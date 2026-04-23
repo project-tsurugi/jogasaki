@@ -56,7 +56,7 @@ public:
     }
 
     bool has_find(std::string_view query);
-    bool uses_secondary(std::string_view query);
+    bool has_filter(std::string_view query);
 };
 
 using namespace std::string_view_literals;
@@ -71,10 +71,10 @@ bool sql_find_test::has_find(std::string_view query) {
     return contains(plan, "find") && ! contains(plan, "join_find");
 }
 
-bool sql_find_test::uses_secondary(std::string_view query) {
+bool sql_find_test::has_filter(std::string_view query) {
     std::string plan{};
     explain_statement(query, plan);
-    return contains(plan, "\"i1\"");
+    return contains(plan, "\"filter\"");
 }
 
 TEST_F(sql_find_test, simple) {
@@ -84,6 +84,7 @@ TEST_F(sql_find_test, simple) {
 
     auto query = "SELECT c0, c1 FROM t WHERE c0 = 2";
     EXPECT_TRUE(has_find(query));
+    EXPECT_TRUE(! has_filter(query));
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
@@ -97,44 +98,11 @@ TEST_F(sql_find_test, composite_key) {
 
     auto query = "SELECT c0, c1, c2 FROM t WHERE c0 = 1 AND c1 = 10";
     EXPECT_TRUE(has_find(query));
+    EXPECT_TRUE(! has_filter(query));
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 100)), result[0]);
-}
-
-TEST_F(sql_find_test, secondary_index) {
-    // find via secondary index — equality condition on secondary index column
-    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
-    execute_statement("CREATE INDEX i1 ON t(c1)");
-    execute_statement("INSERT INTO t VALUES (10, 1), (20, 2), (30, 1)");
-
-    auto query = "SELECT c0, c1 FROM t WHERE c1 = 1";
-    EXPECT_TRUE(has_find(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(2, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(30, 1)), result[1]);
-}
-
-TEST_F(sql_find_test, secondary_index_with_null) {
-    // verify that NULL values stored in a secondary-indexed column are not
-    // incorrectly matched when performing a find via the secondary index
-    // (primary key columns cannot be NULL, so secondary index is used here)
-    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
-    execute_statement("CREATE INDEX i1 ON t(c1)");
-    execute_statement("INSERT INTO t VALUES (10, NULL), (11, 1), (12, NULL)");
-
-    auto query = "SELECT c0, c1 FROM t WHERE c1 = 1";
-    EXPECT_TRUE(has_find(query));
-    EXPECT_TRUE(uses_secondary(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(11, 1)), result[0]);
 }
 
 } // namespace jogasaki::testing

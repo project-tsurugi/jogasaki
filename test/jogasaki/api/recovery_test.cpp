@@ -927,4 +927,90 @@ TEST_F(recovery_test, DISABLED_recovery_index_for_missing_table) {
     }
 }
 
+TEST_F(recovery_test, recover_after_accidental_delete_storage) {
+    // When a primary index KVS storage is accidentally deleted (e.g. issue #1483), recovery must skip it cleanly
+    // so that the recovery does not stop halfway.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+
+    {
+        auto storage_key = global::storage_manager()->get_storage_key("T");
+        ASSERT_TRUE(storage_key.has_value());
+        auto stg = db_impl()->kvs_db()->get_storage(*storage_key);
+        ASSERT_TRUE(stg);
+        ASSERT_EQ(status::ok, stg->delete_storage());
+    }
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 20)), result[0]);
+    }
+    execute_statement("DROP TABLE T");
+
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[0]);
+    }
+    execute_statement("DROP TABLE T");
+}
+
+TEST_F(recovery_test, recover_after_accidental_delete_storage_with_secondary_index) {
+    // Same as recover_after_accidental_delete_storage but with a secondary index present.
+    // Only the primary KVS storage is deleted; recovery must handle it being absent without
+    // error, and both the table and index must be fully recreatable.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+
+    {
+        auto primary_key = global::storage_manager()->get_storage_key("T");
+        ASSERT_TRUE(primary_key.has_value());
+        auto primary_stg = db_impl()->kvs_db()->get_storage(*primary_key);
+        ASSERT_TRUE(primary_stg);
+        ASSERT_EQ(status::ok, primary_stg->delete_storage());
+    }
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C1=20", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 20)), result[0]);
+    }
+    execute_statement("DROP TABLE T");
+
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C1=30", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, 30)), result[0]);
+    }
+    execute_statement("DROP TABLE T");
+}
+
 }

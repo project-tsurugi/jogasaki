@@ -27,6 +27,7 @@
 #include <yugawara/binding/extract.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 #include <yugawara/storage/index.h>
+#include <yugawara/storage/index_feature.h>
 
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
@@ -56,7 +57,8 @@ bool drop_index::operator()(request_context& context) const {
     auto& provider = *context.storage_provider();
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->target());
     auto name = i->simple_name();
-    if(! provider.find_index(name)) {
+    if (i->features().contains(yugawara::storage::index_feature::primary) || ! provider.find_index(name)) {
+        // primary index should not be considered as "index" in terms of SQL drop index statement
         set_error_context(
             context,
             error_code::target_not_found_exception,
@@ -98,4 +100,5 @@ bool drop_index::operator()(request_context& context) const {
     smgr.reserve_delete_entry(e.value());
     return true;
 }
-}
+
+}  // namespace jogasaki::executor::common

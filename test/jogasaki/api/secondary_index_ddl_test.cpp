@@ -28,11 +28,13 @@
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/test_utils/secondary_index.h>
 
 #include "api_test_base.h"
@@ -287,6 +289,34 @@ TEST_F(secondary_index_ddl_test, non_nullable_index_key) {
         EXPECT_EQ((mock::create_nullable_record<kind::int4>(10)), entries[0].first);  //TODO fix to create_record
         EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), entries[0].second);
     }
+}
+
+TEST_F(secondary_index_ddl_test, drop_index_on_primary_index) {
+    // Regression: DROP INDEX with a table name must not silently delete the primary index.
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+
+    test_stmt_err("DROP INDEX T", error_code::target_not_found_exception);
+
+    execute_statement("INSERT INTO T (C0, C1) VALUES(1, 10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C1=10", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+    }
+    execute_statement("DROP TABLE T");
+}
+
+TEST_F(secondary_index_ddl_test, create_index_with_table_name) {
+    // verify creating index with existing table name fails because primary index already exists
+    execute_statement("CREATE TABLE T0 (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE T1 (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+
+    test_stmt_err("CREATE INDEX T0 ON T1 (C1)", error_code::symbol_analyze_exception);
+
+    execute_statement("DROP TABLE T0");
+    execute_statement("DROP TABLE T1");
 }
 
 }

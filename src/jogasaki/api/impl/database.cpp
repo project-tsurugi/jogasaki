@@ -1326,6 +1326,17 @@ status database::recover_index_metadata(  //NOLINT(readability-function-cognitiv
             // This is ok because the secondary indices are not used affter recovery and
             // there is no need to check ref count of primary entry.
             primary_entry = global::storage_manager()->find_by_name(primary_name);
+
+            // Verify that the primary table is already recovered into tables_.
+            // If the primary storage was accidentally deleted (e.g. issue #1483), the primary table
+            // will be absent and deserializing the secondary would fail. Silently skip the orphaned secondary then.
+            // TODO gc the orphaned secondary index
+            if(! idef.delete_reserved() && ! tables_->find_table(primary_name)) {
+                // using VLOG since there is no debug level logging for LOG
+                VLOG_LP(log_debug) << "Skipping secondary index metadata recovery due to missing primary table \""
+                                    << primary_name << "\": " << idef.name().element_name();
+                continue;
+            }
         }
 
         if(! global::storage_manager()->add_entry(

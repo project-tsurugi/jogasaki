@@ -173,3 +173,9 @@ Here `<build_type>` is one of `debug`, `relwithdebinfo` or `release`. `<sharksfi
 
   - Do not guess about which rules are optional: **all listed checks are mandatory**.
   - If Copilot cannot generate code that satisfies these checks, insert a `// TODO: fix clang-tidy warning` marker rather than violating the rules.
+
+- Test code comment policy:
+
+  - Avoid comments that restate what the code already clearly expresses.
+  - Use comments only to explain non-obvious intent, historical context, edge cases, or regression reasons.
+  - Prefer expressive test names and a clear Arrange/Act/Assert structure over explanatory comments.

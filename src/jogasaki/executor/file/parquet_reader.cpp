@@ -26,10 +26,20 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <vector>
+#include <arrow/io/file.h>
+#include <arrow/util/logging.h>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <glog/logging.h>
+#include <parquet/api/reader.h>
+#include <parquet/api/writer.h>
+#include <parquet/column_reader.h>
+#include <parquet/file_reader.h>
 #include <parquet/metadata.h>
+#include <parquet/schema.h>
 #include <parquet/types.h>
 
 #include <takatori/datetime/time_of_day.h>
@@ -51,6 +61,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/octet_field_option.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/assert.h>
@@ -61,6 +72,52 @@ namespace jogasaki::executor::file {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
 using takatori::util::unsafe_downcast;
+
+class parquet_reader::impl {
+public:
+    impl() = default;
+
+    ~impl() noexcept {
+        close();
+    }
+
+    impl(impl const&) = delete;
+    impl& operator=(impl const&) = delete;
+    impl(impl&&) noexcept = default;
+    impl& operator=(impl&&) noexcept = default;
+
+    bool next(accessor::record_ref& ref);
+    bool close();
+    [[nodiscard]] std::string path() const noexcept {
+        return path_.string();
+    }
+    [[nodiscard]] std::size_t read_count() const noexcept {
+        return read_count_;
+    }
+    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta() {
+        return meta_;
+    }
+    [[nodiscard]] std::size_t row_group_count() const noexcept {
+        return row_group_count_;
+    }
+
+    bool init(std::string_view path, reader_option const* opt, std::size_t row_group_index);
+
+private:
+
+    maybe_shared_ptr<meta::external_record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta const> parameter_meta_{};
+    std::unique_ptr<parquet::ParquetFileReader> file_reader_{};
+    std::shared_ptr<parquet::RowGroupReader> row_group_reader_{};
+    std::vector<std::shared_ptr<parquet::ColumnReader>> column_readers_{};
+    std::vector<parquet::ColumnDescriptor const*> columns_{};
+    boost::filesystem::path path_{};
+    std::size_t read_count_{};
+    data::aligned_buffer buf_{};
+    std::vector<std::size_t> parameter_to_parquet_field_{};
+    std::size_t row_group_count_{};
+    std::size_t row_group_index_{};
+};
 
 template <class T, class Reader>
 static std::enable_if_t<! std::is_same_v<T, std::int8_t>, T>
@@ -102,7 +159,6 @@ read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool&
         nodata = true;
         return {};
     }
-    // T value{};
     bool value{};
     rows_read = r->ReadBatch(1, &definition_level, nullptr, &value, &values_read);
     if(rows_read == 1) {
@@ -223,7 +279,7 @@ read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(
     std::abort();
 }
 
-bool parquet_reader::next(accessor::record_ref& ref) {
+bool parquet_reader::impl::next(accessor::record_ref& ref) {
     ref = accessor::record_ref{buf_.data(), buf_.capacity()};
     try {
         auto sz = parameter_to_parquet_field_.size();
@@ -264,7 +320,7 @@ bool parquet_reader::next(accessor::record_ref& ref) {
     return true;
 }
 
-bool parquet_reader::close() {
+bool parquet_reader::impl::close() {
     if(file_reader_) {
         try {
             file_reader_->Close();
@@ -277,18 +333,6 @@ bool parquet_reader::close() {
     return true;
 }
 
-std::string parquet_reader::path() const noexcept {
-    return path_.string();
-}
-
-std::size_t parquet_reader::read_count() const noexcept {
-    return read_count_;
-}
-
-maybe_shared_ptr<meta::external_record_meta> const& parquet_reader::meta() {
-    return meta_;
-}
-
 static reader_option create_default(meta::record_meta const& meta) {
     std::vector<reader_field_locator> locs{};
     locs.reserve(meta.field_count());
@@ -296,18 +340,6 @@ static reader_option create_default(meta::record_meta const& meta) {
         locs.emplace_back("", i);
     }
     return {std::move(locs), meta};
-}
-
-std::shared_ptr<parquet_reader> parquet_reader::open(
-    std::string_view path,
-    reader_option const* opt,
-    std::size_t row_group_index
-) {
-    auto ret = std::make_shared<parquet_reader>();
-    if(ret->init(path, opt, row_group_index)) {
-        return ret;
-    }
-    return {};
 }
 
 static inline constexpr std::string_view to_string_view(parquet::Type::type value) {
@@ -599,7 +631,7 @@ static void dump_file_metadata(parquet::FileMetaData& pmeta) {
     VLOG_LP(log_debug) << "*** end dump metadata for parquet file ***";
 }
 
-bool parquet_reader::init(
+bool parquet_reader::impl::init(
     std::string_view path,
     reader_option const* opt,
     std::size_t row_group_index
@@ -652,12 +684,48 @@ bool parquet_reader::init(
     return true;
 }
 
-std::size_t parquet_reader::row_group_count() const noexcept {
-    return row_group_count_;
+parquet_reader::parquet_reader() :
+    impl_(std::make_unique<impl>())
+{}
+
+parquet_reader::~parquet_reader() noexcept = default;
+parquet_reader::parquet_reader(parquet_reader&& other) noexcept = default;
+parquet_reader& parquet_reader::operator=(parquet_reader&& other) noexcept = default;
+
+bool parquet_reader::next(accessor::record_ref& ref) {
+    return impl_->next(ref);
 }
 
-parquet_reader::~parquet_reader() noexcept {
-    close();
+bool parquet_reader::close() {
+    return impl_->close();
+}
+
+std::string parquet_reader::path() const noexcept {
+    return impl_->path();
+}
+
+std::size_t parquet_reader::read_count() const noexcept {
+    return impl_->read_count();
+}
+
+maybe_shared_ptr<meta::external_record_meta> const& parquet_reader::meta() {
+    return impl_->meta();
+}
+
+std::size_t parquet_reader::row_group_count() const noexcept {
+    return impl_->row_group_count();
+}
+
+std::shared_ptr<parquet_reader> parquet_reader::open(
+    std::string_view path,
+    reader_option const* opt,
+    std::size_t row_group_index
+) {
+    auto ret = std::make_shared<parquet_reader>();
+    if(ret->impl_->init(path, opt, row_group_index)) {
+        return ret;
+    }
+    return {};
 }
 
 }  // namespace jogasaki::executor::file

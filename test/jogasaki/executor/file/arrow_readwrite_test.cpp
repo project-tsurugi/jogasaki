@@ -952,19 +952,19 @@ void arrow_readwrite_test::verify_single_field_record_size(mock::basic_record co
     {
         auto reader = arrow_reader::open(p100.string());
         ASSERT_TRUE(reader);
-        std::int64_t sz{};
-        if(auto res = arrow::ipc::GetRecordBatchSize(*reader->record_batch(), &sz); res.ok()) {
-            std::cerr << "record batch size with 100 recs:" << sz;
-            record_batch_size_100 = sz;
+        auto sz = reader->record_batch_size();
+        if(sz) {
+            std::cerr << "record batch size with 100 recs:" << *sz;
+            record_batch_size_100 = *sz;
         }
     }
     {
         auto reader = arrow_reader::open(p200.string());
         ASSERT_TRUE(reader);
-        std::int64_t sz{};
-        if(auto res = arrow::ipc::GetRecordBatchSize(*reader->record_batch(), &sz); res.ok()) {
-            std::cerr << "record batch size with 200 recs:" << sz;
-            record_batch_size_200 = sz;
+        auto sz = reader->record_batch_size();
+        if(sz) {
+            std::cerr << "record batch size with 200 recs:" << *sz;
+            record_batch_size_200 = *sz;
         }
     }
     EXPECT_EQ(expected_diff_in_bytes, (record_batch_size_200 - record_batch_size_100) / 100);

@@ -16,13 +16,16 @@
 #include "arrow_writer.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <optional>
 #include <ostream>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <variant>
+#include <vector>
 #include <arrow/array/builder_base.h>
 #include <arrow/array/builder_binary.h>
 #include <arrow/array/builder_decimal.h>
@@ -30,13 +33,18 @@
 #include <arrow/io/file.h>
 #include <arrow/ipc/options.h>
 #include <arrow/ipc/type_fwd.h>
+#include <arrow/ipc/writer.h>
 #include <arrow/memory_pool.h>
 #include <arrow/result.h>
 #include <arrow/status.h>
 #include <arrow/table.h>
 #include <arrow/type.h>
+#include <arrow/type_fwd.h>
 #include <arrow/util/basic_decimal.h>
 #include <arrow/util/decimal.h>
+#include <arrow/util/logging.h>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <glog/logging.h>
 
 #include <takatori/datetime/time_of_day.h>
@@ -45,7 +53,9 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
 #include <jogasaki/executor/file/utils.h>
@@ -56,6 +66,8 @@
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
@@ -66,10 +78,80 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
-arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta, arrow_writer_option opt) :
-    meta_(std::move(meta)),
-    option_(std::move(opt))
-{}
+class arrow_writer::impl {
+public:
+    impl() = default;
+
+    explicit impl(maybe_shared_ptr<meta::external_record_meta> meta, arrow_writer_option opt) :
+        meta_(std::move(meta)),
+        option_(std::move(opt))
+    {}
+
+    ~impl() noexcept {
+        close();
+    }
+
+    impl(impl const&) = delete;
+    impl& operator=(impl const&) = delete;
+    impl(impl&&) noexcept = default;
+    impl& operator=(impl&&) noexcept = default;
+
+    bool write(accessor::record_ref ref);
+    bool close();
+    [[nodiscard]] std::string path() const noexcept {
+        return path_.string();
+    }
+    [[nodiscard]] std::size_t write_count() const noexcept {
+        return write_count_;
+    }
+    void new_row_group();
+    [[nodiscard]] std::size_t calculated_batch_size() const noexcept {
+        return calculated_batch_size_;
+    }
+    [[nodiscard]] std::size_t row_group_max_records() const noexcept {
+        return calculated_batch_size_;
+    }
+
+    bool init(std::string_view path);
+
+private:
+
+    std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::writer_column_option>> create_schema();
+    bool write_int1(std::size_t colidx, std::int32_t v);
+    bool write_int2(std::size_t colidx, std::int32_t v);
+    bool write_int4(std::size_t colidx, std::int32_t v);
+    bool write_int8(std::size_t colidx, std::int64_t v);
+    bool write_float4(std::size_t colidx, float v);
+    bool write_float8(std::size_t colidx, double v);
+    bool write_character(std::size_t colidx, accessor::text v, details::writer_column_option const& colopt);
+    bool write_octet(std::size_t colidx, accessor::binary v, details::writer_column_option const& colopt);
+    bool write_decimal(
+        std::size_t colidx,
+        runtime_t<meta::field_type_kind::decimal> v,
+        details::writer_column_option const& colopt = {}
+    );
+    bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v);
+    bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v);
+    bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v);
+    void finish();
+
+    void calculate_batch_size();
+    std::size_t estimate_avg_record_size();
+
+    maybe_shared_ptr<meta::external_record_meta> meta_{};
+    arrow_writer_option option_{};
+    std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
+    std::shared_ptr<arrow::ipc::RecordBatchWriter> record_batch_writer_{};
+    std::shared_ptr<arrow::Schema> schema_{};
+
+    std::vector<std::shared_ptr<arrow::ArrayBuilder>> array_builders_{};
+    std::vector<std::shared_ptr<arrow::Array>> arrays_{};
+    boost::filesystem::path path_{};
+    std::size_t write_count_{};
+    std::vector<details::writer_column_option> column_options_{};
+    std::size_t calculated_batch_size_{};
+    std::size_t row_group_write_count_{};
+};
 
 static std::shared_ptr<arrow::ArrayBuilder> create_array_builder(
     meta::field_type const& type,
@@ -107,10 +189,7 @@ static std::shared_ptr<arrow::ArrayBuilder> create_array_builder(
     std::abort();
 }
 
-/**
- * @throw std::domain_error if arrow returns error
-*/
-void arrow_writer::finish() {
+void arrow_writer::impl::finish() {
     arrays_.clear();
     arrays_.reserve(meta_->field_count());
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
@@ -131,7 +210,7 @@ void arrow_writer::finish() {
     }
 }
 
-void arrow_writer::new_row_group() {
+void arrow_writer::impl::new_row_group() {
     if(! array_builders_.empty()) {
         finish();
     }
@@ -173,7 +252,7 @@ static arrow::ipc::IpcWriteOptions create_options(arrow_writer_option const& in)
     return options;
 }
 
-std::size_t arrow_writer::estimate_avg_record_size() {
+std::size_t arrow_writer::impl::estimate_avg_record_size() {
     std::size_t sz{};
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
         using k = meta::field_type_kind;
@@ -209,7 +288,7 @@ std::size_t arrow_writer::estimate_avg_record_size() {
     return sz;
 }
 
-void arrow_writer::calculate_batch_size() {
+void arrow_writer::impl::calculate_batch_size() {
     constexpr static std::size_t default_batch_in_bytes = 64UL * 1024UL * 1024UL;
     std::size_t avg_record_sz = estimate_avg_record_size();
     std::size_t size_from_bytes = option_.record_batch_in_bytes() / avg_record_sz;
@@ -230,11 +309,7 @@ void arrow_writer::calculate_batch_size() {
     calculated_batch_size_ = std::min(size_from_bytes, size);
 }
 
-std::size_t arrow_writer::row_group_max_records() const noexcept {
-    return calculated_batch_size_;
-}
-
-bool arrow_writer::init(std::string_view path) {
+bool arrow_writer::impl::init(std::string_view path) {
     try {
         path_ = std::string{path};
         {
@@ -273,7 +348,7 @@ bool arrow_writer::init(std::string_view path) {
     return true;
 }
 
-bool arrow_writer::write(accessor::record_ref ref) {
+bool arrow_writer::impl::write(accessor::record_ref ref) {
     try {
         using k = meta::field_type_kind;
         if(row_group_write_count_ >= calculated_batch_size_) {
@@ -315,50 +390,43 @@ bool arrow_writer::write(accessor::record_ref ref) {
     return true;
 }
 
-template <class T>
-static bool write_null(T* writer) {
-    int16_t definition_level = 0;
-    writer->WriteBatch(1, &definition_level, nullptr, nullptr);
-    return true;
-}
-
-bool arrow_writer::write_int1(std::size_t colidx, int32_t v) {
+bool arrow_writer::impl::write_int1(std::size_t colidx, int32_t v) {
     auto& builder = static_cast<arrow::Int8Builder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(static_cast<std::int8_t>(v));
     return true;
 }
 
-bool arrow_writer::write_int2(std::size_t colidx, int32_t v) {
+bool arrow_writer::impl::write_int2(std::size_t colidx, int32_t v) {
     auto& builder = static_cast<arrow::Int16Builder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(static_cast<std::int16_t>(v));
     return true;
 }
 
-bool arrow_writer::write_int4(std::size_t colidx, int32_t v) {
+bool arrow_writer::impl::write_int4(std::size_t colidx, int32_t v) {
     auto& builder = static_cast<arrow::Int32Builder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(v);
     return true;
 }
 
-bool arrow_writer::write_int8(std::size_t colidx, std::int64_t v) {
+bool arrow_writer::impl::write_int8(std::size_t colidx, std::int64_t v) {
     auto& builder = static_cast<arrow::Int64Builder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(v);
     return true;
 }
 
-bool arrow_writer::write_float4(std::size_t colidx, float v) {
+bool arrow_writer::impl::write_float4(std::size_t colidx, float v) {
     auto& builder = static_cast<arrow::FloatBuilder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(v);
     return true;
 }
 
-bool arrow_writer::write_float8(std::size_t colidx, double v) {
+bool arrow_writer::impl::write_float8(std::size_t colidx, double v) {
     auto& builder = static_cast<arrow::DoubleBuilder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(v);
     return true;
 }
 
-bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details::writer_column_option const& colopt) {
+bool arrow_writer::impl::write_character(std::size_t colidx, accessor::text v, details::writer_column_option const& colopt) {
     if(colopt.varying_ || ! option_.use_fixed_size_binary_for_char()) {
         auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
@@ -378,7 +446,7 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
     return true;
 }
 
-bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::writer_column_option const& colopt) {
+bool arrow_writer::impl::write_octet(std::size_t colidx, accessor::binary v, details::writer_column_option const& colopt) {
     if(colopt.varying_) {
         auto& builder = static_cast<arrow::BinaryBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
@@ -398,7 +466,7 @@ bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::
     return true;
 }
 
-bool arrow_writer::write_decimal(
+bool arrow_writer::impl::write_decimal(
     std::size_t colidx,
     runtime_t<meta::field_type_kind::decimal> v,
     details::writer_column_option const& colopt
@@ -413,28 +481,28 @@ bool arrow_writer::write_decimal(
     return true;
 }
 
-bool arrow_writer::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v) {
+bool arrow_writer::impl::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v) {
     auto d = static_cast<std::int32_t>(v.days_since_epoch());
     auto& builder = static_cast<arrow::Date32Builder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(d);
     return true;
 }
 
-bool arrow_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v) {
+bool arrow_writer::impl::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v) {
     auto ns = static_cast<std::int64_t>(v.time_since_epoch().count());
     auto& builder = static_cast<arrow::Time64Builder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(ns);
     return true;
 }
 
-bool arrow_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v) {
+bool arrow_writer::impl::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v) {
     auto value = value_in_time_unit(v, option_.time_unit());
     auto& builder = static_cast<arrow::TimestampBuilder&>(*array_builders_[colidx]);  //NOLINT
     (void) builder.Append(value);
     return true;
 }
 
-bool arrow_writer::close() {
+bool arrow_writer::impl::close() {
     if(! array_builders_.empty()) {
         try {
             finish();
@@ -455,18 +523,6 @@ bool arrow_writer::close() {
     return true;
 }
 
-std::shared_ptr<arrow_writer> arrow_writer::open(
-    maybe_shared_ptr<meta::external_record_meta> meta,
-    std::string_view path,
-    arrow_writer_option opt
-) {
-    auto ret = std::make_shared<arrow_writer>(std::move(meta), std::move(opt));
-    if(ret->init(path)) {
-        return ret;
-    }
-    return {};
-}
-
 static arrow::TimeUnit::type arrow_time_unit_from(time_unit_kind kind) {
     using k = time_unit_kind;
     using t = arrow::TimeUnit::type;
@@ -480,7 +536,7 @@ static arrow::TimeUnit::type arrow_time_unit_from(time_unit_kind kind) {
     std::abort();
 }
 
-std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::writer_column_option>> arrow_writer::create_schema() {  //NOLINT(readability-function-cognitive-complexity)
+std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::writer_column_option>> arrow_writer::impl::create_schema() {  //NOLINT(readability-function-cognitive-complexity)
     std::vector<std::shared_ptr<arrow::Field>> fields{};
     fields.reserve(meta_->field_count());
     std::vector<details::writer_column_option> options{};
@@ -584,20 +640,56 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::writer_column_opt
     };
 }
 
+arrow_writer::arrow_writer() :
+    impl_(std::make_unique<impl>())
+{}
+
+arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta, arrow_writer_option opt) :
+    impl_(std::make_unique<impl>(std::move(meta), std::move(opt)))
+{}
+
+arrow_writer::~arrow_writer() noexcept = default;
+arrow_writer::arrow_writer(arrow_writer&& other) noexcept = default;
+arrow_writer& arrow_writer::operator=(arrow_writer&& other) noexcept = default;
+
+bool arrow_writer::write(accessor::record_ref ref) {
+    return impl_->write(ref);
+}
+
+bool arrow_writer::close() {
+    return impl_->close();
+}
+
 std::string arrow_writer::path() const noexcept {
-    return path_.string();
+    return impl_->path();
 }
 
 std::size_t arrow_writer::write_count() const noexcept {
-    return write_count_;
+    return impl_->write_count();
 }
 
-arrow_writer::~arrow_writer() noexcept {
-    close();
+void arrow_writer::new_row_group() {
+    impl_->new_row_group();
 }
 
 std::size_t arrow_writer::calculated_batch_size() const noexcept {
-    return calculated_batch_size_;
+    return impl_->calculated_batch_size();
+}
+
+std::size_t arrow_writer::row_group_max_records() const noexcept {
+    return impl_->row_group_max_records();
+}
+
+std::shared_ptr<arrow_writer> arrow_writer::open(
+    maybe_shared_ptr<meta::external_record_meta> meta,
+    std::string_view path,
+    arrow_writer_option opt
+) {
+    auto ret = std::make_shared<arrow_writer>(std::move(meta), std::move(opt));
+    if(ret->impl_->init(path)) {
+        return ret;
+    }
+    return {};
 }
 
 }  // namespace jogasaki::executor::file

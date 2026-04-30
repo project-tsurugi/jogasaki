@@ -26,16 +26,25 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <vector>
 #include <arrow/array.h>
 #include <arrow/array/array_base.h>
+#include <arrow/io/file.h>
+#include <arrow/ipc/reader.h>
+#include <arrow/ipc/writer.h>
+#include <arrow/record_batch.h>
 #include <arrow/result.h>
 #include <arrow/status.h>
 #include <arrow/type.h>
+#include <arrow/type_fwd.h>
 #include <arrow/type_traits.h>
 #include <arrow/util/basic_decimal.h>
 #include <arrow/util/decimal.h>
+#include <arrow/util/logging.h>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <glog/logging.h>
 
 #include <takatori/datetime/time_of_day.h>
@@ -48,6 +57,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/file/arrow_reader_column_option.h>
 #include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -57,6 +67,8 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/octet_field_option.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/assert.h>
@@ -67,6 +79,57 @@ namespace jogasaki::executor::file {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
 using takatori::util::throw_exception;
+
+class arrow_reader::impl {
+public:
+    impl() = default;
+
+    ~impl() noexcept {
+        close();
+    }
+
+    impl(impl const&) = delete;
+    impl& operator=(impl const&) = delete;
+    impl(impl&&) noexcept = default;
+    impl& operator=(impl&&) noexcept = default;
+
+    bool next(accessor::record_ref& ref);
+    bool close();
+    [[nodiscard]] std::string path() const noexcept {
+        return path_.string();
+    }
+    [[nodiscard]] std::size_t read_count() const noexcept {
+        return read_count_;
+    }
+    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta() {
+        return meta_;
+    }
+    [[nodiscard]] std::size_t row_group_count() const noexcept {
+        return row_group_count_;
+    }
+    [[nodiscard]] std::optional<std::size_t> record_batch_size() const noexcept;
+
+    bool init(std::string_view path, reader_option const* opt, std::size_t row_group_index);
+
+private:
+
+    maybe_shared_ptr<meta::external_record_meta> meta_{};
+    maybe_shared_ptr<meta::record_meta const> parameter_meta_{};
+
+    std::shared_ptr<arrow::io::ReadableFile> input_file_{};
+    std::shared_ptr<arrow::ipc::RecordBatchFileReader> file_reader_{};
+    std::shared_ptr<arrow::RecordBatch> record_batch_{};
+
+    std::vector<details::arrow_reader_column_option> column_options_{};
+    boost::filesystem::path path_{};
+    std::size_t read_count_{};
+    data::aligned_buffer buf_{};
+    std::vector<std::size_t> parameter_to_field_{};
+    std::size_t row_group_count_{};
+    std::size_t row_group_index_{};
+
+    std::size_t offset_{};
+};
 
 template <class T, arrow::Type::type Typeid>
 static void validate_ctype() {
@@ -173,7 +236,7 @@ read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_
     std::abort();
 }
 
-bool arrow_reader::next(accessor::record_ref& ref) {
+bool arrow_reader::impl::next(accessor::record_ref& ref) {
     ref = accessor::record_ref{buf_.data(), buf_.capacity()};
     if(static_cast<std::int64_t>(offset_) >= record_batch_->num_rows()) {
         return false;
@@ -217,7 +280,7 @@ bool arrow_reader::next(accessor::record_ref& ref) {
     return true;
 }
 
-bool arrow_reader::close() {
+bool arrow_reader::impl::close() {
     // FIXME need closing arrow ipc files/streams?
     if(input_file_) {
         try {
@@ -235,16 +298,16 @@ bool arrow_reader::close() {
     return true;
 }
 
-std::string arrow_reader::path() const noexcept {
-    return path_.string();
-}
-
-std::size_t arrow_reader::read_count() const noexcept {
-    return read_count_;
-}
-
-maybe_shared_ptr<meta::external_record_meta> const& arrow_reader::meta() {
-    return meta_;
+std::optional<std::size_t> arrow_reader::impl::record_batch_size() const noexcept {
+    if(! record_batch_) {
+        return std::nullopt;
+    }
+    std::int64_t sz{};
+    auto res = arrow::ipc::GetRecordBatchSize(*record_batch_, &sz);
+    if(! res.ok() || sz < 0) {
+        return std::nullopt;
+    }
+    return static_cast<std::size_t>(sz);
 }
 
 static reader_option create_default(meta::record_meta const& meta) {
@@ -254,18 +317,6 @@ static reader_option create_default(meta::record_meta const& meta) {
         locs.emplace_back("", i);
     }
     return {std::move(locs), meta};
-}
-
-std::shared_ptr<arrow_reader> arrow_reader::open(
-    std::string_view path,
-    reader_option const* opt,
-    std::size_t row_group_index
-) {
-    auto ret = std::make_shared<arrow_reader>();
-    if(ret->init(path, opt, row_group_index)) {
-        return ret;
-    }
-    return {};
 }
 
 static time_unit_kind time_unit_from(arrow::TimeUnit::type arg) {
@@ -490,10 +541,6 @@ static bool validate_parameter_mapping(
 
 static void dump_file_metadata(arrow::ipc::RecordBatchFileReader& reader) {
     VLOG_LP(log_debug) << "*** begin dump metadata for arrow file ***";
-    // VLOG_LP(log_debug) << "metadata version:" << reader.version();
-    // ARROW_ASSIGN_OR_RAISE(auto rows, reader.CountRows());
-    // VLOG_LP(log_debug) << "num_rows:" << rows;
-
     VLOG_LP(log_debug) << "num_record_batches:" << reader.num_record_batches();
 
     auto& schema = *reader.schema();
@@ -508,7 +555,7 @@ static void dump_file_metadata(arrow::ipc::RecordBatchFileReader& reader) {
     VLOG_LP(log_debug) << "*** end dump metadata for arrow file ***";
 }
 
-bool arrow_reader::init(
+bool arrow_reader::impl::init(
     std::string_view path,
     reader_option const* opt,
     std::size_t row_group_index
@@ -571,7 +618,6 @@ bool arrow_reader::init(
             return false;
         }
 
-        // columns_ = create_columns_meta(*file_metadata);
         buf_ = data::aligned_buffer{parameter_meta_->record_size(), parameter_meta_->record_alignment()};
         buf_.resize(parameter_meta_->record_size());
 
@@ -592,16 +638,52 @@ bool arrow_reader::init(
     return true;
 }
 
+arrow_reader::arrow_reader() :
+    impl_(std::make_unique<impl>())
+{}
+
+arrow_reader::~arrow_reader() noexcept = default;
+arrow_reader::arrow_reader(arrow_reader&& other) noexcept = default;
+arrow_reader& arrow_reader::operator=(arrow_reader&& other) noexcept = default;
+
+bool arrow_reader::next(accessor::record_ref& ref) {
+    return impl_->next(ref);
+}
+
+bool arrow_reader::close() {
+    return impl_->close();
+}
+
+std::string arrow_reader::path() const noexcept {
+    return impl_->path();
+}
+
+std::size_t arrow_reader::read_count() const noexcept {
+    return impl_->read_count();
+}
+
+maybe_shared_ptr<meta::external_record_meta> const& arrow_reader::meta() {
+    return impl_->meta();
+}
+
 std::size_t arrow_reader::row_group_count() const noexcept {
-    return row_group_count_;
+    return impl_->row_group_count();
 }
 
-arrow_reader::~arrow_reader() noexcept {
-    close();
+std::optional<std::size_t> arrow_reader::record_batch_size() const noexcept {
+    return impl_->record_batch_size();
 }
 
-std::shared_ptr<arrow::RecordBatch> const& arrow_reader::record_batch() const noexcept {
-    return record_batch_;
+std::shared_ptr<arrow_reader> arrow_reader::open(
+    std::string_view path,
+    reader_option const* opt,
+    std::size_t row_group_index
+) {
+    auto ret = std::make_shared<arrow_reader>();
+    if(ret->impl_->init(path, opt, row_group_index)) {
+        return ret;
+    }
+    return {};
 }
 
 }  // namespace jogasaki::executor::file

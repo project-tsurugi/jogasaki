@@ -1334,7 +1334,9 @@ status database::recover_index_metadata(  //NOLINT(readability-function-cognitiv
             if(! idef.delete_reserved() && ! tables_->find_table(primary_name)) {
                 // using VLOG since there is no debug level logging for LOG
                 VLOG_LP(log_debug) << "Skipping secondary index metadata recovery due to missing primary table \""
-                                    << primary_name << "\": " << idef.name().element_name();
+                                    << primary_name << "\" storage_key:\""
+                                    << utils::binary_printer(n).cpp_literal(true) << "\" (v=" << v << ") : "
+                                    << utils::to_debug_string(idef);
                 continue;
             }
         }

@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <optional>
 #include <string>
 
 namespace plugin::udf {
@@ -24,7 +25,8 @@ class udf_config {
     udf_config() = default;
     udf_config(udf_config const&) = default;
     udf_config(udf_config&&) noexcept = default;
-    udf_config(bool enabled, std::string endpoint, std::string transport, bool secure);
+    udf_config(bool enabled, std::string endpoint, std::string transport, bool secure,
+        std::optional<std::string> grpc_server_endpoint = std::nullopt);
     udf_config& operator=(udf_config const&) = default;
     udf_config& operator=(udf_config&&) noexcept = default;
     ~udf_config() = default;
@@ -34,12 +36,14 @@ class udf_config {
     [[nodiscard]] std::string const& endpoint() const noexcept;
     [[nodiscard]] std::string const& transport() const noexcept;
     [[nodiscard]] bool secure() const noexcept;
+    [[nodiscard]] std::optional<std::string> const& grpc_server_endpoint() const noexcept;
 
   private:
     bool _enabled{true};
     std::string _endpoint{"dns:///localhost:50051"};
     std::string _transport{"stream"};
     bool _secure{false};
+    std::optional<std::string> _grpc_server_endpoint{};
 };
 
 } // namespace plugin::udf

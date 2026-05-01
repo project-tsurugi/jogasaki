@@ -1060,6 +1060,26 @@ data::any build_udf_response(plugin::udf::generic_record_impl& response, evaluat
     ctx.add_error({error_kind::invalid_input_value, msg});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
+blob_grpc_metadata make_blob_grpc_metadata(
+    std::size_t session_id, plugin::udf::udf_config const* cfg) {
+    std::string transport = cfg ? cfg->transport() : std::string{"stream"};
+
+    std::string blob_endpoint = std::string(global::config_pool()->grpc_server_endpoint());
+
+    if (cfg) {
+        auto const& ep = cfg->grpc_server_endpoint();
+        if (ep.has_value() && !ep->empty()) { blob_endpoint = *ep; }
+    }
+
+    return blob_grpc_metadata{
+        session_id,
+        std::move(blob_endpoint),
+        global::config_pool()->grpc_server_secure(),
+        std::move(transport),
+        1024ULL * 1024ULL,
+    };
+}
+
 /**
  * @brief Create callable for server-streaming UDF (table-valued function).
  *
@@ -1114,11 +1134,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs);
         auto session_id = bs->get_or_create()->session_id();
-        std::string transport = (cfg ? cfg->transport() : std::string{"stream"});
-        blob_grpc_metadata metadata{session_id,
-            std::string(global::config_pool()->grpc_server_endpoint()),
-            global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
-
+        auto metadata = make_blob_grpc_metadata(session_id, cfg.get());
         if (!metadata.apply(context->grpc_context())) {
             std::string msg = "Failed to apply gRPC metadata";
             VLOG_LP(log_error) << msg;
@@ -1179,14 +1195,10 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         }
         plugin::udf::generic_record_impl response;
         plugin::udf::generic_client_context context;
-        // TODO: make these metadata configurable
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs);
         auto session_id = bs->get_or_create()->session_id();
-        std::string transport = (cfg ? cfg->transport() : std::string{"stream"});
-        blob_grpc_metadata metadata{session_id,
-            std::string(global::config_pool()->grpc_server_endpoint()),
-            global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
+        auto metadata = make_blob_grpc_metadata(session_id, cfg.get());
         if (!metadata.apply(context.grpc_context())) {
             std::string msg = "Failed to apply gRPC metadata";
             VLOG_LP(log_error) << msg;

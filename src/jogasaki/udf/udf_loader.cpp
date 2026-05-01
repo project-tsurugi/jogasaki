@@ -309,8 +309,12 @@ std::optional<udf_config> udf_loader::parse_ini(
                 return std::nullopt;
             }
         }
-
-        return udf_config(enabled, std::move(endpoint), std::move(transport), secure);
+        std::optional<std::string> grpc_server_endpoint{};
+        if (auto opt = pt.get_optional<std::string>("grpc_server.endpoint")) {
+            grpc_server_endpoint = *opt;
+        }
+        return udf_config(enabled, std::move(endpoint), std::move(transport), secure,
+            std::move(grpc_server_endpoint));
 
     } catch (std::exception const& e) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());

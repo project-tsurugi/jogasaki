@@ -1195,7 +1195,6 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         }
         plugin::udf::generic_record_impl response;
         plugin::udf::generic_client_context context;
-        // TODO: make these metadata configurable
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs);
         auto session_id = bs->get_or_create()->session_id();

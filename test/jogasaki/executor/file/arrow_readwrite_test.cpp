@@ -24,8 +24,6 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
-#include <arrow/ipc/writer.h>
-#include <arrow/status.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/move/utility_core.hpp>

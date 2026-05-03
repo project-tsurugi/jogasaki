@@ -496,4 +496,78 @@ TEST_F(transaction_fail_ddl_test, drop_table_missing_sequence_with_restart) {
     ASSERT_EQ(0, seq_count());
 }
 
+TEST_F(transaction_fail_ddl_test, truncate_restart_aborted) {
+    // TRUNCATE TABLE RESTART IDENTITY reassigns sequence definition_ids and seq_ids.
+    // The old sharksfin sequence is deleted non-transactionally during RESTART.  If the
+    // truncate tx is then aborted:
+    //   - the system table is rolled back (old def_id → old seq_id is restored), but
+    //   - the old sharksfin sequence no longer exists.
+    //
+    // Without db restart: DML works because the in-memory sequence state was updated to
+    // the new seq_id (created during RESTART), which survives the abort.
+    //
+    // After db restart: recovery reads the system table (old def_id → old seq_id) and
+    // calls read_sequence(old_seq_id), which returns err_not_found.  The sequence manager
+    // handles this gracefully by re-initialising the sequence from its initial_value.
+    // DML therefore succeeds, but the sequence has been silently reset to initial_value
+    // even though the TRUNCATE tx was aborted.  This is a known limitation: the
+    // non-transactional deletion of the sharksfin sequence cannot be rolled back.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback by abort";
+    }
+    api::transaction_option opts{};
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    ASSERT_EQ(1, seq_count());
+    auto seqs_before = seq_list();
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c1 FROM t ORDER BY c0", result);
+        ASSERT_EQ(2, result.size());
+    }
+    {
+        auto tx = utils::create_transaction(*db_, opts);
+        execute_statement("TRUNCATE TABLE t RESTART IDENTITY", *tx);
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    // System table is rolled back → seq count unchanged, old entry restored.
+    ASSERT_EQ(1, seq_count());
+    // But the old sharksfin sequence was deleted non-transactionally and is gone.
+    ASSERT_TRUE(! exists_seq(seqs_before[0]));
+
+    // Without db restart, DML works: in-memory sequence state was updated to the new
+    // seq_id during truncate and survives the abort.  The sequence was reset by RESTART
+    // so values start over from 1.
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    execute_statement("INSERT INTO t (c0) VALUES (11)");
+    ASSERT_EQ(1, seq_count());
+
+    ASSERT_EQ(status::ok, db_->stop());
+    // Warning messages about missing sequence value are expected here.
+    ASSERT_EQ(status::ok, db_->start());
+
+    // After restart: recovery finds old def_id → old seq_id in the system table but
+    // old seq_id is missing from sharksfin.  The sequence manager re-initialises from
+    // initial_value, so DML succeeds — but the sequence value is permanently reset.
+    ASSERT_EQ(1, seq_count());
+    execute_statement("INSERT INTO t (c0) VALUES (20)");
+    execute_statement("INSERT INTO t (c0) VALUES (21)");
+    {
+        // Sequence was silently re-initialised to initial_value (1) after restart.
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c1 FROM t WHERE c0 >= 20 ORDER BY c0", result);
+        ASSERT_EQ(2, result.size());
+    }
+
+    // DROP TABLE and re-CREATE TABLE restores a correct consistent state.
+    execute_statement("DROP TABLE t");
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    ASSERT_EQ(1, seq_count());
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+    execute_statement("DROP TABLE t");
+    ASSERT_EQ(0, seq_count());
+}
+
 }

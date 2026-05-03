@@ -53,13 +53,16 @@ using takatori::util::string_builder;
 
 bool create_generated_sequence(
     request_context& context,
-    yugawara::storage::sequence& p
+    yugawara::storage::sequence& p,
+    bool new_def_id
 ) {
     executor::sequence::metadata_store ms{*context.transaction()->object()};
     std::size_t def_id{};
     try {
-        ms.find_next_empty_def_id(def_id);
-        p.definition_id(def_id); // TODO p is part of prepared statement, avoid updating it directly
+        if (new_def_id) {
+            ms.find_next_empty_def_id(def_id);
+            p.definition_id(def_id); // TODO p is part of prepared statement, avoid updating it directly
+        }
         context.sequence_manager()->register_sequence(
             std::addressof(static_cast<kvs::transaction &>(*context.transaction())),
             *p.definition_id(),

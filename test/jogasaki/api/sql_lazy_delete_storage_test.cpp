@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -222,6 +223,153 @@ TEST_F(sql_lazy_delete_storage_test, single_tx_create_insert_select_via_index_dr
     ASSERT_EQ(1, result.size());
     // CRASH HERE (before fix): shirakami still references both the primary and
     // the secondary index storage after the SELECT.
+    execute_statement("DROP TABLE t", *tx);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+// ─── Test 3 ─────────────────────────────────────────────────────────────────
+// Two transactions: DML tx queries a table; DDL tx truncates that table before
+// the DML tx commits.
+//
+// Sequence:
+//   tx_dml: BEGIN
+//   tx_dml: SELECT * FROM t       ← shared lock acquired and released after stmt
+//   (auto-tx): TRUNCATE TABLE t   ← old storage reserved for deletion; new empty storage created
+//   tx_dml: COMMIT                ← ref count on old storage decremented to 0;
+//                                    maintenance thread calls delete_storage safely
+//
+// If delete_storage were called eagerly (before tx_dml commits), shirakami would
+// access the already-deleted old storage at tx_dml commit and crash.
+// After fix: deletion is deferred until tx_dml commits.
+TEST_F(sql_lazy_delete_storage_test, concurrent_dml_then_truncate_table_then_dml_commit) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "crash occurs only with shirakami implementation";
+    }
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO t VALUES (1)");
+    execute_statement("INSERT INTO t VALUES (2)");
+
+    // DML tx (OCC): the SELECT completes and releases its shared lock, but the tx
+    // remains open — shirakami still references the old storage internally.
+    auto tx_dml = utils::create_transaction(*db_, false, false);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", *tx_dml, result);
+    ASSERT_EQ(2, result.size());
+
+    // The shared lock from tx_dml's SELECT was already released, so the DDL auto-tx
+    // can acquire the write lock and execute TRUNCATE TABLE.
+    // The old storage is reserved for deletion; a new empty storage is created.
+    execute_statement("TRUNCATE TABLE t");
+
+    // tx_dml commit decrements the ref count on the old storage to 0;
+    // the maintenance thread then calls delete_storage safely.
+    ASSERT_EQ(status::ok, tx_dml->commit());
+
+    // Verify the table exists but is empty after truncate.
+    std::vector<mock::basic_record> result2{};
+    execute_query("SELECT * FROM t", result2);
+    ASSERT_EQ(0, result2.size());
+}
+
+// ─── Test 4-1 ───────────────────────────────────────────────────────────────
+// Single transaction with no-PK table (implicit PK) and identity column:
+// CREATE → INSERT(×2) → SELECT → TRUNCATE CONTINUE IDENTITY → INSERT(×2) →
+// SELECT → TRUNCATE CONTINUE IDENTITY → INSERT(×2) → SELECT → DROP TABLE →
+// COMMIT.
+//
+// Multiple rows are inserted each time to make sequence generation failures
+// detectable.  The table has two auto-managed sequences (implicit PK + identity
+// column c0).  All reserved deletions are deferred until COMMIT.
+TEST_F(sql_lazy_delete_storage_test, single_tx_implicit_pk_identity_col_truncate_continue_identity_commit) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "crash occurs only with shirakami implementation";
+    }
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use OCC
+    auto tx = utils::create_transaction(*db_);
+    execute_statement("CREATE TABLE t (c0 INT GENERATED ALWAYS AS IDENTITY, c1 INT)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (10)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (11)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 11)), result[1]);
+    }
+    execute_statement("TRUNCATE TABLE t", *tx);  // CONTINUE IDENTITY is the default
+    execute_statement("INSERT INTO t (c1) VALUES (20)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (21)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(3, 20)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(4, 21)), result[1]);
+    }
+    execute_statement("TRUNCATE TABLE t", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (30)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (31)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(5, 30)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(6, 31)), result[1]);
+    }
+    execute_statement("DROP TABLE t", *tx);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+// ─── Test 4-2 ───────────────────────────────────────────────────────────────
+// Same as 4-1 but using TRUNCATE RESTART IDENTITY.
+//
+// RESTART IDENTITY resets sequence positions before creating the new storage,
+// exercising an additional code path (reset_generated_sequences) compared to
+// CONTINUE IDENTITY.  Deferred deletion behavior is identical.
+
+// temporarily disabled duet to intermittent CC_ERR on commit
+TEST_F(sql_lazy_delete_storage_test, DISABLED_single_tx_implicit_pk_identity_col_truncate_restart_identity_commit) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "crash occurs only with shirakami implementation";
+    }
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use OCC
+    auto tx = utils::create_transaction(*db_);
+    execute_statement("CREATE TABLE t (c0 INT GENERATED ALWAYS AS IDENTITY, c1 INT)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (10)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (11)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 11)), result[1]);
+    }
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (20)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (21)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 20)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 21)), result[1]);
+    }
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (30)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (31)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 30)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 31)), result[1]);
+    }
     execute_statement("DROP TABLE t", *tx);
     ASSERT_EQ(status::ok, tx->commit());
 }

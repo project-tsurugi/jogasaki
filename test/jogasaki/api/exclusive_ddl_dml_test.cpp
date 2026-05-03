@@ -336,6 +336,58 @@ TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_revoke_table_tx) {
     ASSERT_EQ(result.size(), 0);
 }
 
+TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_truncate_table_tx) {
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    execute_statement("INSERT INTO t values (1)");
+    {
+        auto tx0 = utils::create_transaction(*db_);
+        execute_statement("TRUNCATE TABLE t", *tx0);
+        auto tx1 = utils::create_transaction(*db_);
+        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("select * from t", *tx1, error_code::inactive_transaction_exception);
+        ASSERT_EQ(status::ok, tx0->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("select * from t", result);
+    ASSERT_EQ(result.size(), 0);
+}
+
+TEST_F(exclusive_ddl_dml_test, starting_truncate_blocked_by_dml_req) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t0 (c0 int primary key)");
+    execute_statement("CREATE TABLE t1 (c0 int primary key)");
+    execute_statement("INSERT INTO t0 values (1)");
+    std::size_t t0_cnt = 1;
+    std::size_t t1_cnt = 0;
+    for(std::size_t i=0; i < 10; ++i) { // choose count to make the query long enough (e.g. 100ms) to run ddl while query is on-going
+        execute_statement("INSERT INTO t1 SELECT c0+"+std::to_string(t1_cnt)+" FROM t0");
+        t1_cnt += t0_cnt;
+        execute_statement("INSERT INTO t0 SELECT c0+"+std::to_string(t0_cnt)+" FROM t1");
+        t0_cnt += t1_cnt;
+    }
+
+    std::cerr << "number of rows in t0:" << t0_cnt << std::endl;
+    auto& smgr = *global::storage_manager();
+    auto s = smgr.find_by_name("t0");
+    ASSERT_TRUE(s.has_value());
+    auto c = smgr.find_entry(s.value());
+    ASSERT_TRUE(c);
+
+    auto f = std::async(std::launch::async, [&, this]() {
+        std::vector<mock::basic_record> result{};
+        execute_query("select count(*) from t0", result);
+    });
+    while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("TRUNCATE TABLE t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
+        // verify tx abort by the error above
+        test_stmt_err("TRUNCATE TABLE t0", *tx, error_code::inactive_transaction_exception);
+    }
+    f.get();
+}
+
 TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {
     // two dml operations before/after grant in the same dml tx whicle ddl tx instantly completes
     // TODO currently there is no error on this case, but DDL must have changed the metadata, so DML touching the updated table should fail

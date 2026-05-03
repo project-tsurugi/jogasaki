@@ -30,6 +30,7 @@
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/revoke_table.h>
+#include <jogasaki/executor/common/truncate_table.h>
 #include <jogasaki/model/statement_kind.h>
 #include <jogasaki/scheduler/dag_controller.h>
 
@@ -93,6 +94,11 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
         case kind::revoke_table: {
             auto& rt = unsafe_downcast<executor::common::revoke_table>(s);
             rt(context);
+            break;
+        }
+        case kind::truncate_table: {
+            auto& tt = unsafe_downcast<executor::common::truncate_table>(s);
+            tt(context);
             break;
         }
     }

@@ -32,9 +32,11 @@ namespace jogasaki::executor::common {
  * @brief Create a new sequence in the system table and assign a definition_id to @p p.
  * @param context request context containing the transaction and sequence manager
  * @param p sequence object whose definition_id will be populated
+ * @param new_def_id if true, assign a new definition_id to the sequence;
+ * if false, use the existing definition_id in @p p
  * @return true on success; false with context error set on failure
  */
-bool create_generated_sequence(request_context& context, yugawara::storage::sequence& p);
+bool create_generated_sequence(request_context& context, yugawara::storage::sequence& p, bool new_def_id = true);
 
 /**
  * @brief Remove a sequence from the system table (metadata_store).

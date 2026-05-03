@@ -487,7 +487,8 @@ static takatori::decimal::triple to_triple(::jogasaki::proto::metadata::common::
 
 static yugawara::storage::column_value default_value(
     ::jogasaki::proto::metadata::storage::TableColumn const& column,
-    yugawara::storage::configurable_provider& provider
+    yugawara::storage::configurable_provider& provider,
+    bool overwrite
 ) {
     using yugawara::storage::column_value;
     switch(column.default_value_case()) {
@@ -538,7 +539,7 @@ static yugawara::storage::column_value default_value(
             }
 
             try {
-                provider.add_sequence(seq);
+                provider.add_sequence(seq, overwrite);
             } catch (std::invalid_argument& e) {
                 VLOG_LP(log_error) << "default_value: sequence already exists";
                 return {};
@@ -584,13 +585,17 @@ static yugawara::storage::column::feature_set_type create_column_feature_set(
     return ret;
 }
 
-static yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column, yugawara::storage::configurable_provider& provider) {
+static yugawara::storage::column from(
+    ::jogasaki::proto::metadata::storage::TableColumn const& column,
+    yugawara::storage::configurable_provider& provider,
+    bool overwrite
+) {
     yugawara::variable::criteria criteria{yugawara::variable::nullity{column.nullable()}};
     return yugawara::storage::column{
         column.name(),
         type(column),
         std::move(criteria),
-        default_value(column, provider),
+        default_value(column, provider, overwrite),
         create_column_feature_set(column),
         column.description()
     };
@@ -609,7 +614,7 @@ static void deserialize_table(
     }
     takatori::util::reference_vector<yugawara::storage::column> columns{};
     for(auto&& c : tdef.columns()) {
-        columns.emplace_back(from(c, provider));
+        columns.emplace_back(from(c, provider, overwrite));
     }
     if(! tdef.has_name()) {
         throw_exception(storage_metadata_exception{

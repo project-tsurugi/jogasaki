@@ -79,17 +79,23 @@ public:
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * @brief Verify that `name` does not appear in `storage_manager`'s name map
- *        and that there is exactly one delete-reserved entry whose original_name
- *        matches `name`.  Returns that entry.
+ * @brief Find a delete-reserved entry whose original_name matches @p name.
+ * @param smgr              storage manager to search
+ * @param name              expected original_name of the delete-reserved entry
+ * @param expect_name_gone  when true (default), also asserts that @p name is
+ *        no longer visible in storage_manager.  Appropriate after DROP TABLE/INDEX.
+ *        Pass false for TRUNCATE TABLE, which keeps the name alive pointing to a
+ *        new active entry.
  */
-static storage::storage_entry find_reserved_entry_by_original_name(
+static storage::storage_entry find_delete_reserved_entry(
     storage::storage_manager& smgr,
-    std::string_view name
+    std::string_view name,
+    bool expect_name_gone = true
 ) {
-    EXPECT_TRUE(! smgr.find_by_name(name).has_value())
-        << "name '" << name << "' should not be visible in storage_manager after DROP";
-
+    if (expect_name_gone) {
+        EXPECT_TRUE(! smgr.find_by_name(name).has_value())
+            << "name '" << name << "' should not be visible in storage_manager after DROP";
+    }
     auto candidates = smgr.get_delete_reserved_entries();
     for (auto const& entry : candidates) {
         auto ctrl = smgr.find_entry(entry);
@@ -121,7 +127,7 @@ TEST_F(recovery_lazy_delete_test, drop_index_lazy_delete_recovery) {
         SCOPED_TRACE("before recovery");
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto entry = find_delete_reserved_entry(smgr, "idx0");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         EXPECT_TRUE(ctrl->delete_reserved());
@@ -140,7 +146,7 @@ TEST_F(recovery_lazy_delete_test, drop_index_lazy_delete_recovery) {
         SCOPED_TRACE("after recovery");
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto entry = find_delete_reserved_entry(smgr, "idx0");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         // The entry must be marked for deletion.
@@ -182,7 +188,7 @@ TEST_F(recovery_lazy_delete_test, drop_table_lazy_delete_recovery) {
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "t");
+        auto entry = find_delete_reserved_entry(smgr, "t");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         EXPECT_TRUE(ctrl->delete_reserved());
@@ -201,7 +207,7 @@ TEST_F(recovery_lazy_delete_test, drop_table_lazy_delete_recovery) {
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "t");
+        auto entry = find_delete_reserved_entry(smgr, "t");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         EXPECT_TRUE(ctrl->delete_reserved());
@@ -238,8 +244,8 @@ TEST_F(recovery_lazy_delete_test, drop_table_with_secondary_index_lazy_delete_re
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto primary_entry = find_reserved_entry_by_original_name(smgr, "t");
-        auto secondary_entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto primary_entry = find_delete_reserved_entry(smgr, "t");
+        auto secondary_entry = find_delete_reserved_entry(smgr, "idx0");
         auto primary_ctrl = smgr.find_entry(primary_entry);
         ASSERT_TRUE(primary_ctrl);
         EXPECT_TRUE(primary_ctrl->delete_reserved());
@@ -265,8 +271,8 @@ TEST_F(recovery_lazy_delete_test, drop_table_with_secondary_index_lazy_delete_re
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
 
         // Both entries must be delete-reserved.
-        auto primary_entry = find_reserved_entry_by_original_name(smgr, "t");
-        auto secondary_entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto primary_entry = find_delete_reserved_entry(smgr, "t");
+        auto secondary_entry = find_delete_reserved_entry(smgr, "idx0");
 
         auto primary_ctrl = smgr.find_entry(primary_entry);
         ASSERT_TRUE(primary_ctrl);
@@ -316,7 +322,7 @@ TEST_F(recovery_lazy_delete_test, pre18_drop_index_lazy_delete_recovery) {
         SCOPED_TRACE("before recovery");
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto entry = find_delete_reserved_entry(smgr, "idx0");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         EXPECT_TRUE(ctrl->delete_reserved());
@@ -336,7 +342,7 @@ TEST_F(recovery_lazy_delete_test, pre18_drop_index_lazy_delete_recovery) {
         SCOPED_TRACE("after recovery");
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto entry = find_delete_reserved_entry(smgr, "idx0");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         EXPECT_TRUE(ctrl->delete_reserved());
@@ -378,7 +384,7 @@ TEST_F(recovery_lazy_delete_test, pre18_drop_table_lazy_delete_recovery) {
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "t");
+        auto entry = find_delete_reserved_entry(smgr, "t");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         EXPECT_TRUE(ctrl->delete_reserved());
@@ -399,7 +405,7 @@ TEST_F(recovery_lazy_delete_test, pre18_drop_table_lazy_delete_recovery) {
         auto& smgr = *global::storage_manager();
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
-        auto entry = find_reserved_entry_by_original_name(smgr, "t");
+        auto entry = find_delete_reserved_entry(smgr, "t");
         auto ctrl = smgr.find_entry(entry);
         ASSERT_TRUE(ctrl);
         EXPECT_TRUE(ctrl->delete_reserved());
@@ -443,8 +449,8 @@ TEST_F(recovery_lazy_delete_test, pre18_drop_table_with_secondary_index_lazy_del
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto primary_entry = find_reserved_entry_by_original_name(smgr, "t");
-        auto secondary_entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto primary_entry = find_delete_reserved_entry(smgr, "t");
+        auto secondary_entry = find_delete_reserved_entry(smgr, "idx0");
         auto primary_ctrl = smgr.find_entry(primary_entry);
         ASSERT_TRUE(primary_ctrl);
         EXPECT_TRUE(primary_ctrl->delete_reserved());
@@ -472,8 +478,8 @@ TEST_F(recovery_lazy_delete_test, pre18_drop_table_with_secondary_index_lazy_del
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
 
-        auto primary_entry = find_reserved_entry_by_original_name(smgr, "t");
-        auto secondary_entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto primary_entry = find_delete_reserved_entry(smgr, "t");
+        auto secondary_entry = find_delete_reserved_entry(smgr, "idx0");
 
         auto primary_ctrl = smgr.find_entry(primary_entry);
         ASSERT_TRUE(primary_ctrl);
@@ -535,8 +541,8 @@ TEST_F(recovery_lazy_delete_test, mixed_pre18_table_post18_index_drop_table_lazy
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto primary_entry = find_reserved_entry_by_original_name(smgr, "t");
-        auto secondary_entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto primary_entry = find_delete_reserved_entry(smgr, "t");
+        auto secondary_entry = find_delete_reserved_entry(smgr, "idx0");
         auto primary_ctrl = smgr.find_entry(primary_entry);
         ASSERT_TRUE(primary_ctrl);
         EXPECT_TRUE(primary_ctrl->delete_reserved());
@@ -563,8 +569,8 @@ TEST_F(recovery_lazy_delete_test, mixed_pre18_table_post18_index_drop_table_lazy
         EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("t"));
         EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
-        auto primary_entry = find_reserved_entry_by_original_name(smgr, "t");
-        auto secondary_entry = find_reserved_entry_by_original_name(smgr, "idx0");
+        auto primary_entry = find_delete_reserved_entry(smgr, "t");
+        auto secondary_entry = find_delete_reserved_entry(smgr, "idx0");
 
         auto primary_ctrl = smgr.find_entry(primary_entry);
         ASSERT_TRUE(primary_ctrl);
@@ -638,7 +644,7 @@ TEST_F(recovery_lazy_delete_test, drop_rowid_table_recreate_and_recovery) {
     auto& smgr = *global::storage_manager();
     EXPECT_TRUE(! smgr.find_by_name("t").has_value());
 
-    auto reserved_e = find_reserved_entry_by_original_name(smgr, "t");
+    auto reserved_e = find_delete_reserved_entry(smgr, "t");
     auto reserved_ctrl = smgr.find_entry(reserved_e);
     ASSERT_TRUE(reserved_ctrl != nullptr);
     EXPECT_TRUE(reserved_ctrl->delete_reserved());
@@ -690,7 +696,7 @@ TEST_F(recovery_lazy_delete_test, drop_identity_table_recreate_and_recovery) {
     auto& smgr = *global::storage_manager();
     EXPECT_TRUE(! smgr.find_by_name("t").has_value());
 
-    auto reserved_e = find_reserved_entry_by_original_name(smgr, "t");
+    auto reserved_e = find_delete_reserved_entry(smgr, "t");
     auto reserved_ctrl = smgr.find_entry(reserved_e);
     ASSERT_TRUE(reserved_ctrl != nullptr);
     EXPECT_TRUE(reserved_ctrl->delete_reserved());
@@ -706,6 +712,250 @@ TEST_F(recovery_lazy_delete_test, drop_identity_table_recreate_and_recovery) {
     // maintenance_storage() must delete only the old reserved storage.
     ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
     EXPECT_TRUE(smgr.find_entry(reserved_e) == nullptr);
+}
+
+// ─── Tests: TRUNCATE TABLE lazy-delete recovery ───────────────────────────────
+
+TEST_F(recovery_lazy_delete_test, truncate_table_lazy_delete_recovery) {
+    // Verify that a TRUNCATE TABLE creates a delete-reserved old entry plus a new
+    // active entry, and that the delete-reserved entry survives a stop/start cycle
+    // while the table remains fully usable.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+
+    auto& smgr = *global::storage_manager();
+    auto old_e = smgr.find_by_name("t").value();
+
+    execute_statement("TRUNCATE TABLE t");
+
+    auto new_e = smgr.find_by_name("t").value();
+    ASSERT_TRUE(new_e != old_e);
+
+    // Verify state immediately after TRUNCATE, before stop/start.
+    {
+        SCOPED_TRACE("before recovery");
+        // table metadata must still be in provider
+        EXPECT_TRUE(db_impl()->tables()->find_table("t"));
+        EXPECT_TRUE(db_impl()->tables()->find_index("t"));
+
+        // old entry: delete-reserved, no name, has storage_key
+        auto old_ctrl = smgr.find_entry(old_e);
+        ASSERT_TRUE(old_ctrl);
+        EXPECT_TRUE(old_ctrl->delete_reserved());
+        EXPECT_TRUE(! old_ctrl->name().has_value());
+        EXPECT_EQ("t", old_ctrl->original_name());
+        EXPECT_TRUE(old_ctrl->storage_key().has_value());
+        EXPECT_TRUE(global::db()->get_storage(old_ctrl->derived_storage_key()));
+
+        // new entry: active
+        auto new_ctrl = smgr.find_entry(new_e);
+        ASSERT_TRUE(new_ctrl);
+        EXPECT_TRUE(! new_ctrl->delete_reserved());
+        ASSERT_TRUE(new_ctrl->name().has_value());
+        EXPECT_EQ("t", *new_ctrl->name());
+    }
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // Verify state after recovery.
+    {
+        SCOPED_TRACE("after recovery");
+        auto& smgr2 = *global::storage_manager();
+
+        // table still in provider
+        EXPECT_TRUE(db_impl()->tables()->find_table("t"));
+        EXPECT_TRUE(db_impl()->tables()->find_index("t"));
+
+        // old delete-reserved entry must be recovered
+        auto recovered_old = find_delete_reserved_entry(smgr2, "t", false);
+        auto old_ctrl = smgr2.find_entry(recovered_old);
+        ASSERT_TRUE(old_ctrl);
+        EXPECT_TRUE(old_ctrl->delete_reserved());
+        EXPECT_TRUE(! old_ctrl->name().has_value());
+        EXPECT_EQ("t", old_ctrl->original_name());
+        EXPECT_TRUE(old_ctrl->storage_key().has_value());
+        EXPECT_TRUE(global::db()->get_storage(old_ctrl->derived_storage_key()));
+
+        // new entry must be active and accessible by name
+        auto new_entry_opt = smgr2.find_by_name("t");
+        ASSERT_TRUE(new_entry_opt.has_value());
+        auto new_ctrl = smgr2.find_entry(new_entry_opt.value());
+        ASSERT_TRUE(new_ctrl);
+        EXPECT_TRUE(! new_ctrl->delete_reserved());
+
+        // table must be usable
+        execute_statement("INSERT INTO t VALUES (2, 20)");
+
+        // maintenance cleans up old storage, leaving new one intact
+        ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
+        EXPECT_TRUE(! smgr2.find_entry(recovered_old));
+        EXPECT_TRUE(smgr2.find_by_name("t").has_value());
+    }
+}
+
+TEST_F(recovery_lazy_delete_test, truncate_table_with_secondary_lazy_delete_recovery) {
+    // Verify that TRUNCATE TABLE on a table with a secondary index creates two
+    // delete-reserved old entries, both of which survive a stop/start cycle, while
+    // the table and its secondary remain fully usable.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+
+    execute_statement("TRUNCATE TABLE t");
+
+    // Verify state immediately after TRUNCATE, before stop/start.
+    {
+        SCOPED_TRACE("before recovery");
+        auto& smgr = *global::storage_manager();
+
+        // table/index metadata must still be in provider
+        EXPECT_TRUE(db_impl()->tables()->find_table("t"));
+        EXPECT_TRUE(db_impl()->tables()->find_index("t"));
+        EXPECT_TRUE(db_impl()->tables()->find_index("idx0"));
+
+        // new entries must be active
+        EXPECT_TRUE(smgr.find_by_name("t").has_value());
+        EXPECT_TRUE(smgr.find_by_name("idx0").has_value());
+
+        // old entries must be delete-reserved
+        auto old_primary = find_delete_reserved_entry(smgr, "t", false);
+        auto old_secondary = find_delete_reserved_entry(smgr, "idx0", false);
+
+        auto primary_ctrl = smgr.find_entry(old_primary);
+        ASSERT_TRUE(primary_ctrl);
+        EXPECT_TRUE(primary_ctrl->delete_reserved());
+        EXPECT_TRUE(primary_ctrl->is_primary());
+        EXPECT_TRUE(primary_ctrl->storage_key().has_value());
+        EXPECT_TRUE(global::db()->get_storage(primary_ctrl->derived_storage_key()));
+
+        auto secondary_ctrl = smgr.find_entry(old_secondary);
+        ASSERT_TRUE(secondary_ctrl);
+        EXPECT_TRUE(secondary_ctrl->delete_reserved());
+        EXPECT_TRUE(! secondary_ctrl->is_primary());
+        EXPECT_TRUE(secondary_ctrl->storage_key().has_value());
+        EXPECT_TRUE(global::db()->get_storage(secondary_ctrl->derived_storage_key()));
+    }
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // Verify state after recovery.
+    {
+        SCOPED_TRACE("after recovery");
+        auto& smgr = *global::storage_manager();
+
+        // table/index metadata must still be in provider after recovery
+        EXPECT_TRUE(db_impl()->tables()->find_table("t"));
+        EXPECT_TRUE(db_impl()->tables()->find_index("t"));
+        EXPECT_TRUE(db_impl()->tables()->find_index("idx0"));
+
+        // new active entries must be present
+        EXPECT_TRUE(smgr.find_by_name("t").has_value());
+        EXPECT_TRUE(smgr.find_by_name("idx0").has_value());
+
+        // old delete-reserved entries must be recovered
+        auto old_primary = find_delete_reserved_entry(smgr, "t", false);
+        auto old_secondary = find_delete_reserved_entry(smgr, "idx0", false);
+
+        auto primary_ctrl = smgr.find_entry(old_primary);
+        ASSERT_TRUE(primary_ctrl);
+        EXPECT_TRUE(primary_ctrl->delete_reserved());
+        EXPECT_TRUE(primary_ctrl->is_primary());
+        EXPECT_TRUE(primary_ctrl->storage_key().has_value());
+        EXPECT_TRUE(global::db()->get_storage(primary_ctrl->derived_storage_key()));
+
+        auto secondary_ctrl = smgr.find_entry(old_secondary);
+        ASSERT_TRUE(secondary_ctrl);
+        EXPECT_TRUE(secondary_ctrl->delete_reserved());
+        EXPECT_TRUE(! secondary_ctrl->is_primary());
+        EXPECT_TRUE(secondary_ctrl->storage_key().has_value());
+        EXPECT_TRUE(global::db()->get_storage(secondary_ctrl->derived_storage_key()));
+
+        // table must be usable after recovery
+        execute_statement("INSERT INTO t VALUES (2, 20)");
+
+        // maintenance cleans up both old storages, leaving new ones intact
+        auto deleted = storage::maintenance_storage();
+        std::sort(deleted.begin(), deleted.end());
+        ASSERT_EQ((std::vector<std::string>{"idx0", "t"}), deleted);
+        EXPECT_TRUE(! smgr.find_entry(old_primary));
+        EXPECT_TRUE(! smgr.find_entry(old_secondary));
+        EXPECT_TRUE(smgr.find_by_name("t").has_value());
+        EXPECT_TRUE(smgr.find_by_name("idx0").has_value());
+    }
+}
+
+// ─── Tests: TRUNCATE TABLE + sequences, recovery ─────────────────────────────
+
+TEST_F(recovery_lazy_delete_test, truncate_table_continue_identity_sequence_survives_recovery) {
+    // After TRUNCATE TABLE (CONTINUE IDENTITY, the default) followed by stop/start,
+    // the sequence must survive recovery with its pre-truncate value intact so that
+    // the next insert continues from where it left off.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    auto seq_before = count_sequences(*db_);
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+
+    // default is CONTINUE IDENTITY: sequence not touched
+    execute_statement("TRUNCATE TABLE t");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // sequence entry must survive recovery unchanged
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    // next insert continues from 3 (sequence was at 2 before TRUNCATE)
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c1 FROM t WHERE c0 = 10", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+}
+
+TEST_F(recovery_lazy_delete_test, truncate_table_restart_identity_sequence_survives_recovery) {
+    // After TRUNCATE TABLE RESTART IDENTITY followed by stop/start, the newly
+    // created sequence must survive recovery so that the next insert restarts
+    // from the initial value (1).
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    auto seq_before = count_sequences(*db_);
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+
+    // RESTART IDENTITY: old sequence removed, new one created — total count unchanged
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // new sequence entry must survive recovery
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    // next insert restarts from 1
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c1 FROM t WHERE c0 = 10", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
 }
 
 } // namespace jogasaki::testing

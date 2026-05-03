@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
 #include <gtest/gtest.h>
 
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/kvs/id.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/maintenance_storage.h>
@@ -37,6 +41,8 @@ using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::executor;
 using namespace jogasaki::mock;
+
+using kind = meta::field_type_kind;
 
 // verify the new state of storage_manager entry after DROP TABLE/INDEX and before actual deletion by maintenance_storage()
 class sql_lazy_delete_new_state_test :
@@ -269,6 +275,104 @@ TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_deletes_storage_with_
     ASSERT_EQ(status::ok, tx_unrelated->commit());
     EXPECT_TRUE(smgr.find_by_name("other").has_value());
     EXPECT_TRUE(smgr.find_by_name("other_idx").has_value());
+}
+
+
+// Return the number of entries in the sequence system table.
+static std::size_t count_sequences(api::database& db) {
+    auto tx = utils::create_transaction(db);
+    auto tctx = get_transaction_context(*tx);
+    executor::sequence::metadata_store ms{*tctx->object()};
+    std::size_t count = 0;
+    ms.scan([&count](std::size_t, std::size_t) { ++count; });
+    return count;
+}
+
+// After DROP TABLE on a rowid table (no explicit PK), the generated rowid sequence
+// must be removed from configuration provider and sequence manager immediately so
+// that CREATE TABLE with the same name succeeds before maintenance_storage() runs.
+TEST_F(sql_lazy_delete_new_state_test, recreate_rowid_table_before_maintenance) {
+    auto seq_count_before = count_sequences(*db_);
+
+    // no explicit PK → one rowid sequence generated
+    execute_statement("CREATE TABLE t (c0 INT)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+
+    // Insert multiple rows before DROP.
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+    execute_statement("INSERT INTO t (c0) VALUES (3)");
+
+    auto& smgr = *global::storage_manager();
+    auto entry = smgr.find_by_name("t");
+    ASSERT_TRUE(entry.has_value());
+    auto old_e = entry.value();
+
+    execute_statement("DROP TABLE t");
+
+    // Rowid sequence must be removed immediately (before maintenance).
+    EXPECT_EQ(seq_count_before, count_sequences(*db_));
+    // Storage must remain with delete_reserved flag.
+    auto ctrl = smgr.find_entry(old_e);
+    ASSERT_TRUE(ctrl != nullptr);
+    EXPECT_TRUE(ctrl->delete_reserved());
+
+    // Recreate the same-named table before calling maintenance_storage().
+    execute_statement("CREATE TABLE t (c0 INT)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+
+    // DML on the new table must work without conflict.
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    execute_statement("INSERT INTO t (c0) VALUES (20)");
+    execute_statement("INSERT INTO t (c0) VALUES (30)");
+
+    // maintenance_storage() must delete exactly the one old reserved storage.
+    ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
+    EXPECT_TRUE(smgr.find_entry(old_e) == nullptr);
+}
+
+// After DROP TABLE on a table with a GENERATED ALWAYS AS IDENTITY column, the
+// generated sequence must be removed from configuration provider and sequence manager
+// immediately so that CREATE TABLE with the same name succeeds before
+// maintenance_storage() runs.
+TEST_F(sql_lazy_delete_new_state_test, recreate_identity_table_before_maintenance) {
+    auto seq_count_before = count_sequences(*db_);
+
+    // c1 is GENERATED ALWAYS AS IDENTITY → one identity sequence generated
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+
+    // Insert multiple rows before DROP.
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+    execute_statement("INSERT INTO t (c0) VALUES (3)");
+
+    auto& smgr = *global::storage_manager();
+    auto entry = smgr.find_by_name("t");
+    ASSERT_TRUE(entry.has_value());
+    auto old_e = entry.value();
+
+    execute_statement("DROP TABLE t");
+
+    // Identity sequence must be removed immediately (before maintenance).
+    EXPECT_EQ(seq_count_before, count_sequences(*db_));
+    // Storage must remain with delete_reserved flag.
+    auto ctrl = smgr.find_entry(old_e);
+    ASSERT_TRUE(ctrl != nullptr);
+    EXPECT_TRUE(ctrl->delete_reserved());
+
+    // Recreate the same-named table before calling maintenance_storage().
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+
+    // DML on the new table must work without conflict.
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    execute_statement("INSERT INTO t (c0) VALUES (20)");
+    execute_statement("INSERT INTO t (c0) VALUES (30)");
+
+    // maintenance_storage() must delete exactly the one old reserved storage.
+    ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
+    EXPECT_TRUE(smgr.find_entry(old_e) == nullptr);
 }
 
 } // namespace jogasaki::testing

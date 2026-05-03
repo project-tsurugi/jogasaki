@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -21,14 +22,17 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/maintenance_storage.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "api_test_base.h"
@@ -588,6 +592,120 @@ TEST_F(recovery_lazy_delete_test, mixed_pre18_table_post18_index_drop_table_lazy
         EXPECT_TRUE(! global::db()->get_storage("t"));
         EXPECT_TRUE(! global::db()->get_storage(secondary_ctrl->derived_storage_key()));
     }
+}
+
+
+// ─── Tests: rowid table (no explicit PK) re-created before recovery ───────────
+
+// Return the number of entries in the sequence system table.
+static std::size_t count_sequences(api::database& db) {
+    auto tx = utils::create_transaction(db);
+    auto tctx = get_transaction_context(*tx);
+    executor::sequence::metadata_store ms{*tctx->object()};
+    std::size_t count = 0;
+    ms.scan([&count](std::size_t, std::size_t) { ++count; });
+    return count;
+}
+
+TEST_F(recovery_lazy_delete_test, drop_rowid_table_recreate_and_recovery) {
+    // Verify that a dropped rowid table (lazy-delete state) is correctly recovered
+    // on restart.  After recovery the table can be re-created with the same name
+    // without sequence conflicts, and maintenance_storage() cleans up the old entry.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    auto seq_count_before = count_sequences(*db_);
+
+    // no explicit PK → one rowid sequence generated
+    execute_statement("CREATE TABLE t (c0 INT)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+
+    // Insert multiple rows before DROP.
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+    execute_statement("INSERT INTO t (c0) VALUES (3)");
+
+    execute_statement("DROP TABLE t");
+    EXPECT_EQ(seq_count_before, count_sequences(*db_));
+
+    // stop/start in the dropped state — test recovery of the lazy-delete entry.
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // After recovery: delete-reserved entry must be present, sequence must be gone.
+    EXPECT_EQ(seq_count_before, count_sequences(*db_));
+
+    auto& smgr = *global::storage_manager();
+    EXPECT_TRUE(! smgr.find_by_name("t").has_value());
+
+    auto reserved_e = find_reserved_entry_by_original_name(smgr, "t");
+    auto reserved_ctrl = smgr.find_entry(reserved_e);
+    ASSERT_TRUE(reserved_ctrl != nullptr);
+    EXPECT_TRUE(reserved_ctrl->delete_reserved());
+    EXPECT_TRUE(global::db()->get_storage(reserved_ctrl->derived_storage_key()));
+
+    // Re-create the table after recovery and insert rows.
+    execute_statement("CREATE TABLE t (c0 INT)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    execute_statement("INSERT INTO t (c0) VALUES (20)");
+    execute_statement("INSERT INTO t (c0) VALUES (30)");
+
+    // maintenance_storage() must delete only the old reserved storage.
+    ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
+    EXPECT_TRUE(smgr.find_entry(reserved_e) == nullptr);
+}
+
+// ─── Tests: GENERATED ALWAYS AS IDENTITY table re-created before recovery ────
+
+TEST_F(recovery_lazy_delete_test, drop_identity_table_recreate_and_recovery) {
+    // Verify that a dropped identity-column table (lazy-delete state) is correctly
+    // recovered on restart.  After recovery the table can be re-created with the
+    // same name without sequence conflicts, and maintenance_storage() cleans up
+    // the old entry.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    auto seq_count_before = count_sequences(*db_);
+
+    // c1 is GENERATED ALWAYS AS IDENTITY → one identity sequence generated
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+
+    // Insert multiple rows before DROP.
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+    execute_statement("INSERT INTO t (c0) VALUES (3)");
+
+    execute_statement("DROP TABLE t");
+    EXPECT_EQ(seq_count_before, count_sequences(*db_));
+
+    // stop/start in the dropped state — test recovery of the lazy-delete entry.
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // After recovery: delete-reserved entry must be present, sequence must be gone.
+    EXPECT_EQ(seq_count_before, count_sequences(*db_));
+
+    auto& smgr = *global::storage_manager();
+    EXPECT_TRUE(! smgr.find_by_name("t").has_value());
+
+    auto reserved_e = find_reserved_entry_by_original_name(smgr, "t");
+    auto reserved_ctrl = smgr.find_entry(reserved_e);
+    ASSERT_TRUE(reserved_ctrl != nullptr);
+    EXPECT_TRUE(reserved_ctrl->delete_reserved());
+    EXPECT_TRUE(global::db()->get_storage(reserved_ctrl->derived_storage_key()));
+
+    // Re-create the table after recovery and insert rows.
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_count_before + 1, count_sequences(*db_));
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    execute_statement("INSERT INTO t (c0) VALUES (20)");
+    execute_statement("INSERT INTO t (c0) VALUES (30)");
+
+    // maintenance_storage() must delete only the old reserved storage.
+    ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
+    EXPECT_TRUE(smgr.find_entry(reserved_e) == nullptr);
 }
 
 } // namespace jogasaki::testing

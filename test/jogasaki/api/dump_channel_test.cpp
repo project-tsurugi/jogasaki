@@ -20,8 +20,6 @@
 
 #include <takatori/util/downcast.h>
 
-#include <arrow/ipc/api.h>
-
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
@@ -169,14 +167,6 @@ TEST_F(dump_channel_test, simple_parquet) {
     EXPECT_TRUE(ends_with(files[0], ".parquet"));
 }
 
-std::int64_t get_record_batch_size(arrow::RecordBatch& batch) {
-    std::int64_t sz{};
-    if(auto res = arrow::ipc::GetRecordBatchSize(batch, &sz); ! res.ok()) {
-        LOG(ERROR) << "error retrieving record batch size";
-    }
-    return sz;
-}
-
 std::size_t read_all_records(executor::file::arrow_reader& reader) {
     accessor::record_ref rec{};
     std::size_t cnt = 0;
@@ -202,7 +192,7 @@ TEST_F(dump_channel_test, simple_arrow) {
     auto reader = executor::file::arrow_reader::open(files[0], nullptr, 0);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader->record_batch()));
+    EXPECT_LT(0, reader->record_batch_size().value());
     EXPECT_EQ(10, read_all_records(*reader));
 }
 
@@ -223,7 +213,7 @@ TEST_F(dump_channel_test, arrow_max_records_per_file) {
     auto reader = executor::file::arrow_reader::open(files[0], nullptr, 0);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader->record_batch()));
+    EXPECT_LT(0, reader->record_batch_size().value());
     EXPECT_EQ(2, read_all_records(*reader));
 }
 
@@ -244,7 +234,7 @@ TEST_F(dump_channel_test, arrow_max_records_per_row_group) {
     auto reader = executor::file::arrow_reader::open(files[0], nullptr, 0);
     ASSERT_TRUE(reader);
     ASSERT_EQ(5, reader->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader->record_batch()));
+    EXPECT_LT(0, reader->record_batch_size().value());
     EXPECT_EQ(2, read_all_records(*reader));
 }
 
@@ -265,13 +255,13 @@ TEST_F(dump_channel_test, arrow_max_record_batches_per_file) {
     auto reader0 = executor::file::arrow_reader::open(files[0], nullptr, 0);
     ASSERT_TRUE(reader0);
     ASSERT_EQ(16, reader0->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader0->record_batch()));
+    EXPECT_LT(0, reader0->record_batch_size().value());
     EXPECT_EQ(1, read_all_records(*reader0));
 
     auto reader2 = executor::file::arrow_reader::open(files[2], nullptr, 0);
     ASSERT_TRUE(reader2);
     ASSERT_EQ(16, reader2->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader2->record_batch()));
+    EXPECT_LT(0, reader2->record_batch_size().value());
     EXPECT_EQ(1, read_all_records(*reader2));
 }
 
@@ -294,25 +284,25 @@ TEST_F(dump_channel_test, arrow_both_max_per_file_and_per_rg) {
     auto reader00 = executor::file::arrow_reader::open(files[0], nullptr, 0);
     ASSERT_TRUE(reader00);
     ASSERT_EQ(2, reader00->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader00->record_batch()));
+    EXPECT_LT(0, reader00->record_batch_size().value());
     EXPECT_EQ(2, read_all_records(*reader00));
 
     auto reader01 = executor::file::arrow_reader::open(files[0], nullptr, 1);
     ASSERT_TRUE(reader01);
     ASSERT_EQ(2, reader01->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader01->record_batch()));
+    EXPECT_LT(0, reader01->record_batch_size().value());
     EXPECT_EQ(1, read_all_records(*reader01));
 
     auto reader10 = executor::file::arrow_reader::open(files[1], nullptr, 0);
     ASSERT_TRUE(reader10);
     ASSERT_EQ(2, reader10->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader10->record_batch()));
+    EXPECT_LT(0, reader10->record_batch_size().value());
     EXPECT_EQ(2, read_all_records(*reader10));
 
     auto reader11 = executor::file::arrow_reader::open(files[1], nullptr, 1);
     ASSERT_TRUE(reader11);
     ASSERT_EQ(2, reader11->row_group_count());
-    EXPECT_LT(0, get_record_batch_size(*reader11->record_batch()));
+    EXPECT_LT(0, reader11->record_batch_size().value());
     EXPECT_EQ(1, read_all_records(*reader11));
 }
 

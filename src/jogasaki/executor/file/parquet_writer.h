@@ -16,34 +16,16 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
-#include <iomanip>
 #include <memory>
 #include <string>
 #include <string_view>
-#include <utility>
-#include <vector>
-#include <arrow/io/file.h>
-#include <arrow/util/logging.h>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
-#include <parquet/api/reader.h>
-#include <parquet/api/writer.h>
-#include <parquet/column_writer.h>
-#include <parquet/file_writer.h>
-#include <parquet/schema.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/file_writer.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
-#include <jogasaki/executor/file/writer_column_option.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::executor::file {
 
@@ -74,12 +56,12 @@ public:
     /**
      * @brief create empty object
      */
-    parquet_writer() = default;
+    parquet_writer();
 
     parquet_writer(parquet_writer const& other) = delete;
     parquet_writer& operator=(parquet_writer const& other) = delete;
-    parquet_writer(parquet_writer&& other) noexcept = default;
-    parquet_writer& operator=(parquet_writer&& other) noexcept = default;
+    parquet_writer(parquet_writer&& other) noexcept;
+    parquet_writer& operator=(parquet_writer&& other) noexcept;
 
     /**
      * @brief create new object
@@ -143,37 +125,8 @@ public:
     [[nodiscard]] std::size_t row_group_max_records() const noexcept override;
 
 private:
-    maybe_shared_ptr<meta::external_record_meta> meta_{};
-    parquet_writer_option option_{};
-    std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
-    std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
-    parquet::RowGroupWriter* row_group_writer_{};
-    std::vector<parquet::ColumnWriter*> column_writers_{};
-    boost::filesystem::path path_{};
-    std::size_t write_count_{};
-    std::vector<details::writer_column_option> column_options_{};
-
-    std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::writer_column_option>> create_schema();
-    bool write_int4(std::size_t colidx, std::int32_t v, bool null = false);
-    bool write_int8(std::size_t colidx, std::int64_t v, bool null = false);
-    bool write_float4(std::size_t colidx, float v, bool null = false);
-    bool write_float8(std::size_t colidx, double v, bool null = false);
-    bool write_character(std::size_t colidx, accessor::text v, bool null = false);
-    bool write_octet(std::size_t colidx, accessor::binary v, bool null = false);
-    bool write_decimal(
-        std::size_t colidx,
-        runtime_t<meta::field_type_kind::decimal> v,
-        bool null = false,
-        details::writer_column_option const& colopt = {}
-    );
-    bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
-    bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
-    bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
-    bool init(std::string_view path);
-
-    template <class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, bool>
-    write_character_or_octet(std::size_t colidx, T v, bool null);
+    class impl;
+    std::unique_ptr<impl> impl_;
 };
 
 }  // namespace jogasaki::executor::file

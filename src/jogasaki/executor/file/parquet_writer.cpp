@@ -15,17 +15,28 @@
  */
 #include "parquet_writer.h"
 
+#include <cstdint>
 #include <decimal.hh>
 #include <exception>
 #include <optional>
 #include <ostream>
 #include <type_traits>
+#include <utility>
+#include <vector>
 #include <arrow/io/file.h>
 #include <arrow/result.h>
+#include <arrow/util/logging.h>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <glog/logging.h>
+#include <parquet/api/reader.h>
+#include <parquet/api/writer.h>
+#include <parquet/column_writer.h>
 #include <parquet/exception.h>
+#include <parquet/file_writer.h>
 #include <parquet/platform.h>
 #include <parquet/properties.h>
+#include <parquet/schema.h>
 #include <parquet/types.h>
 
 #include <takatori/datetime/time_of_day.h>
@@ -33,15 +44,19 @@
 #include <takatori/decimal/triple.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/file/writer_column_option.h>
 #include <jogasaki/executor/file/utils.h>
+#include <jogasaki/executor/file/writer_column_option.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
@@ -58,12 +73,75 @@ using parquet::Type;
 using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
 
-parquet_writer::parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta, parquet_writer_option opt) :
-    meta_(std::move(meta)),
-    option_(opt)
-{}
+class parquet_writer::impl {
+public:
+    impl() = default;
 
-void parquet_writer::new_row_group() {
+    explicit impl(maybe_shared_ptr<meta::external_record_meta> meta, parquet_writer_option opt) :
+        meta_(std::move(meta)),
+        option_(opt)
+    {}
+
+    ~impl() noexcept {
+        close();
+    }
+
+    impl(impl const&) = delete;
+    impl& operator=(impl const&) = delete;
+    impl(impl&&) noexcept = default;
+    impl& operator=(impl&&) noexcept = default;
+
+    bool write(accessor::record_ref ref);
+    bool close();
+    [[nodiscard]] std::string path() const noexcept {
+        return path_.string();
+    }
+    [[nodiscard]] std::size_t write_count() const noexcept {
+        return write_count_;
+    }
+    void new_row_group();
+    [[nodiscard]] std::size_t row_group_max_records() const noexcept {
+        //TODO row group size not used yet
+        return 0;
+    }
+
+    bool init(std::string_view path);
+
+private:
+
+    std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::writer_column_option>> create_schema();
+    bool write_int4(std::size_t colidx, std::int32_t v, bool null = false);
+    bool write_int8(std::size_t colidx, std::int64_t v, bool null = false);
+    bool write_float4(std::size_t colidx, float v, bool null = false);
+    bool write_float8(std::size_t colidx, double v, bool null = false);
+    bool write_character(std::size_t colidx, accessor::text v, bool null = false);
+    bool write_octet(std::size_t colidx, accessor::binary v, bool null = false);
+    bool write_decimal(
+        std::size_t colidx,
+        runtime_t<meta::field_type_kind::decimal> v,
+        bool null = false,
+        details::writer_column_option const& colopt = {}
+    );
+    bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
+    bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
+    bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
+
+    template <class T>
+    std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, bool>
+    write_character_or_octet(std::size_t colidx, T v, bool null);
+
+    maybe_shared_ptr<meta::external_record_meta> meta_{};
+    parquet_writer_option option_{};
+    std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
+    std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
+    parquet::RowGroupWriter* row_group_writer_{};
+    std::vector<parquet::ColumnWriter*> column_writers_{};
+    boost::filesystem::path path_{};
+    std::size_t write_count_{};
+    std::vector<details::writer_column_option> column_options_{};
+};
+
+void parquet_writer::impl::new_row_group() {
     if(row_group_writer_) {
         row_group_writer_->Close();
         column_writers_.clear();
@@ -75,7 +153,7 @@ void parquet_writer::new_row_group() {
     }
 }
 
-bool parquet_writer::init(std::string_view path) {
+bool parquet_writer::impl::init(std::string_view path) {
     try {
         path_ = std::string{path};
         PARQUET_ASSIGN_OR_THROW(fs_ , ::arrow::io::FileOutputStream::Open(path_.string()));
@@ -92,7 +170,7 @@ bool parquet_writer::init(std::string_view path) {
     return true;
 }
 
-bool parquet_writer::write(accessor::record_ref ref) {
+bool parquet_writer::impl::write(accessor::record_ref ref) {
     try {
         using k = meta::field_type_kind;
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
@@ -131,7 +209,7 @@ static bool write_null(T* writer) {
     return true;
 }
 
-bool parquet_writer::write_int4(std::size_t colidx, int32_t v, bool null) {
+bool parquet_writer::impl::write_int4(std::size_t colidx, int32_t v, bool null) {
     auto* writer = static_cast<parquet::Int32Writer*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         return write_null(writer);
@@ -141,7 +219,7 @@ bool parquet_writer::write_int4(std::size_t colidx, int32_t v, bool null) {
     return true;
 }
 
-bool parquet_writer::write_int8(std::size_t colidx, std::int64_t v, bool null) {
+bool parquet_writer::impl::write_int8(std::size_t colidx, std::int64_t v, bool null) {
     auto* writer = static_cast<parquet::Int64Writer*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         return write_null(writer);
@@ -151,7 +229,7 @@ bool parquet_writer::write_int8(std::size_t colidx, std::int64_t v, bool null) {
     return true;
 }
 
-bool parquet_writer::write_float4(std::size_t colidx, float v, bool null) {
+bool parquet_writer::impl::write_float4(std::size_t colidx, float v, bool null) {
     auto* writer = static_cast<parquet::FloatWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         return write_null(writer);
@@ -161,7 +239,7 @@ bool parquet_writer::write_float4(std::size_t colidx, float v, bool null) {
     return true;
 }
 
-bool parquet_writer::write_float8(std::size_t colidx, double v, bool null) {
+bool parquet_writer::impl::write_float8(std::size_t colidx, double v, bool null) {
     auto* writer = static_cast<parquet::DoubleWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         return write_null(writer);
@@ -173,7 +251,7 @@ bool parquet_writer::write_float8(std::size_t colidx, double v, bool null) {
 
 template <class T>
 std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, bool>
-parquet_writer::write_character_or_octet(std::size_t colidx, T v, bool null) {
+parquet_writer::impl::write_character_or_octet(std::size_t colidx, T v, bool null) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         return write_null(writer);
@@ -188,15 +266,15 @@ parquet_writer::write_character_or_octet(std::size_t colidx, T v, bool null) {
     return true;
 }
 
-bool parquet_writer::write_character(std::size_t colidx, accessor::text v, bool null) {
+bool parquet_writer::impl::write_character(std::size_t colidx, accessor::text v, bool null) {
     return write_character_or_octet(colidx, v, null);
 }
 
-bool parquet_writer::write_octet(std::size_t colidx, accessor::binary v, bool null) {
+bool parquet_writer::impl::write_octet(std::size_t colidx, accessor::binary v, bool null) {
     return write_character_or_octet(colidx, v, null);
 }
 
-bool parquet_writer::write_decimal(
+bool parquet_writer::impl::write_decimal(
     std::size_t colidx,
     runtime_t<meta::field_type_kind::decimal> v,
     bool null,
@@ -226,22 +304,22 @@ bool parquet_writer::write_decimal(
     return true;
 }
 
-bool parquet_writer::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null) {
+bool parquet_writer::impl::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null) {
     auto d = static_cast<std::int32_t>(v.days_since_epoch());
     return write_int4(colidx, d, null);
 }
 
-bool parquet_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null) {
+bool parquet_writer::impl::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null) {
     auto ns = static_cast<std::int64_t>(v.time_since_epoch().count());
     return write_int8(colidx, ns, null);
 }
 
-bool parquet_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null) {
+bool parquet_writer::impl::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null) {
     auto value = value_in_time_unit(v, option_.time_unit());
     return write_int8(colidx, value, null);
 }
 
-bool parquet_writer::close() {
+bool parquet_writer::impl::close() {
     if(file_writer_) {
         try {
             file_writer_->Close();
@@ -254,15 +332,6 @@ bool parquet_writer::close() {
         file_writer_.reset();
     }
     return true;
-}
-
-std::shared_ptr<parquet_writer>
-parquet_writer::open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path, parquet_writer_option opt) {
-    auto ret = std::make_shared<parquet_writer>(std::move(meta), opt);
-    if(ret->init(path)) {
-        return ret;
-    }
-    return {};
 }
 
 static parquet::LogicalType::TimeUnit::unit parquet_time_unit_from(time_unit_kind kind) {
@@ -279,7 +348,7 @@ static parquet::LogicalType::TimeUnit::unit parquet_time_unit_from(time_unit_kin
 }
 
 std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::writer_column_option>>
-parquet_writer::create_schema() {
+parquet_writer::impl::create_schema() {
     parquet::schema::NodeVector fields{};
     fields.reserve(meta_->field_count());
     std::vector<details::writer_column_option> options{};
@@ -372,21 +441,49 @@ parquet_writer::create_schema() {
     };
 }
 
+parquet_writer::parquet_writer() :
+    impl_(std::make_unique<impl>())
+{}
+
+parquet_writer::parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta, parquet_writer_option opt) :
+    impl_(std::make_unique<impl>(std::move(meta), opt))
+{}
+
+parquet_writer::~parquet_writer() noexcept = default;
+parquet_writer::parquet_writer(parquet_writer&& other) noexcept = default;
+parquet_writer& parquet_writer::operator=(parquet_writer&& other) noexcept = default;
+
+bool parquet_writer::write(accessor::record_ref ref) {
+    return impl_->write(ref);
+}
+
+bool parquet_writer::close() {
+    return impl_->close();
+}
+
 std::string parquet_writer::path() const noexcept {
-    return path_.string();
+    return impl_->path();
 }
 
 std::size_t parquet_writer::write_count() const noexcept {
-    return write_count_;
+    return impl_->write_count();
 }
 
-parquet_writer::~parquet_writer() noexcept {
-    close();
+void parquet_writer::new_row_group() {
+    impl_->new_row_group();
 }
 
 std::size_t parquet_writer::row_group_max_records() const noexcept {
-    //TODO row group size not used yet
-    return 0;
+    return impl_->row_group_max_records();
+}
+
+std::shared_ptr<parquet_writer>
+parquet_writer::open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path, parquet_writer_option opt) {
+    auto ret = std::make_shared<parquet_writer>(std::move(meta), opt);
+    if(ret->impl_->init(path)) {
+        return ret;
+    }
+    return {};
 }
 
 }  // namespace jogasaki::executor::file

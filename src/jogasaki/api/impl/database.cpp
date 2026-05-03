@@ -74,6 +74,7 @@
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/auth/authorized_users_action_set.h>
 #include <jogasaki/auth/fill_action_set.h>
+#include <jogasaki/check_cxx_std.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>

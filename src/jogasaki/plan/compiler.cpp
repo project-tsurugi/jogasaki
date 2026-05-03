@@ -666,8 +666,10 @@ static status prepare(
     }
     auto& stmt = compilation_unit->statements()[idx_non_empty_or_zero];
     mizugaki::placeholder_map placeholders{};
-    auto analysis = analyzer(opts, *stmt, *compilation_unit, placeholders, *ctx.variable_provider());
-
+    auto analysis = analyzer(
+        opts, *stmt, *compilation_unit, placeholders,
+        takatori::util::optional_ptr<::yugawara::variable::provider const>{ctx.variable_provider().get()}
+    );
     if(! analysis.is_valid()) {
         auto r = analysis.release<mizugaki::analyzer::sql_analyzer_result_kind::diagnostics>();
         handle_compile_errors(r, status::err_compiler_error, ctx);

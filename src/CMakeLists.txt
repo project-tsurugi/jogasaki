@@ -118,6 +118,16 @@ file(GLOB SOURCES
         "jogasaki/udf/descriptor/validation/*.cpp"
         "jogasaki/udf/log/*.cpp"
 )
+
+# Sources that directly depend on Apache Arrow / Parquet headers.
+set(ARROW_SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/executor/file/arrow_reader.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/executor/file/arrow_writer.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/executor/file/parquet_reader.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/jogasaki/executor/file/parquet_writer.cpp"
+)
+list(REMOVE_ITEM SOURCES ${ARROW_SOURCES})
+
 if(ENABLE_ALTIMETER)
 file(GLOB SRC_ALTIMETER_ENABLED
         "jogasaki/external_log/details/*.cpp"
@@ -162,6 +172,46 @@ else()
   set(PARQUET_PREFIX "Parquet::")
 endif()
 
+# Interface target that carries the C++20 compile feature required by
+# Apache Arrow >= 23.0. arrow_objs links to it PRIVATELY so that C++20
+# is applied only to the Arrow/Parquet sources without leaking into the
+# rest of jogasaki (which remains at C++17). Arrow test executables link
+# to this target directly to obtain the same standard automatically.
+add_library(arrow_cxx_std INTERFACE)
+if(FORCE_CXX20_ARROW_OBJS)
+    target_compile_features(arrow_cxx_std INTERFACE cxx_std_20)
+endif()
+
+# OBJECT library for sources that depend on Apache Arrow / Parquet headers.
+# Keeping these sources in a separate target allows them to be built with
+# different compile options (notably a different C++ standard) than the
+# rest of jogasaki without requiring source-tree relocation.
+add_library(arrow_objs OBJECT ${ARROW_SOURCES})
+
+set_target_properties(arrow_objs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+add_dependencies(arrow_objs build_protos)
+
+target_include_directories(arrow_objs
+        PRIVATE ${CMAKE_BINARY_DIR}/src
+        PRIVATE .
+)
+
+target_link_libraries(arrow_objs
+        PRIVATE api
+        PRIVATE takatori
+        PRIVATE Boost::boost
+        PRIVATE Boost::filesystem
+        PRIVATE glog::glog
+        PRIVATE ${PARQUET_PREFIX}parquet_shared
+)
+
+target_compile_definitions(arrow_objs PRIVATE BOOST_THREAD_VERSION=4)
+
+target_link_libraries(arrow_objs PRIVATE arrow_cxx_std)
+
+set_compile_options(arrow_objs)
+
 target_link_libraries(${ENGINE}
         PUBLIC api
         PUBLIC ${tateyama_engine}
@@ -181,7 +231,7 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
-        PRIVATE ${PARQUET_PREFIX}parquet_shared
+        PRIVATE arrow_objs
         PRIVATE mpdecpp
         PRIVATE ${GRPC_LIBRARIES}
         )
@@ -242,7 +292,6 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::container
         INTERFACE glog::glog
         INTERFACE protobuf::libprotobuf
-        INTERFACE ${PARQUET_PREFIX}parquet_shared
         INTERFACE mpdecpp
         )
 

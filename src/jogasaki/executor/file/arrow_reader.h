@@ -16,26 +16,16 @@
 #pragma once
 
 #include <cstddef>
-#include <iomanip>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
-#include <arrow/io/file.h>
-#include <arrow/ipc/reader.h>
-#include <arrow/record_batch.h>
-#include <arrow/util/logging.h>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/executor/file/arrow_reader_column_option.h>
 #include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::file {
 
@@ -55,7 +45,7 @@ public:
      * @details this function is intended to be called from open(). Use open() function because it can report error
      * during initialization.
      */
-    arrow_reader() = default;
+    arrow_reader();
 
     /**
      * @brief destruct object
@@ -65,8 +55,8 @@ public:
 
     arrow_reader(arrow_reader const& other) = delete;
     arrow_reader& operator=(arrow_reader const& other) = delete;
-    arrow_reader(arrow_reader&& other) noexcept = default;
-    arrow_reader& operator=(arrow_reader&& other) noexcept = default;
+    arrow_reader(arrow_reader&& other) noexcept;
+    arrow_reader& operator=(arrow_reader&& other) noexcept;
 
     /**
      * @brief read the parquet record
@@ -104,9 +94,11 @@ public:
     [[nodiscard]] std::size_t row_group_count() const noexcept override;
 
     /**
-     * @brief accessor to the current record batch
+     * @brief accessor to the size in bytes of the current record batch
+     * @return the size in bytes of the current record batch on success
+     * @return std::nullopt if the size cannot be determined
      */
-    [[nodiscard]] std::shared_ptr<arrow::RecordBatch> const& record_batch() const noexcept;
+    [[nodiscard]] std::optional<std::size_t> record_batch_size() const noexcept;
 
     /**
      * @brief factory function to construct the new arrow_reader object
@@ -124,25 +116,8 @@ public:
     );
 
 private:
-    maybe_shared_ptr<meta::external_record_meta> meta_{};
-    maybe_shared_ptr<meta::record_meta const> parameter_meta_{};
-
-    std::shared_ptr<arrow::io::ReadableFile> input_file_{};
-    std::shared_ptr<arrow::ipc::RecordBatchFileReader> file_reader_{};
-    std::shared_ptr<arrow::RecordBatch> record_batch_{};
-
-    std::vector<details::arrow_reader_column_option> column_options_{};
-    // std::vector<parquet::ColumnDescriptor const*> columns_{};
-    boost::filesystem::path path_{};
-    std::size_t read_count_{};
-    data::aligned_buffer buf_{};
-    std::vector<std::size_t> parameter_to_field_{};
-    std::size_t row_group_count_{};
-    std::size_t row_group_index_{};
-
-    std::size_t offset_{};
-
-    bool init(std::string_view path, reader_option const* opt, std::size_t row_group_index);
+    class impl;
+    std::unique_ptr<impl> impl_;
 };
 
 }  // namespace jogasaki::executor::file

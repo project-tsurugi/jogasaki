@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gtest/gtest.h>
-#include <glog/logging.h>
-#include <jogasaki/check_cxx_std.h>
-#include <jogasaki/kvs/environment.h>
-#include <jogasaki/logging.h>
+#pragma once
 
-int main(int argc, char** argv) {
-    // first consume command line options for gtest
-    ::testing::InitGoogleTest(&argc, argv);
-    FLAGS_logtostderr = true;
-    FLAGS_v = FLAGS_v < jogasaki::log_info ? jogasaki::log_info : FLAGS_v;
-    jogasaki::kvs::environment env{};
-    env.initialize();
-    return RUN_ALL_TESTS();
-}
+// Verify that this translation unit is compiled with C++17.
+// Even though the project is configured to use C++17, some sources
+// (e.g., Arrow/Parquet) may require C++20 and jogasaki cmake might pick up
+// different standard by propagated usage requirements.
+static_assert(__cplusplus == 201703L, "This translation unit must be compiled with C++17.");  //NOLINT(misc-redundant-expression)

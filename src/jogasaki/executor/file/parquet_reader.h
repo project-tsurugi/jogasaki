@@ -16,28 +16,15 @@
 #pragma once
 
 #include <cstddef>
-#include <iomanip>
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
-#include <arrow/io/file.h>
-#include <arrow/util/logging.h>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
-#include <parquet/api/reader.h>
-#include <parquet/api/writer.h>
-#include <parquet/column_reader.h>
-#include <parquet/file_reader.h>
-#include <parquet/schema.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::file {
 
@@ -57,7 +44,7 @@ public:
      * @details this function is intended to be called from open(). Use open() function because it can report error
      * during initialization.
      */
-    parquet_reader() = default;
+    parquet_reader();
 
     /**
      * @brief destruct object
@@ -67,8 +54,8 @@ public:
 
     parquet_reader(parquet_reader const& other) = delete;
     parquet_reader& operator=(parquet_reader const& other) = delete;
-    parquet_reader(parquet_reader&& other) noexcept = default;
-    parquet_reader& operator=(parquet_reader&& other) noexcept = default;
+    parquet_reader(parquet_reader&& other) noexcept;
+    parquet_reader& operator=(parquet_reader&& other) noexcept;
 
     /**
      * @brief read the parquet record
@@ -121,20 +108,8 @@ public:
     );
 
 private:
-    maybe_shared_ptr<meta::external_record_meta> meta_{};
-    maybe_shared_ptr<meta::record_meta const> parameter_meta_{};
-    std::unique_ptr<parquet::ParquetFileReader> file_reader_{};
-    std::shared_ptr<parquet::RowGroupReader> row_group_reader_{};
-    std::vector<std::shared_ptr<parquet::ColumnReader>> column_readers_{};
-    std::vector<parquet::ColumnDescriptor const*> columns_{};
-    boost::filesystem::path path_{};
-    std::size_t read_count_{};
-    data::aligned_buffer buf_{};
-    std::vector<std::size_t> parameter_to_parquet_field_{};
-    std::size_t row_group_count_{};
-    std::size_t row_group_index_{};
-
-    bool init(std::string_view path, reader_option const* opt, std::size_t row_group_index);
+    class impl;
+    std::unique_ptr<impl> impl_;
 };
 
 }  // namespace jogasaki::executor::file

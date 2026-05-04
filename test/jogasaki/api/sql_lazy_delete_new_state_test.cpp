@@ -375,4 +375,174 @@ TEST_F(sql_lazy_delete_new_state_test, recreate_identity_table_before_maintenanc
     EXPECT_TRUE(smgr.find_entry(old_e) == nullptr);
 }
 
+// ─── Tests: TRUNCATE TABLE ────────────────────────────────────────────────────
+
+// After TRUNCATE TABLE the old primary storage entry is flagged delete_reserved,
+// while the table name remains visible in storage_manager (pointing to a new entry)
+// and the table metadata stays in the configuration provider.
+TEST_F(sql_lazy_delete_new_state_test, truncate_table_marks_old_primary_delete_reserved) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO t VALUES (1)");
+
+    auto& smgr = *global::storage_manager();
+    auto old_entry = smgr.find_by_name("t");
+    ASSERT_TRUE(old_entry.has_value());
+    auto old_e = old_entry.value();
+
+    auto ctrl_before = smgr.find_entry(old_e);
+    ASSERT_TRUE(ctrl_before != nullptr);
+    EXPECT_TRUE(! ctrl_before->delete_reserved());
+
+    execute_statement("TRUNCATE TABLE t");
+
+    // table name must still be visible in storage_manager (new entry)
+    auto new_entry_opt = smgr.find_by_name("t");
+    ASSERT_TRUE(new_entry_opt.has_value());
+    auto new_e = new_entry_opt.value();
+    EXPECT_TRUE(new_e != old_e);
+
+    // old entry must be delete_reserved and invisible by name
+    auto old_ctrl = smgr.find_entry(old_e);
+    ASSERT_TRUE(old_ctrl != nullptr);
+    EXPECT_TRUE(old_ctrl->delete_reserved());
+
+    // new entry must be active (not delete_reserved)
+    auto new_ctrl = smgr.find_entry(new_e);
+    ASSERT_TRUE(new_ctrl != nullptr);
+    EXPECT_TRUE(! new_ctrl->delete_reserved());
+
+    // table metadata must still be in provider
+    EXPECT_TRUE(db_impl()->tables()->find_table("t"));
+
+    // table must be usable after TRUNCATE
+    execute_statement("INSERT INTO t VALUES (2)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(1, result.size());
+}
+
+// After TRUNCATE TABLE on a table with a secondary index, both old storages are
+// delete_reserved while new active ones replace them.
+TEST_F(sql_lazy_delete_new_state_test, truncate_table_with_secondary_marks_old_storages_delete_reserved) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+
+    auto& smgr = *global::storage_manager();
+    auto old_t = smgr.find_by_name("t").value();
+    auto old_idx = smgr.find_by_name("idx0").value();
+
+    execute_statement("TRUNCATE TABLE t");
+
+    // both names must still be visible (new entries created)
+    auto new_t_opt = smgr.find_by_name("t");
+    auto new_idx_opt = smgr.find_by_name("idx0");
+    ASSERT_TRUE(new_t_opt.has_value());
+    ASSERT_TRUE(new_idx_opt.has_value());
+    auto new_t = new_t_opt.value();
+    auto new_idx = new_idx_opt.value();
+    EXPECT_TRUE(new_t != old_t);
+    EXPECT_TRUE(new_idx != old_idx);
+
+    // old entries must be delete_reserved
+    auto old_t_ctrl = smgr.find_entry(old_t);
+    ASSERT_TRUE(old_t_ctrl != nullptr);
+    EXPECT_TRUE(old_t_ctrl->delete_reserved());
+
+    auto old_idx_ctrl = smgr.find_entry(old_idx);
+    ASSERT_TRUE(old_idx_ctrl != nullptr);
+    EXPECT_TRUE(old_idx_ctrl->delete_reserved());
+
+    // new entries must be active
+    auto new_t_ctrl = smgr.find_entry(new_t);
+    ASSERT_TRUE(new_t_ctrl != nullptr);
+    EXPECT_TRUE(! new_t_ctrl->delete_reserved());
+
+    auto new_idx_ctrl = smgr.find_entry(new_idx);
+    ASSERT_TRUE(new_idx_ctrl != nullptr);
+    EXPECT_TRUE(! new_idx_ctrl->delete_reserved());
+}
+
+// maintenance_storage() deletes the old storages created by TRUNCATE while
+// the new active storages remain intact.
+TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_deletes_truncated_old_storages) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+
+    auto& smgr = *global::storage_manager();
+    auto old_t = smgr.find_by_name("t").value();
+    auto old_idx = smgr.find_by_name("idx0").value();
+
+    execute_statement("TRUNCATE TABLE t");
+
+    auto new_t = smgr.find_by_name("t").value();
+    auto new_idx = smgr.find_by_name("idx0").value();
+
+    // maintenance must delete only the two old delete-reserved storages
+    auto deleted = storage::maintenance_storage();
+    std::sort(deleted.begin(), deleted.end());
+    ASSERT_EQ((std::vector<std::string>{"idx0", "t"}), deleted);
+
+    // old entries must be gone
+    EXPECT_TRUE(smgr.find_entry(old_t) == nullptr);
+    EXPECT_TRUE(smgr.find_entry(old_idx) == nullptr);
+
+    // new entries must still be present
+    EXPECT_TRUE(smgr.find_entry(new_t) != nullptr);
+    EXPECT_TRUE(smgr.find_entry(new_idx) != nullptr);
+
+    // table still usable after maintenance
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(1, result.size());
+}
+
+// ─── Tests: TRUNCATE TABLE + sequences ───────────────────────────────────────
+
+// After TRUNCATE TABLE (CONTINUE IDENTITY, the default) the sequence metadata
+// entry count must be unchanged: the sequence is not touched at all.
+TEST_F(sql_lazy_delete_new_state_test, truncate_table_continue_identity_sequence_count_unchanged) {
+    auto seq_before = count_sequences(*db_);
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+
+    // default is CONTINUE IDENTITY: sequence entry must not be changed
+    execute_statement("TRUNCATE TABLE t");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    // sequence continues from 3
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c1 FROM t WHERE c0 = 10", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+}
+
+// After TRUNCATE TABLE RESTART IDENTITY the sequence metadata entry count must
+// be unchanged (old definition_id removed, new one assigned), but the sequence
+// itself restarts from its initial value.
+TEST_F(sql_lazy_delete_new_state_test, truncate_table_restart_identity_sequence_count_unchanged) {
+    auto seq_before = count_sequences(*db_);
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+
+    // RESTART IDENTITY: old sequence entry removed, new one created
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    // sequence restarts from 1
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c1 FROM t WHERE c0 = 10", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+}
+
 } // namespace jogasaki::testing

@@ -33,6 +33,7 @@ enum class statement_kind : std::size_t {
     empty,
     grant_table,
     revoke_table,
+    truncate_table,
 };
 
 /**
@@ -53,6 +54,7 @@ enum class statement_kind : std::size_t {
         case kind::empty: return "empty"sv;
         case kind::grant_table: return "grant_table"sv;
         case kind::revoke_table: return "revoke_table"sv;
+        case kind::truncate_table: return "truncate_table"sv;
     }
     std::abort();
 }

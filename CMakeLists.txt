@@ -46,6 +46,11 @@ option(INSTALL_API_ONLY "configure cmake build dir. just to install public api f
 option(LIKWID_ENABLE "enable likwid hardware counter profiling" OFF)
 option(ENABLE_ALTIMETER "enable altimeter integration" OFF)
 option(FORCE_CXX20_ARROW_OBJS "Force C++20 for arrow/parquet related modules (for testing purposes)" OFF)
+set(USE_LD "" CACHE STRING "Linker to use instead of the system default (e.g. lld, mold). Empty means system default.")
+
+if (USE_LD)
+    add_link_options(-fuse-ld=${USE_LD})
+endif()
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")

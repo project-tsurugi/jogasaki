@@ -97,6 +97,7 @@ available options:
 * `-DINSTALL_API_ONLY=ON` - configure build directory just to install public header files. Use when other components require jogasaki public headers.
 * `-DENABLE_ALTIMETER=ON` - turn on altimeter logging.
 * `-DFORCE_CXX20_ARROW_OBJS=ON` - force C++20 compilation for the Arrow/Parquet object library (for development/testing only).
+* `-DUSE_LD=<linker>` - use an alternative linker to speed up linking (e.g. `lld` or `mold`). Passes `-fuse-ld=<linker>` to the compiler. Empty (default) means the system default linker.
 * for debugging only
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)

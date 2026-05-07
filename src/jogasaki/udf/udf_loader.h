@@ -126,5 +126,7 @@ class udf_loader : public plugin_loader {
     /** List of loaded plugin API/client pairs. */
     std::vector<plugin_entry> plugins_;
     std::vector<void*> handles_;
+    [[nodiscard]] static bool validate_deps_directory(
+        std::filesystem::path const& dir, std::vector<load_result>& results);
 };
 } // namespace plugin::udf

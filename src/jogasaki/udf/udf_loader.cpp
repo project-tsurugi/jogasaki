@@ -341,7 +341,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
             load_status::no_ini_files, std::string(dir_path), "No .ini files found (UDF disabled)");
         return results;
     }
-
+    if (!validate_deps_directory(path, results)) { return results; }
     desc_files = collect_desc_pb_files(path);
     if (!validate_and_prepare_descriptors(
             desc_files, dir_path, results, blocked_stems, message_duplicates)) {
@@ -471,3 +471,28 @@ void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map cons
 std::vector<plugin_entry>& udf_loader::get_plugins() noexcept { return plugins_; }
 
 udf_loader::~udf_loader() { unload_all(); }
+
+bool udf_loader::validate_deps_directory(
+    fs::path const& dir_path, std::vector<load_result>& results) {
+    auto deps_path = dir_path / "deps";
+
+    if (!fs::exists(deps_path)) {
+        results.emplace_back(load_status::deps_not_found, deps_path.string(),
+            "UDF disabled: required deps directory was not found");
+        LOG_LP(WARNING) << jogasaki::udf::log::prefix
+                        << "UDF disabled: required deps directory was not found: "
+                        << deps_path.string();
+        return false;
+    }
+
+    if (!fs::is_directory(deps_path)) {
+        results.emplace_back(load_status::not_regular_file_or_dir, deps_path.string(),
+            "UDF disabled: deps path is not a directory");
+        LOG_LP(WARNING) << jogasaki::udf::log::prefix
+                        << "UDF disabled: deps path is not a directory: " << deps_path.string();
+        return false;
+    }
+
+    LOG_LP(INFO) << jogasaki::udf::log::prefix << "deps directory found: " << deps_path.string();
+    return true;
+}

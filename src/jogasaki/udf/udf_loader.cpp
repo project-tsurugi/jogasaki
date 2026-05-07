@@ -472,8 +472,9 @@ std::vector<plugin_entry>& udf_loader::get_plugins() noexcept { return plugins_;
 
 udf_loader::~udf_loader() { unload_all(); }
 
-bool udf_loader::validate_deps_directory(fs::path const& path, std::vector<load_result>& results) {
-    auto deps_path = path / "deps";
+bool udf_loader::validate_deps_directory(
+    fs::path const& dir_path, std::vector<load_result>& results) {
+    auto deps_path = dir_path / "deps";
 
     if (!fs::exists(deps_path)) {
         results.emplace_back(load_status::deps_not_found, deps_path.string(),
@@ -491,6 +492,7 @@ bool udf_loader::validate_deps_directory(fs::path const& path, std::vector<load_
                         << "UDF disabled: deps path is not a directory: " << deps_path.string();
         return false;
     }
+
     LOG_LP(INFO) << jogasaki::udf::log::prefix << "deps directory found: " << deps_path.string();
     return true;
 }

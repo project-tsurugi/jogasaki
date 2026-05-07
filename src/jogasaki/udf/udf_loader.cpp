@@ -476,7 +476,7 @@ bool udf_loader::validate_deps_directory(fs::path const& path, std::vector<load_
     auto deps_path = path / "deps";
 
     if (!fs::exists(deps_path)) {
-        results.emplace_back(load_status::udf_disabled, deps_path.string(),
+        results.emplace_back(load_status::deps_not_found, deps_path.string(),
             "UDF disabled: required deps directory was not found");
         LOG_LP(WARNING) << jogasaki::udf::log::prefix
                         << "UDF disabled: required deps directory was not found: "
@@ -485,7 +485,7 @@ bool udf_loader::validate_deps_directory(fs::path const& path, std::vector<load_
     }
 
     if (!fs::is_directory(deps_path)) {
-        results.emplace_back(load_status::udf_disabled, deps_path.string(),
+        results.emplace_back(load_status::deps_not_found, deps_path.string(),
             "UDF disabled: deps path is not a directory");
         LOG_LP(WARNING) << jogasaki::udf::log::prefix
                         << "UDF disabled: deps path is not a directory: " << deps_path.string();

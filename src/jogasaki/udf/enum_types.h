@@ -56,6 +56,7 @@ enum class load_status {
     ini_invalid,
     not_regular_file_or_dir,
     udf_disabled,
+    deps_not_found,
     no_shared_objects_found,
     dlopen_failed,
     descriptor_open_failed,

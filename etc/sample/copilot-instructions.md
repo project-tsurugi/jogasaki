@@ -108,6 +108,12 @@ Here `<build_type>` is one of `debug`, `relwithdebinfo` or `release`. `<sharksfi
 - where applicable, add `{}` to create new default-initialized variables
 - avoid functions defined in header files except for template functions and very short functions (e.g., getters).
 
+- Use `std::addressof(x)` instead of `&x` to obtain the address of an object.
+
+- `std::optional` usage:
+  - Use `.value()` to access the contained value (not `operator*`).
+  - Use `.has_value()` explicitly to check whether the optional contains a value (not implicit bool conversion).
+
 - In all test code, always write negative conditions with `EXPECT_TRUE(! condition)` or `ASSERT_TRUE(! condition)`.
 - Do not use `EXPECT_FALSE(...)` or `ASSERT_FALSE(...)` anywhere in this project.
 

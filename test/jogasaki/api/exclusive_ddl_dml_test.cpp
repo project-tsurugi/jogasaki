@@ -202,6 +202,23 @@ TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_create_index_tx) {
     ASSERT_EQ(result.size(), 0);
 }
 
+TEST_F(exclusive_ddl_dml_test, drop_table_blocked_by_create_index_tx) {
+    execute_statement("CREATE TABLE t (c0 int)");
+    {
+        auto tx0 = utils::create_transaction(*db_);
+        execute_statement("CREATE INDEX i on t (c0)", *tx0);
+        auto tx1 = utils::create_transaction(*db_);
+        test_stmt_err("drop table t", *tx1, error_code::sql_execution_exception,
+            "DDL operation was blocked by other DML operation. table:\"t\""); //TODO fix error msg
+        // verify tx abort by the error above
+        test_stmt_err("drop table t", *tx1, error_code::inactive_transaction_exception);
+        ASSERT_EQ(status::ok, tx0->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("select * from t", result);
+    ASSERT_EQ(result.size(), 0);
+}
+
 TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_drop_index_tx) {
     execute_statement("CREATE TABLE t (c0 int)");
     execute_statement("CREATE INDEX i on t (c0)");

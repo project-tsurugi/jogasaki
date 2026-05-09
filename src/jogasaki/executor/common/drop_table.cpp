@@ -244,6 +244,10 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
 
     // remove primary storage entry (reserve for lazy deletion)
     smgr.reserve_delete_entry(storage_id);
+    // tx to remember that it has used the storage in order to prevent maintenance thread from deleting the storage
+    if (context.transaction()) {
+        context.transaction()->add_storage_ref(storage_id);
+    }
     return true;
 }
 }

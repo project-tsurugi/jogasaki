@@ -200,6 +200,13 @@ bool create_index::operator()(request_context& context) const {
         }
         return false;
     }
+    // tx to remember that it has used the storage
+    // this is not mandatory for create (since created one is not accessible externally),
+    // but to be consistent with drop ddls
+    if (context.transaction()) {
+        context.transaction()->add_storage_ref(storage_id);
+    }
+
     return true;
 }
 

@@ -23,6 +23,7 @@
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction_handle_internal.h>
+#include <jogasaki/api/transaction_option.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
@@ -397,6 +398,79 @@ TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_stops_early_on_stop_r
     auto deleted2 = storage::maintenance_storage(&stop_requested);
     std::sort(deleted2.begin(), deleted2.end());
     EXPECT_EQ((std::vector<std::string>{"t0", "t1"}), deleted2);
+}
+
+// Reproduces tsurugi-issues #177 comment #4358258192.
+// OCC INSERT and LTX DROP TABLE run concurrently on the same table.
+// When LTX commits, it uses the table storage for read verify, so storage must not be deleted.
+// Bug: LTX DDL did not increment ref_transaction_count,
+// so maintenance_storage() deletes eagerly after OCC commits, causing shirakami
+// to log "Error. Suspected mix of DML and DDL" at LTX commit.
+// Note, using LTX is not strictly necessary, but the "Supected mix" message was displayed with LTX,
+// so we keep using LTX, though too early deletion happened even with OCC.
+TEST_F(sql_lazy_delete_new_state_test, tx_remembers_drop_table) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "crash occurs only with shirakami implementation";
+    }
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+
+    auto& smgr = *global::storage_manager();
+    auto entry = smgr.find_by_name("t");
+    ASSERT_TRUE(entry.has_value());
+    auto e = entry.value();
+
+    auto tx_occ = utils::create_transaction(*db_, false, false);
+    execute_statement("INSERT INTO t VALUES (1001, 1001)", *tx_occ);
+
+    api::transaction_option ltx_opts{false, true, {"t"}, {}, {}, {}, true};
+    auto tx_ltx = utils::create_transaction(*db_, ltx_opts);
+    execute_statement("DROP TABLE t", *tx_ltx);
+
+    ASSERT_EQ(status::ok, tx_occ->commit());
+
+    // LTX is still open: maintenance must not delete 't' yet.
+    EXPECT_TRUE(storage::maintenance_storage().empty());
+    EXPECT_TRUE(smgr.find_entry(e) != nullptr);
+
+    ASSERT_EQ(status::ok, tx_ltx->commit());
+
+    // Both transactions committed: maintenance should now delete 't'.
+    EXPECT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
+    EXPECT_TRUE(smgr.find_entry(e) == nullptr);
+}
+
+// DROP INDEX variant of tx_remembers_drop_table
+// DROP INDEX should also increments tx ref. count on the storage in order to avoid delete_storage while tx is active.
+TEST_F(sql_lazy_delete_new_state_test, tx_remembers_drop_index) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "crash occurs only with shirakami implementation";
+    }
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+
+    auto& smgr = *global::storage_manager();
+    auto idx_entry = smgr.find_by_name("idx0");
+    ASSERT_TRUE(idx_entry.has_value());
+    auto idx_e = idx_entry.value();
+
+    auto tx_occ = utils::create_transaction(*db_, false, false);
+    execute_statement("INSERT INTO t VALUES (1001, 1001)", *tx_occ);
+
+    api::transaction_option ltx_opts{false, true, {"t"}, {}, {}, {}, true};
+    auto tx_ltx = utils::create_transaction(*db_, ltx_opts);
+    execute_statement("DROP INDEX idx0", *tx_ltx);
+
+    ASSERT_EQ(status::ok, tx_occ->commit());
+
+    // LTX is still open: maintenance must not delete 'idx0' yet.
+    EXPECT_TRUE(storage::maintenance_storage().empty());
+    EXPECT_TRUE(smgr.find_entry(idx_e) != nullptr);
+
+    ASSERT_EQ(status::ok, tx_ltx->commit());
+
+    // Both transactions committed: maintenance should now delete 'idx0'.
+    EXPECT_EQ((std::vector<std::string>{"idx0"}), storage::maintenance_storage());
+    EXPECT_TRUE(smgr.find_entry(idx_e) == nullptr);
 }
 
 } // namespace jogasaki::testing

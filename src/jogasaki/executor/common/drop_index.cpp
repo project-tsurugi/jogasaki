@@ -98,6 +98,10 @@ bool drop_index::operator()(request_context& context) const {
         return true;
     }
     smgr.reserve_delete_entry(e.value());
+    // tx to remember that it has used the storage in order to prevent maintenance thread from deleting the storage
+    if (context.transaction()) {
+        context.transaction()->add_storage_ref(storage_id);
+    }
     return true;
 }
 

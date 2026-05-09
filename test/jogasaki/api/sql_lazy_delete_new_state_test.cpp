@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -373,6 +374,29 @@ TEST_F(sql_lazy_delete_new_state_test, recreate_identity_table_before_maintenanc
     // maintenance_storage() must delete exactly the one old reserved storage.
     ASSERT_EQ((std::vector<std::string>{"t"}), storage::maintenance_storage());
     EXPECT_TRUE(smgr.find_entry(old_e) == nullptr);
+}
+
+// When stop_requested is true, maintenance_storage() must return immediately
+// without deleting any storages, even if delete-reserved entries with ref count 0 exist.
+TEST_F(sql_lazy_delete_new_state_test, maintenance_storage_stops_early_on_stop_requested) {
+    execute_statement("CREATE TABLE t0 (c0 INT PRIMARY KEY)");
+    execute_statement("CREATE TABLE t1 (c0 INT PRIMARY KEY)");
+
+    execute_statement("DROP TABLE t0");
+    execute_statement("DROP TABLE t1");
+
+    // Both entries are delete-reserved with ref count 0.
+    // Passing stop_requested = true must prevent any deletion.
+    std::atomic_bool stop_requested{true};
+    auto deleted = storage::maintenance_storage(&stop_requested);
+
+    EXPECT_TRUE(deleted.empty());
+
+    // With stop_requested = false the entries are now deleted normally.
+    stop_requested = false;
+    auto deleted2 = storage::maintenance_storage(&stop_requested);
+    std::sort(deleted2.begin(), deleted2.end());
+    EXPECT_EQ((std::vector<std::string>{"t0", "t1"}), deleted2);
 }
 
 } // namespace jogasaki::testing

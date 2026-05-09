@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -33,7 +34,7 @@
 
 namespace jogasaki::storage {
 
-std::vector<std::string> maintenance_storage() {  //NOLINT(readability-function-cognitive-complexity)
+std::vector<std::string> maintenance_storage(std::atomic_bool const* stop_requested) {  //NOLINT(readability-function-cognitive-complexity)
     std::vector<std::pair<std::string, std::string>> deleted{}; // (name, readable_storage_key)
     auto& smgr = *global::storage_manager();
     auto candidates = smgr.get_delete_reserved_entries();
@@ -61,6 +62,10 @@ std::vector<std::string> maintenance_storage() {  //NOLINT(readability-function-
         }
         if (! can_delete) {
             continue;
+        }
+        // delete_storage might take time, so early return if requested
+        if (stop_requested != nullptr && stop_requested->load()) {
+            break;
         }
         auto stg = global::db()->get_storage(ctrl->derived_storage_key());
         if (stg) {

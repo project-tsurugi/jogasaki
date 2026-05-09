@@ -368,7 +368,7 @@ private:
     std::thread maintenance_thread_{};
     std::mutex maintenance_mutex_{};
     std::condition_variable maintenance_cv_{};
-    bool maintenance_stop_requested_{false}; // protected by maintenance_mutex_
+    std::atomic_bool maintenance_stop_requested_{false};
 
     void maintenance_loop() noexcept;
 

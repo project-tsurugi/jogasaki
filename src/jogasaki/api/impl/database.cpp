@@ -343,10 +343,7 @@ status database::start() {
     stop_requested_ = false;
 
     if (cfg_->enable_maintenance_thread()) {
-        {
-            std::scoped_lock lk{maintenance_mutex_};
-            maintenance_stop_requested_ = false;
-        }
+        maintenance_stop_requested_ = false;
         maintenance_thread_ = std::thread{[this]() { maintenance_loop(); }};
     }
 
@@ -356,10 +353,7 @@ status database::start() {
 status database::stop() {
     stop_requested_ = true;
     if (maintenance_thread_.joinable()) {
-        {
-            std::scoped_lock lk{maintenance_mutex_};
-            maintenance_stop_requested_ = true;
-        }
+        maintenance_stop_requested_ = true;
         maintenance_cv_.notify_all();
         maintenance_thread_.join();
     }
@@ -1762,17 +1756,18 @@ void database::maintenance_loop() noexcept {
     std::size_t total_deleted{};
     std::size_t total_maintenance_us{};
     while (true) {
-        std::unique_lock<std::mutex> lk{maintenance_mutex_};
-        auto stop_requested = maintenance_cv_.wait_for(lk, std::chrono::milliseconds{cfg_->maintenance_interval_ms()}, [this](){
-            return maintenance_stop_requested_;
-        });
-        if (stop_requested) {
-            break;
+        {
+            std::unique_lock<std::mutex> lk{maintenance_mutex_};
+            auto stop_requested = maintenance_cv_.wait_for(lk, std::chrono::milliseconds{cfg_->maintenance_interval_ms()}, [this](){
+                return maintenance_stop_requested_.load();
+            });
+            if (stop_requested) {
+                break;
+            }
         }
-        lk.unlock();
         try {  // must not throw exception, thread should log msg and continue running
             auto t0 = std::chrono::steady_clock::now();
-            auto deleted = storage::maintenance_storage();
+            auto deleted = storage::maintenance_storage(std::addressof(maintenance_stop_requested_));
             auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - t0).count();
             total_deleted += deleted.size();

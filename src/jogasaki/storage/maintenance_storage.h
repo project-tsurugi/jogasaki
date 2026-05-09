@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -25,8 +26,11 @@ namespace jogasaki::storage {
  * @details finds all delete-reserved storages, deletes those whose ref_transaction_count is 0,
  * and removes them from the storage manager. intended to be called from the background
  * maintenance thread, but can also be invoked directly from tests.
+ * @param stop_requested optional pointer to an atomic flag; if provided and the flag is true
+ * before a delete_storage call, the function returns early without processing remaining entries.
+ * Pass nullptr (the default) when early termination is not needed.
  * @return a list of storage names that were deleted in this invocation
  */
-std::vector<std::string> maintenance_storage();
+std::vector<std::string> maintenance_storage(std::atomic_bool const* stop_requested = nullptr);
 
 } // namespace jogasaki::storage

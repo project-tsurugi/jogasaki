@@ -58,7 +58,7 @@ runs:
       with:
         repository: project-tsurugi/yakushima
         path: ${{ inputs.path }}/yakushima
-        ref: master
+        ref: dev-ban-scan2
 
     - name: Checkout_Shirakami
       uses: actions/checkout@v6
@@ -66,7 +66,7 @@ runs:
       with:
         repository: project-tsurugi/shirakami
         path: ${{ inputs.path }}/shirakami
-        ref: master
+        ref: dev-ban-iscan
 
     - name: Checkout_Sharksfin
       uses: actions/checkout@v6

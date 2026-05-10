@@ -400,3 +400,4 @@ inline api::impl::database& get_impl(api::database& db) {
 
 } // namespace jogasaki::api::impl
 
+

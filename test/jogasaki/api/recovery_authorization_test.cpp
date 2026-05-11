@@ -50,6 +50,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->enable_truncate(true);
         db_setup(cfg);
     }
 

@@ -718,6 +718,12 @@ static status prepare(
             yugawara::restricted_feature::statement_write_delete,
             yugawara::restricted_feature::statement_write_update,
         };
+        if(cfg && ! cfg->enable_truncate()) {
+            c_options.restricted_features() += {
+                yugawara::restricted_feature::statement_truncate_table,
+                yugawara::restricted_feature::statement_truncate_table_restart_identity,
+            };
+        }
     }
 
     return create_prepared_statement(std::move(analysis), ctx.variable_provider(), c_options, sp, ctx, out);

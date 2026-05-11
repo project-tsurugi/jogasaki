@@ -68,6 +68,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->enable_truncate(true);
         db_setup(cfg);
         cfg->enable_maintenance_thread(false);
         utils::set_global_tx_option(utils::create_tx_option{false, true});

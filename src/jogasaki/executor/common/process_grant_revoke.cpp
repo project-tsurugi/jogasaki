@@ -33,6 +33,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/common/ddl_common.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/recovery/storage_options.h>
@@ -42,8 +43,6 @@
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
-
-#include "acquire_table_lock.h"
 
 namespace jogasaki::executor::common {
 
@@ -370,4 +369,4 @@ bool process_grant_revoke(  //NOLINT(readability-function-cognitive-complexity)
     return reflect_grant_revoke(grant, context, elements, current_user);
 }
 
-}
+}  // namespace jogasaki::executor::common

@@ -31,15 +31,14 @@
 
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/common/ddl_common.h>
+#include <jogasaki/executor/common/validate_alter_table_auth.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 
-#include "acquire_table_lock.h"
-#include "validate_alter_table_auth.h"
 
 namespace jogasaki::executor::common {
 
@@ -76,17 +75,7 @@ bool drop_index::operator()(request_context& context) const {
     }
 
     auto& smgr = *global::storage_manager();
-    // try to update storage metadata with delete_reserved flag
-    auto sk = smgr.get_storage_key(name);
-    if (sk.has_value()) {
-        if(auto err = recovery::set_storage_option_delete_reserved(*i, sk.value_or(std::string{name}))) {
-            VLOG_LP(log_warning) << "failed to update metadata for delete reservation: " << name;
-            set_error_info(context, err);
-            return false;
-        }
-    } else {
-        // normally should not happen
-        VLOG_LP(log_warning) << "failed to get storage key for index: " << name;
+    if(! reserve_delete_index_metadata(context, name, *i)) {
         return false;
     }
     provider.remove_index(name);

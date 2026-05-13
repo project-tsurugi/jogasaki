@@ -39,21 +39,17 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
-#include <jogasaki/executor/sequence/exception.h>
-#include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/executor/common/ddl_common.h>
+#include <jogasaki/executor/common/validate_alter_table_auth.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/string_manipulation.h>
 
-#include "acquire_table_lock.h"
-#include "validate_alter_table_auth.h"
 
 namespace jogasaki::executor::common {
 
@@ -75,24 +71,8 @@ static bool remove_generated_sequences(
     auto& provider = *context.storage_provider();
     generated_sequences.emplace_back(sequence_name);
     if(auto s = provider.find_sequence(sequence_name)) {
-        if(s->definition_id().has_value()) {
-            auto def_id = s->definition_id().value();
-            try {
-                if(! context.sequence_manager()->remove_sequence(def_id, context.transaction()->object().get())) {
-                    // even on error, continue clean-up as much as possible
-                    VLOG_LP(log_info) << "sequence '" << sequence_name << "' not found";
-                }
-            } catch(executor::sequence::exception const& e) {
-                // unrecoverable error - transaction aborted and we cannot continue
-                VLOG_LP(log_error) << "removing sequence '" << sequence_name << "' failed";
-                set_error_context(
-                    context,
-                    error_code::sql_execution_exception,
-                    e.what(),
-                    e.get_status()
-                );
-                return false;
-            }
+        if(! remove_generated_sequence(context, sequence_name, *s)) {
+            return false;
         }
     }
     return true;
@@ -171,18 +151,8 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
             return;
         }
         indices.emplace_back(id);
-        auto sk = smgr.get_storage_key(id);
-        if(sk.has_value()) {
-            if(auto err = recovery::set_storage_option_delete_reserved(*entry, sk.value())) {
-                VLOG_LP(log_error) << "failed to update metadata for delete reservation of secondary index: " << id;
-                set_error_info(context, err);
-                error = true;
-                return;
-            }
-        } else {
-            VLOG_LP(log_warning) << "failed to get storage key for index: " << id;
+        if(! reserve_delete_index_metadata(context, id, *entry)) {
             error = true;
-            return;
         }
     });
     if(error) {
@@ -191,16 +161,7 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
 
     auto primary_idx = provider.find_index(c.simple_name());
     if (primary_idx) {
-        auto sk = smgr.get_storage_key(c.simple_name());
-        if(sk.has_value()) {
-            if(auto err = recovery::set_storage_option_delete_reserved(*primary_idx, sk.value())) {
-                VLOG_LP(log_warning) << "failed to update metadata for delete reservation of primary index: " << c.simple_name();
-                set_error_info(context, err);
-                return false;
-            }
-        } else {
-            // normally should not happen
-            VLOG_LP(log_warning) << "failed to get storage key for index: " << c.simple_name();
+        if(! reserve_delete_index_metadata(context, c.simple_name(), *primary_idx)) {
             return false;
         }
     }
@@ -250,4 +211,5 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
     }
     return true;
 }
-}
+
+}  // namespace jogasaki::executor::common

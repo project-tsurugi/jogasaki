@@ -29,13 +29,13 @@
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index.h>
 #include <yugawara/storage/table.h>
-#include <sharksfin/StorageOptions.h>
 
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/common/ddl_common.h>
+#include <jogasaki/executor/common/validate_alter_table_auth.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
@@ -51,12 +51,8 @@
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/storage_metadata_serializer.h>
-#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/utils/validate_index_key_type.h>
 
-#include "acquire_table_lock.h"
-#include "validate_alter_table_auth.h"
 
 namespace jogasaki::executor::common {
 
@@ -143,53 +139,15 @@ bool create_index::operator()(request_context& context) const {
         return false;
     }
 
-    auto tid = storage::index_id_src++;
-    auto& smgr = *global::storage_manager();
-
-    // note: this code has been added in release 1.8,
-    // and existing tables/indices that were created before the release
-    // do not have surrogate IDs
-    auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
-    auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
-
-    if(! smgr.add_entry(tid, i->simple_name(), opt, false, storage_id)) {
-        // should not happen normally
-        set_error_context(
-            context,
-            error_code::target_already_exists_exception,
-            string_builder{} << "Index id:" << tid << " already exists" << string_builder::to_string,
-            status::err_already_exists
-        );
-        return false;
-    }
-
-    std::string storage{};
-    if(auto err = recovery::create_storage_option(
-           *i,
-           storage,
-           utils::metadata_serializer_option{false, nullptr, nullptr, opt}
-       )) {
-        set_error_info(context, err);
+    storage::storage_entry tid{};
+    std::string serialized{};
+    if(! create_secondary_storage(context, *i, storage_id, tid, &serialized)) {
         return false;
     }
 
     auto target = std::make_shared<yugawara::storage::configurable_provider>();
-    if(auto err = recovery::deserialize_storage_option_into_provider(storage, provider, *target, false)) {
+    if(auto err = recovery::deserialize_storage_option_into_provider(serialized, provider, *target, false)) {
         set_error_info(context, err);
-        return false;
-    }
-
-    sharksfin::StorageOptions options{};
-    options.payload(std::move(storage));
-    if(auto stg = context.database()->create_storage((opt.has_value() ? opt.value() : i->simple_name()), options);! stg) {
-        // something went wrong. Storage already exists. // TODO recreate storage with new storage option
-        VLOG_LP(log_warning) << "storage " << i->simple_name() << " already exists ";
-        set_error_context(
-            context,
-            error_code::sql_execution_exception,
-            string_builder{} << "Unexpected error." << string_builder::to_string,
-            status::err_unknown
-        );
         return false;
     }
     // only after successful update for kvs, merge metadata

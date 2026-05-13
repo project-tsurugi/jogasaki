@@ -224,6 +224,7 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_apply_max_polls) " << cfg.apply_max_polls() << " : number of additional try_next polls before yielding in the apply operator";
     LOGCFG << "(dev_enable_maintenance_thread) " << cfg.enable_maintenance_thread() << " : whether to start the maintenance background thread";
     LOGCFG << "(dev_maintenance_interval_ms) " << cfg.maintenance_interval_ms() << " : interval (ms) between maintenance thread activations";
+    LOGCFG << "(dev_enable_truncate) " << cfg.enable_truncate() << " : whether to enable TRUNCATE TABLE statement";
 }
 
 static bool validate_core_assignment_parameters(configuration const& cfg) {

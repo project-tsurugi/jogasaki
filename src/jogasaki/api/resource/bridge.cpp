@@ -349,6 +349,9 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<std::size_t>("dev_maintenance_interval_ms")) {
         ret->maintenance_interval_ms(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_truncate")) {
+        ret->enable_truncate(v.value());
+    }
     return true;
 }
 

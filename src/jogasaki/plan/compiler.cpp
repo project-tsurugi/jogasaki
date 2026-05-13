@@ -62,6 +62,7 @@
 #include <takatori/statement/grant_table.h>
 #include <takatori/statement/revoke_table.h>
 #include <takatori/statement/statement_kind.h>
+#include <takatori/statement/truncate_table.h>
 #include <takatori/statement/write.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
@@ -110,6 +111,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/revoke_table.h>
 #include <jogasaki/executor/common/step.h>
+#include <jogasaki/executor/common/truncate_table.h>
 #include <jogasaki/executor/common/write_statement.h>
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
@@ -381,6 +383,9 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::revoke_table:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
+            break;
+        case statement::statement_kind::truncate_table:
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         default:
@@ -712,8 +717,13 @@ static status prepare(
             yugawara::restricted_feature::exchange_discard,
             yugawara::restricted_feature::statement_write_delete,
             yugawara::restricted_feature::statement_write_update,
-            yugawara::restricted_feature::statement_truncate_table,
         };
+        if(cfg && ! cfg->enable_truncate()) {
+            c_options.restricted_features() += {
+                yugawara::restricted_feature::statement_truncate_table,
+                yugawara::restricted_feature::statement_truncate_table_restart_identity,
+            };
+        }
     }
 
     return create_prepared_statement(std::move(analysis), ctx.variable_provider(), c_options, sp, ctx, out);
@@ -1110,6 +1120,11 @@ static void create_mirror_for_ddl(
             ops = std::make_shared<executor::common::revoke_table>(node);
             break;
         }
+        case statement::statement_kind::truncate_table: {
+            auto& node = unsafe_downcast<statement::truncate_table>(*statement);
+            ops = std::make_shared<executor::common::truncate_table>(node);
+            break;
+        }
         default:
             throw_exception(std::logic_error{""});
     }
@@ -1259,6 +1274,9 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::revoke_table:
+            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::truncate_table:
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:

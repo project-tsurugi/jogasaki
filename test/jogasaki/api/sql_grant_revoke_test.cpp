@@ -16,11 +16,13 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include <gtest/gtest.h>
 
 #include <tateyama/api/server/mock/request_response.h>
 
 #include <jogasaki/auth/action_kind.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/auth/action_set.h>
 #include <jogasaki/auth/authorized_users_action_set.h>
 #include <jogasaki/configuration.h>
@@ -37,6 +39,7 @@ namespace jogasaki::testing {
 using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::auth;
+using namespace jogasaki::mock;
 
 /**
 * @brief testcases for SQL GRANT and REVOKE tests
@@ -53,6 +56,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->enable_truncate(true);
         db_setup(cfg);
     }
 
@@ -539,5 +543,49 @@ TEST_F(sql_grant_revoke_test, grant_revoke_all_and_current_users) {
     }
 }
 
+TEST_F(sql_grant_revoke_test, truncate_requires_control_privilege) {
+    // TRUNCATE TABLE requires the control privilege; select/insert alone is not enough.
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (1)");
+    execute_statement("grant select, insert on table t to user1");
+
+    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("truncate table t", info1, error_code::permission_error);
+
+    // table must be unchanged after the failed TRUNCATE
+    std::vector<basic_record> result{};
+    execute_query("select c0 from t", result);
+    ASSERT_EQ(1, result.size());
+}
+
+TEST_F(sql_grant_revoke_test, truncate_allowed_by_public_control) {
+    // When public has the control privilege, any standard user may TRUNCATE.
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (1)");
+    execute_statement("grant all privileges on table t to public");
+
+    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("truncate table t", info1);
+
+    std::vector<basic_record> result{};
+    execute_query("select c0 from t", result);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(sql_grant_revoke_test, truncate_preserves_privileges) {
+    // TRUNCATE TABLE must copy user and public privileges to the new storage entry.
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant select, insert on table t to user1");
+    execute_statement("grant update, delete on table t to user2");
+    execute_statement("grant select on table t to public");
+
+    execute_statement("insert into t values (1)");
+    execute_statement("truncate table t");
+
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::update, action_kind::delete_}), users_actions.find_user_actions("user2"));
+    EXPECT_EQ((action_set{action_kind::select}), public_actions);
+}
 
 }  // namespace jogasaki::testing

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <limits>
@@ -21,6 +22,7 @@
 #include <string_view>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 #include <gtest/gtest.h>
 
 #include <takatori/util/fail.h>
@@ -62,6 +64,18 @@ public:
     void TearDown() override {
         kvs_db_teardown();
     }
+
+    /**
+     * @brief look up the info object stored in the manager's sequences map.
+     * @return pointer to the info if the def_id is found, nullptr otherwise.
+     */
+    static info const* find_info(manager const& mgr, sequence_definition_id def_id) {
+        manager::sequences_type::const_accessor acc;
+        if (! mgr.sequences().find(acc, def_id)) {
+            return nullptr;
+        }
+        return acc->second.info();
+    }
 };
 
 TEST_F(sequence_manager_test, simple) {
@@ -92,14 +106,15 @@ TEST_F(sequence_manager_test, initialize) {
     mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
 
     ASSERT_EQ(1, mgr.sequences().size());
-    auto& info0 = *mgr.sequences().at(1).info();
-    ASSERT_EQ(1, info0.definition_id());
-    ASSERT_EQ(0, info0.initial_value());
-    ASSERT_EQ(0, info0.minimum_value());
-    ASSERT_EQ(std::numeric_limits<std::int64_t>::max(), info0.maximum_value());
-    ASSERT_EQ("SEQ1", info0.name());
-    ASSERT_TRUE(info0.cycle());
-    ASSERT_EQ(1, info0.increment());
+    auto const* info0 = find_info(mgr, 1);
+    ASSERT_TRUE(info0 != nullptr);
+    ASSERT_EQ(1, info0->definition_id());
+    ASSERT_EQ(0, info0->initial_value());
+    ASSERT_EQ(0, info0->minimum_value());
+    ASSERT_EQ(std::numeric_limits<std::int64_t>::max(), info0->maximum_value());
+    ASSERT_EQ("SEQ1", info0->name());
+    ASSERT_TRUE(info0->cycle());
+    ASSERT_EQ(1, info0->increment());
 }
 
 TEST_F(sequence_manager_test, sequence_spec) {
@@ -121,14 +136,15 @@ TEST_F(sequence_manager_test, sequence_spec) {
     mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
 
     ASSERT_EQ(1, mgr.sequences().size());
-    auto& info0 = *mgr.sequences().at(111).info();
-    ASSERT_EQ(111, info0.definition_id());
-    ASSERT_EQ(100, info0.initial_value());
-    ASSERT_EQ(10, info0.minimum_value());
-    ASSERT_EQ(1000, info0.maximum_value());
-    ASSERT_EQ("SEQ1", info0.name());
-    ASSERT_FALSE(info0.cycle());
-    ASSERT_EQ(-2, info0.increment());
+    auto const* info0 = find_info(mgr, 111);
+    ASSERT_TRUE(info0 != nullptr);
+    ASSERT_EQ(111, info0->definition_id());
+    ASSERT_EQ(100, info0->initial_value());
+    ASSERT_EQ(10, info0->minimum_value());
+    ASSERT_EQ(1000, info0->maximum_value());
+    ASSERT_EQ("SEQ1", info0->name());
+    ASSERT_TRUE(! info0->cycle());
+    ASSERT_EQ(-2, info0->increment());
 }
 
 TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
@@ -145,10 +161,12 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr2.sequences().size());
-    auto& info2_0 = *mgr2.sequences().at(1).info();
-    auto& info2_1 = *mgr2.sequences().at(2).info();
-    ASSERT_EQ(1, info2_0.definition_id());
-    ASSERT_EQ(2, info2_1.definition_id());
+    auto const* info2_0 = find_info(mgr2, 1);
+    auto const* info2_1 = find_info(mgr2, 2);
+    ASSERT_TRUE(info2_0 != nullptr);
+    ASSERT_TRUE(info2_1 != nullptr);
+    ASSERT_EQ(1, info2_0->definition_id());
+    ASSERT_EQ(2, info2_1->definition_id());
 
     manager mgr3{*db_};
     EXPECT_EQ(2, mgr3.load_id_map());
@@ -156,10 +174,12 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr3.sequences().size());
-    auto& info3_0 = *mgr3.sequences().at(1).info();
-    auto& info3_1 = *mgr3.sequences().at(2).info();
-    ASSERT_EQ(info3_0, info2_0);
-    ASSERT_EQ(info3_1, info2_1);
+    auto const* info3_0 = find_info(mgr3, 1);
+    auto const* info3_1 = find_info(mgr3, 2);
+    ASSERT_TRUE(info3_0 != nullptr);
+    ASSERT_TRUE(info3_1 != nullptr);
+    ASSERT_EQ(*info3_0, *info2_0);
+    ASSERT_EQ(*info3_1, *info2_1);
 }
 
 TEST_F(sequence_manager_test, sequence_manipulation) {
@@ -170,8 +190,7 @@ TEST_F(sequence_manager_test, sequence_manipulation) {
     mgr.register_sequence(nullptr, 3, "SEQ3");
     auto* s = mgr.find_sequence(2);
     ASSERT_TRUE(s);
-    auto& body = mgr.sequences().at(2);
-    EXPECT_EQ(*body.info(), s->info());
+    EXPECT_EQ(*find_info(mgr, 2), s->info());
 
     sequence_version v1{};
     {
@@ -560,6 +579,83 @@ TEST_F(sequence_manager_test, save_and_recover) {
         EXPECT_EQ(1, val);
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
+    }
+}
+
+// This test exercises concurrent access to the sequence manager's internal map.
+// Before fixing sequences_ to tbb::concurrent_hash_map, running this test under
+// ThreadSanitizer would report data races because std::unordered_map is not
+// thread-safe: concurrent register_sequence() (DDL, write) and find_sequence()
+// (DML, read) conflict when the map rehashes. With tbb::concurrent_hash_map the
+// operations are safe and the test verifies correctness of the final state.
+TEST_F(sequence_manager_test, concurrent_register_and_find) {
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+
+    constexpr sequence_definition_id initial_seqs = 20;
+    constexpr int register_threads = 4;
+    constexpr int find_threads = 4;
+    constexpr int new_seqs_per_thread = 50;
+    constexpr int find_iterations = 500;
+
+    // Pre-populate some sequences so find_sequence() has work to do immediately.
+    for (sequence_definition_id i = 0; i < initial_seqs; ++i) {
+        mgr.register_sequence(
+            nullptr, i, "SEQ_INIT_" + std::to_string(i),
+            0, 1, 0, std::numeric_limits<sequence_value>::max(), true,
+            /*save_id_map_entry=*/false
+        );
+    }
+
+    std::atomic<bool> go{false};
+    std::vector<std::thread> threads;
+
+    // Writer threads: register new sequences (concurrent DDL).
+    for (int t = 0; t < register_threads; ++t) {
+        threads.emplace_back([&mgr, t, &go]() {
+            while (! go.load(std::memory_order_acquire)) {}
+            for (int j = 0; j < new_seqs_per_thread; ++j) {
+                auto def_id = static_cast<sequence_definition_id>(
+                    initial_seqs + t * new_seqs_per_thread + j
+                );
+                mgr.register_sequence(
+                    nullptr, def_id, "SEQ_NEW_" + std::to_string(def_id),
+                    0, 1, 0, std::numeric_limits<sequence_value>::max(), true,
+                    /*save_id_map_entry=*/false
+                );
+            }
+        });
+    }
+
+    // Reader threads: find pre-existing sequences (concurrent DML).
+    for (int t = 0; t < find_threads; ++t) {
+        threads.emplace_back([&mgr, &go]() {
+            while (! go.load(std::memory_order_acquire)) {}
+            for (int iter = 0; iter < find_iterations; ++iter) {
+                for (sequence_definition_id i = 0; i < initial_seqs; ++i) {
+                    (void) mgr.find_sequence(i);
+                }
+            }
+        });
+    }
+
+    go.store(true, std::memory_order_release);
+    for (auto& th : threads) {
+        th.join();
+    }
+
+    // Verify all initially registered sequences are still accessible.
+    for (sequence_definition_id i = 0; i < initial_seqs; ++i) {
+        EXPECT_TRUE(mgr.find_sequence(i) != nullptr);
+    }
+    // Verify all newly registered sequences are accessible.
+    for (int t = 0; t < register_threads; ++t) {
+        for (int j = 0; j < new_seqs_per_thread; ++j) {
+            auto def_id = static_cast<sequence_definition_id>(
+                initial_seqs + t * new_seqs_per_thread + j
+            );
+            EXPECT_TRUE(mgr.find_sequence(def_id) != nullptr);
+        }
     }
 }
 

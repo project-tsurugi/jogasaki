@@ -42,17 +42,16 @@
 #include <yugawara/storage/table.h>
 #include <sharksfin/StorageOptions.h>
 
+#include <jogasaki/auth/action_kind.h>
+#include <jogasaki/auth/action_set.h>
+#include <jogasaki/auth/authorized_users_action_set.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/common/ddl_common.h>
 #include <jogasaki/executor/conv/create_default_value.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/sequence/exception.h>
-#include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/executor/sequence/metadata_store.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
@@ -60,12 +59,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/utils/append_request_info.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/handle_generic_error.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/storage_metadata_serializer.h>
-#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/utils/validate_index_key_type.h>
 #include <jogasaki/utils/validate_table_definition.h>
 
@@ -83,35 +77,6 @@ model::statement_kind create_table::kind() const noexcept {
     return model::statement_kind::create_table;
 }
 
-static bool create_generated_sequence(
-    request_context& context,
-    yugawara::storage::sequence& p
-) {
-    executor::sequence::metadata_store ms{*context.transaction()->object()};
-    std::size_t def_id{};
-    try {
-        ms.find_next_empty_def_id(def_id);
-        p.definition_id(def_id); // TODO p is part of prepared statement, avoid updating it directly
-        context.sequence_manager()->register_sequence(
-            std::addressof(static_cast<kvs::transaction &>(*context.transaction())),
-            *p.definition_id(),
-            p.simple_name(),
-            p.initial_value(),
-            p.increment_value(),
-            p.min_value(),
-            p.max_value(),
-            p.cycle(),
-            true,
-            true // create new seq_id
-        );
-//        provider.add_sequence(p);  // sequence definition is added in serializer, no need to add it here
-    } catch (sequence::exception& e) {
-        handle_kvs_errors(context, e.get_status());
-        handle_generic_error(context, e.get_status(), error_code::sql_execution_exception);
-        return false;
-    }
-    return true;
-}
 
 bool create_table::operator()(request_context& context) const {
     assert_with_exception(context.storage_provider());
@@ -168,106 +133,34 @@ bool create_table::operator()(request_context& context) const {
         }
     }
 
-    auto tid = storage::index_id_src++;
-    auto& smgr = *global::storage_manager();
-
-    // note: this code generating surrogate id has been added in release 1.8,
-    // and existing tables/indices that were created before the release
-    // do not have surrogate IDs
-    auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
-    auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
-
-    if(! smgr.add_entry(tid, c->simple_name(), opt, true)) {
-        // should not happen normally
-        set_error_context(
-            context,
-            error_code::target_already_exists_exception,
-            string_builder{} << "Table id:" << tid << " already exists" << string_builder::to_string,
-            status::err_already_exists
-        );
-        return false;
-    }
-
-    auto se = smgr.find_entry(tid);
-    if(! se) {
-        // should not happen normally
-        set_error_context(
-            context,
-            error_code::sql_execution_exception,
-            string_builder{} << "Table id:" << tid << " not found" << string_builder::to_string,
-            status::err_unknown
-        );
-        return false;
-    }
-
     // the creator owns the CONTROL privilege on the newly created table
-    if (context.req_info().request_source()) {
+    auth::authorized_users_action_set new_auth{};
+    if(context.req_info().request_source()) {
         if(auto name = context.req_info().request_source()->session_info().username(); name.has_value()) {
-            se->authorized_actions().add_user_actions(name.value(), auth::action_set{auth::action_kind::control});
+            new_auth.add_user_actions(name.value(), auth::action_set{auth::action_kind::control});
         }
     }
 
-    std::string storage{};
-    yugawara::storage::configurable_provider target{};
-
-    if(auto err = recovery::create_storage_option(
-           *i,
-           storage,
-           utils::metadata_serializer_option{
-               false,
-               std::addressof(se->authorized_actions()),
-               nullptr,
-               opt
-           }
-       )) {
-        // error should not happen normally
+    storage::storage_entry tid{};
+    std::string serialized{};
+    if(! create_primary_storage(context, *i, &new_auth, nullptr, tid, &serialized)) {
+        return false;
+    }
+    if(auto err = recovery::deserialize_storage_option_into_provider(serialized, provider, provider, true)) {
         set_error_info(context, err);
         return false;
     }
-    if(auto err = recovery::deserialize_storage_option_into_provider(storage, provider, provider, true)) {
-        // error should not happen normally
-        // validating version failure does not happen as serialization is just done above.
-        set_error_info(context, err);
-        return false;
-    }
-
-    sharksfin::StorageOptions options{};
-    options.payload(std::move(storage));
-    if(auto stg = context.database()->create_storage((opt.has_value() ? opt.value() : c->simple_name()), options);! stg) {
-        // should not happen normally
-        set_error_context(
-            context,
-            error_code::target_already_exists_exception,
-            string_builder{} << "Storage \"" << c->simple_name() << "\" already exists " << string_builder::to_string,
-            status::err_already_exists
-        );
-        return false;
-    }
-    auto& tx = *context.transaction();
-    if(! tx.storage_lock()) {
-        tx.storage_lock(smgr.create_unique_lock());
-    }
-    storage::storage_list stg{tid};
-    if(! smgr.add_locked_storages(stg, *tx.storage_lock())) {
-        // should not happen normally since this is newly created table
-        auto msg = string_builder{} << "DDL operation was blocked by other DML operation. table:\"" << c->simple_name()
-                                    << "\"" << string_builder::to_string;
-        set_error_context(
-            context,
-            error_code::sql_execution_exception,
-            msg,
-            status::err_illegal_operation
-        );
-        utils::print_error(context, msg);
+    if(! lock_storage_entry(context, tid, c->simple_name())) {
         return false;
     }
 
     // tx to remember that it has used the storage
     // this is not mandatory for create (since created one is not accessible externally),
     // but to be consistent with drop ddls
-    tx.add_storage_ref(tid);
-
+    if (context.transaction()) {
+        context.transaction()->add_storage_ref(tid);
+    }
     return true;
 }
 
-}
+}  // namespace jogasaki::executor::common

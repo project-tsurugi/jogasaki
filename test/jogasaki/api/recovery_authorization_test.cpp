@@ -50,6 +50,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->enable_truncate(true);
         db_setup(cfg);
     }
 
@@ -154,6 +155,41 @@ TEST_F(recovery_authorization_test, granted_control_persists_after_recovery) {
         EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
         EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
         EXPECT_EQ((action_set{}), public_actions);
+    }
+}
+
+TEST_F(recovery_authorization_test, truncate_preserved_privs_persist_after_recovery) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    // Privileges set before TRUNCATE TABLE must be carried over to the new
+    // storage entry and survive a stop/start cycle.
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
+    execute_statement("GRANT SELECT, INSERT ON TABLE t TO user1");
+    execute_statement("GRANT UPDATE, DELETE ON TABLE t TO user2");
+    execute_statement("GRANT SELECT ON TABLE t TO PUBLIC");
+
+    execute_statement("INSERT INTO t VALUES (1)");
+    execute_statement("TRUNCATE TABLE t");
+
+    // verify privileges are present on the new storage entry before recovery
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{action_kind::update, action_kind::delete_}), users_actions.find_user_actions("user2"));
+        EXPECT_EQ((action_set{action_kind::select}), public_actions);
+    }
+
+    // shutdown and restart database
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // privileges must survive recovery
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{action_kind::update, action_kind::delete_}), users_actions.find_user_actions("user2"));
+        EXPECT_EQ((action_set{action_kind::select}), public_actions);
     }
 }
 

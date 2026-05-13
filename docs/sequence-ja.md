@@ -134,5 +134,13 @@ extern "C" StatusCode sequence_delete(
   * 既存のcontent_put/content_getを利用してトランザクションエンジンにシステム管理用の特殊なレコードとして保存する
   * この際のDBアクセスはCCによる排他制御のスコープ外とする
     * 主にリカバリやDDLの処理の一部
-
-
+  * この情報を記録するためのシステムテーブル `__system_sequences` の現状でのスキーマを下記に示す
+    * `definition_id BIGINT NOT NULL PRIMARY KEY`
+      * シーケンス定義ID。シーケンスごとに一意な値が割り当てられる
+      * jogasakiがアトミックなソースカウンタから採番する 
+      * `yugawara::storage::sequence` に `definition_id` として保存される 
+      * テーブル定義の一部として `storage.proto` の形式でストレージメタデータにも保存される
+    * `sequence_id BIGINT NOT NULL`
+      * シーケンスID。シーケンスごとに一意な値が割り当てられる
+      * トランザクションエンジンによって採番される
+      * トランザクションエンジン上のAPIではこれを使用する

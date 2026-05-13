@@ -587,6 +587,14 @@ public:
         enable_disjunction_range_hinting_ = arg;
     }
 
+    [[nodiscard]] bool enable_truncate() const noexcept {
+        return enable_truncate_;
+    }
+
+    void enable_truncate(bool arg) noexcept {
+        enable_truncate_ = arg;
+    }
+
     [[nodiscard]] std::string_view grpc_server_endpoint() const noexcept {
         return grpc_server_endpoint_;
     }
@@ -687,6 +695,7 @@ public:
         print_non_default(endpoint);
         print_non_default(secure);
         print_non_default(enable_disjunction_range_hinting);
+        print_non_default(enable_truncate);
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
         print_non_default(udf_pass_mock_tag);
@@ -763,6 +772,7 @@ private:
     std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;
     bool enable_disjunction_range_hinting_ = true;
+    bool enable_truncate_ = false;
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;
     bool udf_pass_mock_tag_ = false;

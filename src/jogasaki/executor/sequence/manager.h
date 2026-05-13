@@ -178,7 +178,7 @@ public:
      * @return the sequence object if found
      * @return nullptr if not found
      */
-    sequence* find_sequence(sequence_definition_id def_id) const;
+    [[nodiscard]] sequence* find_sequence(sequence_definition_id def_id) const;
 
     /**
      * @brief notifies kvs of the current sequence value so that they are made durable together with the updating tx
@@ -210,7 +210,7 @@ public:
      * @brief accessor to the in-memory sequences objects
      * @return the sequences held by this manager
      */
-    sequences_type const& sequences() const noexcept;
+    [[nodiscard]] sequences_type const& sequences() const noexcept;
 
 private:
     kvs::database* db_{};

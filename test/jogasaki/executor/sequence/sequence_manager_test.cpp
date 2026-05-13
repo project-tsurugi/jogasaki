@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <limits>
@@ -21,6 +22,7 @@
 #include <string_view>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 #include <gtest/gtest.h>
 
 #include <takatori/util/fail.h>
@@ -560,6 +562,83 @@ TEST_F(sequence_manager_test, save_and_recover) {
         EXPECT_EQ(1, val);
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
+    }
+}
+
+// This test exercises concurrent access to the sequence manager's internal map.
+// Before fixing sequences_ to tbb::concurrent_hash_map, running this test under
+// ThreadSanitizer would report data races because std::unordered_map is not
+// thread-safe: concurrent register_sequence() (DDL, write) and find_sequence()
+// (DML, read) conflict when the map rehashes. With tbb::concurrent_hash_map the
+// operations are safe and the test verifies correctness of the final state.
+TEST_F(sequence_manager_test, concurrent_register_and_find) {
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+
+    constexpr sequence_definition_id initial_seqs = 20;
+    constexpr int register_threads = 4;
+    constexpr int find_threads = 4;
+    constexpr int new_seqs_per_thread = 50;
+    constexpr int find_iterations = 500;
+
+    // Pre-populate some sequences so find_sequence() has work to do immediately.
+    for (sequence_definition_id i = 0; i < initial_seqs; ++i) {
+        mgr.register_sequence(
+            nullptr, i, "SEQ_INIT_" + std::to_string(i),
+            0, 1, 0, std::numeric_limits<sequence_value>::max(), true,
+            /*save_id_map_entry=*/false
+        );
+    }
+
+    std::atomic<bool> go{false};
+    std::vector<std::thread> threads;
+
+    // Writer threads: register new sequences (concurrent DDL).
+    for (int t = 0; t < register_threads; ++t) {
+        threads.emplace_back([&mgr, t, &go]() {
+            while (! go.load(std::memory_order_acquire)) {}
+            for (int j = 0; j < new_seqs_per_thread; ++j) {
+                auto def_id = static_cast<sequence_definition_id>(
+                    initial_seqs + t * new_seqs_per_thread + j
+                );
+                mgr.register_sequence(
+                    nullptr, def_id, "SEQ_NEW_" + std::to_string(def_id),
+                    0, 1, 0, std::numeric_limits<sequence_value>::max(), true,
+                    /*save_id_map_entry=*/false
+                );
+            }
+        });
+    }
+
+    // Reader threads: find pre-existing sequences (concurrent DML).
+    for (int t = 0; t < find_threads; ++t) {
+        threads.emplace_back([&mgr, &go]() {
+            while (! go.load(std::memory_order_acquire)) {}
+            for (int iter = 0; iter < find_iterations; ++iter) {
+                for (sequence_definition_id i = 0; i < initial_seqs; ++i) {
+                    (void) mgr.find_sequence(i);
+                }
+            }
+        });
+    }
+
+    go.store(true, std::memory_order_release);
+    for (auto& th : threads) {
+        th.join();
+    }
+
+    // Verify all initially registered sequences are still accessible.
+    for (sequence_definition_id i = 0; i < initial_seqs; ++i) {
+        EXPECT_TRUE(mgr.find_sequence(i) != nullptr);
+    }
+    // Verify all newly registered sequences are accessible.
+    for (int t = 0; t < register_threads; ++t) {
+        for (int j = 0; j < new_seqs_per_thread; ++j) {
+            auto def_id = static_cast<sequence_definition_id>(
+                initial_seqs + t * new_seqs_per_thread + j
+            );
+            EXPECT_TRUE(mgr.find_sequence(def_id) != nullptr);
+        }
     }
 }
 

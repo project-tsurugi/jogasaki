@@ -84,8 +84,9 @@ public:
 
     /**
      * @brief sequence entities type
+     * @details Thread-safe concurrent hash map keyed by sequence definition id.
      */
-    using sequences_type = std::unordered_map<sequence_definition_id, details::sequence_element>;
+    using sequences_type = tbb::concurrent_hash_map<sequence_definition_id, details::sequence_element>;
 
     /**
      * @brief create empty object
@@ -97,8 +98,8 @@ public:
      */
     ~manager() = default;
 
-    manager(manager const& other) = default;
-    manager& operator=(manager const& other) = default;
+    manager(manager const& other) = delete;
+    manager& operator=(manager const& other) = delete;
     manager(manager&& other) noexcept = default;
     manager& operator=(manager&& other) noexcept = default;
 
@@ -171,8 +172,8 @@ public:
 
     /**
      * @brief find sequence
-     * This function can be called from multiple threads as far as it doesn't compete with functions modifying sequences
-     * (i.e. load_id_map(), register_sequence(), register_sequences() and remove_sequence()).
+     * @details This function is fully thread-safe and may be called concurrently with other
+     * find_sequence() calls and with register_sequence(), register_sequences(), and remove_sequence().
      * @param def_id the sequence definition id for search
      * @return the sequence object if found
      * @return nullptr if not found

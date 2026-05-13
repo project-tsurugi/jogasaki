@@ -64,6 +64,18 @@ public:
     void TearDown() override {
         kvs_db_teardown();
     }
+
+    /**
+     * @brief look up the info object stored in the manager's sequences map.
+     * @return pointer to the info if the def_id is found, nullptr otherwise.
+     */
+    static info const* find_info(manager const& mgr, sequence_definition_id def_id) {
+        manager::sequences_type::const_accessor acc;
+        if (! mgr.sequences().find(acc, def_id)) {
+            return nullptr;
+        }
+        return acc->second.info();
+    }
 };
 
 TEST_F(sequence_manager_test, simple) {
@@ -94,14 +106,15 @@ TEST_F(sequence_manager_test, initialize) {
     mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
 
     ASSERT_EQ(1, mgr.sequences().size());
-    auto& info0 = *mgr.sequences().at(1).info();
-    ASSERT_EQ(1, info0.definition_id());
-    ASSERT_EQ(0, info0.initial_value());
-    ASSERT_EQ(0, info0.minimum_value());
-    ASSERT_EQ(std::numeric_limits<std::int64_t>::max(), info0.maximum_value());
-    ASSERT_EQ("SEQ1", info0.name());
-    ASSERT_TRUE(info0.cycle());
-    ASSERT_EQ(1, info0.increment());
+    auto const* info0 = find_info(mgr, 1);
+    ASSERT_TRUE(info0 != nullptr);
+    ASSERT_EQ(1, info0->definition_id());
+    ASSERT_EQ(0, info0->initial_value());
+    ASSERT_EQ(0, info0->minimum_value());
+    ASSERT_EQ(std::numeric_limits<std::int64_t>::max(), info0->maximum_value());
+    ASSERT_EQ("SEQ1", info0->name());
+    ASSERT_TRUE(info0->cycle());
+    ASSERT_EQ(1, info0->increment());
 }
 
 TEST_F(sequence_manager_test, sequence_spec) {
@@ -123,14 +136,15 @@ TEST_F(sequence_manager_test, sequence_spec) {
     mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
 
     ASSERT_EQ(1, mgr.sequences().size());
-    auto& info0 = *mgr.sequences().at(111).info();
-    ASSERT_EQ(111, info0.definition_id());
-    ASSERT_EQ(100, info0.initial_value());
-    ASSERT_EQ(10, info0.minimum_value());
-    ASSERT_EQ(1000, info0.maximum_value());
-    ASSERT_EQ("SEQ1", info0.name());
-    ASSERT_FALSE(info0.cycle());
-    ASSERT_EQ(-2, info0.increment());
+    auto const* info0 = find_info(mgr, 111);
+    ASSERT_TRUE(info0 != nullptr);
+    ASSERT_EQ(111, info0->definition_id());
+    ASSERT_EQ(100, info0->initial_value());
+    ASSERT_EQ(10, info0->minimum_value());
+    ASSERT_EQ(1000, info0->maximum_value());
+    ASSERT_EQ("SEQ1", info0->name());
+    ASSERT_TRUE(! info0->cycle());
+    ASSERT_EQ(-2, info0->increment());
 }
 
 TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
@@ -147,10 +161,12 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr2.sequences().size());
-    auto& info2_0 = *mgr2.sequences().at(1).info();
-    auto& info2_1 = *mgr2.sequences().at(2).info();
-    ASSERT_EQ(1, info2_0.definition_id());
-    ASSERT_EQ(2, info2_1.definition_id());
+    auto const* info2_0 = find_info(mgr2, 1);
+    auto const* info2_1 = find_info(mgr2, 2);
+    ASSERT_TRUE(info2_0 != nullptr);
+    ASSERT_TRUE(info2_1 != nullptr);
+    ASSERT_EQ(1, info2_0->definition_id());
+    ASSERT_EQ(2, info2_1->definition_id());
 
     manager mgr3{*db_};
     EXPECT_EQ(2, mgr3.load_id_map());
@@ -158,10 +174,12 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr3.sequences().size());
-    auto& info3_0 = *mgr3.sequences().at(1).info();
-    auto& info3_1 = *mgr3.sequences().at(2).info();
-    ASSERT_EQ(info3_0, info2_0);
-    ASSERT_EQ(info3_1, info2_1);
+    auto const* info3_0 = find_info(mgr3, 1);
+    auto const* info3_1 = find_info(mgr3, 2);
+    ASSERT_TRUE(info3_0 != nullptr);
+    ASSERT_TRUE(info3_1 != nullptr);
+    ASSERT_EQ(*info3_0, *info2_0);
+    ASSERT_EQ(*info3_1, *info2_1);
 }
 
 TEST_F(sequence_manager_test, sequence_manipulation) {
@@ -172,8 +190,7 @@ TEST_F(sequence_manager_test, sequence_manipulation) {
     mgr.register_sequence(nullptr, 3, "SEQ3");
     auto* s = mgr.find_sequence(2);
     ASSERT_TRUE(s);
-    auto& body = mgr.sequences().at(2);
-    EXPECT_EQ(*body.info(), s->info());
+    EXPECT_EQ(*find_info(mgr, 2), s->info());
 
     sequence_version v1{};
     {

@@ -48,24 +48,22 @@ namespace jogasaki::executor::sequence {
 using takatori::util::throw_exception;
 using kind = meta::field_type_kind;
 
-static manager::sequences_type create_sequences(manager::id_map_type const& id_map) {
-    manager::sequences_type ret{};
+static void populate_sequences(manager::sequences_type& sequences, manager::id_map_type const& id_map) {
     for(auto& [def_id, id] : id_map) {
-        auto [it, success] = ret.try_emplace(def_id, id);
-        assert_with_exception(success);
-        (void)success;
-        (void)it;
+        manager::sequences_type::accessor acc;
+        sequences.insert(acc, def_id);
+        acc->second = details::sequence_element{id};
     }
-    return ret;
 }
 
 manager::manager(
     kvs::database& db,
     id_map_type const& id_map
 ) :
-    db_(std::addressof(db)),
-    sequences_(create_sequences(id_map))
-{}
+    db_(std::addressof(db))
+{
+    populate_sequences(sequences_, id_map);
+}
 
 std::size_t manager::load_id_map(kvs::transaction* tx) {
     std::unique_ptr<kvs::transaction> created_tx{};
@@ -77,7 +75,9 @@ std::size_t manager::load_id_map(kvs::transaction* tx) {
     metadata_store s{*tx};
     std::size_t ret{};
     s.scan([this, &ret](std::int64_t def_id, std::int64_t id) {
-        sequences_[def_id] = details::sequence_element(id);
+        sequences_type::accessor acc;
+        sequences_.insert(acc, static_cast<sequence_definition_id>(def_id));
+        acc->second = details::sequence_element(static_cast<sequence_id>(id));
         ++ret;
     });
     if (created_tx) {
@@ -100,19 +100,22 @@ sequence* manager::register_sequence(
     bool assign_new_seq_id_if_not_found
 ) {
     sequence_id seq_id{};
-    if(sequences_.count(def_id) == 0) {
-        if(! assign_new_seq_id_if_not_found) {
+    sequences_type::accessor acc;
+    bool inserted = sequences_.insert(acc, def_id);
+    if (inserted) {
+        if (! assign_new_seq_id_if_not_found) {
+            sequences_.erase(acc);
             return {};
         }
         if(auto rc = db_->create_sequence(seq_id); rc != status::ok) {
             (void) tx->abort_transaction();
             throw_exception(exception{rc});
         }
-        sequences_[def_id] = details::sequence_element{seq_id};
+        acc->second = details::sequence_element{seq_id};
     } else {
-        seq_id = sequences_[def_id].id();
+        seq_id = acc->second.id();
     }
-    auto& p = sequences_[def_id].info(
+    auto& p = acc->second.info(
         std::make_unique<info>(
             def_id,
             seq_id,
@@ -136,12 +139,12 @@ sequence* manager::register_sequence(
         v.version_ = initial_sequence_version;
         v.value_ = initial_value;
     }
-    sequences_[def_id].sequence(std::make_unique<sequence>(*p, *this, v.version_, v.value_));
+    acc->second.sequence(std::make_unique<sequence>(*p, *this, v.version_, v.value_));
 
     if (save_id_map_entry) {
         save_id_map(tx);
     }
-    return sequences_[def_id].sequence();
+    return acc->second.sequence();
 }
 
 void manager::register_sequences(
@@ -175,10 +178,11 @@ void manager::register_sequences(
 }
 
 sequence* manager::find_sequence(sequence_definition_id def_id) const {
-    if (sequences_.count(def_id) == 0) {
+    sequences_type::const_accessor acc;
+    if (! sequences_.find(acc, def_id)) {
         return nullptr;
     }
-    return sequences_.at(def_id).sequence();
+    return acc->second.sequence();
 }
 
 bool manager::notify_updates(kvs::transaction& tx) {
@@ -205,16 +209,18 @@ bool manager::remove_sequence(
     sequence_definition_id def_id,
     kvs::transaction* tx
 ) {
-    if (sequences_.count(def_id) == 0) {
+    sequences_type::accessor acc;
+    if (! sequences_.find(acc, def_id)) {
         return false;
     }
-    if (auto rc = db_->delete_sequence(sequences_[def_id].id()); rc != status::ok && rc != status::err_not_found) {
+    auto seq_id = acc->second.id();
+    if (auto rc = db_->delete_sequence(seq_id); rc != status::ok && rc != status::err_not_found) {
         // status::err_not_found never comes here because the sequence is already in sequences_
         (void) tx->abort_transaction();
         throw_exception(exception{rc});
     }
+    sequences_.erase(acc);
     remove_id_map(def_id, tx);
-    sequences_.erase(def_id);
     return true;
 }
 

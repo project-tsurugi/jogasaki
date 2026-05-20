@@ -273,11 +273,11 @@ message DateTimeInterval {
 
 // the character large object value.
 message Clob {
+    // reserved for deprecated field
+    reserved 1;
 
     // the data of this large object.
     oneof data {
-        // the object value is stored in the file (don't across the network, only for used in the local system).
-        string local_path = 1;
 
         // the channel name to transmit this object value.
         string channel_name = 2;
@@ -289,11 +289,11 @@ message Clob {
 
 // the binary large object value.
 message Blob {
+    // reserved for deprecated field
+    reserved 1;
 
     // the data of this large object.
     oneof data {
-        // the object value is stored in the file (don't across the network, only for used in the local system).
-        string local_path = 1;
 
         // the channel name to transmit this object value.
         string channel_name = 2;

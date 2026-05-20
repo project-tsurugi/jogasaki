@@ -468,8 +468,6 @@ inline void fill_parameters(
                 auto loc = std::any_cast<lob::blob_locator>(p.value_);
                 auto* b = c0->mutable_blob();
                 // local_path, which is not used tsurugidb, is deprecated
-                // b->mutable_local_path()->assign(loc.path());
-                // for convenience, we use the path string as channel name as well
                 b->mutable_channel_name()->assign(loc.path());
                 break;
             }
@@ -477,8 +475,6 @@ inline void fill_parameters(
                 auto loc = std::any_cast<lob::clob_locator>(p.value_);
                 auto* c = c0->mutable_clob();
                 // local_path, which is not used tsurugidb, is deprecated
-                // c->mutable_local_path()->assign(loc.path());
-                // for convenience, we use the path string as channel name as well
                 c->mutable_channel_name()->assign(loc.path());
                 break;
             }

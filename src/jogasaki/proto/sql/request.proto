@@ -126,13 +126,13 @@ message ClientOnlyLargeObjectInfo {
         // for privileged mode
         string server_path = 2;
 
-        // Results sent Large Object Data via the Blob relay service.
+        // Reference to large object data sent via the BLOB relay service.
         // for blob relay service
         BlobRelayReference blob_relay_reference = 3;
     }
 }
 
-// Results sent Large Object Data via the Blob relay service.
+// Reference to large object data sent via the BLOB relay service.
 message BlobRelayReference {
     // the ID of the storage where the BLOB data is stored.
     uint64 storage_id = 1;

@@ -42,6 +42,9 @@ misc-*,\
 -misc-unused-parameters,\
 -misc-use-anonymous-namespace,\
 modernize-*,\
+-modernize-use-constraints,\
+-modernize-use-integer-sign-comparison,\
+-modernize-use-ranges,\
 -modernize-use-trailing-return-type,\
 performance-*,\
 -performance-avoid-endl,\

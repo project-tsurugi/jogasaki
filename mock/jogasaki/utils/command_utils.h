@@ -467,16 +467,14 @@ inline void fill_parameters(
             case ValueCase::kBlob: {
                 auto loc = std::any_cast<lob::blob_locator>(p.value_);
                 auto* b = c0->mutable_blob();
-                b->mutable_local_path()->assign(loc.path());
-                // for convenience, we use the path string as channel name as well
+                // local_path, which is not used tsurugidb, is deprecated
                 b->mutable_channel_name()->assign(loc.path());
                 break;
             }
             case ValueCase::kClob: {
                 auto loc = std::any_cast<lob::clob_locator>(p.value_);
                 auto* c = c0->mutable_clob();
-                c->mutable_local_path()->assign(loc.path());
-                // for convenience, we use the path string as channel name as well
+                // local_path, which is not used tsurugidb, is deprecated
                 c->mutable_channel_name()->assign(loc.path());
                 break;
             }

@@ -98,6 +98,12 @@ message Parameter {
         // the binary large object.
         common.Blob blob = 32;
 
+        // the ClientOnlyLargeObjectInfo for Large Object transfer (doesn't cross the network, only used in the local system).
+        // Need to distinguish whether the parameter is a BLOB or a CLOB.
+        // Since 1.11.0
+        ClientOnlyLargeObjectInfo large_object_info_clob = 33;
+        ClientOnlyLargeObjectInfo large_object_info_blob = 34;
+
         // reference column position (for load action).
         uint64 reference_column_position = 51;
 
@@ -105,7 +111,37 @@ message Parameter {
         string reference_column_name = 52;
     }
 
-    reserved 12, 13, 20, 22, 24, 33 to 40, 41 to 50, 53 to 99;
+    reserved 12, 13, 20, 22, 24, 35 to 40, 41 to 50, 53 to 99;
+}
+
+// This is for LargeObject information handling within the client.
+// This doesn't cross the network, and is only used in the local system.
+message ClientOnlyLargeObjectInfo {
+    oneof data {
+        // the object value is stored in the local file.
+        // for privileged mode
+        string client_path = 1;
+
+        // the object value is stored in the local file which can be accessed from the server through server_path.
+        // for privileged mode
+        string server_path = 2;
+
+        // Reference to large object data sent via the BLOB relay service.
+        // for blob relay service
+        BlobRelayReference blob_relay_reference = 3;
+    }
+}
+
+// Reference to large object data sent via the BLOB relay service.
+message BlobRelayReference {
+    // the ID of the storage where the BLOB data is stored.
+    uint64 storage_id = 1;
+
+    // the ID of the object within the BLOB storage.
+    uint64 object_id = 2;
+
+    // a tag for additional access control.
+    uint64 tag = 3;
 }
 
 // the parameter set for the statement.

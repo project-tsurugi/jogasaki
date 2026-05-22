@@ -19,6 +19,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/assert.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -110,6 +111,47 @@ namespace {
 
 constexpr std::size_t SUPPORTED_MAJOR = 0;
 constexpr std::size_t SUPPORTED_MINOR = 3;
+
+blob_grpc_metadata make_blob_grpc_metadata(
+    std::size_t session_id, plugin::udf::udf_config const* cfg);
+
+std::chrono::milliseconds to_milliseconds(std::size_t seconds) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::seconds{static_cast<std::chrono::seconds::rep>(seconds)});
+}
+
+void apply_udf_timeout(plugin::udf::generic_client_context& context,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg) {
+    if (cfg) {
+        if (auto timeout = cfg->timeout()) {
+            if (*timeout > 0) {
+                context.timeout(to_milliseconds(*timeout));
+                return;
+            }
+        }
+    }
+
+    auto timeout = global::config_pool()->timeout();
+    if (timeout > 0) { context.timeout(to_milliseconds(timeout)); }
+}
+
+bool apply_context(plugin::udf::generic_client_context& context, evaluator_context& ctx,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg) {
+    auto* bs = ctx.blob_session();
+    assert_with_exception(bs != nullptr, bs);
+
+    auto session_id = bs->get_or_create()->session_id();
+    auto metadata = make_blob_grpc_metadata(session_id, cfg.get());
+    if (!metadata.apply(context.grpc_context())) {
+        std::string msg = "Failed to apply gRPC metadata";
+        VLOG_LP(log_error) << msg;
+        ctx.add_error({error_kind::unknown, msg});
+        return false;
+    }
+
+    apply_udf_timeout(context, cfg);
+    return true;
+}
 
 std::unordered_map<std::string_view, std::size_t> const& nested_type_map() {
     static const std::unordered_map<std::string_view, std::size_t> map{
@@ -1131,16 +1173,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
         }
         auto context = std::make_unique<plugin::udf::generic_client_context>();
 
-        auto* bs = ctx.blob_session();
-        assert_with_exception(bs != nullptr, bs);
-        auto session_id = bs->get_or_create()->session_id();
-        auto metadata = make_blob_grpc_metadata(session_id, cfg.get());
-        if (!metadata.apply(context->grpc_context())) {
-            std::string msg = "Failed to apply gRPC metadata";
-            VLOG_LP(log_error) << msg;
-            ctx.add_error({error_kind::unknown, msg});
-            return {};
-        }
+        if (!apply_context(*context, ctx, cfg)) { return {}; }
 
         auto udf_stream = client->call_server_streaming_async(
             std::move(context), {0, fn->function_index()}, request);
@@ -1195,16 +1228,11 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         }
         plugin::udf::generic_record_impl response;
         plugin::udf::generic_client_context context;
-        auto* bs = ctx.blob_session();
-        assert_with_exception(bs != nullptr, bs);
-        auto session_id = bs->get_or_create()->session_id();
-        auto metadata = make_blob_grpc_metadata(session_id, cfg.get());
-        if (!metadata.apply(context.grpc_context())) {
-            std::string msg = "Failed to apply gRPC metadata";
-            VLOG_LP(log_error) << msg;
-            ctx.add_error({error_kind::unknown, msg});
+
+        if (!apply_context(context, ctx, cfg)) {
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
         }
+
         client->call(context, {0, fn->function_index()}, request, response);
 
         if (response.error()) {
@@ -1355,7 +1383,6 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
         }
     }
 }
-
 } // namespace
 
 bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {

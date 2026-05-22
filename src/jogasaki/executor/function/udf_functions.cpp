@@ -115,9 +115,11 @@ constexpr std::size_t SUPPORTED_MINOR = 3;
 blob_grpc_metadata make_blob_grpc_metadata(
     std::size_t session_id, plugin::udf::udf_config const* cfg);
 
-std::chrono::milliseconds to_milliseconds(std::size_t seconds) {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::seconds{static_cast<std::chrono::seconds::rep>(seconds)});
+std::chrono::milliseconds seconds_to_milliseconds(std::size_t seconds) {
+    auto const max_ms = std::chrono::milliseconds::max().count();
+    auto const max_sec = static_cast<std::size_t>(max_ms / 1000);
+    auto const sec = std::min(seconds, max_sec);
+    return std::chrono::milliseconds{static_cast<std::chrono::milliseconds::rep>(sec) * 1000};
 }
 
 void apply_udf_timeout(plugin::udf::generic_client_context& context,
@@ -125,14 +127,14 @@ void apply_udf_timeout(plugin::udf::generic_client_context& context,
     if (cfg) {
         if (auto timeout = cfg->timeout()) {
             if (*timeout > 0) {
-                context.timeout(to_milliseconds(*timeout));
+                context.timeout(seconds_to_milliseconds(*timeout));
                 return;
             }
         }
     }
 
     auto timeout = global::config_pool()->timeout();
-    if (timeout > 0) { context.timeout(to_milliseconds(timeout)); }
+    if (timeout > 0) { context.timeout(seconds_to_milliseconds(timeout)); }
 }
 
 bool apply_context(plugin::udf::generic_client_context& context, evaluator_context& ctx,

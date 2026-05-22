@@ -23,8 +23,7 @@ namespace plugin::udf {
 udf_config::udf_config(bool enabled, std::string endpoint, std::string transport, bool secure,
     std::optional<std::string> grpc_server_endpoint, std::optional<std::size_t> timeout)
     : _enabled(enabled), _endpoint(std::move(endpoint)), _transport(std::move(transport)),
-      _secure(secure), _grpc_server_endpoint(std::move(grpc_server_endpoint)),
-      _timeout(std::move(timeout)) {}
+      _secure(secure), _grpc_server_endpoint(std::move(grpc_server_endpoint)), _timeout(timeout) {}
 
 bool udf_config::enabled() const noexcept { return _enabled; }
 

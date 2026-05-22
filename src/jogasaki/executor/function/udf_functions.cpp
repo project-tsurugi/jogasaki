@@ -125,11 +125,14 @@ std::chrono::milliseconds seconds_to_milliseconds(std::size_t seconds) {
 void apply_udf_timeout(plugin::udf::generic_client_context& context,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg) {
     if (cfg) {
-        if (auto timeout = cfg->timeout()) {
-            if (*timeout > 0) {
+        auto const& timeout = cfg->timeout();
+        if (timeout.has_value()) {
+            if (*timeout == 0) {
+                context.timeout(std::nullopt);
+            } else {
                 context.timeout(seconds_to_milliseconds(*timeout));
-                return;
             }
+            return;
         }
     }
 

@@ -15,14 +15,15 @@
  */
 #include "udf_config.h"
 
+#include <cstddef>
 #include <string>
 #include <utility>
 
 namespace plugin::udf {
 udf_config::udf_config(bool enabled, std::string endpoint, std::string transport, bool secure,
-    std::optional<std::string> grpc_server_endpoint)
+    std::optional<std::string> grpc_server_endpoint, std::optional<std::size_t> timeout)
     : _enabled(enabled), _endpoint(std::move(endpoint)), _transport(std::move(transport)),
-      _secure(secure), _grpc_server_endpoint(std::move(grpc_server_endpoint)) {}
+      _secure(secure), _grpc_server_endpoint(std::move(grpc_server_endpoint)), _timeout(timeout) {}
 
 bool udf_config::enabled() const noexcept { return _enabled; }
 
@@ -34,4 +35,7 @@ std::optional<std::string> const& udf_config::grpc_server_endpoint() const noexc
     return _grpc_server_endpoint;
 }
 bool udf_config::secure() const noexcept { return _secure; }
+
+std::optional<std::size_t> const& udf_config::timeout() const noexcept { return _timeout; }
+
 } // namespace plugin::udf

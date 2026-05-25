@@ -392,6 +392,9 @@ static bool process_udf_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<bool>("secure")) {
         ret->secure(v.value());
     }
+    if (auto v = jogasaki_config->get<size_t>("timeout")) {
+        ret->udf_client_timeout(v.value());
+    }
     return true;
 }
 

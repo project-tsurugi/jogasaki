@@ -627,6 +627,14 @@ public:
         apply_max_polls_ = arg;
     }
 
+    [[nodiscard]] std::size_t udf_client_timeout() const noexcept {
+        return udf_client_timeout_;
+    }
+
+    void udf_client_timeout(std::size_t arg) noexcept {
+        udf_client_timeout_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -700,6 +708,7 @@ public:
         print_non_default(grpc_server_secure);
         print_non_default(udf_pass_mock_tag);
         print_non_default(apply_max_polls);
+        print_non_default(udf_client_timeout);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -777,6 +786,7 @@ private:
     bool grpc_server_secure_ = false;
     bool udf_pass_mock_tag_ = false;
     std::size_t apply_max_polls_ = 0;
+    std::size_t udf_client_timeout_ = 0;
 };
 
 }  // namespace jogasaki

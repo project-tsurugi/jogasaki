@@ -16,6 +16,7 @@
 #include "udf_loader.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -313,8 +314,10 @@ std::optional<udf_config> udf_loader::parse_ini(
         if (auto opt = pt.get_optional<std::string>("grpc_server.endpoint")) {
             grpc_server_endpoint = *opt;
         }
+        std::optional<std::size_t> timeout{};
+        if (auto opt = pt.get_optional<std::size_t>("udf.timeout")) { timeout = *opt; }
         return udf_config(enabled, std::move(endpoint), std::move(transport), secure,
-            std::move(grpc_server_endpoint));
+            std::move(grpc_server_endpoint), timeout);
 
     } catch (std::exception const& e) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());

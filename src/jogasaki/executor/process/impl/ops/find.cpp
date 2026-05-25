@@ -192,28 +192,22 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             return operation_status_kind::aborted;
         }
         executor::process::impl::variable_table vars{};
-        std::string msg{};
         expr::evaluator_context ectx{
             resource,
             ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
         };
         context_helper helper{ctx.task_context()};
         ectx.blob_session(std::addressof(helper.blob_session_container()));
-        if(auto res = details::encode_key(ectx, search_key_fields_, vars, *resource, ctx.key_, ctx.keylen_, msg);
+        if(auto res = details::encode_key(ectx, search_key_fields_, vars, *resource, ctx.key_, ctx.keylen_, ctx.req_context());
             res != status::ok) {
             if (res == status::err_type_mismatch) {
                 // unsupported type/value mapping detected during expression evaluation
                 ctx.abort();
-                set_error_context(
-                    *ctx.req_context(),
-                    error_code::unsupported_runtime_feature_exception,
-                    msg,
-                    res
-                );
                 return operation_status_kind::aborted;
             }
             if (res == status::err_integrity_constraint_violation) {
                 // null is assigned for find condition. Nothing should be found.
+                // encode_key does not fill error info. for this status code.
                 finish(context);
                 return operation_status_kind::ok;
             }

@@ -15,7 +15,9 @@
  */
 #include "encode_key.h"
 
+#include <cstdint>
 #include <ostream>
+#include <sstream>
 #include <utility>
 #include <glog/logging.h>
 
@@ -26,62 +28,108 @@
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/convert_any.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-status encode_key(  //NOLINT(readability-function-cognitive-complexity)
+namespace {
+
+kvs::end_point_kind to_prefixed(kvs::end_point_kind kind) noexcept {
+    if (kind == kvs::end_point_kind::inclusive) {
+        return kvs::end_point_kind::prefixed_inclusive;
+    }
+    if (kind == kvs::end_point_kind::exclusive) {
+        return kvs::end_point_kind::prefixed_exclusive;
+    }
+    return kind;
+}
+
+/**
+ * @brief encode one side (begin or end) of the secondary index scan key into a buffer
+ * @param ectx evaluator context
+ * @param context request context for error reporting (may be nullptr),
+ * the error info. is filled only when err_type_mismatch is returned
+ * @param fields fields to encode (the selected lower or upper fields after DESC swap)
+ * @param n_total total number of secondary index key columns
+ * @param side_unbound true when the trailing column is absent from fields (unbound)
+ * @param trailing_nullable true when the trailing column is nullable
+ * @param trailing_spec coding spec (direction) of the trailing column
+ * @param input_variables variable table for evaluation
+ * @param resource memory resource
+ * @param out output buffer
+ * @param length output: encoded byte length
+ * @return status::ok on success, error code otherwise
+ * @return status::err_type_mismatch if the type of the evaluated value does not match the expected type
+ * `context` (if available) is filled with error info. when this erorr is returned.
+ */
+status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
     expr::evaluator_context& ectx,
-    std::vector<details::search_key_field_info> const& keys,
+    request_context* context,
+    std::vector<search_key_field_info> const& fields,
+    bool side_unbound,
+    bool trailing_nullable,
+    kvs::coding_spec trailing_spec,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out,
-    std::size_t& length,
-    std::string& message
+    std::size_t& length
 ) {
     utils::checkpoint_holder cph(std::addressof(resource));
     length = 0;
-    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
+    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `out`, extend it and retry
         kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
-        for(auto&& k : keys) {
-            auto a = k.evaluator_(ectx, input_variables, &resource);
+        for (auto const& field : fields) {
+            auto a = field.evaluator_(ectx, input_variables, &resource);
             if (a.error()) {
                 VLOG_LP(log_error) << "evaluation error: " << a.to<expr::error>();
                 return status::err_expression_evaluation_failure;
             }
-            if(! utils::convert_any(a, k.type_)) {
+            if (! utils::convert_any(a, field.type_)) {
                 std::stringstream ss{};
-                ss << "unsupported type conversion to:" << k.type_ << " from:" << type_name(a);
+                ss << "unsupported type conversion to:" << field.type_ << " from:" << type_name(a);
                 VLOG_LP(log_error) << ss.str();
-                message = ss.str();
+                if (context != nullptr) {
+                    set_error_context(*context, error_code::unsupported_runtime_feature_exception,
+                        ss.str(), status::err_type_mismatch);
+                }
                 return status::err_type_mismatch;
             }
-            if(a.empty()) {
+            if (a.empty()) {
                 // creating search key with null value makes no sense because it does not match any entry
                 return status::err_integrity_constraint_violation;
             }
             kvs::coding_context cctx{};
-            if (k.nullable_) {
-                if(auto res = kvs::encode_nullable(a, k.type_, k.spec_, cctx, s);res != status::ok) {
-                    return res;
-                }
+            status res{};
+            if (field.nullable_) {
+                res = kvs::encode_nullable(a, field.type_, field.spec_, cctx, s);
             } else {
-                if(auto res = kvs::encode(a, k.type_, k.spec_, cctx, s);res != status::ok) {
-                    return res;
-                }
+                res = kvs::encode(a, field.type_, field.spec_, cctx, s);
+            }
+            if (res != status::ok) {
+                return res;
             }
             cph.reset();
         }
+        if (side_unbound && trailing_nullable) {
+            // Append the non-null indicator byte to exclude null entries from the scan.
+            // For ASC columns, this writes 0x81 (non-null byte in ascending encoding).
+            // For DESC columns, this writes 0x7E (non-null byte in descending encoding).
+            if (auto res = s.write<std::int8_t>(1, trailing_spec.ordering()); res != status::ok) {
+                return res;
+            }
+        }
         length = s.size();
-        bool fit = length <= out.capacity();
+        bool const fit = (length <= out.capacity());
         out.resize(length);
         if (loop == 0) {
             if (fit) {
@@ -93,33 +141,146 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     return status::ok;
 }
 
-status two_encode_keys(expr::evaluator_context& ectx,
+}  // namespace
+
+status encode_key(
+    expr::evaluator_context& ectx,
+    std::vector<details::search_key_field_info> const& keys,
+    variable_table& input_variables,
+    memory::lifo_paged_memory_resource& resource,
+    data::aligned_buffer& out,
+    std::size_t& length,
+    request_context* context
+) {
+    kvs::coding_spec unused{};
+    return encode_scan_side(ectx, context, keys, false, false, unused,
+        input_variables, resource, out, length);
+}
+
+status encode_scan_keys(
+    expr::evaluator_context& ectx,
     request_context* context,
-    std::vector<details::search_key_field_info> const& begin_keys,
-    std::vector<details::search_key_field_info> const& end_keys, variable_table& input_variables,
-    memory::lifo_paged_memory_resource& resource, data::aligned_buffer& key_begin,
-    std::size_t& blen, data::aligned_buffer& key_end, std::size_t& elen) {
-    status status_result = status::ok;
-    std::string message;
-    if ((status_result = impl::ops::details::encode_key(ectx, begin_keys, input_variables,
-             resource, key_begin, blen, message)) != status::ok) {
+    std::vector<search_key_field_info> const& lower_fields,
+    kvs::end_point_kind lower_kind,
+    std::vector<search_key_field_info> const& upper_fields,
+    kvs::end_point_kind upper_kind,
+    std::size_t n_total_secondary_cols,
+    bool use_secondary,
+    variable_table& input_variables,
+    memory::lifo_paged_memory_resource& resource,
+    data::aligned_buffer& key_begin,
+    std::size_t& blen,
+    kvs::end_point_kind& begin_kind_out,
+    data::aligned_buffer& key_end,
+    std::size_t& elen,
+    kvs::end_point_kind& end_kind_out
+) {
+    auto const n_lower = lower_fields.size();
+    auto const n_upper = upper_fields.size();
 
-        if (status_result == status::err_type_mismatch) {
-            set_error_context(*context, error_code::unsupported_runtime_feature_exception, message,
-                status_result);
+    // Primary index path: no DESC swap, no nullable null-exclusion, no full-key prefix
+    // conversion (primary keys have no PK suffix appended).  Encode lower→begin and
+    // upper→end directly and pass the endpoint kinds through unchanged.
+    if (! use_secondary) {
+        begin_kind_out = lower_kind;
+        end_kind_out   = upper_kind;
+        kvs::coding_spec unused{};
+        if (auto res = encode_scan_side(ectx, context, lower_fields, false, false, unused,
+                input_variables, resource, key_begin, blen); res != status::ok) {
+            return res;
         }
-        return status_result;
+        return encode_scan_side(ectx, context, upper_fields, false, false, unused,
+            input_variables, resource, key_end, elen);
     }
-    if ((status_result = impl::ops::details::encode_key(
-             ectx, end_keys, input_variables, resource, key_end, elen, message)) != status::ok) {
 
-        if (status_result == status::err_type_mismatch) {
-            set_error_context(*context, error_code::unsupported_runtime_feature_exception, message,
-                status_result);
-        }
-        return status_result;
+    // full scan: both endpoints unbound — no encoding needed
+    if (n_lower == 0 && n_upper == 0) {
+        blen = 0;
+        elen = 0;
+        key_begin.resize(0);
+        key_end.resize(0);
+        begin_kind_out = lower_kind;
+        end_kind_out = upper_kind;
+        return status::ok;
     }
-    return status::ok;
+
+    // Planner premise: lower and upper may differ in length by at most 1 (trailing column may be
+    // present in only one endpoint when the other is unbound on that column).
+    assert_with_exception(n_lower <= n_upper + 1 && n_upper <= n_lower + 1, n_lower, n_upper);
+
+    auto const n_total = std::max(n_lower, n_upper);
+    // Determine the trailing column's spec from whichever endpoint has it.
+    search_key_field_info const& trailing_field =
+        (n_lower >= n_upper) ? lower_fields[n_total - 1] : upper_fields[n_total - 1];
+    bool const trailing_asc = (trailing_field.spec_.ordering() == kvs::order::ascending);
+    bool const trailing_nullable = trailing_field.nullable_;
+
+    // DESC swap: for a DESC trailing column the physical storage order is inverted relative to
+    // logical order, so upper maps to physical begin and lower maps to physical end.
+    // This applies regardless of which endpoint specifies the trailing column.
+    bool const swap = ! trailing_asc;
+    std::vector<search_key_field_info> const& begin_fields_v =
+        swap ? upper_fields : lower_fields;
+    std::vector<search_key_field_info> const& end_fields_v =
+        swap ? lower_fields : upper_fields;
+    auto const raw_begin_kind = swap ? upper_kind : lower_kind;
+    auto const raw_end_kind   = swap ? lower_kind : upper_kind;
+
+    bool const begin_unbound = (begin_fields_v.size() < n_total);
+    bool const end_unbound   = (end_fields_v.size() < n_total);
+
+    // Whether both endpoints together specify the full secondary key (all declared columns).
+    // Only for full-key scans must inclusive/exclusive be converted to prefixed_inclusive/
+    // prefixed_exclusive: without the conversion the stored key's PK suffix makes the comparison
+    // semantically incorrect (e.g. stored key > prefix endpoint even when C values are equal).
+    // For prefix scans (n_total < n_total_secondary_cols) no conversion is needed because the
+    // natural byte-comparison semantics already handle the shorter endpoint correctly.
+    bool const full_key = (n_total == n_total_secondary_cols);
+
+    // Compute output endpoint kinds.
+    // Rules (applied in priority order):
+    //
+    // Nullable unbound trailing column: the trailing column is absent from the fields vector.
+    // Append a non-null indicator byte (done in encode_scan_side) and force prefixed_inclusive
+    // so the byte is treated as a prefix bound that excludes null entries.
+    //
+    // Full-key endpoint (n_total == n_total_secondary_cols): the stored key has a PK suffix
+    // after the secondary columns.  Without prefix conversion the KVS comparison would bleed
+    // into the PK bytes, making the boundary semantically incorrect.  Convert to the prefixed
+    // variant to cap comparison at the secondary columns only.
+    //
+    // Otherwise: pass the raw endpoint kind through unchanged.
+    if (begin_unbound && trailing_nullable) {
+        begin_kind_out = kvs::end_point_kind::prefixed_inclusive;
+    } else if (! begin_unbound && full_key) {
+        // Full-key endpoint: apply prefix conversion so the PK suffix in the stored key
+        // does not affect the boundary comparison.
+        begin_kind_out = to_prefixed(raw_begin_kind);
+    } else {
+        begin_kind_out = raw_begin_kind;
+    }
+
+    if (end_unbound && trailing_nullable) {
+        // The trailing column is absent from the physical end key; append the non-null
+        // indicator byte (done in encode_scan_side) and force prefixed_inclusive so that
+        // the byte is treated as a prefix bound, correctly excluding null entries.
+        end_kind_out = kvs::end_point_kind::prefixed_inclusive;
+    } else if (! end_unbound && full_key) {
+        // Full-key endpoint: apply prefix conversion so the PK suffix in the stored key
+        // does not affect the boundary comparison.
+        end_kind_out = to_prefixed(raw_end_kind);
+    } else {
+        end_kind_out = raw_end_kind;
+    }
+
+    if (auto res = encode_scan_side(ectx, context, begin_fields_v, begin_unbound,
+            trailing_nullable, trailing_field.spec_, input_variables, resource,
+            key_begin, blen); res != status::ok) {
+        return res;
+    }
+    return encode_scan_side(ectx, context, end_fields_v, end_unbound,
+        trailing_nullable, trailing_field.spec_, input_variables, resource,
+        key_end, elen);
 }
 
 }  // namespace jogasaki::executor::process::impl::ops::details

@@ -154,9 +154,8 @@ public:
         memory_resource* resource = nullptr
     ) {
         std::size_t len{};
-        std::string msg{};
         if(auto res =
-               details::encode_key(ectx, info_.key_fields_, input_variables, *resource, buf_, len, msg);
+               details::encode_key(ectx, info_.key_fields_, input_variables, *resource, buf_, len, std::addressof(ctx));
            res != status::ok) {
             status_ = res;
             if(res == status::err_integrity_constraint_violation) {
@@ -242,26 +241,18 @@ public:
     ) {
         std::size_t begin_len{};
         std::size_t end_len{};
-        std::string msg{};
-        if(auto res = details::encode_key(ectx, info_.begin_fields_, input_variables, *resource, buf_, begin_len, msg);
-        res != status::ok) {
+        kvs::end_point_kind begin_kind_actual{};
+        kvs::end_point_kind end_kind_actual{};
+        if (auto res = details::encode_scan_keys(ectx, std::addressof(ctx),
+                info_.begin_fields_, info_.begin_endpoint_,
+                info_.end_fields_,   info_.end_endpoint_,
+                info_.secondary_key_fields_.size(),
+                use_secondary_,
+                input_variables, *resource,
+                buf_, begin_len, begin_kind_actual,
+                buf2_, end_len, end_kind_actual); res != status::ok) {
             status_ = res;
-            // TODO handle msg
             if (res == status::err_integrity_constraint_violation) {
-                // null is assigned for find condition. Nothing should match.
-                status_ = status::not_found;
-                return false;
-            }
-            handle_encode_errors(ctx, res);
-            handle_generic_error(ctx, res, error_code::sql_execution_exception);
-            return false;
-        }
-        if(auto res = details::encode_key(ectx, info_.end_fields_, input_variables, *resource, buf2_, end_len, msg);
-        res != status::ok) {
-            status_ = res;
-            // TODO handle msg
-            if (res == status::err_integrity_constraint_violation) {
-                // null is assigned for find condition. Nothing should match.
                 status_ = status::not_found;
                 return false;
             }
@@ -274,8 +265,8 @@ public:
 
         auto& stg = use_secondary_ ? *secondary_stg : primary_stg;
         if(auto res = stg.content_scan(tx,
-                b, info_.begin_endpoint_,
-                e, info_.end_endpoint_,
+                b, begin_kind_actual,
+                e, end_kind_actual,
                 it_
             ); res != status::ok) {
                 // content_scan does not return not_found or concurrent_operation

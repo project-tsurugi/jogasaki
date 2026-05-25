@@ -138,12 +138,30 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::find
     );
 }
 
+// inclusive and exclusive endpoint kinds are not supported for now
+template <class T>
+static void validate_endpoint(T const& node) {
+    auto const lower_kind = utils::from(node.lower().kind());
+    auto const upper_kind = utils::from(node.upper().kind());
+    auto const unsupported = [](kvs::end_point_kind k) {
+        return k == kvs::end_point_kind::inclusive || k == kvs::end_point_kind::exclusive;
+    };
+    if (unsupported(lower_kind) || unsupported(upper_kind)) {
+        throw_exception(jogasaki::plan::plan_exception{create_error_info(
+            error_code::unsupported_runtime_feature_exception,
+            "inclusive/exclusive endpoint kind is not supported",
+            status::err_unsupported)});
+    }
+}
+
+
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan& node) {
     auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
+    validate_endpoint(node);
     scan_ranges_ = create_scan_ranges(node);
     return std::make_unique<scan>(
         index_++,
@@ -182,6 +200,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
+    validate_endpoint(node);
     return std::make_unique<join_scan>(
         node.operator_kind(),
         index_++,
@@ -470,19 +489,25 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     // scan end point can be determined by blob related udf functions, so we need session container in ectx
     relay::blob_session_container container{request_context_->transaction()->surrogate_id()};
     ectx.blob_session(std::addressof(container));
-    auto status_result = details::two_encode_keys(ectx,
+    auto status_result = status::ok;
+    kvs::end_point_kind begin_end_point_kind{};
+    kvs::end_point_kind end_end_point_kind{};
+    status_result = details::encode_scan_keys(ectx,
         request_context_,
         details::create_search_key_fields(secondary_or_primary_index, node.lower().keys(), *info_),
+        utils::from(node.lower().kind()),
         details::create_search_key_fields(secondary_or_primary_index, node.upper().keys(), *info_),
-        vars, *resource_ptr, *key_begin, blen, *key_end, elen);
+        utils::from(node.upper().kind()),
+        secondary_or_primary_index.keys().size(),
+        use_secondary,
+        vars, *resource_ptr, *key_begin, blen, begin_end_point_kind, *key_end, elen,
+        end_end_point_kind);
     if (status_result != status::ok &&
         status_result != status::err_integrity_constraint_violation) {
         auto msg = string_builder{} << to_string_view(status_result) << string_builder::to_string;
         throw_exception(jogasaki::plan::plan_exception{create_error_info(
             error_code::sql_execution_exception, msg, status::err_compiler_error)});
     }
-    auto begin_end_point_kind = kvs::adjust_endpoint_kind(use_secondary, utils::from(node.lower().kind()));
-    auto end_end_point_kind   = kvs::adjust_endpoint_kind(use_secondary, utils::from(node.upper().kind()));
     bound begin(begin_end_point_kind, blen, std::move(key_begin));
     bound end(end_end_point_kind, elen, std::move(key_end));
     bool is_empty = (status_result == status::err_integrity_constraint_violation);

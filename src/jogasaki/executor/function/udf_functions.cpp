@@ -136,8 +136,8 @@ void apply_udf_timeout(plugin::udf::generic_client_context& context,
         }
     }
 
-    auto timeout = global::config_pool()->udf_client_timeout();
-    if (timeout > 0) { context.timeout(seconds_to_milliseconds(timeout)); }
+    auto global_timeout = global::config_pool()->udf_client_timeout();
+    if (global_timeout > 0) { context.timeout(seconds_to_milliseconds(global_timeout)); }
 }
 
 bool apply_context(plugin::udf::generic_client_context& context, evaluator_context& ctx,

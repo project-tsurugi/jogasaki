@@ -16,6 +16,7 @@
 #include "udf_loader.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <map>

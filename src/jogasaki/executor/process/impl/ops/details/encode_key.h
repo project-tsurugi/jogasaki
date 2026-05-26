@@ -82,9 +82,6 @@ status encode_key(
  * @param lower_kind endpoint kind for the lower bound
  * @param upper_fields key fields for the upper scan bound (logical maximum side)
  * @param upper_kind endpoint kind for the upper bound
- * @param n_total_secondary_cols total number of key columns in the secondary index
- *     (ignored when use_secondary is false)
- * @param use_secondary true for secondary index scans, false for primary index scans
  * @param input_variables the variables to be used for evaluation
  * @param resource the memory resource
  * @param key_begin the buffer to store the physical begin encoded key
@@ -107,8 +104,6 @@ status encode_scan_keys(
     kvs::end_point_kind lower_kind,
     std::vector<details::search_key_field_info> const& upper_fields,
     kvs::end_point_kind upper_kind,
-    std::size_t n_total_secondary_cols,
-    bool use_secondary,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& key_begin,

@@ -147,13 +147,16 @@ static void validate_endpoint(T const& node) {
         return k == kvs::end_point_kind::inclusive || k == kvs::end_point_kind::exclusive;
     };
     if (unsupported(lower_kind) || unsupported(upper_kind)) {
-        throw_exception(jogasaki::plan::plan_exception{create_error_info(
-            error_code::unsupported_runtime_feature_exception,
-            "inclusive/exclusive endpoint kind is not supported",
-            status::err_unsupported)});
+        throw_exception(
+            jogasaki::plan::plan_exception{create_error_info(
+                error_code::unsupported_runtime_feature_exception,
+                string_builder{} << "inclusive/exclusive endpoint kind is not supported. lower_kind:" << lower_kind
+                                 << " upper_kind:" << upper_kind << string_builder::to_string,
+                status::err_unsupported
+            )}
+        );
     }
 }
-
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan& node) {
     auto block_index = info_->block_indices().at(&node);
@@ -476,7 +479,6 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     executor::process::impl::variable_table vars{};
     auto& table        = secondary_or_primary_index.table();
     auto primary       = table.owner()->find_primary_index(table);
-    bool use_secondary = (*primary != secondary_or_primary_index);
     std::size_t blen{};
     std::size_t elen{};
     std::unique_ptr<data::aligned_buffer> key_begin = std::make_unique<data::aligned_buffer>();
@@ -498,8 +500,6 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
         utils::from(node.lower().kind()),
         details::create_search_key_fields(secondary_or_primary_index, node.upper().keys(), *info_),
         utils::from(node.upper().kind()),
-        secondary_or_primary_index.keys().size(),
-        use_secondary,
         vars, *resource_ptr, *key_begin, blen, begin_end_point_kind, *key_end, elen,
         end_end_point_kind);
     if (status_result != status::ok &&

@@ -44,16 +44,6 @@ namespace jogasaki::executor::process::impl::ops::details {
 
 namespace {
 
-kvs::end_point_kind to_prefixed(kvs::end_point_kind kind) noexcept {
-    if (kind == kvs::end_point_kind::inclusive) {
-        return kvs::end_point_kind::prefixed_inclusive;
-    }
-    if (kind == kvs::end_point_kind::exclusive) {
-        return kvs::end_point_kind::prefixed_exclusive;
-    }
-    return kind;
-}
-
 /**
  * @brief encode one side (begin or end) of the secondary index scan key into a buffer
  * @param ectx evaluator context
@@ -164,8 +154,6 @@ status encode_scan_keys(
     kvs::end_point_kind lower_kind,
     std::vector<search_key_field_info> const& upper_fields,
     kvs::end_point_kind upper_kind,
-    std::size_t n_total_secondary_cols,
-    bool use_secondary,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& key_begin,
@@ -177,21 +165,6 @@ status encode_scan_keys(
 ) {
     auto const n_lower = lower_fields.size();
     auto const n_upper = upper_fields.size();
-
-    // Primary index path: no DESC swap, no nullable null-exclusion, no full-key prefix
-    // conversion (primary keys have no PK suffix appended).  Encode lower→begin and
-    // upper→end directly and pass the endpoint kinds through unchanged.
-    if (! use_secondary) {
-        begin_kind_out = lower_kind;
-        end_kind_out   = upper_kind;
-        kvs::coding_spec unused{};
-        if (auto res = encode_scan_side(ectx, context, lower_fields, false, false, unused,
-                input_variables, resource, key_begin, blen); res != status::ok) {
-            return res;
-        }
-        return encode_scan_side(ectx, context, upper_fields, false, false, unused,
-            input_variables, resource, key_end, elen);
-    }
 
     // full scan: both endpoints unbound — no encoding needed
     if (n_lower == 0 && n_upper == 0) {
@@ -219,66 +192,27 @@ status encode_scan_keys(
     // logical order, so upper maps to physical begin and lower maps to physical end.
     // This applies regardless of which endpoint specifies the trailing column.
     bool const swap = ! trailing_asc;
-    std::vector<search_key_field_info> const& begin_fields_v =
-        swap ? upper_fields : lower_fields;
-    std::vector<search_key_field_info> const& end_fields_v =
-        swap ? lower_fields : upper_fields;
+    std::vector<search_key_field_info> const& begin_fields = swap ? upper_fields : lower_fields;
+    std::vector<search_key_field_info> const& end_fields = swap ? lower_fields : upper_fields;
     auto const raw_begin_kind = swap ? upper_kind : lower_kind;
     auto const raw_end_kind   = swap ? lower_kind : upper_kind;
 
-    bool const begin_unbound = (begin_fields_v.size() < n_total);
-    bool const end_unbound   = (end_fields_v.size() < n_total);
-
-    // Whether both endpoints together specify the full secondary key (all declared columns).
-    // Only for full-key scans must inclusive/exclusive be converted to prefixed_inclusive/
-    // prefixed_exclusive: without the conversion the stored key's PK suffix makes the comparison
-    // semantically incorrect (e.g. stored key > prefix endpoint even when C values are equal).
-    // For prefix scans (n_total < n_total_secondary_cols) no conversion is needed because the
-    // natural byte-comparison semantics already handle the shorter endpoint correctly.
-    bool const full_key = (n_total == n_total_secondary_cols);
+    bool const begin_unbound = (begin_fields.size() < n_total);
+    bool const end_unbound   = (end_fields.size() < n_total);
 
     // Compute output endpoint kinds.
-    // Rules (applied in priority order):
-    //
     // Nullable unbound trailing column: the trailing column is absent from the fields vector.
     // Append a non-null indicator byte (done in encode_scan_side) and force prefixed_inclusive
     // so the byte is treated as a prefix bound that excludes null entries.
-    //
-    // Full-key endpoint (n_total == n_total_secondary_cols): the stored key has a PK suffix
-    // after the secondary columns.  Without prefix conversion the KVS comparison would bleed
-    // into the PK bytes, making the boundary semantically incorrect.  Convert to the prefixed
-    // variant to cap comparison at the secondary columns only.
-    //
-    // Otherwise: pass the raw endpoint kind through unchanged.
-    if (begin_unbound && trailing_nullable) {
-        begin_kind_out = kvs::end_point_kind::prefixed_inclusive;
-    } else if (! begin_unbound && full_key) {
-        // Full-key endpoint: apply prefix conversion so the PK suffix in the stored key
-        // does not affect the boundary comparison.
-        begin_kind_out = to_prefixed(raw_begin_kind);
-    } else {
-        begin_kind_out = raw_begin_kind;
-    }
+    begin_kind_out = begin_unbound && trailing_nullable ? kvs::end_point_kind::prefixed_inclusive : raw_begin_kind;
+    end_kind_out = end_unbound && trailing_nullable ? kvs::end_point_kind::prefixed_inclusive : raw_end_kind;
 
-    if (end_unbound && trailing_nullable) {
-        // The trailing column is absent from the physical end key; append the non-null
-        // indicator byte (done in encode_scan_side) and force prefixed_inclusive so that
-        // the byte is treated as a prefix bound, correctly excluding null entries.
-        end_kind_out = kvs::end_point_kind::prefixed_inclusive;
-    } else if (! end_unbound && full_key) {
-        // Full-key endpoint: apply prefix conversion so the PK suffix in the stored key
-        // does not affect the boundary comparison.
-        end_kind_out = to_prefixed(raw_end_kind);
-    } else {
-        end_kind_out = raw_end_kind;
-    }
-
-    if (auto res = encode_scan_side(ectx, context, begin_fields_v, begin_unbound,
+    if (auto res = encode_scan_side(ectx, context, begin_fields, begin_unbound,
             trailing_nullable, trailing_field.spec_, input_variables, resource,
             key_begin, blen); res != status::ok) {
         return res;
     }
-    return encode_scan_side(ectx, context, end_fields_v, end_unbound,
+    return encode_scan_side(ectx, context, end_fields, end_unbound,
         trailing_nullable, trailing_field.spec_, input_variables, resource,
         key_end, elen);
 }

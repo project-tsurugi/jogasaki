@@ -246,8 +246,6 @@ public:
         if (auto res = details::encode_scan_keys(ectx, std::addressof(ctx),
                 info_.begin_fields_, info_.begin_endpoint_,
                 info_.end_fields_,   info_.end_endpoint_,
-                info_.secondary_key_fields_.size(),
-                use_secondary_,
                 input_variables, *resource,
                 buf_, begin_len, begin_kind_actual,
                 buf2_, end_len, end_kind_actual); res != status::ok) {

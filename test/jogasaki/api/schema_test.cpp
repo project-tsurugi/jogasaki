@@ -312,7 +312,8 @@ TEST_F(schema_test, nullables) {
     }
 }
 
-TEST_F(schema_test, descending_keys) {
+TEST_F(schema_test, ascending_keys) {
+    // primary keys must be non-nullable, ascending
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -336,13 +337,13 @@ TEST_F(schema_test, descending_keys) {
         t,
         t->simple_name(),
         std::initializer_list<index::key>{
-            {t->columns()[0], sort_direction::descendant},
-            {t->columns()[1], sort_direction::descendant},
-            {t->columns()[2], sort_direction::descendant},
-            {t->columns()[3], sort_direction::descendant},
-            {t->columns()[4], sort_direction::descendant},
-            {t->columns()[5], sort_direction::descendant},
-            {t->columns()[6], sort_direction::descendant},
+            {t->columns()[0], sort_direction::ascendant},
+            {t->columns()[1], sort_direction::ascendant},
+            {t->columns()[2], sort_direction::ascendant},
+            {t->columns()[3], sort_direction::ascendant},
+            {t->columns()[4], sort_direction::ascendant},
+            {t->columns()[5], sort_direction::ascendant},
+            {t->columns()[6], sort_direction::ascendant},
         },
         std::initializer_list<index::column_ref>{
             t->columns()[7],
@@ -383,86 +384,7 @@ TEST_F(schema_test, descending_keys) {
     );
 }
 
-TEST_F(schema_test, descending_keys_ordering) {
-    auto check_desc = [&](std::size_t ind, std::string_view key) {
-        auto tabname = "TEST"s + std::to_string(ind);
-        auto t = std::make_shared<table>(
-            tabname.c_str(),
-            std::initializer_list<column>{
-                column{ "C0", type::int8(), nullity{false} },
-                column{ "K1", type::character(type::varying), nullity{false} },
-                column{ "K2", type::int8(), nullity{false} },
-                column{ "K3", type::float8 (), nullity{false} },
-                column{ "K4", type::character(~type::varying), nullity{false} },
-                column{ "K5", type::int4(), nullity{false} },
-                column{ "K6", type::float4(), nullity{false} },
-                column{ "V1", type::character(type::varying), nullity{true} },
-                column{ "V2", type::int8(), nullity{true} },
-                column{ "V3", type::float8 (), nullity{true} },
-                column{ "V4", type::character(~type::varying), nullity{true} },
-                column{ "V5", type::int4(), nullity{true} },
-                column{ "V6", type::float4(), nullity{true} },
-            }
-        );
-        ASSERT_EQ(status::ok, db_->create_table(t));
-        std::vector<index::column_ref> colrefs{};
-        colrefs.reserve(t->columns().size());
-        std::vector<index::key> keys{};
-        keys.emplace_back(index::key{t->columns()[ind], sort_direction::descendant});
-        for(std::size_t i=0, n=t->columns().size(); i<n;++i) {
-            if(i != ind) {
-                colrefs.emplace_back(t->columns()[i]);
-            }
-        }
-
-        auto i = std::make_shared<yugawara::storage::index>(
-            t,
-            std::string{t->simple_name()},
-            keys,
-            colrefs,
-            index_feature_set{
-                ::yugawara::storage::index_feature::find,
-                ::yugawara::storage::index_feature::scan,
-                ::yugawara::storage::index_feature::unique,
-                ::yugawara::storage::index_feature::primary,
-            }
-        );
-        ASSERT_EQ(status::ok, db_->create_index(i));
-        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, '3', 3, 3.0, '3', 3, 3.0, NULL, NULL, NULL, NULL, NULL, NULL)");
-        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
-        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
-        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
-
-        {
-            std::vector<mock::basic_record> result{};
-            execute_query("SELECT C0 FROM "+tabname, result); // order is not assured by this sql, but using for testing
-            ASSERT_EQ(4, result.size());
-            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]);
-            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[3]);
-        }
-        {
-            std::vector<mock::basic_record> result{};
-            execute_query("SELECT C0 FROM "+tabname+" ORDER BY " + std::string{key} + " DESC", result);
-            ASSERT_EQ(4, result.size());
-            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]);
-            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[3]);
-        }
-        {
-            std::vector<mock::basic_record> result{};
-            execute_query("SELECT C0 FROM "+tabname+"  ORDER BY " + std::string{key} + " ASC", result);
-            ASSERT_EQ(4, result.size());
-            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[0]);
-            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]);
-        }
-    };
-    check_desc(1, "K1");
-    check_desc(2, "K2");
-    check_desc(3, "K3");
-    check_desc(4, "K4");
-    check_desc(5, "K5");
-    check_desc(6, "K6");
-}
-
+// primary keys must be non-nullable, ascending
 TEST_F(schema_test, ascending_keys_ordering) {
     auto check_desc = [&](std::size_t ind, std::string_view key) {
         auto tabname = "TEST"s + std::to_string(ind);

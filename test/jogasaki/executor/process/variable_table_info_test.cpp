@@ -21,6 +21,7 @@
 #include <takatori/plan/forward.h>
 #include <takatori/relation/buffer.h>
 #include <takatori/relation/filter.h>
+#include <takatori/relation/project.h>
 #include <takatori/relation/step/offer.h>
 #include <takatori/relation/step/take_flat.h>
 #include <takatori/scalar/expression_kind.h>
@@ -30,6 +31,7 @@
 #include <takatori/type/primitive.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/rvalue_reference_wrapper.h>
 #include <takatori/value/primitive.h>
 #include <takatori/value/value_kind.h>
 #include <yugawara/analyzer/expression_mapping.h>
@@ -178,6 +180,58 @@ TEST_F(variable_table_info_test, create_block_variables_definition1) {
     for(auto&& ind : inds) {
         EXPECT_EQ(0, ind.second);
     }
+}
+
+// Tests for buffer (multi-block) support
+
+TEST_F(variable_table_info_test, value_info_block_index) {
+    value_info vi{10, 20, 3, std::size_t{5}};
+    EXPECT_EQ(10, vi.value_offset());
+    EXPECT_EQ(20, vi.nullity_offset());
+    EXPECT_EQ(3, vi.index());
+    EXPECT_TRUE(vi.block_index().has_value());
+    EXPECT_EQ(5u, vi.block_index().value());
+
+    // 3-arg construction leaves block_index as nullopt
+    value_info vi2{10, 20, 3};
+    EXPECT_FALSE(vi2.block_index().has_value());
+}
+
+TEST_F(variable_table_info_test, variable_table_info_parent_delegation) {
+    factory f;
+    auto c0 = f.stream_variable("c0");
+    auto c1 = f.stream_variable("c1");
+    auto d0 = f.stream_variable("d0");  // new variable in child block
+
+    // Block 0 info: has c0 (block_index=0) and c1 (block_index=0)
+    variable_table_info::entity_type map0{};
+    map0[c0] = value_info{0, 0, 0, std::size_t{0}};
+    map0[c1] = value_info{8, 1, 1, std::size_t{0}};
+    auto meta0 = mock::create_nullable_record<kind::int8, kind::int8>().record_meta();
+    variable_table_info info0{std::move(map0), meta0};
+
+    // Block 1 info: has d0 (block_index=1), parent = block 0
+    variable_table_info::entity_type map1{};
+    map1[d0] = value_info{0, 0, 0, std::size_t{1}};
+    auto meta1 = mock::create_nullable_record<kind::int8>().record_meta();
+    variable_table_info info1{std::move(map1), meta1, &info0};
+
+    // exists() delegates to parent
+    EXPECT_TRUE(info1.exists(c0));   // via parent
+    EXPECT_TRUE(info1.exists(c1));   // via parent
+    EXPECT_TRUE(info1.exists(d0));   // local
+
+    // exists_local() does NOT delegate
+    EXPECT_FALSE(info1.exists_local(c0));
+    EXPECT_FALSE(info1.exists_local(c1));
+    EXPECT_TRUE(info1.exists_local(d0));
+
+    // at() for parent variable returns block_index=0
+    EXPECT_EQ(0u, info1.at(c0).block_index().value());
+    EXPECT_EQ(0u, info1.at(c1).block_index().value());
+
+    // at() for local variable returns block_index=1
+    EXPECT_EQ(1u, info1.at(d0).block_index().value());
 }
 
 }

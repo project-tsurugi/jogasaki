@@ -17,7 +17,6 @@
 
 #include <cstdint>
 #include <type_traits>
-#include <unordered_set>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <boost/move/utility_core.hpp>
@@ -51,12 +50,18 @@ std::size_t value_info::index() const noexcept {
     return index_;
 }
 
+std::optional<std::size_t> value_info::block_index() const noexcept {
+    return block_index_;
+}
+
 variable_table_info::variable_table_info(
     variable_table_info::entity_type map,
-    maybe_shared_ptr<meta::record_meta> meta
+    maybe_shared_ptr<meta::record_meta> meta,
+    variable_table_info const* parent
 ) :
     map_(std::move(map)),
-    meta_(std::move(meta))
+    meta_(std::move(meta)),
+    parent_(parent)
 {
     // currently assuming any stream variables are nullable for now
     utils::assert_all_fields_nullable(*meta_);
@@ -64,11 +69,12 @@ variable_table_info::variable_table_info(
 
 static variable_table_info::entity_type from_indices(
     variable_table_info::variable_indices const& indices,
-    maybe_shared_ptr<meta::record_meta> const& meta
+    maybe_shared_ptr<meta::record_meta> const& meta,
+    std::optional<std::size_t> block_index
 ) {
     variable_table_info::entity_type map{};
     for(auto&& [v, i] : indices) {
-        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i), i};
+        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i), i, block_index};
     }
     return map;
 }
@@ -77,7 +83,7 @@ variable_table_info::variable_table_info(
     variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> meta
 ) :
-    map_(from_indices(indices, meta)),
+    map_(from_indices(indices, meta, std::nullopt)),  // TODO pass block index is needed
     meta_(std::move(meta))
 {
     // currently assuming any stream variables are nullable for now
@@ -89,10 +95,22 @@ maybe_shared_ptr<meta::record_meta> const& variable_table_info::meta() const noe
 }
 
 value_info const& variable_table_info::at(variable_table_info::variable const& var) const {
-    return map_.at(var);
+    if (auto it = map_.find(var); it != map_.end()) {
+        return it->second;
+    }
+    if (parent_) {
+        return parent_->at(var);
+    }
+    throw std::out_of_range{"variable not found in variable_table_info"};
 }
 
 bool variable_table_info::exists(variable_table_info::variable const& var) const {
+    if (map_.count(var) != 0) return true;
+    if (parent_) return parent_->exists(var);
+    return false;
+}
+
+bool variable_table_info::exists_local(variable_table_info::variable const& var) const {
     return map_.count(var) != 0;
 }
 

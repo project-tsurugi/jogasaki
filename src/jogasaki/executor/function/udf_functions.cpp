@@ -150,7 +150,7 @@ bool apply_context(plugin::udf::generic_client_context& context, evaluator_conte
     if (!metadata.apply(context.grpc_context())) {
         std::string msg = "Failed to apply gRPC metadata";
         VLOG_LP(log_error) << msg;
-        ctx.add_error({error_kind::unknown, msg});
+        ctx.add_error({error_kind::udf_error, msg});
         return false;
     }
 
@@ -1089,8 +1089,8 @@ data::any build_udf_response(plugin::udf::generic_record_impl& response, evaluat
     if (!cursor) {
         std::string msg = "Response has no cursor";
         VLOG_LP(log_error) << msg;
-        ctx.add_error({error_kind::unknown, msg});
-        return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+        ctx.add_error({error_kind::udf_error, msg});
+        return data::any{std::in_place_type<error>, error(error_kind::udf_error)};
     }
     auto nest = output.columns()[0]->nested();
     auto const& map = response_builder_map();
@@ -1186,7 +1186,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
         if (!udf_stream) {
             std::string msg = "Failed to start UDF server-streaming RPC";
             VLOG_LP(log_error) << msg;
-            ctx.add_error({error_kind::unknown, msg});
+            ctx.add_error({error_kind::udf_error, msg});
             return {};
         }
         auto column_types = jogasaki::udf::bridge::build_output_wire_kinds(*fn);
@@ -1229,24 +1229,24 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
     return [client, fn, cfg](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
         plugin::udf::generic_record_impl request;
         if (!build_udf_request(request, ctx, fn, args)) {
-            return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+            return data::any{std::in_place_type<error>, error(error_kind::udf_error)};
         }
         plugin::udf::generic_record_impl response;
         plugin::udf::generic_client_context context;
 
         if (!apply_context(context, ctx, cfg)) {
-            return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+            return data::any{std::in_place_type<error>, error(error_kind::udf_error)};
         }
 
         client->call(context, {0, fn->function_index()}, request, response);
 
         if (response.error()) {
-            std::string msg = "RPC failed: code=" +
-                              std::string(plugin::udf::to_string_view(response.error()->code())) +
-                              ", message=" + std::string(response.error()->message());
+            std::string msg =
+                "code=" + std::string(plugin::udf::to_string_view(response.error()->code())) +
+                ", message=" + std::string(response.error()->message());
             VLOG_LP(log_error) << msg;
-            ctx.add_error({error_kind::unknown, msg});
-            return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+            ctx.add_error({error_kind::udf_error, msg});
+            return data::any{std::in_place_type<error>, error(error_kind::udf_error)};
         }
         return build_udf_response(response, ctx, fn);
     };

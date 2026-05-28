@@ -61,6 +61,9 @@ enum class error_kind : std::size_t {
     ///@brief invalid input value
     invalid_input_value,
 
+    ///@brief error occurred in udf execution
+    udf_error,
+
     ///@brief unexpected error in the expression
     unknown,
 };
@@ -85,6 +88,7 @@ enum class error_kind : std::size_t {
         case kind::error_info_provided: return "error_info_provided"sv;
         case kind::unsupported: return "unsupported"sv;
         case kind::invalid_input_value: return "invalid_input_value"sv;
+        case kind::udf_error: return "udf_error"sv;
         case kind::unknown: return "unknown"sv;
     }
     std::abort();

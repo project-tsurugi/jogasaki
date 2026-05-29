@@ -216,4 +216,29 @@ TEST_F(sql_join_scan_secondary_test, composite_key_desc_desc) {
     run_composite_index("DESC", "DESC");
 }
 
+TEST_F(sql_join_scan_secondary_test, semi_join) {
+    execute_statement("CREATE TABLE t0 (c0 INT)");
+    execute_statement("INSERT INTO t0 VALUES (1),(2),(3)");
+    execute_statement("CREATE TABLE t1 (c0 INT, c1 INT)");
+    execute_statement("CREATE INDEX i1 ON t1(c0 ASC, c1)");
+    // Two rows with c0=1 and two rows with c0=2; semi join must emit t0 rows only once each.
+    execute_statement("INSERT INTO t1 VALUES (1,10),(1,20),(2,20),(2,30),(NULL,999)");
+
+    auto query = "SELECT t0.c0 FROM t0 WHERE t0.c0 IN (SELECT c0 FROM t1)";
+    std::string plan{};
+    explain_statement(query, plan);
+    EXPECT_TRUE(contains(plan, "join_scan"));
+    EXPECT_TRUE(contains(plan, "\"i1\""));
+    EXPECT_TRUE(contains(plan, "semi"));
+
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(2)), result[1]);
+}
+
+// TODO add test for anti_join when supported
+
 } // namespace jogasaki::testing

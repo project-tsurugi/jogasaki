@@ -213,4 +213,27 @@ TEST_F(sql_join_find_secondary_test, composite_key_desc_desc) {
     run_composite_index("DESC", "DESC");
 }
 
+TEST_F(sql_join_find_secondary_test, semi_join) {
+    execute_statement("CREATE TABLE t0 (c0 INT)");
+    execute_statement("INSERT INTO t0 VALUES (1),(2)");
+    execute_statement("CREATE TABLE t1 (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX i1 ON t1(c1 ASC)");
+    execute_statement("INSERT INTO t1 VALUES (10, 1),(11, 1),(12, NULL)");
+
+    auto query = "SELECT t0.c0 FROM t0 WHERE t0.c0 IN (SELECT c1 FROM t1)";
+    std::string plan{};
+    explain_statement(query, plan);
+    EXPECT_TRUE(contains(plan, "join_find"));
+    EXPECT_TRUE(contains(plan, "\"i1\""));
+    EXPECT_TRUE(contains(plan, "semi"));
+
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
+}
+
+// anti_join is not used for NOT IN and cannot be tested here
+// TODO add test for anti_join when supported
+
 } // namespace jogasaki::testing

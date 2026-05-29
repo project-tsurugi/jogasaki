@@ -332,6 +332,7 @@ public:
         if (ctx.aborted()) {
             return operation_status_kind::aborted;
         }
+        assert_with_exception(join_kind_ != join_kind::full_outer, join_kind_);
         // currently SQL compiler does not generate left_outer_at_most_one join for index join, but we put this check just in case
         // TODO support left_outer_at_most_one join for index join if needed
         if (join_kind_ == join_kind::left_outer_at_most_one) {
@@ -348,6 +349,14 @@ public:
         auto& tx = ctx.strand_ != nullptr ? *ctx.strand_ : *ctx.tx_->object();
         if (ctx.state() == context_state::calling_child) {
             VLOG_LP(log_trace) << "resuming index_join op. after downstream yield";
+            if (join_kind_ == join_kind::semi || join_kind_ == join_kind::anti) {
+                // semi/anti call downstream at most once per left row, so there is nothing that should be done
+                // after sending record downstream, so directly re-try downstream call here without going into the loop.
+                if (auto call_st = call_downstream(ctx, context); ! call_st) {
+                    return call_st;
+                }
+                return operation_status_kind::ok;
+            }
             goto resume_calling_child;  //NOLINT
         }
         {
@@ -369,6 +378,52 @@ public:
                 resource
             );
         }
+        // intentionally keep the semi/anti separate from the inner/lower code
+        // because integrating them complicates the logic and there are a lot of `if` statements
+        // that are hard to follow.
+        if (join_kind_ == join_kind::semi || join_kind_ == join_kind::anti) {
+            bool exists_match = false;
+            if (ctx.matched_) {
+                do {
+                    if (condition_) {
+                        // newly create c instead of re-using ectx since errors in ectx might have bad impact //TODO resolve this
+                        expr::evaluator_context c{
+                            resource,
+                            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+                        };
+                        context_helper h{ctx.task_context()};
+                        c.blob_session(std::addressof(h.blob_session_container()));
+                        auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
+                        if (r.error()) {
+                            handle_expression_error(*ctx.req_context(), r, c);
+                            ctx.abort();
+                            return operation_status_kind::aborted;
+                        }
+                        if (r.template to<bool>()) {
+                            exists_match = true;
+                            break;
+                        }
+                    } else {
+                        exists_match = true;
+                        break;
+                    }
+                } while (ctx.matcher_->next(*ctx.req_context()));
+            }
+            // check for scan errors before making the emit decision
+            if (auto res = ctx.matcher_->result(); res != status::ok && res != status::not_found) {
+                ctx.abort();
+                return operation_status_kind::aborted;
+            }
+            nullify_output_variables(ctx.output_variables().store().ref());
+            if ((exists_match && join_kind_ == join_kind::semi) ||
+                (!exists_match && join_kind_ == join_kind::anti)) {
+                if (auto call_st = call_downstream(ctx, context); ! call_st) {
+                    return call_st;
+                }
+            }
+            return operation_status_kind::ok;
+        }
+        // inner or left_outer join
         if(ctx.matched_ || join_kind_ == join_kind::left_outer) {
             do {
                 if (condition_) {
@@ -395,17 +450,8 @@ public:
                     }
                 }
 resume_calling_child:
-                if (downstream_) {
-                    ctx.state(context_state::calling_child);
-                    auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
-                    if (st.kind() == operation_status_kind::yield) {
-                        return operation_status_kind::yield;
-                    }
-                    if (st.kind() == operation_status_kind::aborted) {
-                        ctx.abort();
-                        return operation_status_kind::aborted;
-                    }
-                    ctx.state(context_state::running_operator_body);
+                if (auto call_st = call_downstream(ctx, context); ! call_st) {
+                    return call_st;
                 }
                 // clean output variables for next record just in case
                 nullify_output_variables(ctx.output_variables().store().ref());
@@ -484,6 +530,32 @@ private:
     takatori::util::optional_ptr<takatori::scalar::expression const> condition_{};
     std::unique_ptr<operator_base> downstream_{};
     expr::evaluator evaluator_{};
+
+    /**
+     * @brief call downstream process_record and propagate yield or aborted status.
+     * @param ctx the index join context for state management
+     * @param context the task context
+     * @return ok, yield, or aborted
+     */
+    operation_status call_downstream(
+        index_join_context<MatchInfo>& ctx,
+        abstract::task_context* context
+    ) {
+        if (downstream_) {
+            ctx.state(context_state::calling_child);
+            auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            if (st.kind() == operation_status_kind::yield) {
+                return operation_status_kind::yield;
+            }
+            if (st.kind() == operation_status_kind::aborted) {
+                ctx.abort();
+                return operation_status_kind::aborted;
+            }
+            ctx.state(context_state::running_operator_body);
+            return st;
+        }
+        return operation_status_kind::ok;
+    }
 
     void nullify_output_variables(accessor::record_ref target) {
         for(auto&& f : key_columns_) {

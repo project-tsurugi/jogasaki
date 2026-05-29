@@ -341,4 +341,28 @@ TEST_F(sql_join_scan_test, DISABLED_different_type_int_vs_decimal) {
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(2147483647, 2147483647, 1)), result[1]);
 }
+
+TEST_F(sql_join_scan_test, semi_join) {
+    execute_statement("CREATE TABLE t0 (c0 INT)");
+    execute_statement("INSERT INTO t0 VALUES (1),(2),(3)");
+    execute_statement("CREATE TABLE t1 (c0 INT, c1 INT, PRIMARY KEY(c0, c1))");
+    // Two rows with c0=1 and two rows with c0=3; semi join must emit t0 rows only once each.
+    execute_statement("INSERT INTO t1 VALUES (1,10),(1,20),(3,30),(3,40)");
+
+    auto query = "SELECT t0.c0 FROM t0 WHERE t0.c0 IN (SELECT c0 FROM t1)";
+    std::string plan{};
+    explain_statement(query, plan);
+    EXPECT_TRUE(contains(plan, "join_scan"));
+    EXPECT_TRUE(contains(plan, "semi"));
+
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(3)), result[1]);
+}
+
+// anti_join is not used yet. TODO add test for anti_join when it is supported
+
 }

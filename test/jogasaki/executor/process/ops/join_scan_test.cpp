@@ -471,4 +471,212 @@ TEST_F(join_scan_test, reversed_bounds) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
+TEST_F(join_scan_test, semi_join) {
+    // Semi join: emit upstream row exactly once when range scan finds a match;
+    // no emit when the range is empty.
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0, 1}, {}
+    );
+    auto input_match    = create_nullable_record<kind::int4, kind::int4>(1, 1);
+    auto input_no_match = create_nullable_record<kind::int4, kind::int4>(5, 5);
+    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+    scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
+    auto& target = add_join_scan_node(setup, lower, upper);
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 101), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(2, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(3, 300), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_scan_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        nullptr, relation::join_kind::semi
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, in.vars_));
+    });
+
+    // range C0=[1,1] has two matches → semi emits exactly once
+    set_variables(ex.variables_, in, input_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+
+    // range C0=[5,5] has no match → semi does not emit
+    set_variables(ex.variables_, in, input_no_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(1, result.size()); // unchanged
+
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_scan_test, anti_join) {
+    // Anti join: emit upstream row when range scan finds no match;
+    // no emit when matches exist.
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0, 1}, {}
+    );
+    auto input_match    = create_nullable_record<kind::int4, kind::int4>(1, 1);
+    auto input_no_match = create_nullable_record<kind::int4, kind::int4>(5, 5);
+    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+    scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
+    auto& target = add_join_scan_node(setup, lower, upper);
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 101), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(2, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(3, 300), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_scan_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        nullptr, relation::join_kind::anti
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, in.vars_));
+    });
+
+    // range C0=[1,1] has matches → anti does not emit
+    set_variables(ex.variables_, in, input_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(0, result.size());
+
+    // range C0=[5,5] has no match → anti emits once
+    set_variables(ex.variables_, in, input_no_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(5, 5)), result[0]);
+
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_scan_test, semi_join_condition_filtered) {
+    // Range finds a row but the condition is false → semi must not emit.
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
+    auto input = create_nullable_record<kind::int4, kind::int4>(1, 1);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+    scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
+    // condition: C1 == 999; always false because the row has C1=100
+    auto& target = add_join_scan_node(setup, lower, upper, false,
+        [](auto const& dests) {
+            return std::make_unique<compare>(
+                comparison_operator::equal,
+                varref{dests[1]},
+                scalar::immediate{takatori::value::int4{999}, takatori::type::int4{}}
+            );
+        });
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 100), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_scan_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        nullptr, relation::join_kind::semi
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, in.vars_));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    // C1=100 ≠ 999 → condition false → semi must not emit
+    ASSERT_EQ(0, result.size());
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(join_scan_test, anti_join_condition_filtered) {
+    // Range finds a row but the condition is false → anti must emit
+    // (no condition-satisfying match exists, so the left row is unmatched).
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+        }},
+        {0}, {}
+    );
+    auto input = create_nullable_record<kind::int4, kind::int4>(1, 1);
+    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+    scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
+    // condition: C1 == 999; always false because the row has C1=100
+    auto& target = add_join_scan_node(setup, lower, upper, false,
+        [](auto const& dests) {
+            return std::make_unique<compare>(
+                comparison_operator::equal,
+                varref{dests[1]},
+                scalar::immediate{takatori::value::int4{999}, takatori::type::int4{}}
+            );
+        });
+    auto verifier_vars = in.vars_;
+    auto out_vars = destinations(target.columns());
+    verifier_vars.insert(verifier_vars.end(), out_vars.begin(), out_vars.end());
+    auto down = add_downstream_record_verifier(std::move(verifier_vars));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4>(1, 100), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_scan_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        nullptr, relation::join_kind::anti
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_, in.vars_));
+    });
+
+    set_variables(ex.variables_, in, input.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    // C1=100 ≠ 999 → condition false → no satisfying match → anti must emit once
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
 } // namespace jogasaki::executor::process::impl::ops

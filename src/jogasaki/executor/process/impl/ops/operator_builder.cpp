@@ -66,6 +66,7 @@
 
 #include "aggregate_group.h"
 #include "apply.h"
+#include "buffer.h"
 #include "emit.h"
 #include "filter.h"
 #include "find.h"
@@ -282,9 +283,20 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::filt
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::buffer& node) {
-    (void)node;
-    throw_exception(std::logic_error{""});
-    return {};
+    auto block_index = info_->block_indices().at(&node);
+
+    std::vector<std::unique_ptr<operator_base>> downstreams;
+    downstreams.reserve(node.output_ports().size());
+    for (auto& port : node.output_ports()) {
+        downstreams.emplace_back(dispatch(*this, port.opposite()->owner()));
+    }
+
+    return std::make_unique<buffer>(
+        index_++,
+        *info_,
+        block_index,
+        std::move(downstreams)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::emit& node) {

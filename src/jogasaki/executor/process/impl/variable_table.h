@@ -15,9 +15,10 @@
  */
 #pragma once
 
+#include <deque>
 #include <iosfwd>
 #include <memory>
-#include <deque>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -98,5 +99,10 @@ private:
  * @return the output
  */
 std::ostream& operator<<(std::ostream& out, variable_table const& value);
+
+/**
+ * @brief list of variable tables, one per basic block in the process
+ */
+using variable_table_list = std::vector<variable_table>;
 
 }  // namespace jogasaki::executor::process::impl

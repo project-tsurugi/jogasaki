@@ -68,7 +68,7 @@ operation_status emit::process_record(abstract::task_context *context) {
     if (! p) {
         p = ctx.make_context<emit_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             meta()->origin(),
             ctx.resource(),
             ctx.varlen_resource()
@@ -82,14 +82,13 @@ operation_status emit::operator()(emit_context &ctx) {
         return operation_status_kind::aborted;
     }
     auto target = ctx.buffer_.ref();
-    auto source = ctx.input_variables().store().ref();
     for(auto &f : fields_) {
         utils::copy_nullable_field(
             f.type_,
             target,
             f.target_offset_,
             f.target_nullity_offset_,
-            source,
+            ctx.variables().ref(f.source_region_id_),
             f.source_offset_,
             f.source_nullity_offset_
         );
@@ -166,13 +165,15 @@ std::vector<details::emit_field> emit::create_fields(
             continue;
         }
         auto& info = block_info().at(c.source());
+        assert_with_exception(info.region());
         fields.emplace_back(details::emit_field{
             meta_->at(pos),
             info.value_offset(),
             meta_->value_offset(pos),
             info.nullity_offset(),
             meta_->nullity_offset(pos),
-            true // assuming variables and output columns are all nullable
+            true, // assuming variables and output columns are all nullable
+            info.region()
         });
         ++pos;
     }

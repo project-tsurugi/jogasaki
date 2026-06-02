@@ -18,7 +18,7 @@
 #include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/utils/lazy_checkpoint_holder.h>
 
 #include "context_base.h"
@@ -42,7 +42,7 @@ public:
      */
     take_flat_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variables_view variables,
         memory_resource* resource,
         memory_resource* varlen_resource
     );

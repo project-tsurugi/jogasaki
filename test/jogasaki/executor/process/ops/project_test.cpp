@@ -38,6 +38,7 @@
 #include <jogasaki/executor/process/impl/ops/project.h>
 #include <jogasaki/executor/process/impl/ops/project_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -91,7 +92,7 @@ public:
      */
     struct project_executor {
         project op_;
-        variable_table variables_;
+        variable_table_list variables_list_;
         mock::task_context task_ctx_;
         project_context ctx_;
 
@@ -103,10 +104,11 @@ public:
             request_context* req_ctx
         ) :
             op_{std::move(op)},
-            variables_{block_info},
+            variables_list_{},
             task_ctx_{{}, {}, {}, {}},
-            ctx_{&task_ctx_, variables_, res, varlen_res}
+            ctx_{&task_ctx_, variables_view{variables_list_, 0}, res, varlen_res}
         {
+            variables_list_.emplace_back(block_info);
             ctx_.task_context().work_context(std::make_unique<impl::work_context>(
                 req_ctx, 0, op_.block_index(), nullptr, nullptr, nullptr, nullptr, false, false
             ));
@@ -160,10 +162,10 @@ TEST_F(project_test, simple) {
     auto ex = make_project_executor(prj, up, down);
     down.set_body([&]() {
         EXPECT_EQ((create_nullable_record<kind::int8, kind::int8>(100, 22)),
-            get_variables(ex.variables_, {out[0], out[1]}));
+            get_variables(ex.variables_list_[0], {out[0], out[1]}));
         called = true;
     });
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ex.op_(ex.ctx_);
     ASSERT_TRUE(called);
 }
@@ -195,11 +197,11 @@ TEST_F(project_test, text) {
                 "C23456789012345678901234567890"
                 "Z23456789012345678901234567890"
             })),
-            get_variables(ex.variables_, {out[0]})
+            get_variables(ex.variables_list_[0], {out[0]})
         );
         called = true;
     });
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ex.op_(ex.ctx_);
     ASSERT_TRUE(called);
 }

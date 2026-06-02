@@ -233,16 +233,17 @@ TEST_F(join_test, simple) {
     auto tmeta = tgt.record_meta();
     variable_table_info block_info{
         {
-            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), 0} },
-            { g0v1, { tmeta->value_offset(1), tmeta->nullity_offset(1), 1} },
-            { g0v2, { tmeta->value_offset(2), tmeta->nullity_offset(2), 2} },
-            { g1v0, { tmeta->value_offset(3), tmeta->nullity_offset(3), 3} },
-            { g1v1, { tmeta->value_offset(4), tmeta->nullity_offset(4), 4} },
-            { g1v2, { tmeta->value_offset(5), tmeta->nullity_offset(5), 5} },
+            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), 0, region_id{} } },
+            { g0v1, { tmeta->value_offset(1), tmeta->nullity_offset(1), 1, region_id{} } },
+            { g0v2, { tmeta->value_offset(2), tmeta->nullity_offset(2), 2, region_id{} } },
+            { g1v0, { tmeta->value_offset(3), tmeta->nullity_offset(3), 3, region_id{} } },
+            { g1v1, { tmeta->value_offset(4), tmeta->nullity_offset(4), 4, region_id{} } },
+            { g1v2, { tmeta->value_offset(5), tmeta->nullity_offset(5), 5, region_id{} } },
         },
         tmeta,
     };
-    variable_table variables{block_info};
+    variable_table_list variables_list;
+    variables_list.emplace_back(block_info);
 
     std::vector<ops::group_element> groups{};
     groups.emplace_back(
@@ -287,7 +288,7 @@ TEST_F(join_test, simple) {
     memory::lifo_paged_memory_resource varlen_resource{&pool};
     join_context<iterator> ctx(
         &task_ctx,
-        variables,
+        variables_view{variables_list, 0},
         &resource,
         &varlen_resource
     );
@@ -295,7 +296,7 @@ TEST_F(join_test, simple) {
     std::vector<jogasaki::mock::basic_record> result{};
 
     downstream->body([&]() {
-        result.emplace_back(jogasaki::mock::basic_record(variables.store().ref(), tmeta));
+        result.emplace_back(jogasaki::mock::basic_record(variables_list[0].store().ref(), tmeta));
     });
 
     mock::iterable_group_store ge1{
@@ -503,14 +504,15 @@ TEST_F(join_test, left_join_with_condition) {
     auto tmeta = tgt.record_meta();
     variable_table_info block_info{
         {
-            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), 0} },
-            { g0v2, { tmeta->value_offset(1), tmeta->nullity_offset(1), 1} },
-            { g1v0, { tmeta->value_offset(2), tmeta->nullity_offset(2), 2} },
-            { g1v2, { tmeta->value_offset(3), tmeta->nullity_offset(3), 3} },
+            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), 0, region_id{} } },
+            { g0v2, { tmeta->value_offset(1), tmeta->nullity_offset(1), 1, region_id{} } },
+            { g1v0, { tmeta->value_offset(2), tmeta->nullity_offset(2), 2, region_id{} } },
+            { g1v2, { tmeta->value_offset(3), tmeta->nullity_offset(3), 3, region_id{} } },
         },
         tmeta,
     };
-    variable_table variables{block_info};
+    variable_table_list variables_list2;
+    variables_list2.emplace_back(block_info);
 
     std::vector<ops::group_element> groups{};
     groups.emplace_back(
@@ -555,7 +557,7 @@ TEST_F(join_test, left_join_with_condition) {
     memory::lifo_paged_memory_resource varlen_resource{&pool};
     join_context<iterator> ctx(
         &task_ctx,
-        variables,
+        variables_view{variables_list2, 0},
         &resource,
         &varlen_resource
     );
@@ -563,7 +565,7 @@ TEST_F(join_test, left_join_with_condition) {
     std::vector<jogasaki::mock::basic_record> result{};
 
     downstream->body([&]() {
-        result.emplace_back(jogasaki::mock::basic_record(variables.store().ref(), tmeta));
+        result.emplace_back(jogasaki::mock::basic_record(variables_list2[0].store().ref(), tmeta));
     });
 
     mock::iterable_group_store ge1{

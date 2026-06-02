@@ -33,6 +33,7 @@
 #include <jogasaki/executor/process/impl/ops/filter.h>
 #include <jogasaki/executor/process/impl/ops/filter_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -84,7 +85,7 @@ public:
      */
     struct filter_executor {
         filter op_;
-        variable_table variables_;
+        variable_table_list variables_list_;
         mock::task_context task_ctx_;
         filter_context ctx_;
 
@@ -96,10 +97,11 @@ public:
             request_context* req_ctx
         ) :
             op_{std::move(op_arg)},
-            variables_{block_info},
+            variables_list_{},
             task_ctx_{{}, {}, {}, {}},
-            ctx_{&task_ctx_, variables_, res, varlen_res}
+            ctx_{&task_ctx_, variables_view{variables_list_, 0}, res, varlen_res}
         {
+            variables_list_.emplace_back(block_info);
             ctx_.task_context().work_context(std::make_unique<impl::work_context>(
                 req_ctx, 0, op_.block_index(), nullptr, nullptr, nullptr, nullptr, false, false
             ));
@@ -151,14 +153,14 @@ TEST_F(filter_test, simple) {
     down.set_body([&]() { called = true; });
 
     // c1 == c2 + 1: 11 == 10 + 1 → true
-    set_variables(ex.variables_, in, input_pass.ref());
+    set_variables(ex.variables_list_[0], in, input_pass.ref());
     ex.op_(ex.ctx_);
     ASSERT_TRUE(called);
 
     // c1 == c2 + 1: 20 == 22 + 1 → false
     called = false;
     auto input_fail = create_nullable_record<kind::int8, kind::int8, kind::int8>(2, 20, 22);
-    set_variables(ex.variables_, in, input_fail.ref());
+    set_variables(ex.variables_list_[0], in, input_fail.ref());
     ex.op_(ex.ctx_);
     ASSERT_TRUE(! called);
 }

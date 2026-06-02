@@ -26,6 +26,7 @@
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/task_context.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/relay/blob_session_container.h>
@@ -63,12 +64,18 @@ public:
      * @tparam T the operator context type
      * @tparam Args arguments types to construct operator context
      * @param index the index to position the context in the context list
-     * @param args arguments to construct operator context
+     * @param block_index the index of the basic block this context belongs to
+     * @param args additional arguments to construct operator context.
+     *   The task context and a variables_view are automatically prepended.
      * @return pointer to the created/stored context
      */
     template<class T, class ... Args>
-    [[nodiscard]] T* make_context(std::size_t index, Args&&...args) {
-        auto& p = contexts().set(index, std::make_unique<T>(context_, std::forward<Args>(args)...));
+    [[nodiscard]] T* make_context(std::size_t index, std::size_t block_index, Args&&...args) {
+        auto& p = contexts().set(index, std::make_unique<T>(
+            context_,
+            impl::variables_view{variable_tables(), block_index},
+            std::forward<Args>(args)...
+        ));
         return unsafe_downcast<T>(p.get());
     }
 
@@ -101,6 +108,12 @@ public:
      * @brief accessor to variable_table
      */
     [[nodiscard]] class variable_table& variable_table(std::size_t index);
+
+    /**
+     * @brief accessor to the full variable_table_list
+     * @return reference to the list of all block variable tables
+     */
+    [[nodiscard]] variable_table_list& variable_tables();
 
     /**
      * @brief accessor to task context

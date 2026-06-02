@@ -107,7 +107,7 @@ aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::
         }
         p = ctx.make_context<aggregate_group_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource(),
             std::move(stores),
@@ -167,7 +167,7 @@ operation_status aggregate_group::operator()(
             // empty group: generate default aggregate values using empty_value_generator
             for(auto&& c : columns_) {
                 auto& func = c.function_info_.empty_value_generator();
-                auto target = ctx.output_variables().store().ref();
+                auto target = ctx.variables().ref();
                 func(target,
                     function::field_locator{
                         c.type_,
@@ -182,7 +182,7 @@ operation_status aggregate_group::operator()(
                 // append value store the values
                 auto& store = ctx.stores_[i];
                 auto& arg = arguments_[i];
-                auto src = ctx.input_variables().store().ref();
+                auto src = ctx.variables().ref(arg.source_region_id_);
                 copy_value(
                     src,
                     arg.offset_,
@@ -200,7 +200,7 @@ operation_status aggregate_group::operator()(
             for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
                 auto& c = columns_[i];
                 auto& func = c.function_info_.aggregator();
-                auto target = ctx.output_variables().store().ref();
+                auto target = ctx.variables().ref();
                 func(target,
                     function::field_locator{
                         c.type_,
@@ -295,7 +295,8 @@ std::vector<details::aggregate_group_argument> aggregate_group::create_arguments
             utils::type_for(compiled_info().type_of(v)),
             block_info().at(v).value_offset(),
             block_info().at(v).nullity_offset(),
-            true
+            true,
+            block_info().at(v).region()
         );
     }
     return ret;
@@ -343,12 +344,14 @@ details::aggregate_group_argument::aggregate_group_argument(
     meta::field_type type,
     std::size_t offset,
     std::size_t nullity_offset,
-    bool nullable
+    bool nullable,
+    region_id source_region_id
 ) noexcept:
     type_(std::move(type)),
     offset_(offset),
     nullity_offset_(nullity_offset),
-    nullable_(nullable)
+    nullable_(nullable),
+    source_region_id_(source_region_id)
 {}
 
 }  // namespace jogasaki::executor::process::impl::ops

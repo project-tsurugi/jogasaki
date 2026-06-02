@@ -50,8 +50,8 @@ std::size_t value_info::index() const noexcept {
     return index_;
 }
 
-std::optional<std::size_t> value_info::block_index() const noexcept {
-    return block_index_;
+region_id value_info::region() const noexcept {
+    return region_id_;
 }
 
 variable_table_info::variable_table_info(
@@ -70,20 +70,21 @@ variable_table_info::variable_table_info(
 static variable_table_info::entity_type from_indices(
     variable_table_info::variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> const& meta,
-    std::optional<std::size_t> block_index
+    region_id r
 ) {
     variable_table_info::entity_type map{};
     for(auto&& [v, i] : indices) {
-        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i), i, block_index};
+        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i), i, r};
     }
     return map;
 }
 
 variable_table_info::variable_table_info(
     variable_indices const& indices,
-    maybe_shared_ptr<meta::record_meta> meta
+    maybe_shared_ptr<meta::record_meta> meta,
+    region_id r
 ) :
-    map_(from_indices(indices, meta, std::nullopt)),  // TODO pass block index is needed
+    map_(from_indices(indices, meta, r)),
     meta_(std::move(meta))
 {
     // currently assuming any stream variables are nullable for now
@@ -119,7 +120,7 @@ variable_table_info::variable_table_info(
     std::unordered_map<std::string, takatori::descriptor::variable> const& names,
     maybe_shared_ptr<meta::record_meta> meta
 ) :
-    variable_table_info(indices, std::move(meta))
+    variable_table_info(indices, std::move(meta), region_id{}) // for host variables, region_id is not used yet
 {
     for(auto& [name, v] : names) {
         add(name, v);
@@ -177,7 +178,7 @@ static void build_block(
         var_indices[variables[i]] = i;
     }
 
-    entity.emplace_back(from_indices(var_indices, meta, current_idx), meta, parent_ptr);
+    entity.emplace_back(from_indices(var_indices, meta, region_id{current_idx}), meta, parent_ptr);
 
     for (auto& e : blk) {
         indices[&e] = current_idx;

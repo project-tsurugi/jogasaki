@@ -52,7 +52,7 @@ operation_status flatten::process_group(abstract::task_context* context, member_
     if (! p) {
         p = ctx.make_context<flatten_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );

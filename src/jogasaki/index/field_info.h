@@ -17,11 +17,14 @@
 
 #include <cstddef>
 
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::index {
+
+using executor::process::impl::region_id;
 
 /**
  * @brief primary index field info
@@ -37,6 +40,9 @@ struct cache_align field_info {
      * @param nullity_offset bit offset of the target field nullity in the target record reference
      * @param nullable whether the target field is nullable or not
      * @param spec the spec of the target field used for encode/decode
+     * @param source_region_id identifies the variable_table region that holds the source variable.
+     *   Only meaningful when encoding from input variables (i.e. used by primary_target::input_keys_).
+     *   Defaults to undefined for fields where it is not applicable.
      */
     field_info(
         meta::field_type type,
@@ -44,7 +50,8 @@ struct cache_align field_info {
         std::size_t offset,
         std::size_t nullity_offset,
         bool nullable,
-        kvs::coding_spec spec
+        kvs::coding_spec spec,
+        region_id source_region_id = region_id{} // TODO remove default parameter
     );
 
     meta::field_type type_{}; //NOLINT
@@ -53,8 +60,7 @@ struct cache_align field_info {
     std::size_t nullity_offset_{}; //NOLINT
     bool nullable_{}; //NOLINT
     kvs::coding_spec spec_{}; //NOLINT
+    region_id source_region_id_{}; //NOLINT
 };
 
 }
-
-

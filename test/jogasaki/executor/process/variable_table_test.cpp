@@ -137,8 +137,8 @@ TEST_F(variable_table_test, stringify_non_named_variable_table) {
     variable_table_info::entity_type map{};
     auto rec = mock::create_nullable_record<kind::int4, kind::int4>();
     auto m = rec.record_meta();
-    map[v1] = value_info{m->value_offset(0), m->nullity_offset(0), 0};
-    map[v2] = value_info{m->value_offset(1), m->nullity_offset(1), 1};
+    map[v1] = value_info{m->value_offset(0), m->nullity_offset(0), 0, region_id{}};
+    map[v2] = value_info{m->value_offset(1), m->nullity_offset(1), 1, region_id{}};
     variable_table_info info{std::move(map), rec.record_meta()};
     variable_table tb{info};
     auto ref = tb.store().ref();

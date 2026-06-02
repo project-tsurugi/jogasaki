@@ -28,16 +28,16 @@ field_info::field_info(
     std::size_t offset,
     std::size_t nullity_offset,
     bool nullable,
-    kvs::coding_spec spec
+    kvs::coding_spec spec,
+    region_id source_region_id
 ) :
     type_(std::move(type)),
     exists_(exists),
     offset_(offset),
     nullity_offset_(nullity_offset),
     nullable_(nullable),
-    spec_(spec)
+    spec_(spec),
+    source_region_id_(source_region_id)
 {}
 
 }
-
-

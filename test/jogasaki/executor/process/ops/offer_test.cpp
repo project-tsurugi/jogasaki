@@ -54,6 +54,7 @@
 #include <jogasaki/executor/process/impl/ops/offer.h>
 #include <jogasaki/executor/process/impl/ops/offer_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/mock/record_writer.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -185,7 +186,8 @@ TEST_F(offer_test, simple) {
 
     ASSERT_EQ(1, p_info.vars_info_list().size());
     auto& block_info = p_info.vars_info_list()[s.block_index()];
-    variable_table variables{block_info};
+    variable_table_list variables_list;
+    variables_list.emplace_back(block_info);
 
     using kind = meta::field_type_kind;
     using test_record = jogasaki::mock::basic_record;
@@ -200,10 +202,10 @@ TEST_F(offer_test, simple) {
 
     memory::lifo_paged_memory_resource resource{&global::page_pool()};
     memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};
-    offer_context ctx(&task_ctx, meta, variables, &resource, &varlen_resource);
+    offer_context ctx(&task_ctx, variables_view{variables_list, 0}, meta, &resource, &varlen_resource);
 
-    auto vars_ref = variables.store().ref();
-    auto& map = variables.info();
+    auto vars_ref = variables_list[0].store().ref();
+    auto& map = variables_list[0].info();
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 0);
     vars_ref.set_null(map.at(c0).nullity_offset(), false);
     vars_ref.set_value<double>(map.at(c1).value_offset(), 1.0);

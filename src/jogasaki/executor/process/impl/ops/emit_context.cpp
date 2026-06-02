@@ -25,7 +25,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 emit_context::emit_context(
     class abstract::task_context* ctx,
-    variable_table& variables,
+    variables_view variables,
     maybe_shared_ptr<meta::record_meta> meta,
     emit_context::memory_resource* resource,
     emit_context::memory_resource* varlen_resource

@@ -50,7 +50,9 @@
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/scan_range.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/relation_io_map.h>
@@ -476,7 +478,7 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     std::vector<std::shared_ptr<impl::scan_range>> scan_ranges{};
     auto& secondary_or_primary_index =
         yugawara::binding::extract<yugawara::storage::index>(node.source());
-    executor::process::impl::variable_table vars{};
+    executor::process::impl::variables_view vars{};
     auto& table        = secondary_or_primary_index.table();
     auto primary       = table.owner()->find_primary_index(table);
     std::size_t blen{};

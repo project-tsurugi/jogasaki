@@ -28,6 +28,7 @@
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/wrt/fill_evaluated_value.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -80,7 +81,7 @@ operation_status values::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<values_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -92,8 +93,7 @@ operation_status values::operator()(values_context& ctx, abstract::task_context*
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    auto& vars = ctx.output_variables();
-    auto ref = vars.store().ref();
+    auto target = ctx.variables().ref();
 
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::values);
     while (ctx.current_row_ < row_evaluators_.size()) {
@@ -104,7 +104,7 @@ operation_status values::operator()(values_context& ctx, abstract::task_context*
             }
             auto& revals = row_evaluators_[ctx.current_row_];
             context_helper helper{ctx.task_context()};
-            process::impl::variable_table empty{};
+            process::impl::variables_view empty{};
             for (std::size_t i = 0, n = fields_.size(); i < n; ++i) {
                 auto const& field = fields_[i];
                 if (auto st = wrt::fill_evaluated_value(
@@ -116,7 +116,7 @@ operation_status values::operator()(values_context& ctx, abstract::task_context*
                         helper.blob_session_container(),
                         empty,
                         *ctx.varlen_resource(),
-                        ref
+                        target
                     );
                     st != status::ok) {
                     ctx.abort();

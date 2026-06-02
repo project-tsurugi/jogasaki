@@ -29,7 +29,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 write_existing_context::write_existing_context(
     class abstract::task_context* ctx,
-    variable_table& variables,
+    variables_view variables,
     std::unique_ptr<kvs::storage> stg,
     transaction_context* tx,
     maybe_shared_ptr<meta::record_meta> key_meta,

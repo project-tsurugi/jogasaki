@@ -29,6 +29,7 @@
 
 #include <jogasaki/executor/function/aggregate_function_info.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
@@ -76,13 +77,15 @@ public:
         meta::field_type type,
         std::size_t offset,
         std::size_t nullity_offset,
-        bool nullable
+        bool nullable,
+        region_id source_region_id
     ) noexcept;
 
     meta::field_type type_{};  //NOLINT
     std::size_t offset_{};  //NOLINT
     std::size_t nullity_offset_{};  //NOLINT
     bool nullable_{};  //NOLINT
+    region_id source_region_id_{}; //NOLINT
 };
 
 }

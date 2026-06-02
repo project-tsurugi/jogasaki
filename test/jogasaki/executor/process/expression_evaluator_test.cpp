@@ -75,8 +75,10 @@
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
@@ -124,6 +126,8 @@ using immediate = takatori::scalar::immediate;
 using compiled_info = yugawara::compiled_info;
 using variable = takatori::descriptor::variable;
 
+using region_id = executor::process::impl::region_id;
+
 class expression_evaluator_test : public test_root {
 public:
 
@@ -141,7 +145,7 @@ public:
     factory f_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
     executor::process::impl::variable_table_info info_{};
-    executor::process::impl::variable_table vars_{};
+    executor::process::impl::variable_table_list vars_list_{};
 
     compiled_info c_info_{};
     expr::evaluator evaluator_{};
@@ -183,8 +187,9 @@ public:
             {c1, 0},
             {c2, 1},
         };
-        info_ = executor::process::impl::variable_table_info{m, meta_};
-        vars_ = executor::process::impl::variable_table{info_};
+        info_ = executor::process::impl::variable_table_info{m, meta_, region_id{}};
+        vars_list_.clear();
+        vars_list_.emplace_back(info_);
 
         c_info_ = compiled_info{expressions_, variables_};
         evaluator_ = expr::evaluator{*expr, c_info_};
@@ -198,7 +203,7 @@ public:
         bool c1_null,
         bool c2_null
     ) {
-        auto&& ref = vars_.store().ref();
+        auto&& ref = vars_list_[0].store().ref();
         ref.set_value<decltype(c1)>(meta_->value_offset(0), c1);
         ref.set_null(meta_->nullity_offset(0), c1_null);
         ref.set_value<decltype(c2)>(meta_->value_offset(1), c2);
@@ -229,7 +234,7 @@ public:
             set_values<In1, In2>(c1, c2, c1_is_null, c2_is_null);
             utils::checkpoint_holder cph{&resource_};
             evaluator_context c{&resource_};
-            auto a = evaluator_(c, vars_, &resource_);
+            auto a = evaluator_(c, executor::process::impl::variables_view{vars_list_, 0}, &resource_);
             ASSERT_TRUE(! a.error());
             if(exp_is_null) {
                 ASSERT_TRUE(a.empty());
@@ -376,13 +381,14 @@ TEST_F(expression_evaluator_test, binary_expression) {
         {c2, 1},
     };
 
-    info_ = executor::process::impl::variable_table_info{m, meta_};
-    vars_ = executor::process::impl::variable_table{info_};
+    info_ = executor::process::impl::variable_table_info{m, meta_, region_id{}};
+    vars_list_.clear();
+    vars_list_.emplace_back(info_);
 
     set_values<t::int8, t::int8>(10, 20, false, false);
 
     evaluator_context c{nullptr};
-    auto result = evaluator_(c, vars_).to<std::int64_t>();
+    auto result = evaluator_(c, executor::process::impl::variables_view{vars_list_, 0}).to<std::int64_t>();
     ASSERT_EQ(-40, result);
 }
 
@@ -406,7 +412,7 @@ TEST_F(expression_evaluator_test, unary_expression) {
     };
     expr::evaluator ev{expr, c_info};
 
-    executor::process::impl::variable_table vars{};
+    executor::process::impl::variables_view vars{};
     evaluator_context c{nullptr};
     auto result = ev(c, vars).to<std::int64_t>();
     ASSERT_EQ(-30, result);
@@ -423,7 +429,7 @@ TEST_F(expression_evaluator_test, conditional_not) {
     compiled_info c_info{ expressions_, variables_ };
     expr::evaluator ev{expr, c_info};
 
-    executor::process::impl::variable_table vars{};
+    executor::process::impl::variables_view vars{};
     evaluator_context c{nullptr};
     ASSERT_TRUE(ev(c, vars).to<bool>());
 }
@@ -450,19 +456,20 @@ TEST_F(expression_evaluator_test, text_length) {
         {c1, 0},
     };
 
-    executor::process::impl::variable_table_info info{m, meta};
-    executor::process::impl::variable_table vars{info};
+    executor::process::impl::variable_table_info info{m, meta, region_id{}};
+    executor::process::impl::variable_table_list vl;
+    vl.emplace_back(info);
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     auto cp = resource.get_checkpoint();
-    auto&& ref = vars.store().ref();
+    auto&& ref = vl[0].store().ref();
     ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
     ref.set_null(meta->nullity_offset(0), false);
     compiled_info c_info{ expressions_, variables_ };
     expr::evaluator ev{expr, c_info};
     evaluator_context c{&resource};
-    ASSERT_EQ(30, ev(c, vars, &resource).to<std::int32_t>());
+    ASSERT_EQ(30, ev(c, executor::process::impl::variables_view{vl, 0}, &resource).to<std::int32_t>());
 }
 
 template<class T>
@@ -635,7 +642,7 @@ TEST_F(expression_evaluator_test, arithmetic_error) {
         set_values<t::float8, t::float8>(10.0, 0.0, false, false);
         utils::checkpoint_holder cph{&resource_};
         evaluator_context c{&resource_};
-        auto result = evaluator_(c, vars_, &resource_);
+        auto result = evaluator_(c, executor::process::impl::variables_view{vars_list_, 0}, &resource_);
         ASSERT_FALSE(result);
         ASSERT_FALSE(result.empty());
         ASSERT_TRUE(result.error());

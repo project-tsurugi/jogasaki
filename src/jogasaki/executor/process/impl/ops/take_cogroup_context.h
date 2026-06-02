@@ -31,7 +31,7 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/cogroup.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/utils/interference_size.h>
@@ -159,7 +159,7 @@ public:
      */
     take_cogroup_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variables_view variables,
         memory_resource* resource,
         memory_resource* varlen_resource
     );

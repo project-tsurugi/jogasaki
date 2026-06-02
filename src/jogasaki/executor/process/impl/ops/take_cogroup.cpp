@@ -128,7 +128,7 @@ operation_status take_cogroup::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<take_cogroup_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );

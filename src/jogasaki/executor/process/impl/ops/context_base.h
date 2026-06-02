@@ -15,19 +15,16 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <ostream>
 #include <string_view>
 
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
 
 #include "operator_kind.h"
-
-namespace jogasaki::executor::process::impl {
-class variable_table;
-}
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -97,25 +94,13 @@ public:
     /**
      * @brief create new object
      * @param ctx the parent task context
-     * @param input_variables the input variable table
-     * @param output_variables the output variable table
+     * @param variables view of the variable tables for this context's block
+     * @param resource memory resource for context objects
+     * @param varlen_resource varlen memory resource
      */
     context_base(
         class abstract::task_context* context,
-        variable_table& input_variables,
-        variable_table& output_variables,
-        memory_resource* resource,
-        memory_resource* varlen_resource
-    );
-
-    /**
-     * @brief create new object
-     * @param ctx the parent task context
-     * @param variables the variable table used for both input/output
-     */
-    context_base(
-        class abstract::task_context* context,
-        variable_table& variables,
+        variables_view variables,
         memory_resource* resource,
         memory_resource* varlen_resource
     );
@@ -136,26 +121,10 @@ public:
     [[nodiscard]] virtual operator_kind kind() const noexcept = 0;
 
     /**
-     * @brief accessor to variables table for the scope where operator/context belongs
+     * @brief return a view into the variable tables for this context's block
+     * @return variables_view referencing the current block's variables and ancestors
      */
-    [[nodiscard]] variable_table& input_variables() const noexcept;
-
-    /**
-     * @brief setter of variables table
-     * @param variables reference to the variables table
-     */
-    void input_variables(variable_table& variables) noexcept;
-
-    /**
-     * @brief accessor to variables table for the scope where operator/context belongs
-     */
-    [[nodiscard]] variable_table& output_variables() const noexcept;
-
-    /**
-     * @brief setter of variables table
-     * @param variables reference to the variables table
-     */
-    void output_variables(variable_table& variables) noexcept;
+    [[nodiscard]] impl::variables_view variables() const noexcept;
 
     /**
      * @brief accessor to task context
@@ -214,8 +183,7 @@ public:
 
 private:
     class abstract::task_context* task_context_{};
-    variable_table* input_variables_{};
-    variable_table* output_variables_{};
+    impl::variables_view variables_{};
     memory_resource* resource_{};
     memory_resource* varlen_resource_{};
     context_state state_{context_state::running_operator_body};

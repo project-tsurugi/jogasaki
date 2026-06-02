@@ -306,8 +306,7 @@ public:
         if (! p) {
             p = ctx.make_context<index_join_context<MatchInfo>>(
                 index(),
-                ctx.variable_table(block_index()),
-                ctx.variable_table(block_index()),
+                block_index(),
                 utils::get_storage_by_index_name(primary_storage_name_),
                 use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name_) : nullptr,
                 ctx.transaction(),
@@ -366,12 +365,12 @@ public:
                 ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
             };
             ectx.blob_session(std::addressof(helper.blob_session_container()));
-            nullify_output_variables(ctx.output_variables().store().ref());
+            nullify_output_variables(ctx.variables().ref());
             ctx.matched_ = ctx.matcher_->template process<MatchInfo>(
                 ectx,
                 *ctx.req_context(),
-                ctx.input_variables(),
-                ctx.output_variables(),
+                ctx.variables(),
+                ctx.variables(),
                 *ctx.primary_stg_,
                 ctx.secondary_stg_.get(),
                 tx,
@@ -393,7 +392,7 @@ public:
                         };
                         context_helper h{ctx.task_context()};
                         c.blob_session(std::addressof(h.blob_session_container()));
-                        auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
+                        auto r = evaluate_bool(c, evaluator_, ctx.variables(), resource);
                         if (r.error()) {
                             handle_expression_error(*ctx.req_context(), r, c);
                             ctx.abort();
@@ -414,7 +413,7 @@ public:
                 ctx.abort();
                 return operation_status_kind::aborted;
             }
-            nullify_output_variables(ctx.output_variables().store().ref());
+            nullify_output_variables(ctx.variables().ref());
             if ((exists_match && join_kind_ == join_kind::semi) ||
                 (!exists_match && join_kind_ == join_kind::anti)) {
                 if (auto call_st = call_downstream(ctx, context); ! call_st) {
@@ -434,7 +433,7 @@ public:
                     };
                     context_helper h{ctx.task_context()};
                     c.blob_session(std::addressof(h.blob_session_container()));
-                    auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
+                    auto r = evaluate_bool(c, evaluator_, ctx.variables(), resource);
                     if (r.error()) {
                         handle_expression_error(*ctx.req_context(), r, c);
                         ctx.abort();
@@ -446,7 +445,7 @@ public:
                             continue;
                         }
                         // left outer join: nullify output variables and send record downstream
-                        nullify_output_variables(ctx.output_variables().store().ref());
+                        nullify_output_variables(ctx.variables().ref());
                     }
                 }
 resume_calling_child:
@@ -454,7 +453,7 @@ resume_calling_child:
                     return call_st;
                 }
                 // clean output variables for next record just in case
-                nullify_output_variables(ctx.output_variables().store().ref());
+                nullify_output_variables(ctx.variables().ref());
             } while (ctx.matched_ && ctx.matcher_->next(*ctx.req_context()));
         }
         // normally `res` is not_found here indicating there are no more records to process

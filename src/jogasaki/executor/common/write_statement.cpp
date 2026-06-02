@@ -54,6 +54,7 @@
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
@@ -106,7 +107,7 @@ static status create_record_from_tuple(  //NOLINT(readability-function-cognitive
         auto& expr = t.elements()[f.index_];
         auto& source_type = info.type_of(expr);
         expr::evaluator eval{expr, info, host_variables};
-        executor::process::impl::variable_table empty{};
+        executor::process::impl::variables_view empty{};
         if (auto res = wrt::fill_evaluated_value(
                 eval,
                 source_type,

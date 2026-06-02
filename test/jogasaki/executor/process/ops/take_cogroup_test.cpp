@@ -51,6 +51,7 @@
 #include <jogasaki/executor/process/impl/ops/take_cogroup.h>
 #include <jogasaki/executor/process/impl/ops/take_cogroup_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -254,7 +255,8 @@ TEST_F(take_cogroup_test, simple) {
     auto value_meta1 = g_info1.value_meta();
 
     auto& block_info = p_info.vars_info_list()[0];
-    variable_table variables{block_info};
+    variable_table_list variables_list;
+    variables_list.emplace_back(block_info);
 
     std::vector<group_element> groups{};
     groups.emplace_back(
@@ -348,7 +350,7 @@ TEST_F(take_cogroup_test, simple) {
     memory::lifo_paged_memory_resource varlen_resource{&pool};
     take_cogroup_context ctx(
         &task_ctx,
-        variables,
+        variables_view{variables_list, 0},
         &resource,
         &varlen_resource
     );

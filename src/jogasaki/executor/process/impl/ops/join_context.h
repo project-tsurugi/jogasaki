@@ -44,7 +44,7 @@ public:
      */
     join_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variables_view variables,
         memory_resource* resource = nullptr,
         memory_resource* varlen_resource = nullptr
     ) :

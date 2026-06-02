@@ -17,7 +17,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -32,6 +31,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/compiled_info.h>
 
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::process::impl {
@@ -54,19 +54,18 @@ public:
      * @param value_offset offset of the value
      * @param nullity_offset nullity offset of the value
      * @param index field index in the record
-     * @param block_index index of the basic block whose variable_table holds this value.
-     *   std::nullopt when the block is not yet determined (single-block / pre-multi-block paths).
+     * @param region identifies the region whose variable_table holds this value.
      */
     constexpr value_info(
         std::size_t value_offset,
         std::size_t nullity_offset,
         std::size_t index,
-        std::optional<std::size_t> block_index = std::nullopt
+        region_id region
     ) noexcept :
         value_offset_(value_offset),
         nullity_offset_(nullity_offset),
         index_(index),
-        block_index_(block_index)
+        region_id_(region)
     {}
 
     /**
@@ -88,16 +87,16 @@ public:
     [[nodiscard]] std::size_t index() const noexcept;
 
     /**
-     * @brief index of the basic block whose variable_table holds this value
-     * @return block index, or std::nullopt if not set (single-block / pre-multi-block paths)
+     * @brief identifier of the region whose variable_table holds this value
+     * @return region_id identifying the region, or an undefined region_id if not set
      */
-    [[nodiscard]] std::optional<std::size_t> block_index() const noexcept;
+    [[nodiscard]] region_id region() const noexcept;
 
 private:
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};
     std::size_t index_{};
-    std::optional<std::size_t> block_index_{};
+    region_id region_id_{};
 };
 
 /**
@@ -146,10 +145,12 @@ public:
      * @brief construct new instance
      * @param indices variable mapping to field index that can be used to retrieve offset from meta
      * @param meta metadata of the block variable store
+     * @param r region that this object manages
      */
     variable_table_info(
         variable_indices const& indices,
-        maybe_shared_ptr<meta::record_meta> meta
+        maybe_shared_ptr<meta::record_meta> meta,
+        region_id r
     );
 
     /**

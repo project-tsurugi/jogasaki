@@ -79,8 +79,8 @@ TEST_F(variable_table_info_test, basic) {
     auto v1 = f.stream_variable("v1");
     auto v2 = f.exchange_column("v2");
     variable_table_info::entity_type map{};
-    map[v1] = value_info{1, 1, 0};
-    map[v2] = value_info{2,2, 1};
+    map[v1] = value_info{1, 1, 0, region_id{}};
+    map[v2] = value_info{2,2, 1, region_id{}};
 
     auto rec = mock::create_nullable_record<kind::int1, kind::int1>();
     variable_table_info m{std::move(map), rec.record_meta()};
@@ -104,8 +104,8 @@ TEST_F(variable_table_info_test, table_column) {
     auto v1 = f.stream_variable("v1");
     auto v2 = f.table_column(cols[0]);
     variable_table_info::entity_type map{};
-    map[v1] = value_info{1, 1, 0};
-    map[v2] = value_info{2, 2, 1};
+    map[v1] = value_info{1, 1, 0, region_id{}};
+    map[v2] = value_info{2, 2, 1, region_id{}};
 
     auto rec = mock::create_nullable_record<kind::int1, kind::int1>();
     variable_table_info m{std::move(map), rec.record_meta()};
@@ -184,17 +184,17 @@ TEST_F(variable_table_info_test, create_block_variables_definition1) {
 
 // Tests for buffer (multi-block) support
 
-TEST_F(variable_table_info_test, value_info_block_index) {
+TEST_F(variable_table_info_test, value_info_region_id) {
     value_info vi{10, 20, 3, std::size_t{5}};
     EXPECT_EQ(10, vi.value_offset());
     EXPECT_EQ(20, vi.nullity_offset());
     EXPECT_EQ(3, vi.index());
-    EXPECT_TRUE(vi.block_index().has_value());
-    EXPECT_EQ(5u, vi.block_index().value());
+    EXPECT_TRUE(vi.region());
+    EXPECT_EQ(5u, vi.region().index());
 
-    // 3-arg construction leaves block_index as nullopt
-    value_info vi2{10, 20, 3};
-    EXPECT_FALSE(vi2.block_index().has_value());
+    // default construction leaves block_index as undefined
+    value_info vi2{10, 20, 3, region_id{}};
+    EXPECT_TRUE(! vi2.region());
 }
 
 TEST_F(variable_table_info_test, variable_table_info_parent_delegation) {
@@ -227,11 +227,11 @@ TEST_F(variable_table_info_test, variable_table_info_parent_delegation) {
     EXPECT_TRUE(info1.exists_local(d0));
 
     // at() for parent variable returns block_index=0
-    EXPECT_EQ(0u, info1.at(c0).block_index().value());
-    EXPECT_EQ(0u, info1.at(c1).block_index().value());
+    EXPECT_EQ(0u, info1.at(c0).region().index());
+    EXPECT_EQ(0u, info1.at(c1).region().index());
 
     // at() for local variable returns block_index=1
-    EXPECT_EQ(1u, info1.at(d0).block_index().value());
+    EXPECT_EQ(1u, info1.at(d0).region().index());
 }
 
 TEST_F(variable_table_info_test, create_block_variables_definition_with_buffer) {
@@ -300,8 +300,8 @@ TEST_F(variable_table_info_test, create_block_variables_definition_with_buffer) 
     EXPECT_EQ(2, infos[0].meta()->field_count());
     EXPECT_TRUE(infos[0].exists_local(c0));
     EXPECT_TRUE(infos[0].exists_local(c1));
-    EXPECT_EQ(0u, infos[0].at(c0).block_index().value());
-    EXPECT_EQ(0u, infos[0].at(c1).block_index().value());
+    EXPECT_EQ(0u, infos[0].at(c0).region().index());
+    EXPECT_EQ(0u, infos[0].at(c1).region().index());
 
     // block1, block2: no local variables (offer uses but doesn't define)
     EXPECT_EQ(0, infos[1].meta()->field_count());
@@ -310,8 +310,8 @@ TEST_F(variable_table_info_test, create_block_variables_definition_with_buffer) 
     // block1 and block2 delegate to parent (block0) for c0, c1
     EXPECT_FALSE(infos[1].exists_local(c0));
     EXPECT_TRUE(infos[1].exists(c0));
-    EXPECT_EQ(0u, infos[1].at(c0).block_index().value());  // resolved in block 0
-    EXPECT_EQ(0u, infos[2].at(c1).block_index().value());
+    EXPECT_EQ(0u, infos[1].at(c0).region().index());  // resolved in block 0
+    EXPECT_EQ(0u, infos[2].at(c1).region().index());
 
     // block_indices: take and buf belong to block 0, offers belong to 1 and 2
     EXPECT_EQ(0, inds.at(&r1));
@@ -396,16 +396,16 @@ TEST_F(variable_table_info_test, create_block_variables_definition_downstream_lo
 
     // downstream-0 block: d0 is local; c0, c1 visible via parent
     EXPECT_TRUE(blk_proj_info.exists_local(d0));
-    EXPECT_EQ(blk_proj, blk_proj_info.at(d0).block_index().value());
+    EXPECT_EQ(blk_proj, blk_proj_info.at(d0).region().index());
     EXPECT_TRUE(blk_proj_info.exists(c0));
-    EXPECT_EQ(0u, blk_proj_info.at(c0).block_index().value());
+    EXPECT_EQ(0u, blk_proj_info.at(c0).region().index());
 
     // downstream-1 block: d0 is NOT visible (not local, not in parent chain)
     EXPECT_FALSE(blk_r3_info.exists_local(d0));
     EXPECT_FALSE(blk_r3_info.exists(d0));
     // c0, c1 still visible via parent
     EXPECT_TRUE(blk_r3_info.exists(c0));
-    EXPECT_EQ(0u, blk_r3_info.at(c0).block_index().value());
+    EXPECT_EQ(0u, blk_r3_info.at(c0).region().index());
 }
 
 }

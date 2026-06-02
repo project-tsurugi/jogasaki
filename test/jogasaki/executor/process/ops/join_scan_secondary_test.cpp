@@ -94,10 +94,10 @@ TEST_F(join_scan_secondary_test, secondary_index) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(3, result.size());
@@ -148,10 +148,10 @@ TEST_F(join_scan_secondary_test, secondary_index_desc) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(3, result.size());
@@ -197,7 +197,7 @@ TEST_F(join_scan_secondary_test, full_scan) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
@@ -243,7 +243,7 @@ TEST_F(join_scan_secondary_test, full_scan_explicit_unbound) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
@@ -290,10 +290,10 @@ TEST_F(join_scan_secondary_test, reversed_bounds) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(0, result.size());
@@ -336,18 +336,18 @@ TEST_F(join_scan_secondary_test, semi_join) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
     // secondary range C1=[20,30] has three matches → semi emits exactly once
-    set_variables(ex.variables_, in, input_match.ref());
+    set_variables(ex.variables_list_[0], in, input_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 30)), result[0]);
 
     // secondary range C1=[5,9] has no match → semi does not emit
-    set_variables(ex.variables_, in, input_no_match.ref());
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size()); // unchanged
@@ -391,17 +391,17 @@ TEST_F(join_scan_secondary_test, anti_join) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
     // secondary range C1=[20,30] has matches → anti does not emit
-    set_variables(ex.variables_, in, input_match.ref());
+    set_variables(ex.variables_list_[0], in, input_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(0, result.size());
 
     // secondary range C1=[5,9] has no match → anti emits once
-    set_variables(ex.variables_, in, input_no_match.ref());
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size());
@@ -449,10 +449,10 @@ TEST_F(join_scan_secondary_test, semi_join_condition_filtered) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     // C0=100 ≠ 999 → condition false → semi must not emit
@@ -500,10 +500,10 @@ TEST_F(join_scan_secondary_test, anti_join_condition_filtered) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     // C0=100 ≠ 999 → condition false → no satisfying match → anti must emit once

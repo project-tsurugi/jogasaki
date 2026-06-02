@@ -28,6 +28,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/utils.h>
@@ -129,10 +130,11 @@ public:
         ) {}
 
     /**
-     * @brief encode key (stored in context), find the record, fill dest key/value records, and remove
+     * @brief encode key (stored in context) from variable tables, find the record, fill dest key/value
+     *   records, and remove
      * @param ctx context
      * @param tx transaction context
-     * @param key key record to fine entry in the primary index
+     * @param variables view over all variable tables for the current process
      * @param varlen_resource resource for variable length data
      * @param dest_key [out] extracted key record
      * @param dest_value [out] extracted value record
@@ -143,28 +145,7 @@ public:
     status encode_find_remove(
         primary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref key,
-        memory_resource* varlen_resource,
-        accessor::record_ref dest_key,
-        accessor::record_ref dest_value
-    );
-
-    /**
-     * @brief encode key (store in context), find the record, and fill dest key/value records
-     * @param ctx context
-     * @param tx transaction or strand
-     * @param key key record to fine entry in the primary index
-     * @param varlen_resource resource for variable length data
-     * @param dest_key [out] extracted key record
-     * @param dest_value [out] extracted value record
-     * @returns status::ok when successful
-     * @returns status::not_found if record is not found
-     * @returns any other error otherwise
-     */
-    status encode_find(
-        primary_context& ctx,
-        kvs::transaction& tx,
-        accessor::record_ref key,
+        executor::process::impl::variables_view variables,
         memory_resource* varlen_resource,
         accessor::record_ref dest_key,
         accessor::record_ref dest_value
@@ -194,6 +175,30 @@ public:
     );
 
     /**
+     * @brief encode key from variable tables (store in context), find the record, fill dest key/value
+     *   records, and return encoded key
+     * @param ctx context
+     * @param tx transaction or strand
+     * @param variables view over all variable tables for the current process
+     * @param varlen_resource resource for variable length data
+     * @param dest_key [out] extracted key record
+     * @param dest_value [out] extracted value record
+     * @param encoded_key [out] created encoded key (stored internally)
+     * @returns status::ok when successful
+     * @returns status::not_found if record is not found
+     * @returns any other error otherwise
+     */
+    status encode_find(
+        primary_context& ctx,
+        kvs::transaction& tx,
+        executor::process::impl::variables_view variables,
+        memory_resource* varlen_resource,
+        accessor::record_ref dest_key,
+        accessor::record_ref dest_value,
+        std::string_view& encoded_key
+    );
+
+    /**
      * @brief find the record and fill dest key/value records
      * @param ctx context
      * @param tx transaction or strand
@@ -215,7 +220,10 @@ public:
     );
 
     /**
-     * @brief encode key (store in context), and remove the record
+     * @brief encode key from variable tables (store in context), and remove the record
+     * @param ctx context
+     * @param tx transaction context
+     * @param variables view over all variable tables for the current process
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
@@ -223,7 +231,7 @@ public:
     status encode_remove(
         primary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref key
+        executor::process::impl::variables_view variables
     );
 
     /**
@@ -294,6 +302,19 @@ private:
      * @return
      */
     status prepare_encoded_key(primary_context& ctx, accessor::record_ref source, std::string_view& out) const;
+
+    /**
+     * @brief encode key from variable tables on `ctx.encoded_key_` and return its view
+     * @param ctx context
+     * @param variables view over all variable tables for the current process
+     * @param out [out] generated encode key
+     * @return
+     */
+    status prepare_encoded_key(
+        primary_context& ctx,
+        executor::process::impl::variables_view variables,
+        std::string_view& out
+    ) const;
 
 };
 

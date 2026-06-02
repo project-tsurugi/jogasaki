@@ -32,6 +32,7 @@
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/relay/blob_session_container.h>
 #include <jogasaki/request_context.h>
@@ -98,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& out, value_input_conversion_kind v
  * @param field field descriptor that identifies where and how to write the result.
  * @param ctx request context used for error reporting and transaction access.
  * @param blob_session blob session container used by the evaluator for BLOB handling.
- * @param variables the working variable table for resolving variable references in the expression.
+ * @param variables the variables view for resolving variable references in the expression.
  * @param varlen_resource memory resource for expression evaluation and varlen data allocation.
  * @param out target record reference to write the evaluated value into.
  * @return status::ok on success, or an error status on failure.
@@ -111,7 +112,7 @@ status fill_evaluated_value(
     Field const& field,
     request_context& ctx,
     relay::blob_session_container& blob_session,
-    executor::process::impl::variable_table& variables,
+    executor::process::impl::variables_view variables,
     memory::lifo_paged_memory_resource& varlen_resource,
     accessor::record_ref out
 ) {

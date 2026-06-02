@@ -56,7 +56,7 @@ operation_status filter::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<filter_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -72,14 +72,13 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     // When resuming after a downstream yield, skip re-evaluation of the filter condition.
     // The calling_child state itself encodes that the condition was already true.
     if (ctx.state() != context_state::calling_child) {
-        auto& vars = ctx.input_variables();
         auto resource = ctx.varlen_resource();
         expr::evaluator_context c{resource,
             ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
         };
         context_helper helper{ctx.task_context()};
         c.blob_session(std::addressof(helper.blob_session_container()));
-        auto res = evaluate_bool(c, evaluator_, vars, resource);
+        auto res = evaluate_bool(c, evaluator_, ctx.variables(), resource);
         if (res.error()) {
             handle_expression_error(*ctx.req_context(), res, c);
             ctx.abort();

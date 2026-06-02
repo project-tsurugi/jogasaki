@@ -117,7 +117,7 @@ inline variable_table_info create_variable_table_info(
     std::size_t i = 0;
     map.reserve(variables.size());
     for(auto&& v : variables) {
-        map.emplace(v, value_info{meta->value_offset(i), meta->nullity_offset(i), i});
+        map.emplace(v, value_info{meta->value_offset(i), meta->nullity_offset(i), i, region_id{}}); //TODO check if region_id should be filled
         ++i;
     }
     return {std::move(map), std::move(meta)};

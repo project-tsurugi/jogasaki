@@ -65,8 +65,8 @@ operation_status offer::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<offer_context>(
             index(),
+            block_index(),
             meta(),
-            ctx.variable_table(block_index()),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -79,7 +79,7 @@ operation_status offer::operator()(offer_context& ctx) {
         return operation_status_kind::aborted;
     }
     auto target = ctx.store_.ref();
-    auto source = ctx.input_variables().store().ref();
+    auto source = ctx.variables().ref();
     utils::checkpoint_holder h{ctx.varlen_resource()};
     for(auto &f : fields_) {
         if(! f.requires_conversion_) {

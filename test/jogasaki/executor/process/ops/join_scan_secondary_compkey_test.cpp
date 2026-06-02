@@ -204,14 +204,14 @@ public:
 
         std::vector<basic_record> result{};
         down.set_body([&]() {
-            result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+            result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
         });
 
         // Write key values directly into the variable block.  Only variables
         // referenced in key expressions survive liveness analysis, so we only
         // touch lower_spec.source_vars and upper_spec.source_vars.
-        auto dst = ex.variables_.store().ref();
-        auto const& vinfo = ex.variables_.info();
+        auto dst = ex.variables_list_[0].store().ref();
+        auto const& vinfo = ex.variables_list_[0].info();
         for (std::size_t i = 0; i < lower_spec.source_vars.size(); ++i) {
             auto const& vi = vinfo.at(lower_spec.source_vars[i]);
             dst.set_value<std::int32_t>(vi.value_offset(), lower_ep.values[i]);
@@ -296,10 +296,10 @@ public:
 
         std::vector<basic_record> result{};
         down.set_body([&]() {
-            result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+            result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
         });
 
-        set_variables(ex.variables_, in, input.ref());
+        set_variables(ex.variables_list_[0], in, input.ref());
         ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
         ex.ctx_->release();
         ASSERT_EQ(2, result.size());

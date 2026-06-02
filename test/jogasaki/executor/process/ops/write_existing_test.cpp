@@ -44,6 +44,7 @@
 #include <jogasaki/executor/process/impl/ops/write_existing.h>
 #include <jogasaki/executor/process/impl/ops/write_existing_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_context.h>
@@ -243,8 +244,9 @@ TEST_F(write_existing_test , simple_update) {
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
     variable_table_info input_variable_info{create_variable_table_info(vars, input)};
-    variable_table input_variables{input_variable_info};
-    input_variables.store().set(input.ref());
+    variable_table_list input_vl;
+    input_vl.emplace_back(input_variable_info);
+    input_vl[0].store().set(input.ref());
 
     write_existing wrt{
         0,
@@ -268,7 +270,7 @@ TEST_F(write_existing_test , simple_update) {
 
     write_existing_context ctx{
         &task_ctx,
-        input_variables,
+        variables_view{input_vl, 0},
         std::move(stg),
         tx.get(),
         wrt.primary().key_meta(),
@@ -297,8 +299,9 @@ TEST_F(write_existing_test , nullable_columns) {
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
     variable_table_info input_variable_info{create_variable_table_info(vars, input)};
-    variable_table input_variables{input_variable_info};
-    input_variables.store().set(input.ref());
+    variable_table_list input_vl;
+    input_vl.emplace_back(input_variable_info);
+    input_vl[0].store().set(input.ref());
 
     write_existing wrt{
         0,
@@ -322,7 +325,7 @@ TEST_F(write_existing_test , nullable_columns) {
 
     write_existing_context ctx{
         &task_ctx,
-        input_variables,
+        variables_view{input_vl, 0},
         std::move(stg),
         tx.get(),
         wrt.primary().key_meta(),
@@ -352,8 +355,9 @@ TEST_F(write_existing_test , update_multi_columns) {
     vars.emplace_back(sources(target.columns())[0]);
     vars.emplace_back(sources(target.columns())[1]);
     variable_table_info input_variable_info{create_variable_table_info(vars, input)};
-    variable_table input_variables{input_variable_info};
-    input_variables.store().set(input.ref());
+    variable_table_list input_vl;
+    input_vl.emplace_back(input_variable_info);
+    input_vl[0].store().set(input.ref());
 
     write_existing wrt{
         0,
@@ -377,7 +381,7 @@ TEST_F(write_existing_test , update_multi_columns) {
 
     write_existing_context ctx{
         &task_ctx,
-        input_variables,
+        variables_view{input_vl, 0},
         std::move(stg),
         tx.get(),
         wrt.primary().key_meta(),
@@ -407,8 +411,9 @@ TEST_F(write_existing_test , update_secondary) {
     vars.emplace_back(sources(target.columns())[0]);
 
     variable_table_info input_variable_info{create_variable_table_info(vars, input)};
-    variable_table input_variables{input_variable_info};
-    input_variables.store().set(input.ref());
+    variable_table_list input_vl;
+    input_vl.emplace_back(input_variable_info);
+    input_vl[0].store().set(input.ref());
 
     write_existing wrt{
         0,
@@ -444,7 +449,7 @@ TEST_F(write_existing_test , update_secondary) {
 
     write_existing_context ctx{
         &task_ctx,
-        input_variables,
+        variables_view{input_vl, 0},
         std::move(stg),
         tx.get(),
         wrt.primary().key_meta(),

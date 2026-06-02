@@ -101,7 +101,7 @@ public:
         auto ex = make_scan_executor(target, setup, true, down, out, tx);
         std::vector<basic_record> result{};
         down.set_body([&]() {
-            result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+            result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
         });
         EXPECT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
         ex.ctx_.release();
@@ -143,7 +143,7 @@ TEST_F(scan_secondary_test, simple) {
     auto tx = wrap(db_->create_transaction());
     auto ex = make_scan_executor(target, setup, true, down, out, tx);
     std::vector<basic_record> result{};
-    down.set_body([&]() { result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns()))); });
+    down.set_body([&]() { result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns()))); });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
     ASSERT_EQ(2, result.size());
@@ -319,7 +319,7 @@ TEST_F(scan_secondary_test, full_scan_no_endpoints) {
     auto ex = make_scan_executor(target, setup, true, down, out, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();

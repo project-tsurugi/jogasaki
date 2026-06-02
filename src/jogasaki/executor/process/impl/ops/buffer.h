@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,68 +19,45 @@
 #include <memory>
 #include <vector>
 
-#include <takatori/descriptor/variable.h>
-#include <takatori/relation/emit.h>
 #include <takatori/util/downcast.h>
-#include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/sequence_view.h>
-#include <yugawara/compiled_info.h>
 
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/utils/interference_size.h>
 
-#include "emit_context.h"
+#include "buffer_context.h"
 #include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::sequence_view;
-
-namespace details {
-
-struct cache_align emit_field {
-    meta::field_type type_{};
-    std::size_t source_offset_{};
-    std::size_t target_offset_{};
-    std::size_t source_nullity_offset_{};
-    std::size_t target_nullity_offset_{};
-    bool nullable_{};
-    region_id source_region_id_{};
-};
-
-}
 
 /**
- * @brief emit operator
+ * @brief buffer operator
+ * @details Fans out a single input record to N downstream operator chains in order.
+ *     When a downstream yields the worker thread, the buffer remembers which downstream
+ *     was active so it can resume from the same downstream on re-entry.
  */
-class emit : public record_operator {
+class buffer : public record_operator {
 public:
-    friend class emit_context;
-
-    using column = takatori::relation::emit::column;
-
     /**
      * @brief create empty object
      */
-    emit() = default;
+    buffer() = default;
 
     /**
      * @brief create new object
+     * @param index the index to identify the operator in the process
+     * @param info processor's information where this operation is contained
+     * @param block_index the index of the block that this operation belongs to
+     * @param downstreams the downstream operator chains invoked for each incoming record
      */
-    emit(
+    buffer(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
-        sequence_view<column const> columns
+        std::vector<std::unique_ptr<operator_base>> downstreams
     );
 
     /**
@@ -92,11 +69,11 @@ public:
 
     /**
      * @brief process record with context object
-     * @details emit the record and copy result to client buffer
      * @param ctx operator context object for the execution
+     * @param context task context for the downstreams, can be nullptr if none require it
      * @return status of the operation
      */
-    operation_status operator()(emit_context& ctx);
+    operation_status operator()(buffer_context& ctx, abstract::task_context* context = nullptr);
 
     /**
      * @see operator_base::kind()
@@ -104,29 +81,12 @@ public:
     [[nodiscard]] operator_kind kind() const noexcept override;
 
     /**
-     * @brief access to the record metadata
-     */
-    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta() const noexcept;
-
-    /**
      * @see operator_base::finish()
      */
     void finish(abstract::task_context* context) override;
 
-    static std::shared_ptr<meta::external_record_meta> create_meta(
-        yugawara::compiled_info const& info,
-        sequence_view<const column> columns
-    );
 private:
-    maybe_shared_ptr<meta::external_record_meta> meta_{};
-    std::vector<details::emit_field> fields_{};
-
-    [[nodiscard]] std::vector<details::emit_field> create_fields(
-        maybe_shared_ptr<meta::record_meta> const& meta,
-        sequence_view<column const> columns
-    );
+    std::vector<std::unique_ptr<operator_base>> downstreams_{};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

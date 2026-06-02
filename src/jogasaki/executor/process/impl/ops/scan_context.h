@@ -22,7 +22,7 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/scan_range.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/iterator.h>
@@ -50,7 +50,7 @@ public:
      */
     scan_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variables_view variables,
         std::unique_ptr<kvs::storage> stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         transaction_context* tx,

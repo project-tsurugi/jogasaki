@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,47 +29,18 @@ namespace jogasaki::executor::process::impl::ops {
 
 context_base::context_base(
     abstract::task_context* context,
-    variable_table& input_variables,
-    variable_table& output_variables,
+    variables_view variables,
     memory::lifo_paged_memory_resource* resource,
     memory::lifo_paged_memory_resource* varlen_resource
 ) :
     task_context_(context),
-    input_variables_(std::addressof(input_variables)),
-    output_variables_(std::addressof(output_variables)),
+    variables_(variables),
     resource_(resource),
     varlen_resource_(varlen_resource)
 {}
 
-context_base::context_base(
-    abstract::task_context* context,
-    variable_table& variables,
-    memory::lifo_paged_memory_resource* resource,
-    memory::lifo_paged_memory_resource* varlen_resource
-) :
-    context_base(
-        context,
-        variables,
-        variables,
-        resource,
-        varlen_resource
-    )
-{}
-
-variable_table& context_base::output_variables() const noexcept {
-    return *output_variables_;
-}
-
-void context_base::output_variables(variable_table& variables) noexcept {
-    output_variables_ = std::addressof(variables);
-}
-
-variable_table& context_base::input_variables() const noexcept {
-    return *input_variables_;
-}
-
-void context_base::input_variables(variable_table& variables) noexcept {
-    input_variables_ = std::addressof(variables);
+impl::variables_view context_base::variables() const noexcept {
+    return variables_;
 }
 
 class abstract::task_context& context_base::task_context() noexcept {
@@ -110,22 +81,16 @@ void context_base::dump() const noexcept {
     std::cerr << "context_base:\n"
        << "  " << std::left << std::setw(22) << "task_context:"
        << std::hex << (task_context_ ? task_context_ : nullptr) << "\n"
-       << "  " << std::setw(22) << "input_variables:"
-       << (input_variables_ ? input_variables_ : nullptr) << std::endl;
-
-    if (input_variables_) {
-        input_variables_->dump("    ");
+       << "  " << std::setw(22) << "variables:"
+       << (variables_ ? "valid" : "null") << "\n"
+       << "  " << std::setw(22) << "block_index:"
+       << std::dec << variables_.block_index() << "\n";
+    auto const* tbl = variables_.current_table();
+    if (tbl != nullptr) {
+        tbl->dump("    ");
     }
-
-    std::cerr << "  " << std::setw(22) << "output_variables:"
-       << (output_variables_ ? output_variables_ : nullptr) << std::endl;
-
-    if (output_variables_) {
-       output_variables_->dump("    ");
-    }
-
     std::cerr << "  " << std::setw(22) << "resource:"
-       << (resource_ ? resource_ : nullptr) << "\n"
+       << std::hex << (resource_ ? resource_ : nullptr) << "\n"
        << "  " << std::setw(22) << "varlen_resource:"
        << (varlen_resource_ ? varlen_resource_ : nullptr) << "\n"
        << "  " << std::setw(22) << "state:"

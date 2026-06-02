@@ -83,7 +83,7 @@ namespace details {
 
 engine::engine(
     evaluator_context& ctx,
-    executor::process::impl::variable_table& variables,
+    executor::process::impl::variables_view variables,
     yugawara::compiled_info const& info,
     executor::process::impl::variable_table const* host_variables,
     engine::memory_resource* resource
@@ -464,12 +464,12 @@ create_any(accessor::record_ref ref, executor::process::impl::value_info const& 
 }
 
 any engine::operator()(takatori::scalar::variable_reference const& exp) {
-    auto b = variables_ && variables_.info().exists(exp.variable());
+    auto b = variables_.exists(exp.variable());
     auto h = host_variables_ != nullptr && *host_variables_ && host_variables_->info().exists(exp.variable());
     assert_with_exception(b || h, b, h);
     (void)h;
-    auto& info = b ? variables_.info().at(exp.variable()) : host_variables_->info().at(exp.variable());
-    auto ref = b ? variables_.store().ref() : host_variables_->store().ref();
+    auto& info = b ? variables_.at(exp.variable()) : host_variables_->info().at(exp.variable());
+    auto ref = b ? variables_.ref(info.region()) : host_variables_->store().ref();
     auto is_null = ref.is_null(info.nullity_offset());
     if (is_null) {
         return {};
@@ -1067,7 +1067,7 @@ evaluator::evaluator(
 
 any evaluator::operator()(
     evaluator_context& ctx,
-    executor::process::impl::variable_table& variables,
+    executor::process::impl::variables_view variables,
     evaluator::memory_resource* resource
 ) const {
     try {
@@ -1089,7 +1089,7 @@ any evaluator::operator()(
 any evaluate_bool(
     evaluator_context& ctx,
     evaluator& eval,
-    executor::process::impl::variable_table& variables,
+    executor::process::impl::variables_view variables,
     memory::lifo_paged_memory_resource* resource
 ) {
     utils::checkpoint_holder h{resource};

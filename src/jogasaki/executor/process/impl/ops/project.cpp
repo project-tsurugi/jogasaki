@@ -68,7 +68,7 @@ operation_status project::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<project_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -82,9 +82,9 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         return operation_status_kind::aborted;
     }
     if (ctx.state() != context_state::calling_child) {
-        auto& vars = ctx.output_variables();
+        auto vars = ctx.variables();
         // fill scope variables
-        auto ref = vars.store().ref();
+        auto target = vars.ref();
         context_helper helper{ctx.task_context()};
         for(std::size_t i=0, n = fields_.size(); i < n; ++i) {
             if (auto st = wrt::fill_evaluated_value(
@@ -96,7 +96,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
                     helper.blob_session_container(),
                     vars,
                     *ctx.varlen_resource(),
-                    ref
+                    target
                 );
                 st != status::ok) {
                 ctx.abort();

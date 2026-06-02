@@ -77,7 +77,7 @@ operation_status take_flat::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<take_flat_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -90,7 +90,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    auto target = ctx.output_variables().store().ref();
+    auto target = ctx.variables().ref();
     auto resource = ctx.varlen_resource();
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_flat);
     if (ctx.state() == context_state::calling_child) {

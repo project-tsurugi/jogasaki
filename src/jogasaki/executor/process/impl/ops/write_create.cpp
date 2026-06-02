@@ -162,7 +162,7 @@ operation_status write_create::operator()(write_create_context& ctx) {
     }
 
     if(auto res = update_record(update_fields_, *ctx.req_context(), ctx.varlen_resource(),
-           wctx.key_store_.ref(), wctx.value_store_.ref(), ctx.input_variables().store().ref(), {}
+           wctx.key_store_.ref(), wctx.value_store_.ref(), ctx.variables(), {}
     ); res != status::ok) {
         details::abort_transaction(*ctx.transaction());
         return error_abort(ctx, res);
@@ -191,7 +191,7 @@ operation_status write_create::process_record(abstract::task_context* context) {
         }
         p = ctx.make_context<write_create_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             utils::get_storage_by_index_name(storage_name()),
             ctx.transaction(),
             core_->primary().key_meta(),

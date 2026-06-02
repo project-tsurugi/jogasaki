@@ -54,6 +54,7 @@
 #include <jogasaki/executor/process/impl/ops/scan_context.h>
 #include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/kvs/database.h>
@@ -104,7 +105,7 @@ public:
         variable_table_info input_info_{};
         variable_table_info output_info_;
         scan op_;
-        variable_table output_variables_;
+        variable_table_list variables_list_;
         mock::task_context task_ctx_;
         scan_context ctx_;
 
@@ -126,11 +127,13 @@ public:
             output_info_{std::move(out_info_arg)},
             op_{0, p_info, 0, primary_idx, columns, secondary_idx,
                 std::move(downstream), &input_info_, &output_info_},
-            output_variables_{output_info_},
+            variables_list_{},
             task_ctx_{{}, {}, {}, range_},
-            ctx_{&task_ctx_, output_variables_, std::move(primary_stg), std::move(secondary_stg),
+            ctx_{&task_ctx_, variables_view{variables_list_, 0}, std::move(primary_stg), std::move(secondary_stg),
                 tx_raw, range_.get(), resource, varlen_resource, nullptr}
-        {}
+        {
+            variables_list_.emplace_back(output_info_);
+        }
 
         scan_executor(scan_executor const&) = delete;
         scan_executor& operator=(scan_executor const&) = delete;

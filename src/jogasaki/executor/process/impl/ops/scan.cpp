@@ -127,8 +127,9 @@ operation_status scan::process_record(abstract::task_context* context) {
     auto stg = utils::get_storage_by_index_name(storage_name());
     assert_with_exception(stg); //TODO handle error
     if (! p) {
-        p = ctx.make_context<scan_context>(index(),
-            ctx.variable_table(block_index()),
+        p = ctx.make_context<scan_context>(
+            index(),
+            block_index(),
             std::move(stg),
             use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name()) : nullptr,
             ctx.transaction(),
@@ -168,7 +169,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
         }
         ctx.cp_.set_checkpoint();
     }
-    auto target = ctx.output_variables().store().ref();
+    auto target = ctx.variables().ref();
     auto resource = ctx.varlen_resource();
     status st{};
     std::size_t loop_count = 0;

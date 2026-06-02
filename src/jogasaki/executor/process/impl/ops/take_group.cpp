@@ -78,7 +78,7 @@ operation_status take_group::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<take_group_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -135,7 +135,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
             return operation_status_kind::ok;
         }
     }
-    auto target = ctx.output_variables().store().ref();
+    auto target = ctx.variables().ref();
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_group);
     auto resource = ctx.varlen_resource();
     if(ctx.state() == context_state::calling_child) {

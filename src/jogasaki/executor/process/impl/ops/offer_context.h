@@ -21,7 +21,7 @@
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/meta/record_meta.h>
 
 #include "context_base.h"
@@ -46,8 +46,8 @@ public:
      */
     offer_context(
         class abstract::task_context* ctx,
+        variables_view variables,
         maybe_shared_ptr<meta::record_meta> meta,
-        variable_table& variables,
         memory_resource* resource = nullptr,
         memory_resource* varlen_resource = nullptr
     );

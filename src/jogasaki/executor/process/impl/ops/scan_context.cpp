@@ -27,7 +27,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 scan_context::scan_context(
     class abstract::task_context* ctx,
-    variable_table& variables,
+    variables_view variables,
     std::unique_ptr<kvs::storage> stg,
     std::unique_ptr<kvs::storage> secondary_stg,
     transaction_context* tx,

@@ -35,6 +35,7 @@
 #include <jogasaki/executor/process/impl/ops/aggregate_group.h>
 #include <jogasaki/executor/process/impl/ops/aggregate_group_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -104,7 +105,7 @@ public:
      */
     struct aggregate_group_executor {
         aggregate_group op_;
-        variable_table variables_;
+        variable_table_list variables_list_;
         mock::task_context task_ctx_;
         aggregate_group_context ctx_;
 
@@ -119,12 +120,14 @@ public:
             std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> nulls_resources
         ) :
             op_{std::move(op_arg)},
-            variables_{block_info},
+            variables_list_{},
             task_ctx_{{}, {}, {}, {}},
-            ctx_{&task_ctx_, variables_, res, varlen_res,
+            ctx_{&task_ctx_, variables_view{variables_list_, 0}, res, varlen_res,
                 std::move(stores), std::move(store_resources),
                 std::move(function_arg_stores), std::move(nulls_resources)}
-        {}
+        {
+            variables_list_.emplace_back(block_info);
+        }
     };
 
     /**
@@ -233,7 +236,7 @@ TEST_F(aggregate_group_test, simple) {
 
     std::size_t called_cnt = 0;
     down.set_body([&]() {
-        auto result = get_variables(ex.variables_, {rc1, rc2});
+        auto result = get_variables(ex.variables_list_[0], {rc1, rc2});
         switch (called_cnt) {
             case 0:
                 ASSERT_EQ((create_nullable_record<kind::int8, kind::int8>(2, 3)), result);
@@ -257,10 +260,10 @@ TEST_F(aggregate_group_test, simple) {
 
     for (auto const& [key, rows] : groups) {
         auto key_rec = create_nullable_record<kind::int8>(key);
-        set_variables(ex.variables_, in.key_input(), key_rec.ref());
+        set_variables(ex.variables_list_[0], in.key_input(), key_rec.ref());
         for (std::size_t i = 0; i < rows.size(); ++i) {
             auto val = create_nullable_record<kind::int8, kind::int8>(rows[i].first, rows[i].second);
-            set_variables(ex.variables_, in.value_input(), val.ref());
+            set_variables(ex.variables_list_[0], in.value_input(), val.ref());
             auto kind = (i + 1 == rows.size()) ? member_kind::last_member : member_kind::normal;
             ex.op_(ex.ctx_, kind);
         }
@@ -291,7 +294,7 @@ TEST_F(aggregate_group_test, basic) {
 
     std::size_t called_cnt = 0;
     down.set_body([&]() {
-        auto result = get_variables(ex.variables_, {rc1});
+        auto result = get_variables(ex.variables_list_[0], {rc1});
         switch (called_cnt) {
             case 0:
                 ASSERT_EQ((create_nullable_record<kind::int8>(std::int64_t{2})), result);
@@ -310,10 +313,10 @@ TEST_F(aggregate_group_test, basic) {
 
     for (auto const& [key, rows] : groups) {
         auto key_rec = create_nullable_record<kind::int8>(key);
-        set_variables(ex.variables_, in.key_input(), key_rec.ref());
+        set_variables(ex.variables_list_[0], in.key_input(), key_rec.ref());
         for (std::size_t i = 0; i < rows.size(); ++i) {
             auto val = create_nullable_record<kind::int8>(rows[i]);
-            set_variables(ex.variables_, in.value_input(), val.ref());
+            set_variables(ex.variables_list_[0], in.value_input(), val.ref());
             auto mk = (i + 1 == rows.size()) ? member_kind::last_member : member_kind::normal;
             ex.op_(ex.ctx_, mk);
         }
@@ -348,7 +351,7 @@ TEST_F(aggregate_group_test, two_columns_sharing_arg) {
 
     std::size_t called_cnt = 0;
     down.set_body([&]() {
-        auto result = get_variables(ex.variables_, {rc1, rc2});
+        auto result = get_variables(ex.variables_list_[0], {rc1, rc2});
         switch (called_cnt) {
             case 0:
                 // group 0: c1={1,2,2} → count$distinct=2 for both columns
@@ -374,10 +377,10 @@ TEST_F(aggregate_group_test, two_columns_sharing_arg) {
 
     for (auto const& [key, rows] : groups) {
         auto key_rec = create_nullable_record<kind::int8>(key);
-        set_variables(ex.variables_, in.key_input(), key_rec.ref());
+        set_variables(ex.variables_list_[0], in.key_input(), key_rec.ref());
         for (std::size_t i = 0; i < rows.size(); ++i) {
             auto val = create_nullable_record<kind::int8>(rows[i]);
-            set_variables(ex.variables_, in.value_input(), val.ref());
+            set_variables(ex.variables_list_[0], in.value_input(), val.ref());
             auto mk = (i + 1 == rows.size()) ? member_kind::last_member : member_kind::normal;
             ex.op_(ex.ctx_, mk);
         }

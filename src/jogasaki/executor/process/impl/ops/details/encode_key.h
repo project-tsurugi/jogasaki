@@ -21,6 +21,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -53,7 +54,7 @@ namespace jogasaki::executor::process::impl::ops::details {
 status encode_key(
     expr::evaluator_context& ectx,
     std::vector<details::search_key_field_info> const& keys,
-    executor::process::impl::variable_table& input_variables,
+    executor::process::impl::variables_view input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out,
     std::size_t& length,
@@ -104,7 +105,7 @@ status encode_scan_keys(
     kvs::end_point_kind lower_kind,
     std::vector<details::search_key_field_info> const& upper_fields,
     kvs::end_point_kind upper_kind,
-    variable_table& input_variables,
+    variables_view input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& key_begin,
     std::size_t& blen,

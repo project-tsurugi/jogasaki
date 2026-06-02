@@ -98,7 +98,7 @@ using varref = scalar::variable_reference;
 struct join_find_executor {
     join_find op_;
     details::match_info_find match_info_;
-    variable_table variables_;
+    variable_table_list variables_list_;
     mock::task_context task_ctx_;
     std::optional<join_find_context> ctx_;
 
@@ -123,13 +123,13 @@ struct join_find_executor {
             condition, secondary_idx, std::move(downstream)},
         match_info_{op_.match_info().key_fields_,
             details::create_secondary_key_fields(secondary_idx)},
-        variables_{pinfo.vars_info_list()[op_.block_index()]},
+        variables_list_{},
         task_ctx_{{}, {}, {}, {}}
     {
+        variables_list_.emplace_back(pinfo.vars_info_list()[op_.block_index()]);
         ctx_.emplace(
             &task_ctx_,
-            variables_,
-            variables_,
+            variables_view{variables_list_, 0},
             std::move(primary_stg),
             std::move(secondary_stg),
             tx_raw,
@@ -370,10 +370,10 @@ public:
 
         std::vector<basic_record> result{};
         down.set_body([&]() {
-            result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+            result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
         });
 
-        set_variables(ex.variables_, in, input.ref());
+        set_variables(ex.variables_list_[0], in, input.ref());
         ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
         ex.ctx_->release();
         ASSERT_EQ(2, result.size());
@@ -412,10 +412,10 @@ TEST_F(join_find_test, simple) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size());
@@ -453,10 +453,10 @@ TEST_F(join_find_test, secondary_index) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(2, result.size());
@@ -507,10 +507,10 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size());
@@ -547,10 +547,10 @@ TEST_F(join_find_test, multiple_types) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size());
@@ -591,18 +591,18 @@ TEST_F(join_find_test, semi_join_primary) {
     down.set_body([&]() {
         // right-side vars must be null (semi join must not project them)
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, std::nullopt)),
-            get_variables(ex.variables_, out_vars));
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+            get_variables(ex.variables_list_[0], out_vars));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
     // C0=1 exists → semi emits upstream row exactly once
-    set_variables(ex.variables_, in, input_match.ref());
+    set_variables(ex.variables_list_[0], in, input_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
 
     // C0=5 doesn't exist → semi does not emit
-    set_variables(ex.variables_, in, input_no_match.ref());
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(1, result.size()); // unchanged
 
@@ -639,16 +639,16 @@ TEST_F(join_find_test, anti_join_primary) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
     // C0=1 exists → anti does not emit
-    set_variables(ex.variables_, in, input_match.ref());
+    set_variables(ex.variables_list_[0], in, input_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(0, result.size());
 
     // C0=5 doesn't exist → anti emits upstream row once
-    set_variables(ex.variables_, in, input_no_match.ref());
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4>(5)), result[0]);
@@ -688,17 +688,17 @@ TEST_F(join_find_test, semi_join_secondary) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
     // C1=2 has two right-side matches → semi emits exactly once
-    set_variables(ex.variables_, in, input_match.ref());
+    set_variables(ex.variables_list_[0], in, input_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(0, 2)), result[0]);
 
     // C1=5 has no match → semi does not emit
-    set_variables(ex.variables_, in, input_no_match.ref());
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(1, result.size()); // unchanged
 
@@ -737,16 +737,16 @@ TEST_F(join_find_test, anti_join_secondary) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
     // C1=2 has right-side matches → anti does not emit
-    set_variables(ex.variables_, in, input_match.ref());
+    set_variables(ex.variables_list_[0], in, input_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(0, result.size());
 
     // C1=5 has no match → anti emits once
-    set_variables(ex.variables_, in, input_no_match.ref());
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(0, 5)), result[0]);
@@ -790,10 +790,10 @@ TEST_F(join_find_test, semi_join_primary_condition_filtered) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     // key matches (C0=1) but C1=100 ≠ 999 → condition false → semi must not emit
@@ -837,10 +837,10 @@ TEST_F(join_find_test, anti_join_primary_condition_filtered) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, in.vars_));
+        result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     // key matches (C0=1) but C1=100 ≠ 999 → condition false → anti emits (no satisfying match)
@@ -880,15 +880,15 @@ TEST_F(join_find_test, left_outer) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input_match.ref());
+    set_variables(ex.variables_list_[0], in, input_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 100)), result[0]);
 
-    set_variables(ex.variables_, in, input_no_match.ref());
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ASSERT_EQ(2, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, std::nullopt)), result[1]);
@@ -930,10 +930,10 @@ TEST_F(join_find_test, left_outer_condition_filtered) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size());
@@ -971,10 +971,10 @@ TEST_F(join_find_test, composite_key_primary) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(1, result.size());
@@ -1012,10 +1012,10 @@ TEST_F(join_find_test, secondary_index_desc) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
-    set_variables(ex.variables_, in, input.ref());
+    set_variables(ex.variables_list_[0], in, input.ref());
     ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
     ex.ctx_->release();
     ASSERT_EQ(2, result.size());

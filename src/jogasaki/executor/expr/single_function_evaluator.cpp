@@ -41,6 +41,7 @@
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/utils/find_function.h>
@@ -67,7 +68,7 @@ single_function_evaluator::single_function_evaluator(
     evaluator_(*expression_, {}, {}) {}
 
 data::any single_function_evaluator::operator()(evaluator_context& ctx) const {
-    executor::process::impl::variable_table variables{};
+    executor::process::impl::variables_view variables{};
     return evaluator_(ctx, variables, nullptr);
 }
 

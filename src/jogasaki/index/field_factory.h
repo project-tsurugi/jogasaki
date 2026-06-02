@@ -29,6 +29,7 @@
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>
 
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/coder.h>
@@ -38,6 +39,7 @@ namespace jogasaki::index {
 
 using takatori::util::sequence_view;
 using variable_table_info = executor::process::impl::variable_table_info;
+using executor::process::impl::region_id;
 
 /**
  * @brief create index fields for given storage::index
@@ -94,13 +96,15 @@ std::vector<index::field_info> create_fields(
                 continue;
             }
             auto&& var = mapping.at(kc);
+            auto const& vi = varinfo.at(var);
             ret.emplace_back(
                 t,
                 true,
-                varinfo.at(var).value_offset(),
-                varinfo.at(var).nullity_offset(),
+                vi.value_offset(),
+                vi.nullity_offset(),
                 k.column().criteria().nullity().nullable(),
-                spec
+                spec,
+                for_output ? region_id{} : vi.region()
             );
         }
         return ret;
@@ -117,22 +121,24 @@ std::vector<index::field_info> create_fields(
                 0,
                 0,
                 c.criteria().nullity().nullable(),
-                kvs::spec_value // no storage spec with fields for read
+                kvs::spec_value, // no storage spec with fields for read
+                region_id{}
             );
             continue;
         }
         auto&& var = mapping.at(b);
+        auto const& vi = varinfo.at(var);
         ret.emplace_back(
             t,
             true,
-            varinfo.at(var).value_offset(),
-            varinfo.at(var).nullity_offset(),
+            vi.value_offset(),
+            vi.nullity_offset(),
             c.criteria().nullity().nullable(),
-            kvs::spec_value // no storage spec with fields for read
+            kvs::spec_value, // no storage spec with fields for read
+            vi.region()
         );
     }
     return ret;
 }
-}
 
-
+}  // namespace jogasaki::index

@@ -166,7 +166,7 @@ public:
         auto ex = make_scan_executor(target, setup, true, down, out, tx);
         std::vector<basic_record> result{};
         down.set_body([&]() {
-            result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+            result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
         });
         EXPECT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
         ex.ctx_.release();

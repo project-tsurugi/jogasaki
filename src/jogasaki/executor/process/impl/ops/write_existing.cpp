@@ -120,11 +120,13 @@ status update_record(
     memory::lifo_paged_memory_resource* resource,
     accessor::record_ref extracted_key_record,
     accessor::record_ref extracted_value_record,
-    accessor::record_ref input_variables,
+    variables_view input_variables,
     accessor::record_ref host_variables
 ) {
     for(auto const& f : fields) {
-        auto const& source = f.source_external_ ? host_variables : input_variables;
+        auto const source = f.source_external_
+            ? host_variables
+            : input_variables.ref(f.source_region_id_);
         if (source.is_null(f.source_nullity_offset_) && ! f.nullable_) {
             set_error_context(
                 ctx,
@@ -140,7 +142,7 @@ status update_record(
                 target,
                 f.target_offset_,
                 f.target_nullity_offset_,
-                f.source_external_ ? host_variables : input_variables,
+                source,
                 f.source_offset_,
                 f.source_nullity_offset_
             );
@@ -149,7 +151,7 @@ status update_record(
         data::any a{};
         utils::copy_nullable_field_as_any(
             f.source_ftype_,
-            f.source_external_ ? host_variables : input_variables,
+            source,
             f.source_offset_,
             f.source_nullity_offset_,
             a,
@@ -195,7 +197,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
     if(auto res = primary_.encode_find(
             context,
             *ctx.transaction()->object(),
-            ctx.input_variables().store().ref(),
+            ctx.variables(),
             ctx.varlen_resource(),
             context.extracted_key(),
             context.extracted_value(),
@@ -240,7 +242,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
            ctx.resource(),
            context.extracted_key(),
            context.extracted_value(),
-           ctx.input_variables().store().ref(),
+           ctx.variables(),
            host_variables() ? host_variables()->store().ref() : accessor::record_ref{}
        ); res != status::ok) {
             abort_transaction(*ctx.transaction());
@@ -293,7 +295,7 @@ operation_status write_existing::do_delete(write_existing_context& ctx) {
         if(auto res = primary_.encode_remove(
                 context,
                 *ctx.transaction(),
-                ctx.input_variables().store().ref()
+                ctx.variables()
             ); res != status::ok) {
             return error_abort(ctx, res);
         }
@@ -306,7 +308,7 @@ operation_status write_existing::do_delete(write_existing_context& ctx) {
     if(auto res = primary_.encode_find_remove(
             context,
             *ctx.transaction(),
-            ctx.input_variables().store().ref(),
+            ctx.variables(),
             ctx.varlen_resource(),
             context.extracted_key(),
             context.extracted_value()
@@ -346,7 +348,7 @@ operation_status write_existing::process_record(abstract::task_context* context)
         }
         p = ctx.make_context<write_existing_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             utils::get_storage_by_index_name(storage_name()),
             ctx.transaction(),
             primary_.key_meta(),
@@ -359,23 +361,26 @@ operation_status write_existing::process_record(abstract::task_context* context)
     return (*this)(*p);
 }
 
-static std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
+static std::tuple<std::size_t, std::size_t, bool, region_id> resolve_variable_offsets(
     variable_table_info const& block_variables,
     variable_table_info const* host_variables,
     variable_table_info::variable const& src
 ) {
     if (block_variables.exists(src)) {
+        auto const& vi = block_variables.at(src);
         return {
-            block_variables.at(src).value_offset(),
-            block_variables.at(src).nullity_offset(),
-            false
+            vi.value_offset(),
+            vi.nullity_offset(),
+            false,
+            vi.region()
         };
     }
     assert_with_exception(host_variables != nullptr && host_variables->exists(src), host_variables);
     return {
         host_variables->at(src).value_offset(),
         host_variables->at(src).nullity_offset(),
-        true
+        true,
+        region_id{}  // host variables do not use region_id
     };
 }
 
@@ -418,7 +423,7 @@ std::vector<details::update_field> create_update_fields(
                 }
                 auto&& src = column_dest_to_src.at(kc);
                 auto& src_type = cinfo.type_of(src);
-                auto [os, nos, b] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
+                auto [os, nos, b, rid] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
                 ret.emplace_back(
                     src_type,
                     k.column().type(),
@@ -428,7 +433,8 @@ std::vector<details::update_field> create_update_fields(
                     meta->nullity_offset(i),
                     k.column().criteria().nullity().nullable(),
                     b,
-                    true
+                    true,
+                    rid
                 );
             }
         }
@@ -448,7 +454,7 @@ std::vector<details::update_field> create_update_fields(
             }
             auto&& src = column_dest_to_src.at(b);
             auto& src_type = cinfo.type_of(src);
-            auto [os, nos, src_is_external ] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
+            auto [os, nos, src_is_external, rid] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
             ret.emplace_back(
                 src_type,
                 c.type(),
@@ -458,7 +464,8 @@ std::vector<details::update_field> create_update_fields(
                 meta->nullity_offset(i),
                 c.criteria().nullity().nullable(),
                 src_is_external,
-                false
+                false,
+                rid
             );
         }
     }

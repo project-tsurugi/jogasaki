@@ -17,7 +17,6 @@
 
 #include <cstdint>
 #include <type_traits>
-#include <unordered_set>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <boost/move/utility_core.hpp>
@@ -51,12 +50,18 @@ std::size_t value_info::index() const noexcept {
     return index_;
 }
 
+region_id value_info::region() const noexcept {
+    return region_id_;
+}
+
 variable_table_info::variable_table_info(
     variable_table_info::entity_type map,
-    maybe_shared_ptr<meta::record_meta> meta
+    maybe_shared_ptr<meta::record_meta> meta,
+    variable_table_info const* parent
 ) :
     map_(std::move(map)),
-    meta_(std::move(meta))
+    meta_(std::move(meta)),
+    parent_(parent)
 {
     // currently assuming any stream variables are nullable for now
     utils::assert_all_fields_nullable(*meta_);
@@ -64,20 +69,22 @@ variable_table_info::variable_table_info(
 
 static variable_table_info::entity_type from_indices(
     variable_table_info::variable_indices const& indices,
-    maybe_shared_ptr<meta::record_meta> const& meta
+    maybe_shared_ptr<meta::record_meta> const& meta,
+    region_id r
 ) {
     variable_table_info::entity_type map{};
     for(auto&& [v, i] : indices) {
-        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i), i};
+        map[v] = value_info{meta->value_offset(i), meta->nullity_offset(i), i, r};
     }
     return map;
 }
 
 variable_table_info::variable_table_info(
     variable_indices const& indices,
-    maybe_shared_ptr<meta::record_meta> meta
+    maybe_shared_ptr<meta::record_meta> meta,
+    region_id r
 ) :
-    map_(from_indices(indices, meta)),
+    map_(from_indices(indices, meta, r)),
     meta_(std::move(meta))
 {
     // currently assuming any stream variables are nullable for now
@@ -89,10 +96,22 @@ maybe_shared_ptr<meta::record_meta> const& variable_table_info::meta() const noe
 }
 
 value_info const& variable_table_info::at(variable_table_info::variable const& var) const {
-    return map_.at(var);
+    if (auto it = map_.find(var); it != map_.end()) {
+        return it->second;
+    }
+    if (parent_) {
+        return parent_->at(var);
+    }
+    throw std::out_of_range{"variable not found in variable_table_info"};
 }
 
 bool variable_table_info::exists(variable_table_info::variable const& var) const {
+    if (map_.count(var) != 0) return true;
+    if (parent_) return parent_->exists(var);
+    return false;
+}
+
+bool variable_table_info::exists_local(variable_table_info::variable const& var) const {
     return map_.count(var) != 0;
 }
 
@@ -101,7 +120,7 @@ variable_table_info::variable_table_info(
     std::unordered_map<std::string, takatori::descriptor::variable> const& names,
     maybe_shared_ptr<meta::record_meta> meta
 ) :
-    variable_table_info(indices, std::move(meta))
+    variable_table_info(indices, std::move(meta), region_id{}) // for host variables, region_id is not used yet
 {
     for(auto& [name, v] : names) {
         add(name, v);
@@ -120,30 +139,32 @@ bool variable_table_info::exists(std::string_view name) const {
     return named_map_.count(std::string(name)) != 0;
 }
 
-std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>> create_block_variables_definition(
-    relation::graph_type const& relations,
-    yugawara::compiled_info const& info
-) {
-    // analyze variables liveness
-    // for each basic block, define a variable_table region with
-    // result fields + defined fields (except killed in the same basic block)
-    auto bg = yugawara::analyzer::block_builder::build(const_cast<relation::graph_type&>(relations)); // work-around
-    yugawara::analyzer::variable_liveness_analyzer analyzer { bg };
-    std::size_t block_index = 0;
-
-    // FIXME support multiple blocks
-    auto b0 = yugawara::analyzer::find_unique_head(bg);
-    if (!b0) {
-        fail_with_exception();
+static std::size_t count_blocks(yugawara::analyzer::block const& blk) {
+    std::size_t n = 1;
+    for (auto& ds : blk.downstreams()) {
+        n += count_blocks(ds);
     }
-    auto&& n0 = analyzer.inspect(*b0);
-    auto& killed = n0.kill();
-    std::unordered_map<takatori::descriptor::variable, std::size_t> map{};
+    return n;
+}
+
+static void build_block(
+    yugawara::analyzer::block const& blk,
+    yugawara::analyzer::variable_liveness_analyzer& analyzer,
+    yugawara::compiled_info const& info,
+    variable_table_info const* parent_ptr,
+    variables_info_list& entity,
+    block_indices& indices
+) {
+    std::size_t current_idx = entity.size();
+
+    auto&& liveness = analyzer.inspect(blk);
+    auto& killed = liveness.kill();
+    std::unordered_map<takatori::descriptor::variable, std::size_t> var_indices{};
     std::vector<meta::field_type> fields{};
     std::vector<takatori::descriptor::variable> variables{};
 
-    fields.reserve(n0.define().size());
-    for(auto& v : n0.define()) {
+    fields.reserve(liveness.define().size());
+    for (auto& v : liveness.define()) {
         if (killed.count(v) == 0) {
             fields.emplace_back(utils::type_for(info, v));
             variables.emplace_back(v);
@@ -153,18 +174,40 @@ std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>> 
     nullability.resize(fields.size(), true); // currently stream variables are all nullable
     auto meta = std::make_shared<meta::record_meta>(std::move(fields), std::move(nullability));
     assert_with_exception(meta->field_count() == variables.size(), meta->field_count(), variables.size());
-    for(std::size_t i=0, n = meta->field_count(); i < n; ++i) {
-        auto& v = variables[i];
-        map[v] = i;
+    for (std::size_t i = 0, n = meta->field_count(); i < n; ++i) {
+        var_indices[variables[i]] = i;
+    }
+
+    entity.emplace_back(from_indices(var_indices, meta, region_id{current_idx}), meta, parent_ptr);
+
+    for (auto& e : blk) {
+        indices[&e] = current_idx;
+    }
+
+    // parent_ptr is stable because entity was pre-reserved before build_block is first called
+    for (auto& ds : blk.downstreams()) {
+        build_block(ds, analyzer, info, &entity[current_idx], entity, indices);
+    }
+}
+
+std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>> create_block_variables_definition(
+    relation::graph_type const& relations,
+    yugawara::compiled_info const& info
+) {
+    auto bg = yugawara::analyzer::block_builder::build(const_cast<relation::graph_type&>(relations)); // work-around
+    yugawara::analyzer::variable_liveness_analyzer analyzer { bg };
+
+    auto head = yugawara::analyzer::find_unique_head(bg);
+    if (!head) {
+        fail_with_exception();
     }
 
     auto entity = std::make_shared<variables_info_list>();
     auto indices = std::make_shared<block_indices>();
-    entity->emplace_back(std::move(map), meta);
-    for(auto&& e : *b0) {
-        indices->operator[](&e) = block_index;
-    }
-    ++block_index;
+    entity->reserve(count_blocks(*head));
+
+    build_block(*head, analyzer, info, nullptr, *entity, *indices);
+
     return {std::move(entity), std::move(indices)};
 }
 

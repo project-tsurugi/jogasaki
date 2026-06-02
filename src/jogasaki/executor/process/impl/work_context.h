@@ -35,7 +35,6 @@ namespace jogasaki::executor::process::impl {
  */
 class work_context : public process::abstract::work_context {
 public:
-    using variable_table_list = std::vector<variable_table>;
     using memory_resource = ops::context_base::memory_resource;
 
     /**

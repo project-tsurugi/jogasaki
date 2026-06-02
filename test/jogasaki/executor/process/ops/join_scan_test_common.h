@@ -88,7 +88,7 @@ using takatori::util::sequence_view;
 struct join_scan_executor {
     join_scan op_;
     details::match_info_scan match_info_;
-    variable_table variables_;
+    variable_table_list variables_list_;
     mock::task_context task_ctx_;
     std::optional<join_scan_context> ctx_;
 
@@ -120,13 +120,13 @@ struct join_scan_executor {
             op_.match_info().end_fields_,
             op_.match_info().end_endpoint_,
             details::create_secondary_key_fields(secondary_idx)},
-        variables_{pinfo.vars_info_list()[op_.block_index()]},
+        variables_list_{},
         task_ctx_{{}, {}, {}, {}}
     {
+        variables_list_.emplace_back(pinfo.vars_info_list()[op_.block_index()]);
         ctx_.emplace(
             &task_ctx_,
-            variables_,
-            variables_,
+            variables_view{variables_list_, 0},
             std::move(primary_stg),
             std::move(secondary_stg),
             tx_raw,

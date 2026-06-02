@@ -28,6 +28,7 @@
 #include <takatori/util/sequence_view.h>
 #include <yugawara/storage/index.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
@@ -38,6 +39,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/index/field_info.h>
@@ -146,8 +148,8 @@ public:
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_find>, bool> process(
         expr::evaluator_context& ectx,
         request_context& ctx,
-        variable_table& input_variables,
-        variable_table& output_variables,
+        variables_view input_variables,
+        variables_view output_variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
         kvs::transaction& tx,
@@ -186,7 +188,7 @@ public:
             return field_mapper_.process(
                        key,
                        value,
-                       output_variables.store().ref(),
+                       output_variables.ref(),
                        primary_stg,
                        tx,
                        resource,
@@ -211,7 +213,7 @@ public:
         }
 
         // remember parameters for current scan
-        output_variables_ = std::addressof(output_variables);
+        output_ref_ = output_variables.ref();
         primary_storage_ = std::addressof(primary_stg);
         tx_ = std::addressof(tx);
         resource_ = resource;
@@ -232,8 +234,8 @@ public:
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_scan>, bool> process(
         expr::evaluator_context& ectx,
         request_context& ctx,
-        variable_table& input_variables,
-        variable_table& output_variables,
+        variables_view input_variables,
+        variables_view output_variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
         kvs::transaction& tx,
@@ -275,7 +277,7 @@ public:
         }
 
         // remember parameters for current scan
-        output_variables_ = std::addressof(output_variables);
+        output_ref_ = output_variables.ref();
         primary_storage_ = std::addressof(primary_stg);
         tx_ = std::addressof(tx);
         resource_ = resource;
@@ -335,7 +337,7 @@ public:
             return field_mapper_.process(
                        key,
                        value,
-                       output_variables_->store().ref(),
+                       output_ref_,
                        *primary_storage_,
                        *tx_,
                        resource_,
@@ -365,7 +367,7 @@ private:
     status status_{status::ok};
     index_field_mapper field_mapper_{};
 
-    variable_table* output_variables_{};
+    accessor::record_ref output_ref_{};
     kvs::storage* primary_storage_{};
     kvs::transaction* tx_{};
     matcher::memory_resource* resource_{};

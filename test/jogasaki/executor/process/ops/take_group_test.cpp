@@ -50,6 +50,7 @@
 #include <jogasaki/executor/process/impl/ops/take_group.h>
 #include <jogasaki/executor/process/impl/ops/take_group_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -211,7 +212,8 @@ TEST_F(take_group_test, simple) {
     };
 
     auto& block_info = p_info.vars_info_list()[s.block_index()];
-    variable_table variables{block_info};
+    variable_table_list variables_list;
+    variables_list.emplace_back(block_info);
     groups_type groups{
         group_type{
             create_key(1.0, 10),
@@ -246,11 +248,11 @@ TEST_F(take_group_test, simple) {
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
-    take_group_context ctx(&task_ctx, variables, nullptr, &resource);
+    take_group_context ctx(&task_ctx, variables_view{variables_list, 0}, nullptr, &resource);
 
-    auto vars_ref = variables.store().ref();
-    auto map = variables.info();
-    auto vars_meta = variables.meta();
+    auto vars_ref = variables_list[0].store().ref();
+    auto map = variables_list[0].info();
+    auto vars_meta = variables_list[0].meta();
 
     auto c0_offset = map.at(c0).value_offset();
     auto c1_offset = map.at(c1).value_offset();

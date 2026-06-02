@@ -111,7 +111,7 @@ public:
         if (! p) {
             p = ctx.make_context<join_context<iterator>>(
                 index(),
-                ctx.variable_table(block_index()),
+                block_index(),
                 ctx.resource(),
                 ctx.varlen_resource()
             );
@@ -136,7 +136,7 @@ public:
         bool force_nulls_except_primary,
         bool force_nulls_on_primary = false
     ) {
-        auto target = ctx.output_variables().store().ref();
+        auto target = ctx.variables().ref();
         auto& cur = incr.current();
         for(std::size_t i=0, n=cgrp.groups().size(); i < n; ++i) {
             auto&& g = cgrp.groups()[i];
@@ -168,12 +168,10 @@ public:
         expr::evaluator_context& context
     ) {
         assign_values(ctx, cgrp, incr, false);
-        auto resource = ctx.varlen_resource();
-        auto& vars = ctx.input_variables();
         if(!has_condition_) {
             return data::any{std::in_place_type<bool>, true};
         }
-        return evaluate_bool(context, evaluator_, vars, resource);
+        return evaluate_bool(context, evaluator_, ctx.variables(), ctx.varlen_resource());
     }
 
     /**

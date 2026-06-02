@@ -21,7 +21,7 @@
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/record_meta.h>
@@ -48,7 +48,7 @@ public:
      */
     emit_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variables_view variables,
         maybe_shared_ptr<meta::record_meta> meta,
         memory_resource* resource = nullptr,
         memory_resource* varlen_resource = nullptr

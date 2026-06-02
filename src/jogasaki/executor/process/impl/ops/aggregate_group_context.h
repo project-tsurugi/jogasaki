@@ -22,7 +22,7 @@
 #include <jogasaki/data/value_store.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 #include "context_base.h"
@@ -45,7 +45,7 @@ public:
      */
     aggregate_group_context(
         class abstract::task_context* ctx,
-        variable_table& variables,
+        variables_view variables,
         memory_resource* resource,
         memory_resource* varlen_resource,
         std::vector<data::value_store> stores,

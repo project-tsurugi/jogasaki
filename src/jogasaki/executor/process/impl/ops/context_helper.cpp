@@ -38,6 +38,10 @@ variable_table& context_helper::variable_table(std::size_t index) {
     return work_context_->variables(index); //NOLINT
 }
 
+variable_table_list& context_helper::variable_tables() {
+    return work_context_->variable_tables();
+}
+
 context_container& context_helper::contexts() const noexcept {
     return work_context_->contexts();
 }

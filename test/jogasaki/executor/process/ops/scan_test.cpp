@@ -180,7 +180,7 @@ public:
         std::vector<basic_record> result{};
         down.set_body([&]() {
             result.emplace_back(
-                get_variables(ex.output_variables_, destinations(target.columns())));
+                get_variables(ex.variables_list_[0], destinations(target.columns())));
         });
         EXPECT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
         ex.ctx_.release();
@@ -269,7 +269,7 @@ public:
         std::vector<basic_record> result{};
         down.set_body([&]() {
             result.emplace_back(
-                get_variables(ex.output_variables_, destinations(target.columns())));
+                get_variables(ex.variables_list_[0], destinations(target.columns())));
         });
         EXPECT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
         ex.ctx_.release();
@@ -296,7 +296,7 @@ TEST_F(scan_test, simple) {
     auto ex = make_scan_executor(target, setup, false, down, out, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
@@ -325,7 +325,7 @@ TEST_F(scan_test, nullable_fields) {
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
-            get_variables(ex.output_variables_, destinations(target.columns())));
+            get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
@@ -368,7 +368,7 @@ TEST_F(scan_test, scan_info) {
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
-            get_variables(ex.output_variables_, destinations(target.columns())));
+            get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
@@ -424,7 +424,7 @@ TEST_F(scan_test, multiple_types) {
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
-            get_variables(ex.output_variables_, destinations(target.columns())));
+            get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
@@ -480,7 +480,7 @@ TEST_F(scan_test, host_variables) {
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
-            get_variables(ex.output_variables_, destinations(target.columns())));
+            get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
@@ -853,7 +853,7 @@ TEST_F(scan_test, full_scan_explicit_unbound) {
     auto ex = make_scan_executor(target, setup, false, down, out, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
@@ -898,7 +898,7 @@ TEST_F(scan_test, reversed_bounds) {
     auto ex = make_scan_executor(target, setup, false, down, out, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();

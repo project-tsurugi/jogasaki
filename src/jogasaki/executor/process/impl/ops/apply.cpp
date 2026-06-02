@@ -88,7 +88,7 @@ operation_status apply::process_record(abstract::task_context* context) {
     if (! p) {
         p = ctx.make_context<apply_context>(
             index(),
-            ctx.variable_table(block_index()),
+            block_index(),
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -282,10 +282,8 @@ void apply::finish(abstract::task_context* context) {
 }
 
 bool apply::evaluate_arguments(apply_context& ctx, std::vector<data::any>& args) {
-    auto& vars = ctx.output_variables();
-
     for (auto& ev : argument_evaluators_) {
-        auto result = ev(ctx.evaluator_context_, vars, ctx.varlen_resource());
+        auto result = ev(ctx.evaluator_context_, ctx.variables(), ctx.varlen_resource());
         if (result.error()) {
             handle_expression_error(*ctx.req_context(), result, ctx.evaluator_context_);
             return false;
@@ -304,8 +302,7 @@ bool apply::evaluate_arguments(apply_context& ctx, std::vector<data::any>& args)
 }
 
 bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence const& sequence) {
-    auto& vars = ctx.output_variables();
-    auto ref = vars.store().ref();
+    auto ref = ctx.variables().ref();
 
     for (auto const& field : fields_) {
         auto pos = field.pos_;
@@ -343,8 +340,7 @@ bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
 }
 
 void apply::assign_null_to_variables(apply_context& ctx) {
-    auto& vars = ctx.output_variables();
-    auto ref = vars.store().ref();
+    auto ref = ctx.variables().ref();
 
     for (auto const& field : fields_) {
         ref.set_null(field.nullity_offset_, true);

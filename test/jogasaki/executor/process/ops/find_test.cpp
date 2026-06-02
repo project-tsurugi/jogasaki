@@ -42,6 +42,7 @@
 #include <jogasaki/executor/process/impl/ops/find_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/mock/task_context.h>
@@ -93,8 +94,7 @@ struct find_executor {
     variable_table_info input_variable_info_;
     variable_table_info output_variable_info_;
     find op_;
-    variable_table input_variables_;
-    variable_table output_variables_;
+    variable_table_list variables_list_;
     mock::task_context task_ctx_;
     class find_context ctx_;
 
@@ -118,12 +118,12 @@ struct find_executor {
         output_variable_info_{std::move(out_info)},
         op_{0, info, 0, keys, primary_idx, columns, secondary_idx,
             std::move(downstream), &input_variable_info_, &output_variable_info_},
-        input_variables_{input_variable_info_},
-        output_variables_{output_variable_info_},
+        variables_list_{},
         task_ctx_{{}, {}, {}, {}},
-        ctx_{&task_ctx_, input_variables_, output_variables_,
+        ctx_{&task_ctx_, variables_view{variables_list_, 0},
             std::move(primary_stg), std::move(secondary_stg), tx, res, varlen_res, nullptr}
     {
+        variables_list_.emplace_back(output_variable_info_);
         ctx_.task_context().work_context(std::make_unique<impl::work_context>(
             req_ctx, 0, op_.block_index(), nullptr, nullptr, nullptr, nullptr, false, false
         ));
@@ -299,7 +299,7 @@ TEST_F(find_test, simple) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
@@ -336,7 +336,7 @@ TEST_F(find_test, multiple_types) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
@@ -380,7 +380,7 @@ void find_test::run_secondary_index(bool nullable, relation::sort_direction dir)
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
@@ -437,7 +437,7 @@ TEST_F(find_test, composite_primary_key) {
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
@@ -491,7 +491,7 @@ void find_test::run_composite_secondary_key(
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
@@ -571,12 +571,10 @@ TEST_F(find_test, host_variable) {
         get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx.get(),
         &host_variables
     );
-    // Copy host variable data into the executor's input variable table.
-    ex.input_variables_.store().set(host_variable_record.ref());
 
     std::vector<basic_record> result{};
     down.set_body([&]() {
-        result.emplace_back(get_variables(ex.output_variables_, destinations(target.columns())));
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
     });
 
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));

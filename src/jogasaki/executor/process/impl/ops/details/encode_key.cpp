@@ -27,6 +27,7 @@
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/writable_stream.h>
@@ -69,7 +70,7 @@ status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
     bool side_unbound,
     bool trailing_nullable,
     kvs::coding_spec trailing_spec,
-    variable_table& input_variables,
+    variables_view input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out,
     std::size_t& length
@@ -136,7 +137,7 @@ status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
 status encode_key(
     expr::evaluator_context& ectx,
     std::vector<details::search_key_field_info> const& keys,
-    variable_table& input_variables,
+    variables_view input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out,
     std::size_t& length,
@@ -154,7 +155,7 @@ status encode_scan_keys(
     kvs::end_point_kind lower_kind,
     std::vector<search_key_field_info> const& upper_fields,
     kvs::end_point_kind upper_kind,
-    variable_table& input_variables,
+    variables_view input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& key_begin,
     std::size_t& blen,

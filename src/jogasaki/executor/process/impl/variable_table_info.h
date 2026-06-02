@@ -31,6 +31,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/compiled_info.h>
 
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::process::impl {
@@ -53,15 +54,18 @@ public:
      * @param value_offset offset of the value
      * @param nullity_offset nullity offset of the value
      * @param index field index in the record
+     * @param region identifies the region whose variable_table holds this value.
      */
     constexpr value_info(
         std::size_t value_offset,
         std::size_t nullity_offset,
-        std::size_t index
+        std::size_t index,
+        region_id region
     ) noexcept :
         value_offset_(value_offset),
         nullity_offset_(nullity_offset),
-        index_(index)
+        index_(index),
+        region_id_(region)
     {}
 
     /**
@@ -82,10 +86,17 @@ public:
      */
     [[nodiscard]] std::size_t index() const noexcept;
 
+    /**
+     * @brief identifier of the region whose variable_table holds this value
+     * @return region_id identifying the region, or an undefined region_id if not set
+     */
+    [[nodiscard]] region_id region() const noexcept;
+
 private:
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};
     std::size_t index_{};
+    region_id region_id_{};
 };
 
 /**
@@ -107,12 +118,15 @@ public:
      * @brief construct new instance
      * @param value_map variable mapping to value offset info. in the store
      * @param meta metadata of the block variable store
+     * @param parent parent block's variable_table_info for delegation (nullptr for head block)
      * @attention offset retrieved from value_map and meta should be identical if they correspond to the same variable.
      * Constructor below is more convenient if meta and variable indices are available.
+     * @note parent must outlive this object. Safe when stored in a pre-reserved variables_info_list.
      */
     variable_table_info(
         entity_type map,
-        maybe_shared_ptr<meta::record_meta> meta
+        maybe_shared_ptr<meta::record_meta> meta,
+        variable_table_info const* parent = nullptr
     );
 
     /**
@@ -131,16 +145,20 @@ public:
      * @brief construct new instance
      * @param indices variable mapping to field index that can be used to retrieve offset from meta
      * @param meta metadata of the block variable store
+     * @param r region that this object manages
      */
     variable_table_info(
         variable_indices const& indices,
-        maybe_shared_ptr<meta::record_meta> meta
+        maybe_shared_ptr<meta::record_meta> meta,
+        region_id r
     );
 
     /**
      * @brief getter for value location info. for the given variable
+     * @details If the variable is not in this block's own map, delegates to parent recursively.
      * @param var the variable descriptor
-     * @return value_info for the variable
+     * @return value_info for the variable (block_index indicates which variable_table holds it)
+     * @throws std::out_of_range if not found in this block or any ancestor
      */
     [[nodiscard]] value_info const& at(variable const& var) const;
 
@@ -159,12 +177,20 @@ public:
     void add(std::string_view name, variable const& var);
 
     /**
-     * @brief returns if the value exists for the given variable
+     * @brief returns if the value exists in this block's own map or any ancestor
      * @param var the variable descriptor
-     * @return true if this object contains the variable
+     * @return true if this object or an ancestor contains the variable
      * @return false otherwise
      */
     [[nodiscard]] bool exists(variable const& var) const;
+
+    /**
+     * @brief returns if the value exists in this block's own map only (no parent delegation)
+     * @param var the variable descriptor
+     * @return true if this object's own map contains the variable
+     * @return false otherwise
+     */
+    [[nodiscard]] bool exists_local(variable const& var) const;
 
     /**
      * @brief returns if the value exists for the given variable
@@ -239,6 +265,7 @@ private:
     entity_type map_{};
     named_map_type named_map_{};
     maybe_shared_ptr<meta::record_meta> meta_{std::make_shared<meta::record_meta>()};
+    variable_table_info const* parent_{nullptr};
 };
 
 using variables_info_list = std::vector<variable_table_info>;

@@ -54,7 +54,7 @@ ops::context_container& work_context::contexts() noexcept {
     return contexts_;
 }
 
-work_context::variable_table_list& work_context::variable_tables() noexcept {
+variable_table_list& work_context::variable_tables() noexcept {
     return variables_;
 }
 

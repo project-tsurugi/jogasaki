@@ -23,8 +23,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 find_context::find_context(
     class abstract::task_context* ctx,
-    variable_table& input_variables,
-    variable_table& output_variables,
+    variables_view variables,
     std::unique_ptr<kvs::storage> stg,
     std::unique_ptr<kvs::storage> secondary_stg,
     transaction_context* tx,
@@ -32,7 +31,7 @@ find_context::find_context(
     context_base::memory_resource* varlen_resource,
     kvs::transaction* strand
 ) :
-    context_base(ctx, input_variables, output_variables, resource, varlen_resource),
+    context_base(ctx, variables, resource, varlen_resource),
     stg_(std::move(stg)),
     secondary_stg_(std::move(secondary_stg)),
     tx_(tx),

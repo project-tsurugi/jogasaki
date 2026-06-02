@@ -24,6 +24,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/datastore/assign_lob_id.h>
 #include <jogasaki/datastore/register_lob.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/kvs/coder.h>
@@ -39,19 +40,67 @@
 namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
+using executor::process::impl::variables_view;
 
+template<class SourceFn>
 static status encode_fields(
     primary_target::field_mapping_type const& fields,
     kvs::writable_stream& target,
-    accessor::record_ref source
-);
+    SourceFn const& get_source
+) {
+    for(auto const& f : fields) {
+        auto source = get_source(f);
+        kvs::coding_context ctx{};
+        ctx.coding_for_write(true);
+        if(f.nullable_) {
+            if(auto res = kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, ctx, target);
+                res != status::ok) {
+                return res;
+            }
+        } else {
+            if(source.is_null(f.nullity_offset_)) {
+                VLOG_LP(log_error) << "Null assigned for non-nullable field.";
+                return status::err_integrity_constraint_violation;
+            }
+            if(auto res = kvs::encode(source, f.offset_, f.type_, f.spec_, ctx, target); res != status::ok) {
+                return res;
+            }
+        }
+    }
+    return status::ok;
+}
 
+/**
+ * @brief encode fields into buffer, retrying once if buffer is too small
+ * @param get_source callable taking field_info const& and returning accessor::record_ref for that field;
+ *   must be pure and idempotent as it may be called twice per field on buffer overflow
+ */
+template<class SourceFn>
 static status do_encode(
     data::aligned_buffer& buf,
     primary_target::field_mapping_type const& info,
-    accessor::record_ref source,
+    SourceFn const& get_source,
     std::string_view& out
-);
+) {
+    std::size_t length{};
+    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
+        kvs::writable_stream keys{buf.data(), buf.capacity(), loop == 0};
+        if(auto res = encode_fields(info, keys, get_source); res != status::ok) {
+            return res;
+        }
+        length = keys.size();
+        bool fit = length <= buf.capacity();
+        buf.resize(length);
+        if (loop == 0) {
+            if (fit) {
+                break;
+            }
+            buf.resize(0); // set data size 0 and start from beginning
+        }
+    }
+    out = static_cast<std::string_view>(buf);
+    return status::ok;
+}
 
 primary_target::primary_target(
     std::string_view storage_name,
@@ -68,33 +117,6 @@ primary_target::primary_target(
     extracted_keys_(std::move(extracted_keys)),
     extracted_values_(std::move(extracted_values))
 {}
-
-status primary_target::encode_find_remove(
-    primary_context& ctx,
-    transaction_context& tx,
-    accessor::record_ref key,
-    memory_resource* varlen_resource,
-    accessor::record_ref dest_key,
-    accessor::record_ref dest_value
-) {
-    std::string_view k{};
-    if(auto res = encode_find(ctx, *tx.object(), key, varlen_resource, dest_key, dest_value, k); res != status::ok) {
-        return res;
-    }
-    return remove_by_encoded_key(ctx, tx, k);
-}
-
-status primary_target::encode_find(
-    primary_context& ctx,
-    kvs::transaction& tx,
-    accessor::record_ref key,
-    memory_resource* varlen_resource,
-    accessor::record_ref dest_key,
-    accessor::record_ref dest_value
-) {
-    std::string_view k{};
-    return encode_find(ctx, tx, key, varlen_resource, dest_key, dest_value, k);
-}
 
 status primary_target::find_by_encoded_key(
     primary_context& ctx,
@@ -140,18 +162,6 @@ status primary_target::encode_find(
     return find_by_encoded_key(ctx, tx, encoded_key, varlen_resource, dest_key, dest_value);
 }
 
-status primary_target::encode_remove(
-    primary_context& ctx,
-    transaction_context& tx,
-    accessor::record_ref key
-) {
-    std::string_view k{};
-    if(auto res = prepare_encoded_key(ctx, key, k); res != status::ok) {
-        return res;
-    }
-    return remove_by_encoded_key(ctx, tx, k);
-}
-
 status primary_target::remove_by_encoded_key(
     primary_context& ctx,
     transaction_context& tx,
@@ -169,7 +179,8 @@ status primary_target::prepare_encoded_key(
     accessor::record_ref source,
     std::string_view& out
 ) const {
-    if(auto res = do_encode(ctx.key_buf_, input_keys_, source, out); res != status::ok) {
+    if(auto res = do_encode(ctx.key_buf_, input_keys_, [&](auto const&) { return source; }, out);
+        res != status::ok) {
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
@@ -177,30 +188,63 @@ status primary_target::prepare_encoded_key(
     return status::ok;
 }
 
-status do_encode(
-    data::aligned_buffer& buf,
-    primary_target::field_mapping_type const& info,
-    accessor::record_ref source,
+status primary_target::prepare_encoded_key(
+    primary_context& ctx,
+    variables_view variables,
     std::string_view& out
-) {
-    std::size_t length{};
-    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream keys{buf.data(), buf.capacity(), loop == 0};
-        if(auto res = encode_fields(info, keys, source); res != status::ok) {
-            return res;
-        }
-        length = keys.size();
-        bool fit = length <= buf.capacity();
-        buf.resize(length);
-        if (loop == 0) {
-            if (fit) {
-                break;
-            }
-            buf.resize(0); // set data size 0 and start from beginning
-        }
+) const {
+    if(auto res = do_encode(ctx.key_buf_, input_keys_,
+            [&](auto const& f) { return variables.ref(f.source_region_id_); }, out);
+        res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
+        return res;
     }
-    out = static_cast<std::string_view>(buf);
+    ctx.key_len_ = out.size();
     return status::ok;
+}
+
+status primary_target::encode_find(
+    primary_context& ctx,
+    kvs::transaction& tx,
+    variables_view variables,
+    memory_resource* varlen_resource,
+    accessor::record_ref dest_key,
+    accessor::record_ref dest_value,
+    std::string_view& encoded_key
+) {
+    if(auto res = prepare_encoded_key(ctx, variables, encoded_key); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
+        return res;
+    }
+    return find_by_encoded_key(ctx, tx, encoded_key, varlen_resource, dest_key, dest_value);
+}
+
+status primary_target::encode_remove(
+    primary_context& ctx,
+    transaction_context& tx,
+    variables_view variables
+) {
+    std::string_view k{};
+    if(auto res = prepare_encoded_key(ctx, variables, k); res != status::ok) {
+        return res;
+    }
+    return remove_by_encoded_key(ctx, tx, k);
+}
+
+status primary_target::encode_find_remove(
+    primary_context& ctx,
+    transaction_context& tx,
+    variables_view variables,
+    memory_resource* varlen_resource,
+    accessor::record_ref dest_key,
+    accessor::record_ref dest_value
+) {
+    std::string_view k{};
+    if(auto res = encode_find(ctx, *tx.object(), variables, varlen_resource, dest_key, dest_value, k);
+       res != status::ok) {
+        return res;
+    }
+    return remove_by_encoded_key(ctx, tx, k);
 }
 
 template<class T>
@@ -268,12 +312,14 @@ status primary_target::encode_put(
     }
     std::string_view k{};
     std::string_view v{};
-    if(auto res = do_encode(ctx.key_buf_, extracted_keys_, key_record, k); res != status::ok) {
+    if(auto res = do_encode(ctx.key_buf_, extracted_keys_, [&](auto const&) { return key_record; }, k);
+        res != status::ok) {
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
     ctx.key_len_ = k.size();
-    if(auto res = do_encode(ctx.value_buf_, extracted_values_, value_record, v); res != status::ok) {
+    if(auto res = do_encode(ctx.value_buf_, extracted_values_, [&](auto const&) { return value_record; }, v);
+        res != status::ok) {
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
@@ -316,33 +362,6 @@ status primary_target::decode_fields(
     }
     return status::ok;
 }
-
-status encode_fields(
-    primary_target::field_mapping_type const& fields,
-    kvs::writable_stream& target,
-    accessor::record_ref source
-) {
-    for(auto const& f : fields) {
-        kvs::coding_context ctx{};
-        ctx.coding_for_write(true);
-        if(f.nullable_) {
-            if(auto res = kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, ctx, target);
-                res != status::ok) {
-                return res;
-            }
-        } else {
-            if(source.is_null(f.nullity_offset_)) {
-                VLOG_LP(log_error) << "Null assigned for non-nullable field.";
-                return status::err_integrity_constraint_violation;
-            }
-            if(auto res = kvs::encode(source, f.offset_, f.type_, f.spec_, ctx, target); res != status::ok) {
-                return res;
-            }
-        }
-    }
-    return status::ok;
-}
-
 
 maybe_shared_ptr<meta::record_meta> const& primary_target::key_meta() const noexcept {
     return key_meta_;

@@ -29,10 +29,12 @@
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_target.h>
@@ -69,6 +71,8 @@ struct cache_align update_field {
      * @param nullable whether the target field is nullable or not
      * @param source_external indicates whether the source is from host variables
      * @param key indicates the fieled is part of the key
+     * @param source_region_id identifies the region whose variable_table holds the source variable.
+     *   Only used when source_external is false.
      */
     update_field(
         takatori::type::data const& source_type,
@@ -79,7 +83,8 @@ struct cache_align update_field {
         std::size_t target_nullity_offset,
         bool nullable,
         bool source_external,
-        bool key
+        bool key,
+        region_id source_region_id
     ) :
         source_type_(std::addressof(source_type)),
         target_type_(std::addressof(target_type)),
@@ -90,6 +95,7 @@ struct cache_align update_field {
         nullable_(nullable),
         source_external_(source_external),
         key_(key),
+        source_region_id_(source_region_id),
         source_ftype_(utils::type_for(source_type)),
         target_ftype_(utils::type_for(target_type)),
         requires_conversion_(conv::to_require_conversion(source_type, target_type))
@@ -103,6 +109,7 @@ struct cache_align update_field {
     bool nullable_{};  //NOLINT
     bool source_external_{};  //NOLINT
     bool key_{}; //NOLINT
+    region_id source_region_id_{}; //NOLINT
     meta::field_type source_ftype_{};  //NOLINT
     meta::field_type target_ftype_{};  //NOLINT
     bool requires_conversion_{};  //NOLINT
@@ -243,7 +250,7 @@ private:
         memory::lifo_paged_memory_resource* resource,
         accessor::record_ref extracted_key_record,
         accessor::record_ref extracted_value_record,
-        accessor::record_ref input_variables,
+        variables_view input_variables,
         accessor::record_ref host_variables
     );
 

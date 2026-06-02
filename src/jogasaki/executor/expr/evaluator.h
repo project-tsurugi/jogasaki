@@ -38,6 +38,7 @@
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variables_view.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 
@@ -55,7 +56,7 @@ public:
 
     engine(
         evaluator_context& ctx,
-        executor::process::impl::variable_table& variables,
+        executor::process::impl::variables_view variables,
         yugawara::compiled_info const& info,
         executor::process::impl::variable_table const* host_variables,
         memory_resource* resource
@@ -88,7 +89,7 @@ public:
 
 private:
     evaluator_context& ctx_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-    executor::process::impl::variable_table& variables_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    executor::process::impl::variables_view variables_{};
     yugawara::compiled_info const& info_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     executor::process::impl::variable_table const* host_variables_{};
     memory_resource* resource_{};
@@ -133,7 +134,7 @@ public:
      * Caller is responsible for release the allocated store after consuming the result. This can be typically done by
      * remembering checkpoint before this call and using memory_resource::deallocate_after() after
      * consuming return value.
-     * @param variables variables table used to evaluate the expression
+     * @param variables variables used to evaluate the expression
      * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
      * never generate types whose values are stored via memory resource(e.g. accessor::text).
      * Then UB if such type is processed.
@@ -141,7 +142,7 @@ public:
      */
     [[nodiscard]] any operator()(
         evaluator_context& ctx,
-        executor::process::impl::variable_table& variables,
+        executor::process::impl::variables_view variables,
         memory_resource* resource = nullptr
     ) const;
 
@@ -158,7 +159,7 @@ private:
  * Unlike evaluator::operator(), this function doesn't require caller to release the
  * memory resource since the returned value contains true/false value only and no memory resource is used to store it.
  * @param eval the evaluator to conduct the evaluation
- * @param variables variables table used to evaluate the expression
+ * @param variables variables used to evaluate the expression
  * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
  * never generate types whose values are stored via memory resource(e.g. accessor::text).
  * Then UB if such type is processed.
@@ -168,7 +169,7 @@ private:
 [[nodiscard]] any evaluate_bool(
     evaluator_context& ctx,
     evaluator& eval,
-    executor::process::impl::variable_table& variables,
+    executor::process::impl::variables_view variables,
     memory::lifo_paged_memory_resource* resource = nullptr
 );
 

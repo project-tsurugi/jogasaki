@@ -124,9 +124,9 @@ operation_status find::process_record(abstract::task_context* context) {
     ctx.acquire_strand_if_needed();
     auto* p = find_context<class find_context>(index(), ctx.contexts());
     if (! p) {
-        p = ctx.make_context<class find_context>(index(),
-            ctx.variable_table(block_index()),
-            ctx.variable_table(block_index()),
+        p = ctx.make_context<class find_context>(
+            index(),
+            block_index(),
             utils::get_storage_by_index_name(storage_name()),
             use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name()) : nullptr,
             ctx.transaction(),
@@ -173,7 +173,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    auto target = ctx.output_variables().store().ref();
+    auto target = ctx.variables().ref();
     auto resource = ctx.varlen_resource();
     std::string_view k{};
     std::string_view v{};
@@ -191,7 +191,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             finish(context);
             return operation_status_kind::aborted;
         }
-        executor::process::impl::variable_table vars{};
+        executor::process::impl::variables_view vars{};
         expr::evaluator_context ectx{
             resource,
             ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr

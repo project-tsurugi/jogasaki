@@ -1184,8 +1184,11 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             std::move(context), {0, fn->function_index()}, request);
 
         if (!udf_stream) {
-            std::string msg = "Failed to start UDF server-streaming RPC";
-            VLOG_LP(log_error) << msg;
+            std::string msg = "/:jogasaki:executor:function:make_udf_server_stream_lambda:operator("
+                              ") udf_stream()" +
+                              std::string(jogasaki::udf::log::grpc_prefix) +
+                              "Failed to start UDF server-streaming RPC";
+            VLOG(log_error) << msg;
             ctx.add_error({error_kind::udf_error, msg});
             return {};
         }
@@ -1239,12 +1242,13 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         }
 
         client->call(context, {0, fn->function_index()}, request, response);
-
         if (response.error()) {
             std::string msg =
+                "/:jogasaki:executor:function:make_udf_scalar_lambda:operator() response.error() " +
+                std::string(jogasaki::udf::log::grpc_prefix) +
                 "code=" + std::string(plugin::udf::to_string_view(response.error()->code())) +
                 ", message=" + std::string(response.error()->message());
-            VLOG_LP(log_error) << msg;
+            VLOG(log_error) << msg;
             ctx.add_error({error_kind::udf_error, msg});
             return data::any{std::in_place_type<error>, error(error_kind::udf_error)};
         }

@@ -20,7 +20,7 @@ region_id という名前は一部実装済み
 
 | 種類 | 現在の表現 | 読み書き |
 |------|-----------|---------|
-| 上流ブロックのストリーム変数 | `variables_view::ref(block_id)` | 読み込みのみ |
+| 上流ブロックのストリーム変数 | `variables_view::ref(region_id)` | 読み込みのみ |
 | 自ブロックのストリーム変数 | `variables_view::ref()` | 読み書き可 |
 | ホスト変数 | `variable_table_info const*` + 別途 `record_ref` | 読み込みのみ |
 | index から decode した key/value | operator ごとに用意された `record_ref` 変数 | 読み込みのみ（encode 時は書き込み先） |

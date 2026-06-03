@@ -52,7 +52,7 @@ public:
      * @param data base pointer indicating record body
      * @param size record size
      */
-    record_ref(void* data, size_type size) noexcept : data_(data), size_(size) {}
+    constexpr record_ref(void* data, size_type size) noexcept : data_(data), size_(size) {}
 
     /**
      * @brief retrieve nullity
@@ -146,19 +146,25 @@ public:
      * @brief getter for record size
      * @return size of record
      */
-    [[nodiscard]] size_type size() const noexcept;
+    [[nodiscard]] constexpr size_type size() const noexcept {
+        return size_;
+    }
 
     /**
      * @brief getter for validity of record reference
      * @return whether this reference is valid or not
      */
-    explicit operator bool() const noexcept;
+    [[nodiscard]] constexpr explicit operator bool() const noexcept {
+        return data_ != nullptr;
+    }
 
     /**
      * @brief getter of pointer to record data
      * @return the base pointer for the record data
      */
-    [[nodiscard]] void* data() const noexcept;
+    [[nodiscard]] constexpr void* data() const noexcept {
+        return data_;
+    }
 
 private:
     void* data_{};

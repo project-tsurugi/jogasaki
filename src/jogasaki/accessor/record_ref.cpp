@@ -43,16 +43,4 @@ void record_ref::set_null(record_ref::offset_type nullity_offset, bool nullity) 
     }
 }
 
-record_ref::size_type record_ref::size() const noexcept {
-    return size_;
-}
-
-record_ref::operator bool() const noexcept {
-    return data_ != nullptr;
-}
-
-void* record_ref::data() const noexcept {
-    return data_;
-}
-
 }

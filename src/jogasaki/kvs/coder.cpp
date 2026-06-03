@@ -29,6 +29,7 @@
 #include <takatori/util/stacktrace.h>
 
 #include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
@@ -67,7 +68,7 @@ static status catch_domain_error(std::function<status(void)> const& fn) {
 }  // namespace details
 
 status encode(
-    accessor::record_ref src,
+    accessor::const_record_ref src,
     std::size_t offset,
     meta::field_type const& type,
     coding_spec spec,
@@ -101,7 +102,7 @@ status encode(
 }
 
 status encode_nullable(
-    accessor::record_ref src,
+    accessor::const_record_ref src,
     std::size_t offset,
     std::size_t nullity_offset,
     meta::field_type const& type,

@@ -18,6 +18,7 @@
 #include <cstddef>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/memory/paged_memory_resource.h>
@@ -38,7 +39,7 @@ void copy_field(
     meta::field_type const& type,
     accessor::record_ref target,
     std::size_t target_offset,
-    accessor::record_ref source,
+    accessor::const_record_ref source,
     std::size_t source_offset,
     memory::paged_memory_resource* resource = nullptr
 );
@@ -60,7 +61,7 @@ void copy_nullable_field(
     accessor::record_ref target,
     std::size_t target_offset,
     std::size_t target_nullity_offset,
-    accessor::record_ref source,
+    accessor::const_record_ref source,
     std::size_t source_offset,
     std::size_t source_nullity_offset,
     memory::paged_memory_resource* resource = nullptr
@@ -113,7 +114,7 @@ void copy_nullable_field(
  */
 void copy_field_as_any(
     meta::field_type const& type,
-    accessor::record_ref source,
+    accessor::const_record_ref source,
     std::size_t source_offset,
     data::any& result,
     memory::paged_memory_resource* resource = nullptr
@@ -131,7 +132,7 @@ void copy_field_as_any(
  */
 void copy_nullable_field_as_any(
     meta::field_type const& type,
-    accessor::record_ref source,
+    accessor::const_record_ref source,
     std::size_t source_offset,
     std::size_t source_nullity_offset,
     data::any& result,

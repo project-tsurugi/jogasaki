@@ -28,6 +28,7 @@
 #include <yugawara/binding/extract.h>
 #include <yugawara/compiled_info.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/data/value_store.h>
@@ -126,7 +127,7 @@ operation_status aggregate_group::process_group(abstract::task_context* context,
 }
 
 static void copy_value(
-    accessor::record_ref src,
+    accessor::const_record_ref src,
     std::size_t offset,
     std::size_t nullity_offset,
     bool nullable,

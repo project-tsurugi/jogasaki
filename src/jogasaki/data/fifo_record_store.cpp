@@ -20,12 +20,13 @@
 #include <utility>
 
 #include <jogasaki/utils/assert.h>
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 
 namespace jogasaki::data {
 
-fifo_record_store::record_pointer fifo_record_store::push(accessor::record_ref record) {
+fifo_record_store::record_pointer fifo_record_store::push(accessor::const_record_ref record) {
     // this is spsc queue and only one thread call the function at a time
     auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
     if (!p) std::abort();

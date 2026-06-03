@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,34 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "record_ref.h"
+#include <jogasaki/accessor/const_record_ref.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/utils/assert.h>
 
 namespace jogasaki::accessor {
 
-
-bool record_ref::is_null(record_ref::offset_type nullity_offset) const {
+bool const_record_ref::is_null(const_record_ref::offset_type nullity_offset) const {
     assert_with_exception(nullity_offset / bits_per_byte < size_, nullity_offset, size_);
     offset_type byte_offset = nullity_offset / bits_per_byte;
     offset_type offset_in_byte = nullity_offset % bits_per_byte;
     unsigned char bitmask = 1U << offset_in_byte;
-    auto p = static_cast<unsigned char*>(data_) + byte_offset; //NOLINT
+    auto p = static_cast<unsigned char const*>(data_) + byte_offset; //NOLINT
     return (*p & bitmask) != 0;
 }
 
-void record_ref::set_null(record_ref::offset_type nullity_offset, bool nullity) {
-    assert_with_exception(nullity_offset / bits_per_byte < size_, nullity_offset, size_);
-    offset_type byte_offset = nullity_offset / bits_per_byte;
-    offset_type offset_in_byte = nullity_offset % bits_per_byte;
-    unsigned char bitmask = 1U << offset_in_byte;
-    auto p = static_cast<unsigned char*>(data_) + byte_offset; //NOLINT
-    if (nullity) {
-        *p |= bitmask;
-    } else {
-        *p &= static_cast<unsigned char>(~bitmask); // bitwise NOT of uchar promotes to int
-    }
-}
-
-}
+}  // namespace jogasaki::accessor

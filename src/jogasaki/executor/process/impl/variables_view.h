@@ -17,6 +17,7 @@
 
 #include <cstddef>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -79,12 +80,22 @@ public:
     }
 
     /**
-     * @brief get record_ref for the specified region's variable store
-     * @details If r is undefined, returns the current region's ref.
-     * @param r region_id designating the region to read, or undefined for the current region
-     * @return record_ref for the designated region
+     * @brief get record_ref for the current region's variable store
+     * @details Returns a writable reference to the current block's variable store.
+     * @return record_ref for the current region
      */
-    [[nodiscard]] accessor::record_ref ref(region_id r = region_id{}) const {
+    [[nodiscard]] accessor::record_ref ref() const {
+        return (*list_)[block_index_].store().ref();
+    }
+
+    /**
+     * @brief get const_record_ref for the specified region's variable store
+     * @details Returns a read-only reference to the variable store of the designated region.
+     *   If r is undefined, returns the current region's ref (read-only).
+     * @param r region_id designating the region to read, or undefined for the current region
+     * @return const_record_ref for the designated region
+     */
+    [[nodiscard]] accessor::const_record_ref ref(region_id r) const {
         auto idx = r ? r.index() : block_index_;
         return (*list_)[idx].store().ref();
     }

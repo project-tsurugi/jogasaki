@@ -19,13 +19,14 @@
 #include <type_traits>
 #include <utility>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/utils/assert.h>
 
 namespace jogasaki::data {
 
-record_store::record_pointer record_store::append(accessor::record_ref record) {
+record_store::record_pointer record_store::append(accessor::const_record_ref record) {
     auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
     if (!p) std::abort();
     copier_(p, original_record_size_, record);

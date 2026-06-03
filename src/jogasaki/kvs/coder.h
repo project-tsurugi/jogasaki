@@ -23,6 +23,7 @@
 
 #include <takatori/util/exception.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
@@ -186,7 +187,7 @@ static constexpr uint_t<N> SIGN_BIT = static_cast<uint_t<N>>(1) << (N - 1); // N
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */
-status encode(accessor::record_ref src,
+status encode(accessor::const_record_ref src,
     std::size_t offset,
     meta::field_type const& type,
     coding_spec spec,
@@ -209,7 +210,7 @@ status encode(accessor::record_ref src,
  * so the destination stream should be reset or discarded.
  */
 status encode_nullable(
-    accessor::record_ref src,
+    accessor::const_record_ref src,
     std::size_t offset,
     std::size_t nullity_offset,
     meta::field_type const& type,

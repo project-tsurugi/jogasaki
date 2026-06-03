@@ -19,6 +19,7 @@
 #include <functional>
 
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 
 namespace jogasaki::executor {
@@ -46,7 +47,7 @@ public:
      * @param record the record to calculate the hash
      * @return hash of the record
      */
-    [[nodiscard]] hash_value operator()(accessor::record_ref const& record) const {
+    [[nodiscard]] hash_value operator()(accessor::const_record_ref record) const {
         static const std::size_t p = 18446744073709551557ULL; // arbitrary prime in uint64_t
         hash_value h{};
         for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {
@@ -72,14 +73,14 @@ private:
 
     template <kind K>
     struct hash_calculator {
-        hash_value operator()(accessor::record_ref const& a, std::size_t offset) {
+        hash_value operator()(accessor::const_record_ref a, std::size_t offset) {
             using rtype = runtime_t<K>;
             auto l = a.get_value<rtype>(offset);
             return std::hash<rtype>{}(l);
         }
     };
 
-    [[nodiscard]] hash_value hash_field(accessor::record_ref const& record, std::size_t field_index) const {
+    [[nodiscard]] hash_value hash_field(accessor::const_record_ref record, std::size_t field_index) const {
         if(meta_->nullable(field_index) && record.is_null(meta_->nullity_offset(field_index))) {
             return static_cast<hash_value>(-1);
         }

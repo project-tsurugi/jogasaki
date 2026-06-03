@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,19 +21,19 @@
 #include <type_traits>
 #include <takatori/util/assertion.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/utils/assert.h>
 
 namespace jogasaki::accessor {
 
 /**
- * @brief record reference providing access to record contents
- * @details Given underlying record represented by continuous memory region, this class gives setter/getter
- * for field values or other data manipulating functions. It's assumed that a part of record metadata is
- * shared outside of this class. For example, caller/callee share the offset (for value and nullity) and runtime
- * C++ type used for each field in the record and use them with setter/getter.
+ * @brief read-only record reference providing access to record contents
+ * @details A const counterpart of record_ref. Provides read-only accessors for field values
+ * and nullity, but does not expose any write operations. Implicitly constructible from record_ref
+ * to allow existing callers passing record_ref to upgraded function parameters.
  */
-class record_ref {
+class const_record_ref {
 public:
 
     /// @brief type for record size
@@ -45,14 +45,21 @@ public:
     /**
      * @brief construct "undefined" object representing invalid reference
      */
-    constexpr record_ref() = default;
+    constexpr const_record_ref() = default;
 
     /**
      * @brief construct object from pointer and size
-     * @param data base pointer indicating record body
+     * @param data base pointer indicating record body (read-only)
      * @param size record size
      */
-    constexpr record_ref(void* data, size_type size) noexcept : data_(data), size_(size) {}
+    constexpr const_record_ref(void const* data, size_type size) noexcept : data_(data), size_(size) {}
+
+    /**
+     * @brief implicit conversion from record_ref
+     * @details Allows read-write record_ref to be passed wherever const_record_ref is expected.
+     * @param r the source record_ref
+     */
+    constexpr const_record_ref(record_ref r) noexcept : data_(r.data()), size_(r.size()) {}  //NOLINT(google-explicit-constructor,hicpp-explicit-conversions)
 
     /**
      * @brief retrieve nullity
@@ -63,33 +70,6 @@ public:
      * For non-nullable field, the return value should not be used and ignored.
      */
     [[nodiscard]] bool is_null(offset_type nullity_offset) const;
-
-    /**
-     * @brief set nullity
-     * @param nullity_offset nullity bit offset for the field, whose nullity is to be set.
-     * @param nullity whether the field is null, or not
-     * @warning this function is meaningful only when the field is nullable.
-     * For non-nullable field, the nullity should be governed outside and field-level nullity should not be set.
-     * @warning for nullable field, nullity has priority to existence of value, that is, even if the value is already
-     * set beforehand, and this function sets nullity = true, then the value is ignored and the field
-     * is handled as null.
-     */
-    void set_null(offset_type nullity_offset, bool nullity = true);
-
-    /**
-     * @brief field value setter
-     * @tparam T runtime type of the field whose value will be set
-     * @param value_offset byte offset of the field whose value will be set
-     * @param x new value for the field
-     * @warning this function doesn't change nullity of the field.
-     * So if the field is nullable, call set_null() to mark it as non-null.
-     */
-    template<typename T>
-    void set_value(offset_type value_offset, T x) {
-        assert_with_exception(value_offset < size_, value_offset, size_);
-        static_assert(std::is_trivially_copy_constructible_v<T>);
-        std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T)); //NOLINT
-    }
 
     /**
      * @brief field value getter
@@ -105,7 +85,7 @@ public:
         assert_with_exception(value_offset < size_, value_offset, size_);
         static_assert(std::is_trivially_copy_constructible_v<T>);
         T data{};
-        std::memcpy(&data, static_cast<char*>(data_) + value_offset, sizeof(T)); //NOLINT
+        std::memcpy(&data, static_cast<char const*>(data_) + value_offset, sizeof(T)); //NOLINT
         return data;
     }
 
@@ -122,7 +102,7 @@ public:
     [[nodiscard]] T const& get_reference(offset_type value_offset) const {
         assert_with_exception(value_offset < size_, value_offset, size_);
         static_assert(std::is_trivially_copy_constructible_v<T>);
-        return *reinterpret_cast<T const*>(static_cast<char*>(data_) + value_offset);  //NOLINT
+        return *reinterpret_cast<T const*>(static_cast<char const*>(data_) + value_offset);  //NOLINT
     }
 
     /**
@@ -130,13 +110,13 @@ public:
      * @tparam T runtime type of each field
      * @param nullity_offset nullity bit offset of the field whose value will be retrieved
      * @param value_offset offset of the field whose value will be retrieved
-     * @return optional containing the field value or nullptr if it's null
+     * @return optional containing the field value or empty if it's null
      */
     template<typename T>
     [[nodiscard]] std::optional<T> get_if(offset_type nullity_offset, offset_type value_offset) const {
         assert_with_exception(nullity_offset / bits_per_byte < size_, nullity_offset, size_);
         assert_with_exception(value_offset < size_, value_offset, size_);
-        if(is_null(nullity_offset)) {
+        if (is_null(nullity_offset)) {
             return {};
         }
         return get_value<T>(value_offset);
@@ -160,18 +140,18 @@ public:
 
     /**
      * @brief getter of pointer to record data
-     * @return the base pointer for the record data
+     * @return the base pointer for the record data (read-only)
      */
-    [[nodiscard]] constexpr void* data() const noexcept {
+    [[nodiscard]] constexpr void const* data() const noexcept {
         return data_;
     }
 
 private:
-    void* data_{};
+    void const* data_{};
     size_type size_{};
 };
 
-static_assert(std::is_trivially_copyable_v<record_ref>);
-static_assert(std::is_trivially_destructible_v<record_ref>);
+static_assert(std::is_trivially_copyable_v<const_record_ref>);
+static_assert(std::is_trivially_destructible_v<const_record_ref>);
 
-}
+}  // namespace jogasaki::accessor

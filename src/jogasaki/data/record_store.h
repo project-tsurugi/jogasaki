@@ -20,6 +20,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/paged_memory_resource.h>
@@ -68,7 +69,7 @@ public:
      * @param record source of the record added to this container
      * @return pointer to the stored record
      */
-    record_pointer append(accessor::record_ref record);
+    record_pointer append(accessor::const_record_ref record);
 
     /**
      * @brief prepare record region at the end of the store and provider the pointer so that the record is filled by caller

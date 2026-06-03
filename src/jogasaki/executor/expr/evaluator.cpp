@@ -37,6 +37,7 @@
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/api.h>
@@ -441,13 +442,13 @@ any engine::operator()(takatori::scalar::binary const& exp) {
 
 template <typename T, typename E = T>
 static std::enable_if_t<! (std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>), any>
-create_any(accessor::record_ref ref, executor::process::impl::value_info const& info) {
+create_any(accessor::const_record_ref ref, executor::process::impl::value_info const& info) {
     return {std::in_place_type<T>, ref.get_value<E>(info.value_offset())};
 }
 
 template <typename T, typename E = T>
 static std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
-create_any(accessor::record_ref ref, executor::process::impl::value_info const& info, evaluator_context& ctx) {
+create_any(accessor::const_record_ref ref, executor::process::impl::value_info const& info, evaluator_context& ctx) {
     // evaluating lob value resolves `provided` reference by registering to datastore
 
     auto& var = ref.get_reference<E>(info.value_offset());

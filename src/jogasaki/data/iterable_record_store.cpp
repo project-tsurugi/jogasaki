@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
 
@@ -70,7 +71,7 @@ iterable_record_store::iterable_record_store(
     base_(record_resource, varlen_resource, std::move(meta))
 {}
 
-iterable_record_store::value_type iterable_record_store::append(accessor::record_ref record) {
+iterable_record_store::value_type iterable_record_store::append(accessor::const_record_ref record) {
     // note that we support zero length record. Use positive_record_size_ to advance the pointer while
     // returning original_record_size_ to the caller.
     auto p = base_.append(record);

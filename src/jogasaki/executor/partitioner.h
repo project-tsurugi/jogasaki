@@ -19,6 +19,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/hash.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -51,7 +52,7 @@ public:
      * @param key the record to be evaluated
      * @return the target partition number
      */
-    [[nodiscard]] std::size_t operator()(accessor::record_ref key) const;
+    [[nodiscard]] std::size_t operator()(accessor::const_record_ref key) const;
 
 private:
     std::size_t partitions_{};
@@ -60,7 +61,7 @@ private:
 
     using kind = meta::field_type_kind;
 
-    [[nodiscard]] std::size_t field_hash(accessor::record_ref key, std::size_t field_index) const;
+    [[nodiscard]] std::size_t field_hash(accessor::const_record_ref key, std::size_t field_index) const;
 };
 
 }

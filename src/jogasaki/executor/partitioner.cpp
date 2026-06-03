@@ -20,6 +20,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/hash.h>
 #include <jogasaki/meta/record_meta.h>
@@ -37,7 +38,7 @@ partitioner::partitioner(
     hash_(meta_.get())
 {}
 
-std::size_t partitioner::operator()(accessor::record_ref key) const {
+std::size_t partitioner::operator()(accessor::const_record_ref key) const {
     return hash_(key) % partitions_;
 }
 

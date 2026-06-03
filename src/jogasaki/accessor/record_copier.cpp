@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/meta/field_type.h>
@@ -51,7 +52,7 @@ record_copier::record_copier(
     }
 }
 
-void record_copier::operator()(void *dst, std::size_t size, accessor::record_ref src) {
+void record_copier::operator()(void *dst, std::size_t size, accessor::const_record_ref src) {
     assert_with_exception(size <= src.size(), size, src.size());
     std::memcpy(dst, src.data(), size);
     if (resource_ != nullptr) {
@@ -76,7 +77,7 @@ void record_copier::operator()(void *dst, std::size_t size, accessor::record_ref
     }
 }
 
-void record_copier::operator()(accessor::record_ref dst, accessor::record_ref src) {
+void record_copier::operator()(accessor::record_ref dst, accessor::const_record_ref src) {
     operator()(dst.data(), meta_->record_size(), src);
 }
 

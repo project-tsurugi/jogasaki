@@ -24,6 +24,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/print_support.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/memory/paged_memory_resource.h>
@@ -163,7 +164,7 @@ public:
      * @param record source of the record added to this container
      * @return record ref to the stored record
      */
-    value_type append(accessor::record_ref record);
+    value_type append(accessor::const_record_ref record);
 
     /**
      * @copydoc record_store::count()

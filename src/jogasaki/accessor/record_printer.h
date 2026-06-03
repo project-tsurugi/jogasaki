@@ -26,6 +26,7 @@
 #include <takatori/decimal/triple.h>
 
 #include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/meta/field_type.h>
@@ -46,7 +47,7 @@ namespace jogasaki::accessor {
  */
 inline void print_field(
     std::ostream& os,
-    accessor::record_ref record,
+    accessor::const_record_ref record,
     meta::field_type const& type,
     meta::record_meta::value_offset_type offset
 ) {
@@ -144,12 +145,12 @@ public:
     }
 
 private:
-    constexpr record_printer(std::ostream& stream, record_ref record) noexcept : stream_(stream), record_(record) {}
+    record_printer(std::ostream& stream, const_record_ref record) noexcept : stream_(stream), record_(record) {}
 
     std::ostream& stream_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-    record_ref record_;
+    const_record_ref record_;
 
-    friend constexpr record_printer operator<<(std::ostream& os, record_ref rec) noexcept;
+    friend record_printer operator<<(std::ostream& os, const_record_ref rec) noexcept;
 };
 
 /**
@@ -159,7 +160,7 @@ private:
  * @return helper printer class, which finishes writing with operator<<(meta::record_meta const& meta)
  * @attention until returned value's operator<< is called, nothing happens or written to the stream
  */
-inline constexpr record_printer operator<<(std::ostream& os, record_ref rec) noexcept {
+inline record_printer operator<<(std::ostream& os, const_record_ref rec) noexcept {
     return {os, rec};
 }
 

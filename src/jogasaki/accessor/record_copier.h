@@ -21,6 +21,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/record_meta.h>
@@ -63,14 +64,14 @@ public:
      * @param size size of the record content
      * @param src copy source
      */
-    void operator()(void* dst, std::size_t size, accessor::record_ref src);
+    void operator()(void* dst, std::size_t size, accessor::const_record_ref src);
 
     /**
      * @brief copy record content referenced by record_ref
      * @param dst copy destination
      * @param src copy source
      */
-    void operator()(accessor::record_ref dst, accessor::record_ref src);
+    void operator()(accessor::record_ref dst, accessor::const_record_ref src);
 
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};

@@ -19,6 +19,7 @@
 #include <functional>
 
 #include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/compare_info.h>
@@ -34,7 +35,7 @@ namespace impl {
 
 template <meta::field_type_kind K, class Less>
 struct field_comparator {
-    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
+    int operator()(accessor::const_record_ref a, accessor::const_record_ref b, std::size_t l_offset, std::size_t r_offset) {
         using rtype = runtime_t<K>;
         auto l = a.get_value<rtype>(l_offset);
         auto r = b.get_value<rtype>(r_offset);
@@ -74,7 +75,7 @@ public:
      * @return positive if a > b
      * @return zero if a is equivalent to b
      */
-    [[nodiscard]] int operator()(accessor::record_ref const& a, accessor::record_ref const& b) const noexcept {
+    [[nodiscard]] int operator()(accessor::const_record_ref a, accessor::const_record_ref b) const noexcept {
         for(std::size_t i = 0, n = meta_->left().field_count(); i < n; ++i) {
             auto res = compare_field(a, b, i);
             if (res != 0) {
@@ -88,8 +89,8 @@ private:
     compare_info const* meta_{};
 
     [[nodiscard]] int compare_field(
-        accessor::record_ref const& a,
-        accessor::record_ref const& b,
+        accessor::const_record_ref a,
+        accessor::const_record_ref b,
         std::size_t field_index
     ) const {
         auto& l = meta_->left();

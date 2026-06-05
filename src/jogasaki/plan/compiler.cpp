@@ -709,7 +709,6 @@ static status prepare(
     // restricted features - jogasaki does not implement yet
     if(! ctx.option().explain_by_text_only()) {
         c_options.restricted_features() += {
-            yugawara::restricted_feature::relation_buffer,
             yugawara::restricted_feature::relation_identify,
             yugawara::restricted_feature::relation_difference,
             yugawara::restricted_feature::relation_intersection,

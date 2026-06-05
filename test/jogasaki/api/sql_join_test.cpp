@@ -87,6 +87,10 @@ public:
 
 using namespace std::string_view_literals;
 
+static bool plan_contains(std::string_view plan, std::string_view token) {
+    return plan.find(token) != std::string_view::npos;
+}
+
 TEST_F(sql_join_test, simple_join) {
     execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
     execute_statement("INSERT INTO t0 VALUES (1, 1)");
@@ -310,6 +314,23 @@ TEST_F(sql_join_test, join_key_different_types_decimal_float) {
     ASSERT_EQ(1, result.size());
 }
 
+TEST_F(sql_join_test, in_subquery_non_null_no_match_null_unsafe) {
+    // issue #1486: t0.c1=3 IN (1, NULL) → unknown (no non-null match + null in subquery) → excluded.
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("INSERT INTO t0 VALUES (2, 3)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (10, 1)");
+    execute_statement("INSERT INTO t1 VALUES (20, NULL)");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT t0.c0 FROM t0 WHERE t0.c1 IN (SELECT c1 FROM t1) ORDER BY t0.c0", result);
+    // c0=1: c1=1 matches t1.c1=1 → included
+    // c0=2: c1=3 not in (1, NULL), no non-null match → unknown → excluded
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
+}
+
 TEST_F(sql_join_test, cross_join_with_where) {
     // regression testcase - once cross join with where clause caused server crash (issue 950)
     execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
@@ -329,4 +350,101 @@ TEST_F(sql_join_test, cross_join_with_where) {
     }
 }
 
+TEST_F(sql_join_test, DISABLED_in_subquery_null_lhs_null_unsafe) {
+    // issue #1486: IN (subquery) must use = semantics (null-unsafe).
+    // t0.c1=NULL IN (SELECT c1 FROM t1) → unknown → row excluded.
+    // Tables have no primary key to force shuffle-based semi join.
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("INSERT INTO t0 VALUES (2, NULL)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (10, 1)");
+    execute_statement("INSERT INTO t1 VALUES (20, NULL)");
+
+    auto const* query = "SELECT t0.c0 FROM t0 WHERE t0.c1 IN (SELECT c1 FROM t1) ORDER BY t0.c0";
+    {
+        std::string plan{};
+        explain_statement(query, plan);
+        EXPECT_TRUE(plan_contains(plan, "join_group")) << plan;
+        EXPECT_TRUE(plan_contains(plan, "semi")) << plan;
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    // Only c0=1 matches (c1=1 = c1=1); c0=2 has null c1 → unknown → excluded
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
 }
+
+TEST_F(sql_join_test, DISABLED_null_key_inner_join_null_unsafe) {
+    // inner join with null join key drops the cogroup.
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("INSERT INTO t0 VALUES (2, NULL)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (1, 1)");
+    execute_statement("INSERT INTO t1 VALUES (2, NULL)");
+
+    auto const* query = "SELECT t0.c0, t0.c1, t1.c0, t1.c1 FROM t0 JOIN t1 ON t0.c1=t1.c1";
+    {
+        std::string plan{};
+        explain_statement(query, plan);
+        EXPECT_TRUE(plan_contains(plan, "join_group")) << plan;
+        EXPECT_TRUE(plan_contains(plan, "inner")) << plan;
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    // null-unsafe (=) semantics: null-key cogroup skipped, only non-null key rows match
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 1, 1)), result[0]);
+}
+
+TEST_F(sql_join_test, intersect_distinct_null_safe) {
+    // INTERSECT DISTINCT uses semi join + null-safe (NULL <=> NULL is true).
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("INSERT INTO t0 VALUES (2, NULL)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (10, 1)");
+    execute_statement("INSERT INTO t1 VALUES (20, NULL)");
+
+    auto const* query = "SELECT c1 FROM t0 INTERSECT DISTINCT SELECT c1 FROM t1";
+    {
+        std::string plan{};
+        explain_statement(query, plan);
+        EXPECT_TRUE(plan_contains(plan, "join_group")) << plan;
+        EXPECT_TRUE(plan_contains(plan, "semi")) << plan;
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    // null-safe: NULL <=> NULL → both 1 and NULL match
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(std::nullopt)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[1]);
+}
+
+TEST_F(sql_join_test, except_distinct_null_safe) {
+    // EXCEPT DISTINCT uses anti join + null-safe (NULL <=> NULL is true).
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("INSERT INTO t0 VALUES (2, NULL)");
+    execute_statement("INSERT INTO t0 VALUES (3, 2)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (10, 1)");
+    execute_statement("INSERT INTO t1 VALUES (20, NULL)");
+
+    auto const* query = "SELECT c1 FROM t0 EXCEPT DISTINCT SELECT c1 FROM t1";
+    {
+        std::string plan{};
+        explain_statement(query, plan);
+        EXPECT_TRUE(plan_contains(plan, "join_group")) << plan;
+        EXPECT_TRUE(plan_contains(plan, "anti")) << plan;
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    // null-safe: NULL in t1 excludes NULL from t0; only c1=2 remains
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(2)), result[0]);
+}
+
+}  // namespace jogasaki::testing

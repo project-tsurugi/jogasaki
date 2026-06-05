@@ -27,6 +27,7 @@
 #include <takatori/plan/group.h>
 #include <takatori/relation/step/offer.h>
 #include <takatori/relation/step/take_flat.h>
+#include <takatori/relation/step/take_cogroup.h>
 #include <takatori/relation/step/take_group.h>
 #include <takatori/type/character.h>
 #include <takatori/type/date.h>
@@ -449,6 +450,139 @@ public:
             key_meta_ptr,
             value_meta_ptr
         }};
+    }
+
+    /**
+     * @brief Per-group variable bundle returned by add_upstream_cogroup_provider().
+     *
+     * Holds the key/value stream variables and their source record_meta for one cogroup input.
+     * Use key(i) / value(i) to access individual variables, and key_input() / value_input()
+     * to build input_definition objects compatible with set_variables().
+     */
+    struct cogroup_group_definition {
+        std::vector<descriptor::variable> key_vars_;    //NOLINT
+        std::vector<descriptor::variable> value_vars_;  //NOLINT
+        maybe_shared_ptr<meta::record_meta> key_meta_;  //NOLINT
+        maybe_shared_ptr<meta::record_meta> value_meta_; //NOLINT
+
+        /// @brief Return the i-th key stream variable.
+        descriptor::variable const& key(std::size_t i) const noexcept { return key_vars_[i]; }
+        /// @brief Return the i-th value stream variable.
+        descriptor::variable const& value(std::size_t i) const noexcept { return value_vars_[i]; }
+
+        /// @brief Return an input_definition covering key columns.
+        input_definition key_input() const { return {key_vars_, key_meta_}; }
+        /// @brief Return an input_definition covering value columns.
+        input_definition value_input() const { return {value_vars_, value_meta_}; }
+    };
+
+    /**
+     * @brief Bundle of per-group definitions returned by add_upstream_cogroup_provider().
+     *
+     * Index access groups()[i] / operator[](i) returns the cogroup_group_definition
+     * for the i-th input group.
+     */
+    struct cogroup_input_definition {
+        std::vector<cogroup_group_definition> groups_; //NOLINT
+
+        cogroup_group_definition const& operator[](std::size_t i) const noexcept { return groups_[i]; }
+        std::size_t size() const noexcept { return groups_.size(); }
+
+        auto begin() const noexcept { return groups_.begin(); }
+        auto end() const noexcept { return groups_.end(); }
+    };
+
+    /**
+     * @brief Add an upstream cogroup provider for passive cogroup operators (e.g. join).
+     *
+     * For each entry in @p group_specs, inserts a @c takatori::plan::group exchange and
+     * registers all key/value stream variables in @c variable_map_.  Then inserts a single
+     * @c relation::step::take_cogroup node that references all exchanges.
+     *
+     * @code
+     *   auto key_meta = create_nullable_record<kind::int8>().record_meta();
+     *   auto val_meta = create_nullable_record<kind::int8>().record_meta();
+     *   auto [tc, in] = add_upstream_cogroup_provider({
+     *       {key_meta, val_meta},  // left group
+     *       {key_meta, val_meta},  // right group
+     *   });
+     *   // in[0].key(0), in[0].value(0), in[1].key(0), in[1].value(0), …
+     * @endcode
+     *
+     * @param group_specs  vector of (key_meta, value_meta) pairs, one per input group
+     * @return pair of (take_cogroup reference-wrapper, cogroup_input_definition)
+     */
+    std::pair<std::reference_wrapper<relation::step::take_cogroup>, cogroup_input_definition>
+    add_upstream_cogroup_provider(
+        std::vector<std::pair<maybe_shared_ptr<meta::record_meta>, maybe_shared_ptr<meta::record_meta>>> group_specs
+    ) {
+        std::vector<relation::step::take_cogroup::group> cg_groups;
+        cogroup_input_definition result_def;
+        for (auto const& [key_meta_ptr, value_meta_ptr] : group_specs) {
+            auto const& key_meta = *key_meta_ptr;
+            auto const& value_meta = *value_meta_ptr;
+            std::size_t const n_keys = key_meta.field_count();
+            std::size_t const n_values = value_meta.field_count();
+            std::size_t const n = n_keys + n_values;
+
+            // Build exchange columns (key columns first, then value columns).
+            std::vector<descriptor::variable> all_xch_cols;
+            all_xch_cols.reserve(n);
+            for (std::size_t i = 0; i < n; ++i) {
+                all_xch_cols.emplace_back(bindings_.exchange_column());
+            }
+            std::vector<descriptor::variable> key_xch_cols(
+                all_xch_cols.begin(),
+                all_xch_cols.begin() + static_cast<std::ptrdiff_t>(n_keys)
+            );
+
+            // Insert the group exchange with key columns as group keys.
+            auto& grp = plan_.insert(
+                std::make_unique<takatori::plan::group>(all_xch_cols, std::move(key_xch_cols))
+            );
+
+            // Map each exchange column to a fresh stream variable.
+            using column = relation::step::take_cogroup::group::column;
+            std::vector<column> col_mappings;
+            col_mappings.reserve(n);
+            std::vector<descriptor::variable> key_stream_vars;
+            std::vector<descriptor::variable> value_stream_vars;
+            key_stream_vars.reserve(n_keys);
+            value_stream_vars.reserve(n_values);
+            for (std::size_t i = 0; i < n; ++i) {
+                auto sv = bindings_.stream_variable();
+                col_mappings.emplace_back(grp.columns()[i], sv);
+                if (i < n_keys) {
+                    key_stream_vars.push_back(sv);
+                } else {
+                    value_stream_vars.push_back(sv);
+                }
+            }
+
+            // Bind field types for key columns.
+            for (std::size_t i = 0; i < n_keys; ++i) {
+                auto res = make_variable_resolution(key_meta.at(i));
+                variable_map_->bind(col_mappings[i].source(), res, true);
+                variable_map_->bind(col_mappings[i].destination(), res, true);
+            }
+            // Bind field types for value columns.
+            for (std::size_t i = 0; i < n_values; ++i) {
+                auto res = make_variable_resolution(value_meta.at(i));
+                variable_map_->bind(col_mappings[n_keys + i].source(), res, true);
+                variable_map_->bind(col_mappings[n_keys + i].destination(), res, true);
+            }
+
+            cg_groups.emplace_back(bindings_.exchange(grp), std::move(col_mappings));
+            result_def.groups_.emplace_back(cogroup_group_definition{
+                std::move(key_stream_vars),
+                std::move(value_stream_vars),
+                key_meta_ptr,
+                value_meta_ptr
+            });
+        }
+
+        auto& take_op = emplace_operator<relation::step::take_cogroup>(std::move(cg_groups));
+        return {take_op, std::move(result_def)};
     }
 
     /**

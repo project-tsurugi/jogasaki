@@ -574,6 +574,54 @@ TEST_F(expression_evaluator_test, compare_time_point) {
     compare_time_points(comparison_operator::greater_equal, one, two, false);
 }
 
+TEST_F(expression_evaluator_test, compare_is_not_distinct_from) {
+    // unlike =, IS NOT DISTINCT FROM always returns true/false (never null)
+
+    // both non-null, equal → true
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_not_distinct_from, 1, false, 1, false, 1, false);
+
+    // both non-null, not equal → false
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_not_distinct_from, 1, false, 2, false, 0, false);
+
+    // left null, right non-null → false
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_not_distinct_from, 0, true, 1, false, 0, false);
+
+    // left non-null, right null → false
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_not_distinct_from, 1, false, 0, true, 0, false);
+
+    // both null → true
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_not_distinct_from, 0, true, 0, true, 1, false);
+}
+
+TEST_F(expression_evaluator_test, compare_is_distinct_from) {
+    // unlike !=, IS DISTINCT FROM always returns true/false (never null)
+
+    // both non-null, equal → false
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_distinct_from, 1, false, 1, false, 0, false);
+
+    // both non-null, not equal → true
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_distinct_from, 1, false, 2, false, 1, false);
+
+    // left null, right non-null → true
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_distinct_from, 0, true, 1, false, 1, false);
+
+    // left non-null, right null → true
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_distinct_from, 1, false, 0, true, 1, false);
+
+    // both null → false
+    test_two_arity_exp_with_null<t::int4, t::int4, t::boolean>(
+        comparison_operator::is_distinct_from, 0, true, 0, true, 0, false);
+}
+
 TEST_F(expression_evaluator_test, conditional_and) {
     // condiation_and and conditional_or are exceptional operation in that the result is not always null even if one of the operad is null
 

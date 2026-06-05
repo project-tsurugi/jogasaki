@@ -252,7 +252,7 @@ public:
         }
         switch(kind_) {
             case join_kind::inner: {
-                if(kind_ == join_kind::inner && ! groups_available(cgrp, false)) {
+                if(! groups_available(cgrp, false)) {
                     break;
                 }
                 do {

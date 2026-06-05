@@ -615,6 +615,8 @@ static any compare(takatori::scalar::comparison_operator op, T const& l, U const
         case optype::greater_equal: result = ! less{}(l, r); break;
         case optype::less: result = less{}(l, r); break;
         case optype::less_equal: result = ! less{}(r, l); break;
+        case optype::is_not_distinct_from: result = equal_to(l, r); break;
+        case optype::is_distinct_from: result = ! equal_to(l, r); break;
         default: return return_unsupported();
     }
     return any{std::in_place_type<bool>, result};
@@ -655,8 +657,21 @@ any engine::operator()(takatori::scalar::compare const& exp) {
     auto r = dispatch(*this, exp.right());
     if (l.error()) return l;
     if (r.error()) return r;
-    if (! l) return l;
-    if (! r) return r;
+    using optype = takatori::scalar::comparison_operator;
+    if (exp.operator_kind() == optype::is_not_distinct_from || exp.operator_kind() == optype::is_distinct_from) {
+        // these operators handles NULL specially
+        bool const l_null = ! l;
+        bool const r_null = ! r;
+        if (l_null || r_null) {
+            // NULL IS NOT DISTINCT FROM NULL → true; NULL IS NOT DISTINCT FROM x → false
+            bool const result = (l_null == r_null) == (exp.operator_kind() == optype::is_not_distinct_from);
+            return any{std::in_place_type<bool>, result};
+        }
+    } else {
+        if (! l) return l;
+        if (! r) return r;
+    }
+    // compare_any does not accept null or error any
     return compare_any(exp.operator_kind(), l, r);
 }
 

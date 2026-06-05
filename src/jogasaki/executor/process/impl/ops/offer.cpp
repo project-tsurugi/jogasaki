@@ -79,9 +79,9 @@ operation_status offer::operator()(offer_context& ctx) {
         return operation_status_kind::aborted;
     }
     auto target = ctx.store_.ref();
-    auto source = ctx.variables().ref();
     utils::checkpoint_holder h{ctx.varlen_resource()};
     for(auto &f : fields_) {
+        auto source = ctx.variables().ref(f.source_region_id_);
         if(! f.requires_conversion_) {
             utils::copy_nullable_field(
                 f.type_,
@@ -186,7 +186,8 @@ std::vector<details::offer_field> offer::create_fields(
             meta->nullable(ind),
             std::addressof(source_type),
             std::addressof(target_type),
-            conv::to_require_conversion(source_type, target_type)
+            conv::to_require_conversion(source_type, target_type),
+            info.region()
         };
     }
     return fields;

@@ -26,6 +26,7 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
@@ -52,6 +53,7 @@ struct cache_align offer_field {
     takatori::type::data const* source_type_{};
     takatori::type::data const* target_type_{};
     bool requires_conversion_{};
+    region_id source_region_id_{};
 };
 
 }

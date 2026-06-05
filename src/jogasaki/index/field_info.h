@@ -63,4 +63,4 @@ struct cache_align field_info {
     region_id source_region_id_{}; //NOLINT
 };
 
-}
+}  // namespace jogasaki::index

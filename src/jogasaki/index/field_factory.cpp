@@ -73,6 +73,4 @@ std::vector<field_info> index_fields(
     return ret;
 }
 
-}
-
-
+}  // namespace jogasaki::index

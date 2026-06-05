@@ -40,4 +40,4 @@ field_info::field_info(
     source_region_id_(source_region_id)
 {}
 
-}
+}  // namespace jogasaki::index

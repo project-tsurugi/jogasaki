@@ -41,4 +41,4 @@ using takatori::util::maybe_shared_ptr;
  */
 maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key);
 
-}
+}  // namespace jogasaki::index

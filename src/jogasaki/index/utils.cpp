@@ -57,4 +57,4 @@ maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& 
     return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
 }
 
-}
+}  // namespace jogasaki::index

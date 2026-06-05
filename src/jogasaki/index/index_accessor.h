@@ -66,6 +66,4 @@ private:
     std::vector<field_info> value_fields_{};
 };
 
-}
-
-
+}  // namespace jogasaki::index

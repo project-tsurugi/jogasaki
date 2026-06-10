@@ -370,7 +370,6 @@ public:
                 ectx,
                 *ctx.req_context(),
                 ctx.variables(),
-                ctx.variables(),
                 *ctx.primary_stg_,
                 ctx.secondary_stg_.get(),
                 tx,

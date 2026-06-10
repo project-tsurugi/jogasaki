@@ -148,8 +148,7 @@ public:
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_find>, bool> process(
         expr::evaluator_context& ectx,
         request_context& ctx,
-        variables_view input_variables,
-        variables_view output_variables,
+        variables_view variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
         kvs::transaction& tx,
@@ -157,7 +156,7 @@ public:
     ) {
         std::size_t len{};
         if(auto res =
-               details::encode_key(ectx, info_.key_fields_, input_variables, *resource, buf_, len, std::addressof(ctx));
+               details::encode_key(ectx, info_.key_fields_, variables, *resource, buf_, len, std::addressof(ctx));
            res != status::ok) {
             status_ = res;
             if(res == status::err_integrity_constraint_violation) {
@@ -188,7 +187,7 @@ public:
             return field_mapper_.process(
                        key,
                        value,
-                       output_variables.ref(),
+                       variables.ref(),
                        primary_stg,
                        tx,
                        resource,
@@ -213,7 +212,7 @@ public:
         }
 
         // remember parameters for current scan
-        output_ref_ = output_variables.ref();
+        output_ref_ = variables.ref();
         primary_storage_ = std::addressof(primary_stg);
         tx_ = std::addressof(tx);
         resource_ = resource;
@@ -234,8 +233,7 @@ public:
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_scan>, bool> process(
         expr::evaluator_context& ectx,
         request_context& ctx,
-        variables_view input_variables,
-        variables_view output_variables,
+        variables_view variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
         kvs::transaction& tx,
@@ -248,7 +246,7 @@ public:
         if (auto res = details::encode_scan_keys(ectx, std::addressof(ctx),
                 info_.begin_fields_, info_.begin_endpoint_,
                 info_.end_fields_,   info_.end_endpoint_,
-                input_variables, *resource,
+                variables, *resource,
                 buf_, begin_len, begin_kind_actual,
                 buf2_, end_len, end_kind_actual); res != status::ok) {
             status_ = res;
@@ -277,7 +275,7 @@ public:
         }
 
         // remember parameters for current scan
-        output_ref_ = output_variables.ref();
+        output_ref_ = variables.ref();
         primary_storage_ = std::addressof(primary_stg);
         tx_ = std::addressof(tx);
         resource_ = resource;

@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <vector>
 
 #include <takatori/util/downcast.h>
 
@@ -60,7 +61,8 @@ public:
      * @param io_exchange_map mapping from input/output indices to exchanges
      * @param range the range information, nullptr if the task doesn't contain scan
      * @param channel the record channel to write the result data
-     * @param sink_index the index of sink on the output exchange
+     * @param sink_indices the index of sink on each output exchange, indexed by the same writer
+     * index as `io_exchange_map`'s output
      */
     task_context(
         request_context& rctx,
@@ -68,7 +70,7 @@ public:
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_range> range,
         io::record_channel* channel,
-        partition_index sink_index
+        std::vector<partition_index> sink_indices
     );
 
     io::reader_container reader(reader_index idx) override;
@@ -103,7 +105,7 @@ private:
     io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_range> range_{};
     io::record_channel* channel_{};
-    partition_index sink_index_{};
+    std::vector<partition_index> sink_indices_{};
     io::writer_seat writer_seat_{};
 };
 

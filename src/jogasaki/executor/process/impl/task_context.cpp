@@ -50,14 +50,14 @@ process::impl::task_context::task_context(
     io_exchange_map const& io_exchange_map,
     std::shared_ptr<impl::scan_range> range,
     io::record_channel* channel,
-    partition_index sink_index
+    std::vector<partition_index> sink_indices
 ) :
     request_context_(std::addressof(rctx)),
     partition_(partition),
     io_exchange_map_(std::addressof(io_exchange_map)),
     range_(std::move(range)),
     channel_(channel),
-    sink_index_(sink_index)
+    sink_indices_(std::move(sink_indices))
 {}
 
 io::reader_container task_context::reader(task_context::reader_index idx) {
@@ -80,14 +80,15 @@ io::reader_container task_context::reader(task_context::reader_index idx) {
 
 void task_context::deactivate_writer(writer_index idx) {
     auto& flow = io_exchange_map_->output_at(idx)->data_flow_object(*request_context_);
+    auto sink_index = sink_indices_[idx];
     using step_kind = model::step_kind;
     switch(flow.kind()) {
         case step_kind::group:
-            return unsafe_downcast<exchange::group::flow>(flow).sink_at(sink_index_).deactivate(); //NOLINT
+            return unsafe_downcast<exchange::group::flow>(flow).sink_at(sink_index).deactivate(); //NOLINT
         case step_kind::aggregate:
-            return unsafe_downcast<exchange::aggregate::flow>(flow).sink_at(sink_index_).deactivate(); //NOLINT
+            return unsafe_downcast<exchange::aggregate::flow>(flow).sink_at(sink_index).deactivate(); //NOLINT
         case step_kind::forward:
-            return unsafe_downcast<exchange::forward::flow>(flow).sink_at(sink_index_).deactivate(); //NOLINT
+            return unsafe_downcast<exchange::forward::flow>(flow).sink_at(sink_index).deactivate(); //NOLINT
         default:
             fail_with_exception();
     }
@@ -96,14 +97,15 @@ void task_context::deactivate_writer(writer_index idx) {
 
 io::record_writer* task_context::downstream_writer(task_context::writer_index idx) {
     auto& flow = io_exchange_map_->output_at(idx)->data_flow_object(*request_context_);
+    auto sink_index = sink_indices_[idx];
     using step_kind = model::step_kind;
     switch(flow.kind()) {
         case step_kind::group:
-            return &unsafe_downcast<exchange::group::flow>(flow).sink_at(sink_index_).acquire_writer(); //NOLINT
+            return &unsafe_downcast<exchange::group::flow>(flow).sink_at(sink_index).acquire_writer(); //NOLINT
         case step_kind::aggregate:
-            return &unsafe_downcast<exchange::aggregate::flow>(flow).sink_at(sink_index_).acquire_writer(); //NOLINT
+            return &unsafe_downcast<exchange::aggregate::flow>(flow).sink_at(sink_index).acquire_writer(); //NOLINT
         case step_kind::forward:
-            return &unsafe_downcast<exchange::forward::flow>(flow).sink_at(sink_index_).acquire_writer(); //NOLINT
+            return &unsafe_downcast<exchange::forward::flow>(flow).sink_at(sink_index).acquire_writer(); //NOLINT
         default:
             fail_with_exception();
     }

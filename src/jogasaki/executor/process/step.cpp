@@ -47,9 +47,15 @@ using takatori::util::unsafe_downcast;
 std::shared_ptr<io_info> step::create_io_info() {
     auto io = std::make_shared<class io_info>();
 
+    // build inputs/outputs from io_exchange_map_ rather than input_ports()/output_ports() so that
+    // the resulting indices are consistent with relation_io_map_, which is also derived from
+    // takatori::plan::process::upstreams()/downstreams(). output_ports() order is not guaranteed
+    // to follow downstreams() order because output ports are registered as a side-effect of
+    // visiting downstream exchanges in an unordered_map, whose iteration order is unrelated to
+    // downstreams() order.
     std::vector<impl::ops::input_info> inputs{};
-    for(auto& in : input_ports()) {
-        auto& xchg = *unsafe_downcast<exchange::step>(in->opposites()[0]->owner());
+    for(std::size_t i=0, n=io_exchange_map_->input_count(); i < n; ++i) {
+        auto& xchg = *io_exchange_map_->input_at(i);
         switch(xchg.kind()) {
             case model::step_kind::forward: {
                 auto& fwd = unsafe_downcast<exchange::forward::step>(xchg);
@@ -74,16 +80,15 @@ std::shared_ptr<io_info> step::create_io_info() {
         }
     }
     std::vector<impl::ops::output_info> outputs{};
-    for(auto& out : output_ports()) {
-        auto& xchg = *unsafe_downcast<exchange::step>(out->opposites()[0]->owner());
+    for(std::size_t i=0, n=io_exchange_map_->output_count(); i < n; ++i) {
+        auto& xchg = *io_exchange_map_->output_at(i);
         switch(xchg.kind()) {
             case model::step_kind::forward:
             case model::step_kind::group:
             case model::step_kind::aggregate: {
-                auto& x = unsafe_downcast<exchange::step>(xchg);
                 outputs.emplace_back(
-                    x.input_meta(),
-                    x.input_order()
+                    xchg.input_meta(),
+                    xchg.input_order()
                 );
                 break;
             }

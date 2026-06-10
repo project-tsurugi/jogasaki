@@ -83,7 +83,7 @@ private:
     [[nodiscard]] std::shared_ptr<impl::task_context> create_task_context(
         std::size_t partition,
         impl::ops::operator_container const& operators,
-        std::size_t sink_index,
+        std::vector<std::size_t> sink_indices,
         std::shared_ptr<impl::scan_range> const& range,
         bool in_transaction_and_non_sticky
     );

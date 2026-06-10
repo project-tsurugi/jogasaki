@@ -45,7 +45,6 @@
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/scan_parallel_enabled.h>
 
 namespace jogasaki::executor::process {
@@ -119,15 +118,17 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         auto& emit = unsafe_downcast<impl::ops::emit>(*external_output);
         ch->meta(emit.meta());
     }
-    std::size_t sink_idx_base = 0;
     auto& exchange_map = step_->io_exchange_map();
 
-    // currently at most one output exchange exists
-    assert_with_exception(exchange_map->output_count() <= 1, exchange_map->output_count());
-    for(std::size_t i=0, n=exchange_map->output_count(); i < n; ++i) {
+    // a process can have multiple output exchanges (e.g. a `buffer` operator feeding distinct
+    // downstream exchanges). Each output exchange manages its own sinks, so the base sink index
+    // for a given partition can differ between output exchanges.
+    auto const output_count = exchange_map->output_count();
+    std::vector<std::size_t> sink_idx_bases(output_count);
+    for(std::size_t i=0; i < output_count; ++i) {
         auto& f = dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object(*context_));
         f.setup_partitions(partitions);
-        sink_idx_base = f.sink_count() - partitions;
+        sink_idx_bases[i] = f.sink_count() - partitions;
     }
 
     contexts.reserve(partitions);
@@ -153,8 +154,12 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     }
     bool in_transaction_and_non_sticky = tx_capability == model::task_transaction_kind::in_transaction;
     for (std::size_t i = 0; i < partitions; ++i) {
+        std::vector<std::size_t> sink_indices(output_count);
+        for(std::size_t j=0; j < output_count; ++j) {
+            sink_indices[j] = sink_idx_bases[j] + i;
+        }
         contexts.emplace_back(create_task_context(
-            i, operators, sink_idx_base + i, scan_ranges.empty() ? nullptr : scan_ranges[i], in_transaction_and_non_sticky));
+            i, operators, std::move(sink_indices), scan_ranges.empty() ? nullptr : scan_ranges[i], in_transaction_and_non_sticky));
     }
     auto exec = factory(proc, contexts);
     for (std::size_t i=0; i < partitions; ++i) {
@@ -182,7 +187,7 @@ model::step_kind flow::kind() const noexcept {
 std::shared_ptr<impl::task_context> flow::create_task_context(
     std::size_t partition,
     impl::ops::operator_container const& operators,
-    std::size_t sink_index,
+    std::vector<std::size_t> sink_indices,
     std::shared_ptr<impl::scan_range> const& range,
     bool in_transaction_and_non_sticky
 ) {
@@ -193,7 +198,7 @@ std::shared_ptr<impl::task_context> flow::create_task_context(
         operators.io_exchange_map(),
         range,
         (context_->record_channel() && external_output != nullptr) ? context_->record_channel().get() : nullptr,
-        sink_index
+        std::move(sink_indices)
     );
 
     ctx->work_context(

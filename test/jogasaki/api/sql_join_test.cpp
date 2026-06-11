@@ -350,7 +350,7 @@ TEST_F(sql_join_test, cross_join_with_where) {
     }
 }
 
-TEST_F(sql_join_test, DISABLED_in_subquery_null_lhs_null_unsafe) {
+TEST_F(sql_join_test, in_subquery_null_lhs_null_unsafe) {
     // issue #1486: IN (subquery) must use = semantics (null-unsafe).
     // t0.c1=NULL IN (SELECT c1 FROM t1) → unknown → row excluded.
     // Tables have no primary key to force shuffle-based semi join.
@@ -375,7 +375,7 @@ TEST_F(sql_join_test, DISABLED_in_subquery_null_lhs_null_unsafe) {
     EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
 }
 
-TEST_F(sql_join_test, DISABLED_null_key_inner_join_null_unsafe) {
+TEST_F(sql_join_test, null_key_inner_join_null_unsafe) {
     // inner join with null join key drops the cogroup.
     execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
     execute_statement("INSERT INTO t0 VALUES (1, 1)");

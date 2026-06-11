@@ -74,9 +74,9 @@ public:
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param kind write operation kind
-     * @param primary the primary target of this write operation
-     * @param secondaries the secondary targets of this write operation
-     * @param input_variable_info input variable information
+     * @param idx the target index of this write operation
+     * @param columns the field definition of the record to be created
+     * @param resource memory resource for the operator context to use
      */
     write_create(
         operator_index_type index,
@@ -85,8 +85,7 @@ public:
         write_kind kind,
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
-        memory::lifo_paged_memory_resource* resource,
-        variable_table_info const* input_variable_info = nullptr
+        memory::lifo_paged_memory_resource* resource
     );
 
     /**

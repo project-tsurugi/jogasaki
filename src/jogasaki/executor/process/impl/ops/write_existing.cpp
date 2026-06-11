@@ -553,8 +553,7 @@ write_existing::write_existing(
     write_kind kind,
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
-    sequence_view<column const> columns,
-    variable_table_info const* input_variable_info
+    sequence_view<column const> columns
 ) :
     write_existing(
         index,
@@ -564,19 +563,18 @@ write_existing::write_existing(
         index::primary_target{
             idx,
             keys,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
+            info.vars_info_list()[block_index]
         },
         create_update_fields(
             idx,
             keys,
             columns,
             info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
+            info.vars_info_list()[block_index],
             info.compiled_info()
         ),
         create_secondary_targets(idx, columns),
-        create_secondary_key_updated(idx, columns),
-        input_variable_info
+        create_secondary_key_updated(idx, columns)
     )
 {}
 
@@ -588,10 +586,9 @@ write_existing::write_existing(
     index::primary_target primary,
     std::vector<details::update_field> updates,
     std::vector<index::secondary_target> secondaries,
-    bool_list_type secondary_key_updated,
-    variable_table_info const* input_variable_info
+    bool_list_type secondary_key_updated
 ) :
-    record_operator(index, info, block_index, input_variable_info),
+    record_operator(index, info, block_index),
     kind_(kind),
     primary_(std::move(primary)),
     secondaries_(std::move(secondaries)),

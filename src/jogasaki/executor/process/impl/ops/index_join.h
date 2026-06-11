@@ -118,11 +118,9 @@ public:
         std::vector<details::search_key_field_info> search_key_fields,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
-        std::unique_ptr<operator_base> downstream,
-        variable_table_info const* input_variable_info = nullptr,
-        variable_table_info const* output_variable_info = nullptr
+        std::unique_ptr<operator_base> downstream
     ) noexcept:
-        record_operator(index, info, block_index, input_variable_info, output_variable_info),
+        record_operator(index, info, block_index),
         join_kind_(kind),
         for_join_scan_(false),  //NOLINT(modernize-use-default-member-init,cppcoreguidelines-use-default-member-init) to make things clearer
         use_secondary_(! secondary_storage_name.empty()),
@@ -158,11 +156,9 @@ public:
         kvs::end_point_kind end_endpoint,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
-        std::unique_ptr<operator_base> downstream,
-        variable_table_info const* input_variable_info = nullptr,
-        variable_table_info const* output_variable_info = nullptr
+        std::unique_ptr<operator_base> downstream
     ) noexcept:
-        record_operator(index, info, block_index, input_variable_info, output_variable_info),
+        record_operator(index, info, block_index),
         join_kind_(kind),
         for_join_scan_(true),
         use_secondary_(! secondary_storage_name.empty()),
@@ -196,9 +192,7 @@ public:
         takatori::tree::tree_fragment_vector<takatori::relation::join_find::key> const& keys,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         yugawara::storage::index const* secondary_idx,
-        std::unique_ptr<operator_base> downstream,
-        variable_table_info const* input_variable_info = nullptr,
-        variable_table_info const* output_variable_info = nullptr
+        std::unique_ptr<operator_base> downstream
     ) :
         index_join(
             kind,
@@ -210,14 +204,14 @@ public:
             index::create_fields(
                 primary_idx,
                 columns,
-                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                info.vars_info_list()[block_index],
                 true,
                 true
             ),
             index::create_fields(
                 primary_idx,
                 columns,
-                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                info.vars_info_list()[block_index],
                 false,
                 true
             ),
@@ -228,9 +222,7 @@ public:
             ),
             condition,
             details::create_secondary_key_fields(secondary_idx),
-            std::move(downstream),
-            input_variable_info,
-            output_variable_info
+            std::move(downstream)
         )
     {}
 
@@ -248,9 +240,7 @@ public:
         kvs::end_point_kind end_endpoint,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         yugawara::storage::index const* secondary_idx,
-        std::unique_ptr<operator_base> downstream,
-        variable_table_info const* input_variable_info = nullptr,
-        variable_table_info const* output_variable_info = nullptr
+        std::unique_ptr<operator_base> downstream
     ) :
         index_join(
             kind,
@@ -262,14 +252,14 @@ public:
             index::create_fields(
                 primary_idx,
                 columns,
-                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                info.vars_info_list()[block_index],
                 true,
                 true
             ),
             index::create_fields(
                 primary_idx,
                 columns,
-                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                info.vars_info_list()[block_index],
                 false,
                 true
             ),
@@ -287,9 +277,7 @@ public:
             end_endpoint,
             condition,
             details::create_secondary_key_fields(secondary_idx),
-            std::move(downstream),
-            input_variable_info,
-            output_variable_info
+            std::move(downstream)
         )
     {}
 

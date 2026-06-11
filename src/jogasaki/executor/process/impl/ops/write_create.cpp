@@ -211,10 +211,9 @@ write_create::write_create(
     write_kind kind,
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
-    memory::lifo_paged_memory_resource* resource,
-    variable_table_info const* input_variable_info
+    memory::lifo_paged_memory_resource* resource
 ) :
-    record_operator(index, info, block_index, input_variable_info),
+    record_operator(index, info, block_index),
     kind_(kind),
     key_meta_(index::create_meta(idx, true)),
     value_meta_(index::create_meta(idx, false)),
@@ -231,7 +230,7 @@ write_create::write_create(
             {},
             columns,
             nullptr,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
+            info.vars_info_list()[block_index],
             info.compiled_info()
         )
     )

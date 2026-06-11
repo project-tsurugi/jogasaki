@@ -72,11 +72,9 @@ find::find(
     std::vector<index::field_info> key_fields,
     std::vector<index::field_info> value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields,
-    std::unique_ptr<operator_base> downstream,
-    variable_table_info const* input_variable_info,
-    variable_table_info const* output_variable_info
+    std::unique_ptr<operator_base> downstream
 ) :
-    record_operator(index, info, block_index, input_variable_info, output_variable_info),
+    record_operator(index, info, block_index),
     use_secondary_(! secondary_storage_name.empty()),
     storage_name_(storage_name),
     secondary_storage_name_(secondary_storage_name),
@@ -98,9 +96,7 @@ find::find(
     yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
     yugawara::storage::index const* secondary_idx,
-    std::unique_ptr<operator_base> downstream,
-    variable_table_info const* input_variable_info,
-    variable_table_info const* output_variable_info
+    std::unique_ptr<operator_base> downstream
 ) :
     find(
         index,
@@ -109,12 +105,10 @@ find::find(
         primary_idx.simple_name(),
         secondary_idx != nullptr ? secondary_idx->simple_name() : "",
         details::create_search_key_fields((secondary_idx != nullptr ? *secondary_idx : primary_idx), keys, info),
-        index::create_fields<column>(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), true, true),
-        index::create_fields<column>(primary_idx, columns, (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]), false, true),
+        index::create_fields<column>(primary_idx, columns, info.vars_info_list()[block_index], true, true),
+        index::create_fields<column>(primary_idx, columns, info.vars_info_list()[block_index], false, true),
         create_secondary_key_fields(secondary_idx),
-        std::move(downstream),
-        input_variable_info,
-        output_variable_info
+        std::move(downstream)
     )
 {}
 

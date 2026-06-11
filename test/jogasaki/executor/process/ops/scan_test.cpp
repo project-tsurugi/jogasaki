@@ -173,10 +173,9 @@ public:
         relation::scan::endpoint upper
     ) {
         auto& target = add_scan_node(setup, false, std::move(lower), std::move(upper));
-        auto out = create_nullable_record<kind::int4, kind::int4>();
         auto down = add_downstream_record_verifier(destinations(target.columns()));
         auto tx = wrap(db_->create_transaction());
-        auto ex = make_scan_executor(target, setup, false, down, out, tx);
+        auto ex = make_scan_executor(target, setup, false, down, tx);
         std::vector<basic_record> result{};
         down.set_body([&]() {
             result.emplace_back(
@@ -262,10 +261,9 @@ public:
         relation::scan::endpoint upper
     ) {
         auto& target = add_scan_node(setup, false, std::move(lower), std::move(upper));
-        auto out = create_nullable_record<kind::int4, kind::int4, kind::int4>();
         auto down = add_downstream_record_verifier(destinations(target.columns()));
         auto tx = wrap(db_->create_transaction());
-        auto ex = make_scan_executor(target, setup, false, down, out, tx);
+        auto ex = make_scan_executor(target, setup, false, down, tx);
         std::vector<basic_record> result{};
         down.set_body([&]() {
             result.emplace_back(
@@ -290,10 +288,9 @@ TEST_F(scan_test, simple) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 200), *db_);
 
     auto& target = add_scan_node(setup);
-    auto out = create_nullable_record<kind::int4, kind::int4>();
     auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    auto ex = make_scan_executor(target, setup, false, down, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
@@ -318,10 +315,9 @@ TEST_F(scan_test, nullable_fields) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, std::nullopt), *db_);
 
     auto& target = add_scan_node(setup);
-    auto out = create_nullable_record<kind::int4, kind::int4>();
     auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    auto ex = make_scan_executor(target, setup, false, down, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
@@ -361,10 +357,9 @@ TEST_F(scan_test, scan_info) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 3), *db_);
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(40, 4), *db_);
 
-    auto out = create_nullable_record<kind::int4, kind::int4>();
     auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    auto ex = make_scan_executor(target, setup, false, down, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
@@ -417,10 +412,9 @@ TEST_F(scan_test, multiple_types) {
             100, accessor::text{"123456789012345678901234567890/D"}, 3.0),
         *db_);
 
-    auto out = create_nullable_record<kind::int8, kind::character, kind::float8>();
     auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    auto ex = make_scan_executor(target, setup, false, down, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
@@ -429,10 +423,11 @@ TEST_F(scan_test, multiple_types) {
     ASSERT_TRUE(static_cast<bool>(ex.op_(ex.ctx_)));
     ex.ctx_.release();
     ASSERT_EQ(2, result.size());
-    EXPECT_EQ((create_nullable_record<kind::int8, kind::character, kind::float8>(
-        100, accessor::text("123456789012345678901234567890/B"), 1.0)), result[0]);
-    EXPECT_EQ((create_nullable_record<kind::int8, kind::character, kind::float8>(
-        100, accessor::text("123456789012345678901234567890/C"), 2.0)), result[1]);
+    // scan result somehow becomes varchar(100), so we need typed_nullable_record instead of create_nullable_record here
+    EXPECT_EQ((typed_nullable_record<kind::int8, kind::character, kind::float8>(std::tuple{int8_type(), character_type(true, 100), float8_type()},
+        100L, accessor::text("123456789012345678901234567890/B"), 1.0)), result[0]);
+    EXPECT_EQ((typed_nullable_record<kind::int8, kind::character, kind::float8>(std::tuple{int8_type(), character_type(true, 100), float8_type()},
+        100L, accessor::text("123456789012345678901234567890/C"), 2.0)), result[1]);
     ASSERT_EQ(status::ok, tx->commit());
 }
 
@@ -473,10 +468,9 @@ TEST_F(scan_test, host_variables) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 2), *db_);
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 3), *db_);
 
-    auto out = create_nullable_record<kind::int4, kind::int4>();
     auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto ex = make_scan_executor(target, setup, false, down, out, tx, &host_variables);
+    auto ex = make_scan_executor(target, setup, false, down, tx, &host_variables);
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(
@@ -847,10 +841,9 @@ TEST_F(scan_test, full_scan_explicit_unbound) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 300), *db_);
 
     auto& target = add_scan_node(setup, false, {}, {});
-    auto out = create_nullable_record<kind::int4, kind::int4>();
     auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    auto ex = make_scan_executor(target, setup, false, down, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
@@ -892,10 +885,9 @@ TEST_F(scan_test, reversed_bounds) {
             setup, {0}, make_exprs(std::make_unique<scalar::immediate>(tv::int4(10), tt::int4())), ek::prefixed_inclusive
         )
     );
-    auto out = create_nullable_record<kind::int4, kind::int4>();
     auto down = add_downstream_record_verifier(destinations(target.columns()));
     auto tx = wrap(db_->create_transaction());
-    auto ex = make_scan_executor(target, setup, false, down, out, tx);
+    auto ex = make_scan_executor(target, setup, false, down, tx);
     std::vector<basic_record> result{};
     down.set_body([&]() {
         result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));

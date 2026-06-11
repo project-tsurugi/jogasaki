@@ -24,31 +24,15 @@ namespace jogasaki::executor::process::impl::ops {
 operator_base::operator_base(
     operator_base::operator_index_type index,
     processor_info const&info,
-    operator_base::block_index_type block_index,
-    variable_table_info const* input_variable_info,
-    variable_table_info const* output_variable_info
+    operator_base::block_index_type block_index
 ) noexcept:
     index_(index),
     processor_info_(std::addressof(info)),
-    block_index_(block_index),
-    input_variable_info_(
-        input_variable_info != nullptr ?
-            input_variable_info :
-            std::addressof(processor_info_->vars_info_list()[block_index_])
-    ),
-    output_variable_info_(
-        output_variable_info != nullptr ?
-            output_variable_info :
-            std::addressof(processor_info_->vars_info_list()[block_index_])
-    )
+    block_index_(block_index)
 {}
 
 variable_table_info const& operator_base::block_info() const noexcept {
-    return *input_variable_info_;
-}
-
-variable_table_info const& operator_base::output_variable_info() const noexcept {
-    return *output_variable_info_;
+    return processor_info_->vars_info_list()[block_index_];
 }
 
 operator_base::block_index_type operator_base::block_index() const noexcept {
@@ -74,26 +58,18 @@ void operator_base::dump(std::string_view indent) const noexcept {
        << indent << "  " << std::left << std::setw(width) << "index_:"
        << index_ << "\n"
        << indent << "  " << std::setw(width) << "processor_info_:"
-       << std::hex << (processor_info_ ? processor_info_ : nullptr) << "\n"
-       << indent << "  " << std::setw(width) << "input_variable_info_:"
-       << (input_variable_info_ ? input_variable_info_ : nullptr) << "\n"
-       << indent << "  " << std::setw(width) << "output_variable_info_:"
-       << (output_variable_info_ ? output_variable_info_ : nullptr) << std::endl;
+       << std::hex << (processor_info_ ? processor_info_ : nullptr) << std::endl;
 }
 
 record_operator::record_operator(
     operator_base::operator_index_type index,
     processor_info const&info,
-    operator_base::block_index_type block_index,
-    variable_table_info const* input_variable_info,
-    variable_table_info const* output_variable_info
+    operator_base::block_index_type block_index
 ) noexcept:
     operator_base(
         index,
         info,
-        block_index,
-        input_variable_info,
-        output_variable_info
+        block_index
     )
 {}
 

@@ -243,10 +243,10 @@ TEST_F(write_existing_test , simple_update) {
     auto input = create_nullable_record<kind::int4, kind::int8>(10, 1000);
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
-    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    input_definition in_def{vars, input.record_meta()};
     variable_table_list input_vl;
-    input_vl.emplace_back(input_variable_info);
-    input_vl[0].store().set(input.ref());
+    input_vl.emplace_back(processor_info_->vars_info_list()[0]);
+    set_variables(input_vl[0], in_def, input.ref());
 
     write_existing wrt{
         0,
@@ -255,8 +255,7 @@ TEST_F(write_existing_test , simple_update) {
         write_kind::update,
         *i1_,
         target.keys(),
-        target.columns(),
-        &input_variable_info
+        target.columns()
     };
 
     mock::task_context task_ctx{};
@@ -298,10 +297,10 @@ TEST_F(write_existing_test , nullable_columns) {
     auto input = create_nullable_record<kind::int4, kind::int8>(10, 1000);
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
-    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    input_definition in_def{vars, input.record_meta()};
     variable_table_list input_vl;
-    input_vl.emplace_back(input_variable_info);
-    input_vl[0].store().set(input.ref());
+    input_vl.emplace_back(processor_info_->vars_info_list()[0]);
+    set_variables(input_vl[0], in_def, input.ref());
 
     write_existing wrt{
         0,
@@ -310,8 +309,7 @@ TEST_F(write_existing_test , nullable_columns) {
         write_kind::update,
         *i1nullable_,
         target.keys(),
-        target.columns(),
-        &input_variable_info
+        target.columns()
     };
 
     mock::task_context task_ctx{};
@@ -354,10 +352,10 @@ TEST_F(write_existing_test , update_multi_columns) {
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
     vars.emplace_back(sources(target.columns())[1]);
-    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    input_definition in_def{vars, input.record_meta()};
     variable_table_list input_vl;
-    input_vl.emplace_back(input_variable_info);
-    input_vl[0].store().set(input.ref());
+    input_vl.emplace_back(processor_info_->vars_info_list()[0]);
+    set_variables(input_vl[0], in_def, input.ref());
 
     write_existing wrt{
         0,
@@ -366,8 +364,7 @@ TEST_F(write_existing_test , update_multi_columns) {
         write_kind::update,
         *i1_,
         target.keys(),
-        target.columns(),
-        &input_variable_info
+        target.columns()
     };
 
     mock::task_context task_ctx{};
@@ -410,10 +407,10 @@ TEST_F(write_existing_test , update_secondary) {
     auto vars = sources(target.keys());
     vars.emplace_back(sources(target.columns())[0]);
 
-    variable_table_info input_variable_info{create_variable_table_info(vars, input)};
+    input_definition in_def{vars, input.record_meta()};
     variable_table_list input_vl;
-    input_vl.emplace_back(input_variable_info);
-    input_vl[0].store().set(input.ref());
+    input_vl.emplace_back(processor_info_->vars_info_list()[0]);
+    set_variables(input_vl[0], in_def, input.ref());
 
     write_existing wrt{
         0,
@@ -422,8 +419,7 @@ TEST_F(write_existing_test , update_secondary) {
         write_kind::update,
         *i100_,
         target.keys(),
-        target.columns(),
-        &input_variable_info
+        target.columns()
     };
 
     mock::task_context task_ctx{};

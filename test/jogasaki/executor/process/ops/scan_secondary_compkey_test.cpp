@@ -160,10 +160,9 @@ public:
         relation::scan::endpoint upper
     ) {
         auto& target = add_scan_node(setup, true, std::move(lower), std::move(upper));
-        auto out = create_nullable_record<kind::int4, kind::int4, kind::int4>();
         auto down = add_downstream_record_verifier(destinations(target.columns()));
         auto tx = wrap(db_->create_transaction());
-        auto ex = make_scan_executor(target, setup, true, down, out, tx);
+        auto ex = make_scan_executor(target, setup, true, down, tx);
         std::vector<basic_record> result{};
         down.set_body([&]() {
             result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));

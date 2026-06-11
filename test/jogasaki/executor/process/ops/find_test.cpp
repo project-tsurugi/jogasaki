@@ -83,24 +83,17 @@ using yugawara::storage::index;
 
 /**
  * @brief Bundle of runtime objects needed to invoke and inspect the find operator.
- * @details find is an active operator: it reads from KVS and populates output_variables_
- *     via the downstream verifier.  op_ holds raw pointers into input_variable_info_ and
- *     output_variable_info_, so those members are declared first and op_ is constructed
- *     in-place in the struct constructor initializer list to guarantee pointer stability.
- *     The struct must not be copy- or move-constructed.  Always create via
- *     find_test::make_find_executor().
+ * @details find is an active operator: it reads from KVS and populates variables
+ *     via the downstream verifier.  Always create via find_test::make_find_executor().
+ *     The struct must not be copy- or move-constructed.
  */
 struct find_executor {
-    variable_table_info input_variable_info_;
-    variable_table_info output_variable_info_;
     find op_;
     variable_table_list variables_list_;
     mock::task_context task_ctx_;
     class find_context ctx_;
 
     find_executor(
-        variable_table_info in_info,
-        variable_table_info out_info,
         processor_info const& info,
         takatori::tree::tree_fragment_vector<find::key> const& keys,
         yugawara::storage::index const& primary_idx,
@@ -114,16 +107,13 @@ struct find_executor {
         memory::lifo_paged_memory_resource* varlen_res,
         request_context* req_ctx
     ) :
-        input_variable_info_{std::move(in_info)},
-        output_variable_info_{std::move(out_info)},
-        op_{0, info, 0, keys, primary_idx, columns, secondary_idx,
-            std::move(downstream), &input_variable_info_, &output_variable_info_},
+        op_{0, info, 0, keys, primary_idx, columns, secondary_idx, std::move(downstream)},
         variables_list_{},
         task_ctx_{{}, {}, {}, {}},
         ctx_{&task_ctx_, variables_view{variables_list_, 0},
             std::move(primary_stg), std::move(secondary_stg), tx, res, varlen_res, nullptr}
     {
-        variables_list_.emplace_back(output_variable_info_);
+        variables_list_.emplace_back(info.vars_info_list()[0]);
         ctx_.task_context().work_context(std::make_unique<impl::work_context>(
             req_ctx, 0, op_.block_index(), nullptr, nullptr, nullptr, nullptr, false, false
         ));
@@ -221,10 +211,6 @@ public:
      * @brief Wire the process graph, build processor_info, construct the find operator,
      *     and return a find_executor.
      *
-     * @details Uses C++17 guaranteed copy elision: the returned prvalue is constructed
-     *     directly in the caller's variable, so the internal ctx references into
-     *     input_variables and output_variables remain valid.
-     *
      * @param target         the find relation node
      * @param primary_idx    the primary index to use
      * @param secondary_idx  secondary index, or nullptr if not used
@@ -232,8 +218,7 @@ public:
      * @param primary_stg    KVS storage handle for the primary index
      * @param secondary_stg  KVS storage handle for the secondary index, or nullptr
      * @param tx             the active transaction context
-     * @param host_vars      optional host variable table; if non-null, its info is
-     *                       copied as the input variable info
+     * @param host_vars      optional host variable table
      * @return newly constructed find_executor
      */
     find_executor make_find_executor(
@@ -241,7 +226,6 @@ public:
         yugawara::storage::index const& primary_idx,
         yugawara::storage::index const* secondary_idx,
         record_verifier_sink& down,
-        basic_record const& out_schema,
         std::unique_ptr<kvs::storage> primary_stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         transaction_context* tx,
@@ -249,14 +233,7 @@ public:
     ) {
         target.output() >> down.input();
         create_processor_info(host_vars);
-        variable_table_info in_info{};
-        if (host_vars != nullptr) {
-            in_info = host_vars->info();
-        }
-        variable_table_info out_info{create_variable_table_info(destinations(target.columns()), out_schema)};
         return find_executor{
-            std::move(in_info),
-            std::move(out_info),
             *processor_info_,
             target.keys(),
             primary_idx,
@@ -286,14 +263,13 @@ TEST_F(find_test, simple) {
             std::make_unique<scalar::immediate>(takatori::value::int4(20), takatori::type::int4())
         )
     );
-    auto schema = create_nullable_record<kind::int4, kind::int4>(0, 0);
     auto down = add_downstream_record_verifier(destinations(target.columns()));
 
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 100), *db_);
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(20, 200), *db_);
     auto tx = wrap(db_->create_transaction());
     auto ex = make_find_executor(
-        target, *setup.primary_idx, nullptr, down, schema,
+        target, *setup.primary_idx, nullptr, down,
         get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx.get()
     );
 
@@ -323,14 +299,13 @@ TEST_F(find_test, multiple_types) {
             std::make_unique<scalar::immediate>(takatori::value::int4(20), takatori::type::int4())
         )
     );
-    auto schema = create_nullable_record<kind::int4, kind::float8, kind::int8>(0, 0.0, 0L);
     auto down = add_downstream_record_verifier(destinations(target.columns()));
 
     put_row(setup, create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100), *db_);
     put_row(setup, create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200), *db_);
     auto tx = wrap(db_->create_transaction());
     auto ex = make_find_executor(
-        target, *setup.primary_idx, nullptr, down, schema,
+        target, *setup.primary_idx, nullptr, down,
         get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx.get()
     );
 
@@ -360,7 +335,6 @@ void find_test::run_secondary_index(bool nullable, relation::sort_direction dir)
             std::make_unique<scalar::immediate>(takatori::value::int4(200), takatori::type::int4())
         ), true
     );
-    auto schema = create_nullable_record<kind::int4, kind::int4>(0, 0);
     auto down = add_downstream_record_verifier(destinations(target.columns()));
 
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(10, 100), *db_);
@@ -372,7 +346,7 @@ void find_test::run_secondary_index(bool nullable, relation::sort_direction dir)
     }
     auto tx = wrap(db_->create_transaction());
     auto ex = make_find_executor(
-        target, *setup.primary_idx, setup.secondary_idx.get(), down, schema,
+        target, *setup.primary_idx, setup.secondary_idx.get(), down,
         get_storage(*db_, setup.primary_idx->simple_name()),
         get_storage(*db_, setup.secondary_idx->simple_name()),
         tx.get()
@@ -423,7 +397,6 @@ TEST_F(find_test, composite_primary_key) {
             std::make_unique<scalar::immediate>(takatori::value::int4(2), takatori::type::int4())
         )
     );
-    auto schema = create_nullable_record<kind::int4, kind::int4, kind::int4>(0, 0, 0);
     auto down = add_downstream_record_verifier(destinations(target.columns()));
 
     put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 1, 100), *db_);
@@ -431,7 +404,7 @@ TEST_F(find_test, composite_primary_key) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(20, 3, 300), *db_);
     auto tx = wrap(db_->create_transaction());
     auto ex = make_find_executor(
-        target, *setup.primary_idx, nullptr, down, schema,
+        target, *setup.primary_idx, nullptr, down,
         get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx.get()
     );
 
@@ -468,7 +441,6 @@ void find_test::run_composite_secondary_key(
             std::make_unique<scalar::immediate>(takatori::value::int4(2), takatori::type::int4())
         ), true
     );
-    auto schema = create_nullable_record<kind::int4, kind::int4, kind::int4>(0, 0, 0);
     auto down = add_downstream_record_verifier(destinations(target.columns()));
 
     put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(10, 1, 1), *db_);
@@ -483,7 +455,7 @@ void find_test::run_composite_secondary_key(
     }
     auto tx = wrap(db_->create_transaction());
     auto ex = make_find_executor(
-        target, *setup.primary_idx, setup.secondary_idx.get(), down, schema,
+        target, *setup.primary_idx, setup.secondary_idx.get(), down,
         get_storage(*db_, setup.primary_idx->simple_name()),
         get_storage(*db_, setup.secondary_idx->simple_name()),
         tx.get()
@@ -560,14 +532,13 @@ TEST_F(find_test, host_variable) {
             std::make_unique<scalar::variable_reference>(p0)
         )
     );
-    auto schema = create_nullable_record<kind::int4, kind::float8, kind::int8>(0, 0.0, 0L);
     auto down = add_downstream_record_verifier(destinations(target.columns()));
 
     put_row(setup, create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100), *db_);
     put_row(setup, create_nullable_record<kind::int4, kind::float8, kind::int8>(20, 2.0, 200), *db_);
     auto tx = wrap(db_->create_transaction());
     auto ex = make_find_executor(
-        target, *setup.primary_idx, nullptr, down, schema,
+        target, *setup.primary_idx, nullptr, down,
         get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx.get(),
         &host_variables
     );

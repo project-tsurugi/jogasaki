@@ -94,16 +94,12 @@ public:
      * @brief Runtime bundle for a scan operator under test.
      *
      * @details range_ keeps the scan_range alive for task_ctx_ and ctx_.
-     *     input_info_ and output_info_ are declared before op_ because op_ stores
-     *     raw pointers into them. output_variables_ is declared before ctx_
-     *     because ctx_ holds a reference to it. task_ctx_ is declared before
-     *     ctx_ because ctx_ holds a pointer to it.
+     *     variables_list_ is declared before ctx_ because ctx_ holds a reference to it.
+     *     task_ctx_ is declared before ctx_ because ctx_ holds a pointer to it.
      *     Never copy or move: always create via scan_test_base::make_scan_executor().
      */
     struct scan_executor {
         std::shared_ptr<impl::scan_range> range_;
-        variable_table_info input_info_{};
-        variable_table_info output_info_;
         scan op_;
         variable_table_list variables_list_;
         mock::task_context task_ctx_;
@@ -111,7 +107,6 @@ public:
 
         scan_executor(
             std::shared_ptr<impl::scan_range> range_arg,
-            variable_table_info out_info_arg,
             processor_info const& p_info,
             yugawara::storage::index const& primary_idx,
             sequence_view<relation::scan::column const> columns,
@@ -124,15 +119,14 @@ public:
             memory::lifo_paged_memory_resource* varlen_resource
         ) :
             range_{std::move(range_arg)},
-            output_info_{std::move(out_info_arg)},
             op_{0, p_info, 0, primary_idx, columns, secondary_idx,
-                std::move(downstream), &input_info_, &output_info_},
+                std::move(downstream)},
             variables_list_{},
             task_ctx_{{}, {}, {}, range_},
             ctx_{&task_ctx_, variables_view{variables_list_, 0}, std::move(primary_stg), std::move(secondary_stg),
                 tx_raw, range_.get(), resource, varlen_resource, nullptr}
         {
-            variables_list_.emplace_back(output_info_);
+            variables_list_.emplace_back(p_info.vars_info_list()[0]);
         }
 
         scan_executor(scan_executor const&) = delete;
@@ -230,7 +224,6 @@ public:
      * @param primary_idx   primary index (passed to scan operator)
      * @param secondary_idx optional secondary index, or nullptr
      * @param down          downstream verifier sink (take() is called here)
-     * @param out_schema    basic_record defining the output variable layout
      * @param primary_stg   KVS storage for the primary index
      * @param secondary_stg KVS storage for the secondary index, or nullptr
      * @param tx            active transaction (used for scan_context)
@@ -242,7 +235,6 @@ public:
         yugawara::storage::index const& primary_idx,
         yugawara::storage::index const* secondary_idx,
         record_verifier_sink& down,
-        basic_record const& out_schema,
         std::unique_ptr<kvs::storage> primary_stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         std::shared_ptr<transaction_context> tx,
@@ -253,14 +245,11 @@ public:
         auto dummy_tx = std::make_shared<transaction_context>();
         dummy_tx->error_info(create_error_info(error_code::none, "", status::err_unknown));
         request_context_.transaction(dummy_tx);
-        variable_table_info out_info{
-            create_variable_table_info(destinations(target.columns()), out_schema)};
         io_exchange_map exchange_map{};
         operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
         auto range = (builder.create_scan_ranges(target))[0];
         return scan_executor{
             range,
-            std::move(out_info),
             *processor_info_,
             primary_idx,
             target.columns(),
@@ -281,7 +270,6 @@ public:
      * @param setup         table and index configuration (supplies index names)
      * @param use_secondary if true, open and pass the secondary storage
      * @param down          downstream verifier sink
-     * @param out_schema    output variable layout record
      * @param tx            active transaction
      * @param host_vars     optional host variable table
      * @return newly constructed scan_executor
@@ -291,7 +279,6 @@ public:
         table_setup const& setup,
         bool use_secondary,
         record_verifier_sink& down,
-        basic_record const& out_schema,
         std::shared_ptr<transaction_context> tx,
         variable_table* host_vars = nullptr
     ) {
@@ -300,7 +287,6 @@ public:
             *setup.primary_idx,
             use_secondary ? setup.secondary_idx.get() : nullptr,
             down,
-            out_schema,
             get_storage(*db_, setup.primary_idx->simple_name()),
             use_secondary ? get_storage(*db_, setup.secondary_idx->simple_name()) : nullptr,
             std::move(tx),

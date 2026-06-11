@@ -88,9 +88,7 @@ public:
         std::vector<index::field_info> key_fields,
         std::vector<index::field_info> value_fields,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
-        std::unique_ptr<operator_base> downstream = nullptr,
-        variable_table_info const* input_variable_info = nullptr,
-        variable_table_info const* output_variable_info = nullptr
+        std::unique_ptr<operator_base> downstream = nullptr
     );
 
     /**
@@ -113,9 +111,7 @@ public:
         yugawara::storage::index const& primary_idx,
         sequence_view<column const> columns,
         yugawara::storage::index const* secondary_idx,
-        std::unique_ptr<operator_base> downstream,
-        variable_table_info const* input_variable_info = nullptr,
-        variable_table_info const* output_variable_info = nullptr
+        std::unique_ptr<operator_base> downstream
     );
 
     /**
@@ -167,7 +163,7 @@ private:
     std::vector<index::field_info> create_fields(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
-        variable_table_info const& output_variable_info,
+        variable_table_info const& var_info,
         bool key
     );
 

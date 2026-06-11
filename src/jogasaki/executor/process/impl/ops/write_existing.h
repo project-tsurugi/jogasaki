@@ -154,7 +154,6 @@ public:
      * @param updates the updated field definition
      * @param secondaries the secondary targets of this write operation
      * @param secondary_key_updated list of flags indicating if one of index keys of secondary targets are updated
-     * @param input_variable_info input variable information
      */
     write_existing(
         operator_index_type index,
@@ -164,8 +163,7 @@ public:
         index::primary_target primary,
         std::vector<details::update_field> updates,
         std::vector<index::secondary_target> secondaries,
-        bool_list_type secondary_key_updated,
-        variable_table_info const* input_variable_info = nullptr
+        bool_list_type secondary_key_updated
     );
 
     /**
@@ -177,7 +175,6 @@ public:
      * @param idx the primary index that this write operation depends (secondaries under this primary are also handled)
      * @param keys takatori write keys information in the sense of primary index
      * @param columns takatori write columns information
-     * @param input_variable_info input variable information
      */
     write_existing(
         operator_index_type index,
@@ -186,8 +183,7 @@ public:
         write_kind kind,
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
-        sequence_view<column const> columns,
-        variable_table_info const* input_variable_info = nullptr
+        sequence_view<column const> columns
     );
 
     /**

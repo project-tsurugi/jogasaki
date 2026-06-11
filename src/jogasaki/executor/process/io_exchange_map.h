@@ -31,6 +31,7 @@ namespace jogasaki::executor::process {
  * @details a process needs to manage indices (to read from input, write to downstream, write externally)
  * Each index maps to/from exchanges that provides the process with input/output.
  * This object represents the indices for a single process.
+ * The indices are commonly used by relation_io_map and io_info.
  */
 class io_exchange_map {
 public:
@@ -49,13 +50,33 @@ public:
      */
     io_exchange_map() = default;
 
-    std::size_t add_input(input_exchange* s);
-    std::size_t add_output(output_exchange* s);
+    /**
+     * @brief reserve storage for the input entries
+     * @param count the number of inputs reserved
+     */
+    void reserve_input(std::size_t count);
+
+    /**
+     * @brief reserve storage for the output entries
+     * @param count the number of outputs reserved
+     */
+    void reserve_output(std::size_t count);
+
+    /**
+     * @brief register an input exchange at the given input index
+     * @param index the input index
+     * @param s the upstream exchange step that provides the input
+     */
+    void add_input(std::size_t index, input_exchange* s);
+
+    /**
+     * @brief register an output exchange at the given output index
+     * @param index the output index
+     * @param s the downstream exchange step that receives the output
+     */
+    void add_output(std::size_t index, output_exchange* s);
 
     void set_external_output(external_output_operator* s);
-
-    std::size_t input_index(input_exchange* s);
-    std::size_t output_index(output_exchange* s);
 
     [[nodiscard]] input_exchange* const& input_at(std::size_t index) const;
 
@@ -73,6 +94,4 @@ private:
     external_output_entity_type external_output_entity_{};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process

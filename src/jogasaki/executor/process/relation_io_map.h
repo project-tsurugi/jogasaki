@@ -20,6 +20,7 @@
 
 #include <takatori/descriptor/element.h>
 #include <takatori/descriptor/relation.h>
+#include <takatori/relation/step/offer.h>
 
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/meta/group_meta.h>
@@ -27,9 +28,19 @@
 
 namespace jogasaki::executor::process {
 
+/**
+ * @brief mapping from relation to input/output indices used by a process
+ * @details inputs are looked up by the relation descriptor of the upstream exchange (a process
+ * has at most one `take_*` operator per upstream exchange). Outputs are looked up by the `offer`
+ * operator instance itself (not by its destination relation), because a single process can
+ * contain multiple `offer` operators that target the same downstream exchange,
+ * and each such `offer` must be assigned its own output index.
+ * The input/output indices are comonly used by `io_exchange_map` and `io_info` to refer the exchanges.
+ */
 class relation_io_map {
 public:
-    using entity_type = std::unordered_map<takatori::descriptor::relation, std::size_t>;
+    using input_entity_type = std::unordered_map<takatori::descriptor::relation, std::size_t>;
+    using output_entity_type = std::unordered_map<takatori::relation::step::offer const*, std::size_t>;
 
     constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
@@ -42,22 +53,20 @@ public:
      * @brief create new instance
      */
     relation_io_map(
-        entity_type input_entity,
-        entity_type output_entity
+        input_entity_type input_entity,
+        output_entity_type output_entity
     );
 
     [[nodiscard]] std::size_t input_index(takatori::descriptor::relation const& arg) const;
 
-    [[nodiscard]] std::size_t output_index(takatori::descriptor::relation const& arg) const;
+    [[nodiscard]] std::size_t output_index(takatori::relation::step::offer const& arg) const;
 
     [[nodiscard]] std::size_t input_count() const noexcept;
 
     [[nodiscard]] std::size_t output_count() const noexcept;
 private:
-    entity_type input_entity_{};
-    entity_type output_entity_{};
+    input_entity_type input_entity_{};
+    output_entity_type output_entity_{};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process

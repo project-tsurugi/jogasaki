@@ -53,6 +53,7 @@
 #include <takatori/relation/join_scan.h>
 #include <takatori/relation/scan.h>
 #include <takatori/relation/sort_direction.h>
+#include <takatori/relation/step/offer.h>
 #include <takatori/relation/write_kind.h>
 #include <takatori/statement/create_index.h>
 #include <takatori/statement/create_table.h>
@@ -728,6 +729,20 @@ static status prepare(
     return create_prepared_statement(std::move(analysis), ctx.variable_provider(), c_options, sp, ctx, out);
 }
 
+static std::vector<takatori::relation::step::offer const*> enumerate_offers(takatori::plan::process const& process) {
+    std::vector<takatori::relation::step::offer const*> result{};
+    result.reserve(process.operators().size());
+    takatori::relation::sort_from_upstream(
+        process.operators(),
+        [&result](takatori::relation::expression const& op){
+            if(op.kind() == takatori::relation::expression_kind::offer) {
+                result.emplace_back(std::addressof(unsafe_downcast<takatori::relation::step::offer const>(op)));
+            }
+        }
+    );
+    return result;
+}
+
 executor::process::step create(
     takatori::plan::process const& process,
     compiled_info const& info,
@@ -745,14 +760,14 @@ executor::process::step create(
 
     yugawara::binding::factory bindings{};
     std::unordered_map<takatori::descriptor::relation, std::size_t> inputs{};
-    std::unordered_map<takatori::descriptor::relation, std::size_t> outputs{};
+    std::unordered_map<takatori::relation::step::offer const*, std::size_t> outputs{};
     auto upstreams = process.upstreams();
     for(std::size_t i=0, n=upstreams.size(); i < n; ++i) {
         inputs[bindings(upstreams[i])] = i;
     }
-    auto downstreams = process.downstreams();
-    for(std::size_t i=0, n=downstreams.size(); i < n; ++i) {
-        outputs[bindings(downstreams[i])] = i;
+    auto offers = enumerate_offers(process);
+    for(std::size_t i=0, n=offers.size(); i < n; ++i) {
+        outputs[offers[i]] = i;
     }
     return {
         std::move(pinfo),
@@ -1198,29 +1213,43 @@ static void create_mirror_for_execute(
     using model::step_kind;
     for(auto&& [s, step] : steps) {
         auto map = std::make_shared<executor::process::io_exchange_map>();
+        // For process steps, `relation_io_map` (built in `create()` above) is the single source
+        // of truth for input/output indices. `io_exchange_map` is populated by looking up the
+        // index for each upstream/downstream exchange from `relation_io_map`, so that both maps
+        // agree on the index assigned to each input/output, rather than relying on two separate
+        // enumerations producing entries in the same order.
+        executor::process::relation_io_map const* rmap{};
+        if(step->kind() == step_kind::process) {
+            rmap = unsafe_downcast<executor::process::step>(step)->relation_io_map().get();
+            map->reserve_input(rmap->input_count());
+            map->reserve_output(rmap->output_count());
+        }
         if(takatori::plan::has_upstream(*s)) {
             takatori::plan::enumerate_upstream(
                 *s,
-                [step=step, &steps, &map](takatori::plan::step const& up){
-                    // assuming enumerate_upstream respects the input port ordering TODO confirm
+                [step=step, &steps, &map, rmap, &bindings](takatori::plan::step const& up){
                     *step << *steps[&up];
                     if(step->kind() == step_kind::process) {
-                        map->add_input(unsafe_downcast<executor::exchange::step>(steps[&up]));
-                    }
-                }
-            );
-        }
-        if(takatori::plan::has_downstream(*s)) {
-            takatori::plan::enumerate_downstream(
-                *s,
-                [step=step, &steps, &map](takatori::plan::step const& down){
-                    if(step->kind() == step_kind::process) {
-                        map->add_output(unsafe_downcast<executor::exchange::step>(steps[&down]));
+                        auto& exchange = unsafe_downcast<takatori::plan::exchange const>(up);
+                        auto idx = rmap->input_index(bindings(exchange));
+                        map->add_input(idx, unsafe_downcast<executor::exchange::step>(steps[&up]));
                     }
                 }
             );
         }
         if(step->kind() == step_kind::process) {
+            // build outputs from the `offer` operators in the process's operator graph, rather
+            // than from the step graph's downstream edges. A single process can contain multiple
+            // `offer` operators that target the same downstream exchange (e.g. the arms of a
+            // `UNION ALL` distributed by a `buffer` operator), and each such `offer` must get its
+            // own output index/sink so that they don't end up sharing (and double-releasing) the
+            // same exchange sink/writer.
+            auto& process = unsafe_downcast<takatori::plan::process const>(*s);
+            for(auto&& offer : enumerate_offers(process)) {
+                auto& exchange = yugawara::binding::extract<takatori::plan::exchange>(offer->destination());
+                auto idx = rmap->output_index(*offer);
+                map->add_output(idx, unsafe_downcast<executor::exchange::step>(steps.at(&exchange)));
+            }
             unsafe_downcast<executor::process::step>(step)->io_exchange_map(std::move(map));
         }
     }

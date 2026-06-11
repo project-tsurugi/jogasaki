@@ -15,13 +15,14 @@
  */
 #include "relation_io_map.h"
 
+#include <memory>
 #include <utility>
 
 namespace jogasaki::executor::process {
 
 relation_io_map::relation_io_map(
-    relation_io_map::entity_type input_entity,
-    relation_io_map::entity_type output_entity
+    relation_io_map::input_entity_type input_entity,
+    relation_io_map::output_entity_type output_entity
 ) :
     input_entity_(std::move(input_entity)),
     output_entity_(std::move(output_entity))
@@ -31,8 +32,8 @@ std::size_t relation_io_map::input_index(takatori::descriptor::relation const& a
     return input_entity_.at(arg);
 }
 
-std::size_t relation_io_map::output_index(takatori::descriptor::relation const& arg) const {
-    return output_entity_.at(arg);
+std::size_t relation_io_map::output_index(takatori::relation::step::offer const& arg) const {
+    return output_entity_.at(std::addressof(arg));
 }
 
 std::size_t relation_io_map::input_count() const noexcept {
@@ -43,6 +44,4 @@ std::size_t relation_io_map::output_count() const noexcept {
     return output_entity_.size();
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process

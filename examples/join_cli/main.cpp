@@ -426,8 +426,8 @@ public:
         xch2 >> consumer;
 
         auto map = std::make_shared<io_exchange_map>();
-        map->add_input(&xch1);
-        map->add_input(&xch2);
+        map->add_input(0, &xch1);
+        map->add_input(1, &xch2);
         consumer.io_exchange_map(std::move(map));
 
         consumer.did_start_task(std::make_shared<callback_type>([](callback_arg* arg){

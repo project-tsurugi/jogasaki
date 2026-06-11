@@ -371,7 +371,7 @@ public:
         xch >> consumer;
 
         auto map = std::make_shared<io_exchange_map>();
-        map->add_input(&xch);
+        map->add_input(0, &xch);
         consumer.io_exchange_map(std::move(map));
 
         consumer.did_start_task(std::make_shared<callback_type>([](callback_arg* arg){

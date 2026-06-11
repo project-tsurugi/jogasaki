@@ -47,18 +47,14 @@ TEST_F(io_exchange_map_test, basic) {
     exchange::forward::step in1{};
     exchange::forward::step out0{};
     exchange::forward::step out1{};
-    map.add_input(&in0);
-    map.add_output(&out0);
-    map.add_input(&in1);
-    map.add_output(&out1);
+    map.add_input(0, &in0);
+    map.add_output(0, &out0);
+    map.add_input(1, &in1);
+    map.add_output(1, &out1);
 
-    EXPECT_EQ(0, map.input_index(&in0));
-    EXPECT_EQ(1, map.input_index(&in1));
     EXPECT_EQ(&in0, map.input_at(0));
     EXPECT_EQ(&in1, map.input_at(1));
 
-    EXPECT_EQ(0, map.output_index(&out0));
-    EXPECT_EQ(1, map.output_index(&out1));
     EXPECT_EQ(&out0, map.output_at(0));
     EXPECT_EQ(&out1, map.output_at(1));
 }

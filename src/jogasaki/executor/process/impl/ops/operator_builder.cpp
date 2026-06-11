@@ -473,7 +473,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::offer& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto writer_index = relation_io_map_->output_index(node.destination());
+    auto writer_index = relation_io_map_->output_index(node);
     auto& output = io_info_->output_at(writer_index);
     return std::make_unique<offer>(
         index_++,

@@ -471,7 +471,7 @@ TEST_F(partition_calculation_test, left_outer_join_rtx) {
     jogasaki::plan::impl::preprocess(b, info, mirrors);
     auto s      = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();
-    ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
+    ASSERT_EQ(0, io_map->output_index(offer));
 
     auto& b3       = grp1.downstreams()[0];
     auto&& graph3  = takatori::util::downcast<takatori::plan::process>(b3).operators();
@@ -579,7 +579,7 @@ TEST_F(partition_calculation_test, left_outer_join_no_rtx) {
     jogasaki::plan::impl::preprocess(b, info, mirrors);
     auto s      = jogasaki::plan::impl::create(b, info, mirrors, nullptr);
     auto io_map = s.relation_io_map();
-    ASSERT_EQ(0, io_map->output_index(bindings(grp1)));
+    ASSERT_EQ(0, io_map->output_index(offer));
 
     auto& b3       = grp1.downstreams()[0];
     auto&& graph3  = takatori::util::downcast<takatori::plan::process>(b3).operators();

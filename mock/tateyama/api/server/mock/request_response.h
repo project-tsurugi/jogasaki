@@ -19,7 +19,6 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <emmintrin.h>
 #include <functional>
 #include <ios>
 #include <memory>
@@ -28,9 +27,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <xmmintrin.h>
 #include <tbb/concurrent_hash_map.h>
 #include <tbb/concurrent_queue.h>
+
+#include <jogasaki/spin_wait_hint.h>
 
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/database_info.h>
@@ -278,7 +278,7 @@ public:
                     return false;
                 }
             }
-            _mm_pause();
+            jogasaki::spin_wait_hint();
         }
         return true;
     }

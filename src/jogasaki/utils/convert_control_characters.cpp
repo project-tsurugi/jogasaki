@@ -24,8 +24,8 @@ std::string convert_control_characters(std::string_view str) {
     constexpr char replacement_char = '!';
     std::stringstream out{};
     for(std::size_t idx = 0, n = str.size(); idx < n; ++idx) {
-        auto c = *(str.data()+idx); //NOLINT
-        if(c < 0) {
+        auto c = static_cast<unsigned char>(*(str.data()+idx)); //NOLINT
+        if((c & 0x80U) != 0) {
             // msb is set - discard in order to avoid garbage in UTF-8 chars
         } else if(c <= 0x1f) {
             out << replacement_char;

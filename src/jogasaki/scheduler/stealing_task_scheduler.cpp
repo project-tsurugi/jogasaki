@@ -17,7 +17,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <emmintrin.h>
 #include <ostream>
 #include <stdexcept>
 #include <string_view>
@@ -38,6 +37,7 @@
 #include <jogasaki/scheduler/thread_info.h>
 #include <jogasaki/scheduler/thread_local_info.h>
 #include <jogasaki/scheduler/thread_params.h>
+#include <jogasaki/spin_wait_hint.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/latch.h>
@@ -105,7 +105,7 @@ void stealing_task_scheduler::wait_for_progress(std::size_t id) {
         // this case is for testing purpose
         // empty() is not thread safe or 100% accurate under concurrency modification
         while(! job_contexts_.empty()) {
-            _mm_pause();
+            spin_wait_hint();
         }
         return;
     }

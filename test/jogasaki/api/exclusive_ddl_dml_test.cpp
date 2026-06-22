@@ -20,7 +20,6 @@
 #include <string_view>
 #include <vector>
 #include <gtest/gtest.h>
-#include <xmmintrin.h>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
@@ -35,6 +34,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/spin_wait_hint.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/create_tx.h>
@@ -152,7 +152,7 @@ TEST_F(exclusive_ddl_dml_test, starting_ddls_blocked_by_dml_req) {
         std::vector<mock::basic_record> result{};
         execute_query("select count(*) from t0", result);
     });
-    while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
+    while(c->can_lock()) { spin_wait_hint(); }  // wait for the query to acquire shared lock
     {
         auto tx = utils::create_transaction(*db_);
         test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
@@ -283,7 +283,7 @@ TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req)
         std::vector<mock::basic_record> result{};
         execute_query("select count(*) from t0", result);
     });
-    while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
+    while(c->can_lock()) { spin_wait_hint(); }  // wait for the query to acquire shared lock
     {
         // drop index is blocked by DML
         auto tx = utils::create_transaction(*db_);
@@ -379,7 +379,7 @@ TEST_F(exclusive_ddl_dml_test, starting_truncate_blocked_by_dml_req) {
         std::vector<mock::basic_record> result{};
         execute_query("select count(*) from t0", result);
     });
-    while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
+    while(c->can_lock()) { spin_wait_hint(); }  // wait for the query to acquire shared lock
     {
         auto tx = utils::create_transaction(*db_);
         test_stmt_err("TRUNCATE TABLE t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");

@@ -20,7 +20,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cxxabi.h>
-#include <emmintrin.h>
 #include <exception>
 #include <functional>
 #include <future>
@@ -61,6 +60,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
+#include <jogasaki/spin_wait_hint.h>
 #include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/command_utils.h>
@@ -673,7 +673,7 @@ public:
                             if (client_idle_ > 0) {
                                 auto cn = 0;
                                 while(cn < client_idle_) {
-                                    _mm_pause();
+                                    jogasaki::spin_wait_hint();
                                     ++cn;
                                 }
                             }

@@ -27,6 +27,8 @@ if(ENABLE_COVERAGE)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage -fprofile-update=atomic")
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsigned-char")
+
 function(set_compile_options target_name)
     if (BUILD_STRICT)
         target_compile_options(${target_name}

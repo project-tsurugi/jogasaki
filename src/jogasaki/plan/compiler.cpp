@@ -389,6 +389,11 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
         case statement::statement_kind::truncate_table:
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
+        case statement::statement_kind::rename_column: [[fallthrough]];
+        case statement::statement_kind::rename_index: [[fallthrough]];
+        case statement::statement_kind::rename_table:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
+            break;
         default:
             throw_exception(std::logic_error{""});
     }
@@ -717,6 +722,9 @@ static status prepare(
             yugawara::restricted_feature::exchange_discard,
             yugawara::restricted_feature::statement_write_delete,
             yugawara::restricted_feature::statement_write_update,
+            yugawara::restricted_feature::statement_rename_column,
+            yugawara::restricted_feature::statement_rename_index,
+            yugawara::restricted_feature::statement_rename_table,
         };
         if(cfg && ! cfg->enable_truncate()) {
             c_options.restricted_features() += {
@@ -1080,7 +1088,7 @@ static void create_mirror_for_empty_statement(
     std::shared_ptr<mirror_container> const& mirrors,
     parameter_set const* parameters
 ) {
-auto ops = std::make_shared<executor::common::empty>();
+    auto ops = std::make_shared<executor::common::empty>();
     auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     ctx.executable_statement(
         std::make_shared<executable_statement>(
@@ -1306,6 +1314,12 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
             break;
         case statement_kind::truncate_table:
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::rename_column: [[fallthrough]];
+        case statement_kind::rename_index: [[fallthrough]];
+        case statement_kind::rename_table:
+            // not implemented yet, but pass empty statement to avoid segv with explain statement
+            create_mirror_for_empty_statement(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:
             throw_exception(std::logic_error{""});

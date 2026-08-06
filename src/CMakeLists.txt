@@ -1,3 +1,4 @@
+
 if(NOT TARGET sharksfin-${SHARKSFIN_IMPLEMENTATION})
     message(FATAL_ERROR "sharksfin implementation \"sharksfin-${SHARKSFIN_IMPLEMENTATION}\" not found")
 endif()

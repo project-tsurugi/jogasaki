@@ -157,7 +157,9 @@ secondary_target::field_mapping_type secondary_target::create_fields(
     for(auto&& k : idx.keys()) {
         bool found = false;
         for(std::size_t i=0, n=primary->keys().size(); i<n; ++i) {
-            if(primary->keys().at(i) == k) {
+            // compare by calling column() in order to ignore the sort direction
+            // that is not relevant to find the corresponding column in the primary index
+            if(primary->keys().at(i).column() == k.column()) {
                 auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                     kvs::spec_key_ascending : kvs::spec_key_descending;
                 ret.emplace_back(

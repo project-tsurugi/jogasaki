@@ -173,8 +173,6 @@ std::vector<std::pair<mock::basic_record, mock::basic_record>> get_secondary_ent
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     {
-        mock::basic_record secondary_key{secondary_key_template};
-        mock::basic_record primary_key{primary_key_template};
         std::vector<std::pair<mock::basic_record, mock::basic_record>> ret{};
         {
             data::aligned_buffer buf{};
@@ -188,8 +186,8 @@ std::vector<std::pair<mock::basic_record, mock::basic_record>> get_secondary_ent
 
             auto secondary_key_meta = jogasaki::index::create_meta(secondary, true);
             auto primary_key_meta = jogasaki::index::create_meta(primary, true);
-            validate_meta(*secondary_key.record_meta(), *secondary_key_meta);
-            validate_meta(*primary_key.record_meta(), *primary_key_meta);
+            validate_meta(*secondary_key_template.record_meta(), *secondary_key_meta);
+            validate_meta(*primary_key_template.record_meta(), *primary_key_meta);
 
             auto secondary_key_fields = jogasaki::index::index_fields(secondary, true);
             auto primary_key_fields = jogasaki::index::index_fields(primary, true);
@@ -199,6 +197,9 @@ std::vector<std::pair<mock::basic_record, mock::basic_record>> get_secondary_ent
             data::small_record_store secondary_key_store{secondary_key_meta, &resource};
             data::small_record_store primary_key_store{primary_key_meta, &resource};
             while (status::ok == it->next()) {
+                // the records are moved into `ret` below, so they must be created for each entry
+                mock::basic_record secondary_key{secondary_key_template};
+                mock::basic_record primary_key{primary_key_template};
                 std::string_view key{};
                 if(status::ok != it->read_key(key)) {
                     fail_with_exception();

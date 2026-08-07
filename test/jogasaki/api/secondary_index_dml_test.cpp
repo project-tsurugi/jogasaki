@@ -37,6 +37,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/index/field_info.h>
@@ -57,6 +58,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/coder.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
+#include <jogasaki/utils/runner.h>
 
 #include "../kvs_test_utils.h"
 #include "api_test_base.h"
@@ -92,6 +94,9 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->trace_external_log(false);
+        cfg->plan_recording(false);
+        cfg->inplace_teardown(false);
         db_setup(cfg);
     }
 
@@ -108,6 +113,35 @@ bool contains(std::string_view whole, std::string_view part) {
 }
 
 using k = meta::field_type_kind;
+
+TEST_F(secondary_index_dml_test, insert_with_multi_column_desc_index) {
+    // reproducer for issue: INSERT fails with unknown error when a multi-column
+    // secondary index has a descending column
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C0, C1, C2 DESC)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C0=1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1,10,100)), result[0]);
+    }
+}
+
+TEST_F(secondary_index_dml_test, insert_with_desc_for_pk_column) {
+    // regression testcase for issue #1536
+    // where specifying DESC for a primary key column caused INSERT to faile with unknown error
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T (C0 DESC)");
+    execute_statement("INSERT INTO T VALUES(1, 10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C0=1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+    }
+}
+
 
 TEST_F(secondary_index_dml_test, basic) {
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");

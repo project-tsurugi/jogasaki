@@ -319,4 +319,43 @@ TEST_F(secondary_index_ddl_test, create_index_with_table_name) {
     execute_statement("DROP TABLE T1");
 }
 
+TEST_F(secondary_index_ddl_test, create_index_with_duplicate_key_column) {
+    // the same column must not appear twice in the index key elements
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+
+    test_stmt_err("CREATE INDEX I ON T (C1, C1)", error_code::symbol_analyze_exception);
+    test_stmt_err("CREATE INDEX I ON T (C1, C2, C1)", error_code::symbol_analyze_exception);
+
+    execute_statement("DROP TABLE T");
+}
+
+TEST_F(secondary_index_ddl_test, create_index_with_duplicate_key_column_in_different_direction) {
+    // the duplication is detected regardless of the sort direction, so the engine never sees an
+    // index whose key elements refer to the same column with conflicting directions
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+
+    test_stmt_err("CREATE INDEX I ON T (C1, C1 DESC)", error_code::symbol_analyze_exception);
+    test_stmt_err("CREATE INDEX I ON T (C1 DESC, C1)", error_code::symbol_analyze_exception);
+
+    execute_statement("DROP TABLE T");
+}
+
+TEST_F(secondary_index_ddl_test, create_index_with_duplicate_primary_key_column) {
+    // same as above, but the duplicated column is a primary key column, whose key element is
+    // resolved against the primary index by secondary_target
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+
+    test_stmt_err("CREATE INDEX I ON T (C0, C0)", error_code::symbol_analyze_exception);
+    test_stmt_err("CREATE INDEX I ON T (C0, C0 DESC)", error_code::symbol_analyze_exception);
+
+    execute_statement("DROP TABLE T");
+}
+
+TEST_F(secondary_index_ddl_test, create_table_with_duplicate_primary_key_column) {
+    // the primary index key elements are checked in the same way as the secondary ones
+    test_stmt_err(
+        "CREATE TABLE T (C0 INT NOT NULL, C1 INT, PRIMARY KEY(C0, C0))",
+        error_code::symbol_analyze_exception);
+}
+
 }

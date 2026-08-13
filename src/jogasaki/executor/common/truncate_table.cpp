@@ -253,10 +253,25 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
         return false;
     }
 
-    // create new secondary index storages
+    // create new secondary index storages, and re-register each of them into the provider so
+    // that they refer to the new table object registered above
     for(auto&& entry : secondaries) {
         storage::storage_entry secondary_id{};
-        if(! create_secondary_storage(context, *entry, new_primary_id, secondary_id)) {
+        std::string secondary_serialized{};
+        if(! create_secondary_storage(
+            context,
+            *entry,
+            new_primary_id,
+            secondary_id,
+            std::addressof(secondary_serialized))) {
+            return false;
+        }
+        if(auto err = recovery::deserialize_storage_option_into_provider(
+            secondary_serialized,
+            provider,
+            provider,
+            true)) {
+            set_error_info(context, err);
             return false;
         }
     }

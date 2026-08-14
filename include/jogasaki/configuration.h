@@ -781,7 +781,7 @@ private:
     std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;
     bool enable_disjunction_range_hinting_ = true;
-    bool enable_truncate_ = false;
+    bool enable_truncate_ = true;
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;
     bool udf_pass_mock_tag_ = false;

@@ -71,7 +71,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->enable_truncate(true);
         cfg->enable_maintenance_thread(false);  // run maintenance explicitly in tests
         db_setup(cfg);
     }

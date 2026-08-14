@@ -13,12 +13,10 @@ TRUNCATE TABLE 文の実装設計を記述する。
   TRUNCATE TABLE <table-name> [<column-identity-restart-option>]
 
 <column-identity-restart-option>:
-  RESTART IDENTITY
   CONTINUE IDENTITY
 ```
 
-オプションは identity 列のリセットの有無のみである。
-オプション無指定時のデフォルトは `CONTINUE IDENTITY` である。
+オプションは identity 列のリセットの有無を指定するためのものであるが、`RESTART IDENTITY` はサポートしない(理由は「サポートしないオプション」を参照)。
 
 ## 実装方針
 
@@ -42,21 +40,15 @@ TRUNCATE TABLE は対象テーブルの全行を削除する操作であるが�
 
 ### IDENTITY 列の処理
 
-- `RESTART IDENTITY` が指定された場合、TABLE に紐づくすべてのシーケンス(暗黙定義の主キー列および generated as identity 列)を再作成する
-  - 新しいシーケンスIDとシーケンス定義IDを割り当て、システムテーブル(`__system_sequences`)に登録する
-  - 既存のシーケンスIDとシーケンス定義IDは削除する。具体的には下記のような処理になる。これらは同期的な処理であり、 TRUNCATE TABLE の完了までに終了する。
-    - シーケンスIDはトランザクションエンジンが管理するもののため、トランザクションエンジンに削除を依頼する
-    - シーケンス定義IDはjogasakiが管理するものであり、システムテーブルから削除する
-    - ストレージメタデータからも削除する必要があるが、これはプライマリインデックスのストレージメタデータの再作成に含まれるので明示的に行う必要はない
-- `CONTINUE IDENTITY`（デフォルト）が指定された場合、シーケンスは既存のものを引き続き使用する
-  - 既存のシーケンスIDとシーケンス定義IDを引き継ぐ
-  - システムテーブルには変更なし 
-  - プライマリインデックスのストレージメタデータの再作成時に、シーケンス定義IDは既存のものを使用する
+- TRUNCATE TABLE はシーケンスの値・シーケンスID・シーケンス定義IDのいずれも変更しない。既存のシーケンスをそのまま引き続き使用する
+  - システムテーブル(`__system_sequences`)には変更なし
+  - プライマリインデックスのストレージメタデータの再作成時も、シーケンス定義IDは既存のものを使用する
+- `RESTART IDENTITY` はサポートしない
 
 ### DMLとの排他制御、ロールバックの扱い
 
 - TRUNCATE文はDDL扱いとし、通常のDDL/DML排他制御( tsurugi-issues #1230 )に従う
-- DROP TABLE と同様、ロールバックはサポートしない。TRUNCATE TABLEに使用されたトランザクションがアボートした場合、シーケンステーブルにゴミが残る可能性があるが、これもDROP TABLEと同様の制限である
+- DROP TABLE と同様、ロールバックはサポートしない。TRUNCATE TABLE で作成された新しいストレージや、削除予約された古いストレージは、TRUNCATE TABLEを実行したトランザクションがアボートしても取り消されない(ストレージの作成/削除予約自体がトランザクショナルでないため)。全行削除の効果はアボート後も残る
 
 ### 権限
 
@@ -78,22 +70,22 @@ TRUNCATE TABLE を実行するには、管理者権限またはテーブルのAL
 下記のテストシナリオを含める
 
 - TRUNCATE TABLE によりテーブルの全行が削除される
-- 暗黙定義の主キー列があるテーブルに対して TRUNCATE TABLE を実行して全行削除を確認、その後も問題なくINSERTが可能(RESTART/CONTINUE 両方試す)
-  - TRUNCATE TABLE前後でシステムに登録されているsequenceの個数は変化しない
-    - RESTARTの場合は既存のエントリが削除されて、新しいエントリが追加される
-    - CONTINUEの場合は既存のエントリがそのまま残る
-- generated as identity 列があるテーブルに対して TRUNCATE TABLE を実行して全行削除を確認、その後も問題なくINSERTが可能であることを確認。また、INSERT時にされる値が、RESTART/CONTINUE による仕様通りであることを確認
+- 暗黙定義の主キー列があるテーブルに対して TRUNCATE TABLE を実行して全行削除を確認、その後も問題なくINSERTが可能
+  - TRUNCATE TABLE前後でシステムに登録されているsequenceの個数・エントリ内容が変化しない
+- generated as identity 列があるテーブルに対して TRUNCATE TABLE を実行して全行削除を確認、その後も問題なくINSERTが可能であることを確認。また、シーケンスの値がTRUNCATE前後で継続していることを確認
 
 - DROP TABLE と同様に、lazy deleteや再起動後のリカバリのテストを実施する。
+- `RESTART IDENTITY` を指定した TRUNCATE TABLE 文がコンパイルエラーになることを確認するテストを含める
 
-## 既知の制限
+## サポートしないオプション
 
-### TRUNCATE TABLE RESTART IDENTITY のアボート時の挙動
+### RESTART IDENTITY
 
-`RESTART IDENTITY` 付き TRUNCATE TABLE を実行したトランザクションがアボートした場合、シーケンスが不整合な状態になる。
-システムテーブル(`__system_sequences`)から旧エントリ(def_id → seq_id)を削除する処理はトランザクション内で行われるため、アボートすると旧エントリが復元される。しかし、旧シーケンスID(`seq_id`)の削除はトランザクションエンジンに依頼して即時に行われるため、アボートしても復元されない。
-この影響により、アボート後やTsurugidb再起動後にシーケンスの値の連続性が失われる可能性がある。(transaction_fail_ddl_test.truncate_restart_aborted に関連テストあり)
-旧シーケンスIDの削除をトランザクションのコミット後まで遅延させるといった対応方法が考えられるが、現状では未対応である。
+現状では `RESTART IDENTITY` はサポートしない。指定するとコンパイルエラーになる
+
+- TRUNCATE TABLE を実行したトランザクションがアボートした際にシーケンスに関するシステムレコードが不正な状態になることを避けるため、シーケンスID・シーケンス定義IDを維持したまま値だけをリセットする必要があった
+- しかし、既存のシーケンスに新しく initial value を設定する処理は、コーナーケース(initial value が bigint の最小値かつ increment が 1 の場合など、次の値を求める減算がオーバーフローする場合)において正しく initial value をセットすることができない
+- この問題を安全に解消する方法が見つからなかったため、`RESTART IDENTITY` のサポート自体を見送ることとした。
 
 ## その他
 

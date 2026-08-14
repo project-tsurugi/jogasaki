@@ -25,7 +25,6 @@
 #include <vector>
 #include <glog/logging.h>
 
-#include <takatori/statement/truncate_table_option_kind.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
@@ -33,10 +32,7 @@
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/storage/basic_configurable_provider.h>
-#include <yugawara/storage/column.h>
-#include <yugawara/storage/column_value_kind.h>
 #include <yugawara/storage/index.h>
-#include <yugawara/storage/sequence.h>
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/auth/action_set.h>
@@ -54,6 +50,8 @@
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/string_manipulation.h>
 
 #include "ddl_common.h"
@@ -72,60 +70,6 @@ model::statement_kind truncate_table::kind() const noexcept {
 }
 
 namespace {
-
-// information about an auto-generated sequence (for implicit PK or generated identity columns)
-struct generated_sequence_info {
-    std::string name{};
-    std::shared_ptr<yugawara::storage::sequence> seq{};
-};
-
-std::vector<generated_sequence_info> collect_generated_sequences(
-    yugawara::storage::table const& t,
-    yugawara::storage::configurable_provider& provider
-) {
-    std::vector<generated_sequence_info> ret{};
-    ret.reserve(t.columns().size());
-    for(auto&& col : t.columns()) {
-        std::optional<std::string> seq_name{};
-        if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
-            seq_name = std::string{col.simple_name()};
-        } else if(col.default_value().kind() == yugawara::storage::column_value_kind::sequence) {
-            auto& dv = col.default_value().element<yugawara::storage::column_value_kind::sequence>();
-            if(utils::is_prefix(dv->simple_name(), generated_sequence_name_prefix)) {
-                seq_name = std::string{dv->simple_name()};
-            }
-        }
-        if(seq_name) {
-            if(auto s = provider.find_sequence(*seq_name)) {
-                ret.emplace_back(
-                    generated_sequence_info{*seq_name, std::const_pointer_cast<yugawara::storage::sequence>(s)} //TODO avoid using const pointer cast
-                );
-            }
-        }
-    }
-    return ret;
-}
-
-bool reset_generated_sequences(
-    request_context& context,
-    yugawara::storage::table const& t,
-    yugawara::storage::configurable_provider& provider
-) {
-    auto seqs = collect_generated_sequences(t, provider);
-    // remove existing sequence ids first because accessing system table can hit cc errors
-    for(auto&& info : seqs) {
-        if(! remove_generated_sequence(context, info.name, *info.seq)) {
-            return false;
-        }
-    }
-    // assign new sequence ids while keeping the same sequence object referenced by the table column
-    for(auto&& info : seqs) {
-        if(! create_generated_sequence(context, *info.seq, false)) {
-            return false;
-        }
-    }
-    return true;
-}
 
 bool reserve_delete_secondary_indices(
     request_context& context,
@@ -174,18 +118,6 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
     }
     if(! validate_alter_table_auth(context, old_storage_id)) {
         return false;
-    }
-
-    bool restart =
-        ct_->options().contains(takatori::statement::truncate_table_option_kind::restart_identity);
-
-    // For RESTART IDENTITY, replace existing sequence ids with new ones first
-    // (accessing the system table can cause cc errors, so do it early to bail out cleanly).
-    // We brand-new the seq id on cc engine, but re-use the seq. def. ids, which are part of configurable_provider.
-    if(restart) {
-        if(! reset_generated_sequences(context, *t, provider)) {
-            return false;
-        }
     }
 
     // mark secondary index storages as delete-reserved in metadata

@@ -50,6 +50,9 @@ using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
+using namespace jogasaki::mock;
+
+using kind = meta::field_type_kind;
 
 using takatori::util::unsafe_downcast;
 
@@ -498,21 +501,8 @@ TEST_F(transaction_fail_ddl_test, drop_table_missing_sequence_with_restart) {
 }
 
 TEST_F(transaction_fail_ddl_test, truncate_restart_aborted) {
-    // TRUNCATE TABLE RESTART IDENTITY reassigns sequence definition_ids and seq_ids.
-    // The old sharksfin sequence is deleted non-transactionally during RESTART.  If the
-    // truncate tx is then aborted:
-    //   - the system table is rolled back (old def_id → old seq_id is restored), but
-    //   - the old sharksfin sequence no longer exists.
-    //
-    // Without db restart: DML works because the in-memory sequence state was updated to
-    // the new seq_id (created during RESTART), which survives the abort.
-    //
-    // After db restart: recovery reads the system table (old def_id → old seq_id) and
-    // calls read_sequence(old_seq_id), which returns err_not_found.  The sequence manager
-    // handles this gracefully by re-initialising the sequence from its initial_value.
-    // DML therefore succeeds, but the sequence has been silently reset to initial_value
-    // even though the TRUNCATE tx was aborted.  This is a known limitation: the
-    // non-transactional deletion of the sharksfin sequence cannot be rolled back.
+    // TRUNCATE TABLE is not transactional - its effect is kept even when the transaction that
+    // issued it finally fails. What must not happen is leaving the sequence metadata broken.
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory cannot rollback by abort";
     }
@@ -529,44 +519,40 @@ TEST_F(transaction_fail_ddl_test, truncate_restart_aborted) {
     }
     {
         auto tx = utils::create_transaction(*db_, opts);
-        execute_statement("TRUNCATE TABLE t RESTART IDENTITY", *tx);
+        execute_statement("TRUNCATE TABLE t", *tx);
         ASSERT_EQ(status::ok, tx->abort());
     }
-    // System table is rolled back → seq count unchanged, old entry restored.
+    // the sequence system table is untouched and the sequence itself still exists
     ASSERT_EQ(1, seq_count());
-    // But the old sharksfin sequence was deleted non-transactionally and is gone.
-    ASSERT_TRUE(! exists_seq(seqs_before[0]));
+    ASSERT_TRUE(exists_seq(seqs_before[0]));
 
-    // Without db restart, DML works: in-memory sequence state was updated to the new
-    // seq_id during truncate and survives the abort.  The sequence was reset by RESTART
-    // so values start over from 1.
+    // the sequence has been reset, so the values start over from the initial value
     execute_statement("INSERT INTO t (c0) VALUES (10)");
     execute_statement("INSERT INTO t (c0) VALUES (11)");
-    ASSERT_EQ(1, seq_count());
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c1 FROM t ORDER BY c0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(4)), result[1]);
+    }
 
     ASSERT_EQ(status::ok, db_->stop());
-    // Warning messages about missing sequence value are expected here.
     ASSERT_EQ(status::ok, db_->start());
 
-    // After restart: recovery finds old def_id → old seq_id in the system table but
-    // old seq_id is missing from sharksfin.  The sequence manager re-initialises from
-    // initial_value, so DML succeeds — but the sequence value is permanently reset.
+    // the sequence is recovered normally and continues from the durable value
     ASSERT_EQ(1, seq_count());
+    ASSERT_TRUE(exists_seq(seqs_before[0]));
     execute_statement("INSERT INTO t (c0) VALUES (20)");
     execute_statement("INSERT INTO t (c0) VALUES (21)");
     {
-        // Sequence was silently re-initialised to initial_value (1) after restart.
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c1 FROM t WHERE c0 >= 20 ORDER BY c0", result);
         ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(5)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(6)), result[1]);
     }
 
-    // DROP TABLE and re-CREATE TABLE restores a correct consistent state.
-    execute_statement("DROP TABLE t");
-    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
-    ASSERT_EQ(1, seq_count());
-    execute_statement("INSERT INTO t (c0) VALUES (1)");
-    execute_statement("INSERT INTO t (c0) VALUES (2)");
     execute_statement("DROP TABLE t");
     ASSERT_EQ(0, seq_count());
 }

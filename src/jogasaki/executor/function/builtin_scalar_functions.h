@@ -135,6 +135,198 @@ data::any ltrim(
     sequence_view<data::any> args
 );
 
+/**
+ * @brief extract the year field from date or timestamp (without time zone)
+ */
+data::any extract_year(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the year field from timestamp with time zone (in the system time zone)
+ */
+data::any extract_year_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the month field from date or timestamp (without time zone)
+ */
+data::any extract_month(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the month field from timestamp with time zone (in the system time zone)
+ */
+data::any extract_month_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the day field from date or timestamp (without time zone)
+ */
+data::any extract_day(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the day field from timestamp with time zone (in the system time zone)
+ */
+data::any extract_day_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the hour field from time or timestamp (without time zone)
+ */
+data::any extract_hour(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the hour field from timestamp with time zone (in the system time zone)
+ */
+data::any extract_hour_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the minute field from time or timestamp (without time zone)
+ */
+data::any extract_minute(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the minute field from timestamp with time zone (in the system time zone)
+ */
+data::any extract_minute_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the second field (with the precision given as 2nd arg) from time or timestamp (without time zone)
+ */
+data::any extract_second(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the second field (with the precision given as 2nd arg) from timestamp with time zone
+ */
+data::any extract_second_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the hour part of the system time zone offset
+ */
+data::any extract_timezone_hour(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the minute part of the system time zone offset
+ */
+data::any extract_timezone_minute(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the date part from date or timestamp (without time zone)
+ */
+data::any extract_date(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the date part from timestamp with time zone (in the system time zone)
+ */
+data::any extract_date_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the year/month prefix (with day set to 1) from date or timestamp (without time zone)
+ */
+data::any extract_year_to_month(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief extract the year/month prefix (with day set to 1) from timestamp with time zone
+ */
+data::any extract_year_to_month_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief truncate the fields less than hour from timestamp (without time zone)
+ */
+data::any extract_year_to_hour(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief truncate the fields less than hour (in the system time zone) from timestamp with time zone
+ */
+data::any extract_year_to_hour_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief truncate the fields less than minute from timestamp (without time zone)
+ */
+data::any extract_year_to_minute(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief truncate the fields less than minute (in the system time zone) from timestamp with time zone
+ */
+data::any extract_year_to_minute_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief truncate the subsecond digits below the precision (given as 2nd arg) from timestamp (without time zone)
+ */
+data::any extract_year_to_second(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+/**
+ * @brief truncate the subsecond digits below the precision (given as 2nd arg) from timestamp with time zone
+ */
+data::any extract_year_to_second_with_time_zone(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

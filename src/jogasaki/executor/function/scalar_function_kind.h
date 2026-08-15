@@ -50,6 +50,20 @@ enum class scalar_function_kind : std::size_t {
     decode,
     rtrim,
     ltrim,
+    extract_year,
+    extract_month,
+    extract_day,
+    extract_hour,
+    extract_minute,
+    extract_second,
+    extract_timezone_hour,
+    extract_timezone_minute,
+    date,
+    extract_year_to_month,
+    extract_year_to_day,
+    extract_year_to_hour,
+    extract_year_to_minute,
+    extract_year_to_second,
 
     // enum used for testing.
     // This is placed at last position so that deleting this one won't affect production.
@@ -90,6 +104,20 @@ enum class scalar_function_kind : std::size_t {
         case kind::decode: return "decode"sv;
         case kind::rtrim: return "rtrim"sv;
         case kind::ltrim: return "ltrim"sv;
+        case kind::extract_year: return "extract_year"sv;
+        case kind::extract_month: return "extract_month"sv;
+        case kind::extract_day: return "extract_day"sv;
+        case kind::extract_hour: return "extract_hour"sv;
+        case kind::extract_minute: return "extract_minute"sv;
+        case kind::extract_second: return "extract_second"sv;
+        case kind::extract_timezone_hour: return "extract_timezone_hour"sv;
+        case kind::extract_timezone_minute: return "extract_timezone_minute"sv;
+        case kind::date: return "date"sv;
+        case kind::extract_year_to_month: return "extract_year_to_month"sv;
+        case kind::extract_year_to_day: return "extract_year_to_day"sv;
+        case kind::extract_year_to_hour: return "extract_year_to_hour"sv;
+        case kind::extract_year_to_minute: return "extract_year_to_minute"sv;
+        case kind::extract_year_to_second: return "extract_year_to_second"sv;
         case kind::mock_function_for_testing: return "mock_function_for_testing"sv;
     }
     std::abort();

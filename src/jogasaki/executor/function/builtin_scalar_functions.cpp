@@ -17,6 +17,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
+#include <array>
+#include <chrono>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -865,6 +868,500 @@ void add_builtin_scalar_functions(
             {t::character(t::varying)},
         });
     }
+    /////////
+    // extract_year
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year,
+            builtin::extract_year,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year,
+            builtin::extract_year_with_time_zone,
+            1
+        );
+        auto name = "extract_year";
+        auto id = scalar_function_id::id_11062;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::date()},
+        });
+        id = scalar_function_id::id_11063;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11064;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_month
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_month,
+            builtin::extract_month,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_month,
+            builtin::extract_month_with_time_zone,
+            1
+        );
+        auto name = "extract_month";
+        auto id = scalar_function_id::id_11065;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::date()},
+        });
+        id = scalar_function_id::id_11066;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11067;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_day
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_day,
+            builtin::extract_day,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_day,
+            builtin::extract_day_with_time_zone,
+            1
+        );
+        auto name = "extract_day";
+        auto id = scalar_function_id::id_11068;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::date()},
+        });
+        id = scalar_function_id::id_11069;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11070;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_hour
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_hour,
+            builtin::extract_hour,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_hour,
+            builtin::extract_hour_with_time_zone,
+            1
+        );
+        auto name = "extract_hour";
+        auto id = scalar_function_id::id_11071;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_of_day()},
+        });
+        id = scalar_function_id::id_11072;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11073;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_minute
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_minute,
+            builtin::extract_minute,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_minute,
+            builtin::extract_minute_with_time_zone,
+            1
+        );
+        auto name = "extract_minute";
+        auto id = scalar_function_id::id_11074;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_of_day()},
+        });
+        id = scalar_function_id::id_11075;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11076;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_second
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_second,
+            builtin::extract_second,
+            2
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_second,
+            builtin::extract_second_with_time_zone,
+            2
+        );
+        auto name = "extract_second";
+        auto id = scalar_function_id::id_11077;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::time_of_day(), t::int4()},
+        });
+        id = scalar_function_id::id_11078;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::time_point(), t::int4()},
+        });
+        id = scalar_function_id::id_11079;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::time_point(t::with_time_zone), t::int4()},
+        });
+    }
+    /////////
+    // extract_timezone_hour
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_timezone_hour,
+            builtin::extract_timezone_hour,
+            1
+        );
+        auto name = "extract_timezone_hour";
+        auto id = scalar_function_id::id_11080;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_timezone_minute
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_timezone_minute,
+            builtin::extract_timezone_minute,
+            1
+        );
+        auto name = "extract_timezone_minute";
+        auto id = scalar_function_id::id_11081;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // date
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::date,
+            builtin::extract_date,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::date,
+            builtin::extract_date_with_time_zone,
+            1
+        );
+        auto name = "date";
+        auto id = scalar_function_id::id_11082;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::date()},
+        });
+        id = scalar_function_id::id_11083;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11084;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_year_to_month
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_month,
+            builtin::extract_year_to_month,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_month,
+            builtin::extract_year_to_month_with_time_zone,
+            1
+        );
+        auto name = "extract_year_to_month";
+        auto id = scalar_function_id::id_11085;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::date()},
+        });
+        id = scalar_function_id::id_11086;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11087;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_year_to_day (alias of date)
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_day,
+            builtin::extract_date,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_day,
+            builtin::extract_date_with_time_zone,
+            1
+        );
+        auto name = "extract_year_to_day";
+        auto id = scalar_function_id::id_11088;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::date()},
+        });
+        id = scalar_function_id::id_11089;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11090;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::date(),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_year_to_hour
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_hour,
+            builtin::extract_year_to_hour,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_hour,
+            builtin::extract_year_to_hour_with_time_zone,
+            1
+        );
+        auto name = "extract_year_to_hour";
+        auto id = scalar_function_id::id_11091;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::time_point(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11092;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::time_point(t::with_time_zone),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_year_to_minute
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_minute,
+            builtin::extract_year_to_minute,
+            1
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_minute,
+            builtin::extract_year_to_minute_with_time_zone,
+            1
+        );
+        auto name = "extract_year_to_minute";
+        auto id = scalar_function_id::id_11093;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::time_point(),
+            {t::time_point()},
+        });
+        id = scalar_function_id::id_11094;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::time_point(t::with_time_zone),
+            {t::time_point(t::with_time_zone)},
+        });
+    }
+    /////////
+    // extract_year_to_second
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_second,
+            builtin::extract_year_to_second,
+            2
+        );
+        auto info_wtz = std::make_shared<scalar_function_info>(
+            scalar_function_kind::extract_year_to_second,
+            builtin::extract_year_to_second_with_time_zone,
+            2
+        );
+        auto name = "extract_year_to_second";
+        auto id = scalar_function_id::id_11095;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::time_point(),
+            {t::time_point(), t::int4()},
+        });
+        id = scalar_function_id::id_11096;
+        repo.add(id, info_wtz);
+        functions.add({
+            id,
+            name,
+            t::time_point(t::with_time_zone),
+            {t::time_point(t::with_time_zone), t::int4()},
+        });
+    }
 }
 
 namespace builtin {
@@ -1612,6 +2109,361 @@ data::any ltrim(evaluator_context& ctx, sequence_view<data::any> args) {
             runtime_t<kind::character>{ctx.resource(), utils::ltrim(ch_data)}};
     }
     std::abort();
+}
+
+namespace {
+
+constexpr std::array<std::int64_t, 10> pow10_table{
+    1,
+    10,
+    100,
+    1'000,
+    10'000,
+    100'000,
+    1'000'000,
+    10'000'000,
+    100'000'000,
+    1'000'000'000,
+};
+
+constexpr std::size_t max_subsecond_digits = 9;
+
+/**
+ * @brief convert UTC time point to the local time point in the system time zone
+ * @param tp the time point in UTC
+ * @return the time point in the system time zone
+ */
+takatori::datetime::time_point utc_to_local(takatori::datetime::time_point tp) {
+    tp += std::chrono::minutes{global::config_pool()->zone_offset()};
+    return tp;
+}
+
+/**
+ * @brief convert local time point in the system time zone to the UTC time point
+ * @param tp the time point in the system time zone
+ * @return the time point in UTC
+ */
+takatori::datetime::time_point local_to_utc(takatori::datetime::time_point tp) {
+    tp -= std::chrono::minutes{global::config_pool()->zone_offset()};
+    return tp;
+}
+
+/**
+ * @brief extract the date part from the argument that is either date or time point
+ * @param src the source value
+ * @param with_time_zone whether the source time point is in UTC and requires conversion to local
+ * @return the date part of the source value
+ */
+takatori::datetime::date extract_date_part(data::any const& src, bool with_time_zone) {
+    if(src.type_index() == data::any::index<runtime_t<kind::time_point>>) {
+        auto tp = src.to<runtime_t<kind::time_point>>();
+        if(with_time_zone) {
+            tp = utc_to_local(tp);
+        }
+        return tp.date();
+    }
+    return src.to<runtime_t<kind::date>>();
+}
+
+/**
+ * @brief extract the time of day part from the argument that is either time of day or time point
+ * @param src the source value
+ * @param with_time_zone whether the source time point is in UTC and requires conversion to local
+ * @return the time of day part of the source value
+ */
+takatori::datetime::time_of_day extract_time_part(data::any const& src, bool with_time_zone) {
+    if(src.type_index() == data::any::index<runtime_t<kind::time_point>>) {
+        auto tp = src.to<runtime_t<kind::time_point>>();
+        if(with_time_zone) {
+            tp = utc_to_local(tp);
+        }
+        return tp.time();
+    }
+    return src.to<runtime_t<kind::time_of_day>>();
+}
+
+/**
+ * @brief resolve the subsecond precision passed as the second argument of extract_second family
+ * @param arg the argument holding the precision
+ * @return the precision clamped in the range [0, 9]
+ */
+std::size_t resolve_second_precision(data::any const& arg) {
+    if(arg.empty()) {
+        return max_subsecond_digits;
+    }
+    auto v = static_cast<std::int64_t>(arg.to<runtime_t<kind::int4>>());
+    if(v < 0) {
+        return 0;
+    }
+    return std::min(static_cast<std::size_t>(v), max_subsecond_digits);
+}
+
+data::any extract_year_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto d = extract_date_part(src, with_time_zone);
+    return data::any{std::in_place_type<runtime_t<kind::int4>>, static_cast<runtime_t<kind::int4>>(d.year())};
+}
+
+data::any extract_month_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto d = extract_date_part(src, with_time_zone);
+    return data::any{std::in_place_type<runtime_t<kind::int4>>, static_cast<runtime_t<kind::int4>>(d.month())};
+}
+
+data::any extract_day_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto d = extract_date_part(src, with_time_zone);
+    return data::any{std::in_place_type<runtime_t<kind::int4>>, static_cast<runtime_t<kind::int4>>(d.day())};
+}
+
+data::any extract_hour_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto td = extract_time_part(src, with_time_zone);
+    return data::any{std::in_place_type<runtime_t<kind::int4>>, static_cast<runtime_t<kind::int4>>(td.hour())};
+}
+
+data::any extract_minute_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto td = extract_time_part(src, with_time_zone);
+    return data::any{std::in_place_type<runtime_t<kind::int4>>, static_cast<runtime_t<kind::int4>>(td.minute())};
+}
+
+data::any extract_second_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 2, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto n = resolve_second_precision(args[1]);
+    auto td = extract_time_part(src, with_time_zone);
+    auto sec = static_cast<std::int64_t>(td.second());
+    auto sub = static_cast<std::int64_t>(td.subsecond().count());
+    auto coefficient = sec * pow10_table.at(n) + sub / pow10_table.at(max_subsecond_digits - n);
+    return data::any{
+        std::in_place_type<runtime_t<kind::decimal>>,
+        takatori::decimal::triple{coefficient, -static_cast<std::int32_t>(n)}
+    };
+}
+
+data::any extract_timezone_part_impl(sequence_view<data::any> args, bool hour_part) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto os = global::config_pool()->zone_offset();
+    auto value = hour_part ? os / 60 : os % 60;
+    return data::any{std::in_place_type<runtime_t<kind::int4>>, static_cast<runtime_t<kind::int4>>(value)};
+}
+
+data::any extract_date_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto d = extract_date_part(src, with_time_zone);
+    return data::any{std::in_place_type<runtime_t<kind::date>>, d};
+}
+
+data::any extract_year_to_month_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto d = extract_date_part(src, with_time_zone);
+    return data::any{
+        std::in_place_type<runtime_t<kind::date>>,
+        takatori::datetime::date{d.year(), d.month(), 1}
+    };
+}
+
+data::any extract_year_to_hour_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto tp = src.to<runtime_t<kind::time_point>>();
+    if(with_time_zone) {
+        tp = utc_to_local(tp);
+    }
+    takatori::datetime::time_point truncated{
+        tp.date(),
+        takatori::datetime::time_of_day{tp.time().hour(), 0, 0}
+    };
+    if(with_time_zone) {
+        truncated = local_to_utc(truncated);
+    }
+    return data::any{std::in_place_type<runtime_t<kind::time_point>>, truncated};
+}
+
+data::any extract_year_to_minute_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 1, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto tp = src.to<runtime_t<kind::time_point>>();
+    if(with_time_zone) {
+        tp = utc_to_local(tp);
+    }
+    takatori::datetime::time_point truncated{
+        tp.date(),
+        takatori::datetime::time_of_day{tp.time().hour(), tp.time().minute(), 0}
+    };
+    if(with_time_zone) {
+        truncated = local_to_utc(truncated);
+    }
+    return data::any{std::in_place_type<runtime_t<kind::time_point>>, truncated};
+}
+
+data::any extract_year_to_second_impl(sequence_view<data::any> args, bool with_time_zone) {
+    assert_with_exception(args.size() == 2, args.size());
+    auto& src = static_cast<data::any&>(args[0]);
+    if(src.empty()) {
+        return {};
+    }
+    auto n = resolve_second_precision(args[1]);
+    auto tp = src.to<runtime_t<kind::time_point>>();
+    if(with_time_zone) {
+        tp = utc_to_local(tp);
+    }
+    auto td = tp.time();
+    auto unit = pow10_table.at(max_subsecond_digits - n);
+    auto sub = static_cast<std::int64_t>(td.subsecond().count()) / unit * unit;
+    takatori::datetime::time_point truncated{
+        tp.date(),
+        takatori::datetime::time_of_day{
+            td.hour(),
+            td.minute(),
+            td.second(),
+            std::chrono::nanoseconds{sub}
+        }
+    };
+    if(with_time_zone) {
+        truncated = local_to_utc(truncated);
+    }
+    return data::any{std::in_place_type<runtime_t<kind::time_point>>, truncated};
+}
+
+}  // namespace
+
+data::any extract_year(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_impl(args, false);
+}
+
+data::any extract_year_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_impl(args, true);
+}
+
+data::any extract_month(evaluator_context&, sequence_view<data::any> args) {
+    return extract_month_impl(args, false);
+}
+
+data::any extract_month_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_month_impl(args, true);
+}
+
+data::any extract_day(evaluator_context&, sequence_view<data::any> args) {
+    return extract_day_impl(args, false);
+}
+
+data::any extract_day_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_day_impl(args, true);
+}
+
+data::any extract_hour(evaluator_context&, sequence_view<data::any> args) {
+    return extract_hour_impl(args, false);
+}
+
+data::any extract_hour_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_hour_impl(args, true);
+}
+
+data::any extract_minute(evaluator_context&, sequence_view<data::any> args) {
+    return extract_minute_impl(args, false);
+}
+
+data::any extract_minute_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_minute_impl(args, true);
+}
+
+data::any extract_second(evaluator_context&, sequence_view<data::any> args) {
+    return extract_second_impl(args, false);
+}
+
+data::any extract_second_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_second_impl(args, true);
+}
+
+data::any extract_timezone_hour(evaluator_context&, sequence_view<data::any> args) {
+    return extract_timezone_part_impl(args, true);
+}
+
+data::any extract_timezone_minute(evaluator_context&, sequence_view<data::any> args) {
+    return extract_timezone_part_impl(args, false);
+}
+
+data::any extract_date(evaluator_context&, sequence_view<data::any> args) {
+    return extract_date_impl(args, false);
+}
+
+data::any extract_date_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_date_impl(args, true);
+}
+
+data::any extract_year_to_month(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_month_impl(args, false);
+}
+
+data::any extract_year_to_month_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_month_impl(args, true);
+}
+
+data::any extract_year_to_hour(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_hour_impl(args, false);
+}
+
+data::any extract_year_to_hour_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_hour_impl(args, true);
+}
+
+data::any extract_year_to_minute(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_minute_impl(args, false);
+}
+
+data::any extract_year_to_minute_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_minute_impl(args, true);
+}
+
+data::any extract_year_to_second(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_second_impl(args, false);
+}
+
+data::any extract_year_to_second_with_time_zone(evaluator_context&, sequence_view<data::any> args) {
+    return extract_year_to_second_impl(args, true);
 }
 
 } // namespace builtin

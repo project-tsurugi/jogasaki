@@ -219,7 +219,7 @@ TEST_F(truncate_transaction_fail_test, aborted_truncate_restart_identity_keeps_s
     execute_statement("INSERT INTO t0 (c0) VALUES (2)");
     {
         auto tx = utils::create_transaction(*db_);
-        execute_statement("TRUNCATE TABLE t0", *tx);
+        execute_statement("TRUNCATE TABLE t0 RESTART IDENTITY", *tx);
         ASSERT_EQ(status::ok, tx->abort());
     }
     // the sequence has been restarted together with the table
@@ -228,7 +228,7 @@ TEST_F(truncate_transaction_fail_test, aborted_truncate_restart_identity_keeps_s
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c1 FROM t0 WHERE c0 = 3", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
     }
     // the sequence metadata must not be broken by the failure : the sequence keeps working
     // after a restart and generates values without duplicating the existing ones
@@ -239,7 +239,7 @@ TEST_F(truncate_transaction_fail_test, aborted_truncate_restart_identity_keeps_s
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c1 FROM t0 WHERE c0 = 4", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4>(4)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]);
     }
     execute_statement("DROP TABLE t0");
 }

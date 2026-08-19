@@ -271,7 +271,7 @@ TEST_F(sql_lazy_delete_storage_test, concurrent_dml_then_truncate_table_then_dml
     ASSERT_EQ(0, result2.size());
 }
 
-// ─── Test 4 ────────────────────────────────────────────────────────────────
+// ─── Test 4-1 ───────────────────────────────────────────────────────────────
 // Single transaction with no-PK table (implicit PK) and identity column:
 // CREATE → INSERT(×2) → SELECT → TRUNCATE CONTINUE IDENTITY → INSERT(×2) →
 // SELECT → TRUNCATE CONTINUE IDENTITY → INSERT(×2) → SELECT → DROP TABLE →
@@ -318,6 +318,57 @@ TEST_F(sql_lazy_delete_storage_test, single_tx_implicit_pk_identity_col_truncate
         std::sort(result.begin(), result.end());
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(5, 30)), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(6, 31)), result[1]);
+    }
+    execute_statement("DROP TABLE t", *tx);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+// ─── Test 4-2 ───────────────────────────────────────────────────────────────
+// Same as 4-1 but using TRUNCATE RESTART IDENTITY.
+//
+// RESTART IDENTITY resets sequence positions before creating the new storage,
+// exercising an additional code path (reset_generated_sequences) compared to
+// CONTINUE IDENTITY.  Deferred deletion behavior is identical.
+
+// temporarily disabled duet to intermittent CC_ERR on commit
+TEST_F(sql_lazy_delete_storage_test, DISABLED_single_tx_implicit_pk_identity_col_truncate_restart_identity_commit) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "crash occurs only with shirakami implementation";
+    }
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use OCC
+    auto tx = utils::create_transaction(*db_);
+    execute_statement("CREATE TABLE t (c0 INT GENERATED ALWAYS AS IDENTITY, c1 INT)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (10)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (11)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 11)), result[1]);
+    }
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (20)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (21)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 20)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 21)), result[1]);
+    }
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (30)", *tx);
+    execute_statement("INSERT INTO t (c1) VALUES (31)", *tx);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t", *tx, result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 30)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 31)), result[1]);
     }
     execute_statement("DROP TABLE t", *tx);
     ASSERT_EQ(status::ok, tx->commit());

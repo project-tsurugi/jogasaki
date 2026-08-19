@@ -653,6 +653,29 @@ TEST_F(sql_lazy_delete_new_state_test, truncate_table_continue_identity_sequence
     EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
 }
 
+// After TRUNCATE TABLE RESTART IDENTITY the sequence metadata entry count must
+// be unchanged (old definition_id removed, new one assigned), but the sequence
+// itself restarts from its initial value.
+TEST_F(sql_lazy_delete_new_state_test, truncate_table_restart_identity_sequence_count_unchanged) {
+    auto seq_before = count_sequences(*db_);
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+
+    // RESTART IDENTITY: old sequence entry removed, new one created
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    // sequence restarts from 1
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c1 FROM t WHERE c0 = 10", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+}
+
 // After TRUNCATE TABLE (CONTINUE IDENTITY) on a table with an implicit surrogate
 // PK, the single rowid sequence must survive with its count unchanged.
 TEST_F(sql_lazy_delete_new_state_test, truncate_table_implicit_pk_continue_identity_sequence_count_unchanged) {
@@ -666,6 +689,30 @@ TEST_F(sql_lazy_delete_new_state_test, truncate_table_implicit_pk_continue_ident
 
     // CONTINUE IDENTITY (default): rowid sequence must not be touched
     execute_statement("TRUNCATE TABLE t");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    // table must be usable after truncation
+    execute_statement("INSERT INTO t (c0) VALUES (10)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c0 FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(10)), result[0]);
+}
+
+// After TRUNCATE TABLE RESTART IDENTITY on a table with an implicit surrogate PK,
+// the sequence count must remain unchanged (old definition_id removed, new one
+// created) and the table must be usable afterwards.
+TEST_F(sql_lazy_delete_new_state_test, truncate_table_implicit_pk_restart_identity_sequence_count_unchanged) {
+    auto seq_before = count_sequences(*db_);
+    // no explicit PK → one hidden rowid sequence generated
+    execute_statement("CREATE TABLE t (c0 INT)");
+    EXPECT_EQ(seq_before + 1, count_sequences(*db_));
+
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    execute_statement("INSERT INTO t (c0) VALUES (2)");
+
+    // RESTART IDENTITY: old rowid sequence entry removed, new one created
+    execute_statement("TRUNCATE TABLE t RESTART IDENTITY");
     EXPECT_EQ(seq_before + 1, count_sequences(*db_));
 
     // table must be usable after truncation

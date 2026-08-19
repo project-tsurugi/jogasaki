@@ -725,12 +725,11 @@ static status prepare(
             yugawara::restricted_feature::statement_rename_column,
             yugawara::restricted_feature::statement_rename_index,
             yugawara::restricted_feature::statement_rename_table,
-            yugawara::restricted_feature::statement_truncate_table_restart_identity,
         };
         if(cfg && ! cfg->enable_truncate()) {
             c_options.restricted_features() += {
-                // truncate with CONTINUE IDENTITY is the default and can be enabled
                 yugawara::restricted_feature::statement_truncate_table,
+                yugawara::restricted_feature::statement_truncate_table_restart_identity,
             };
         }
     }

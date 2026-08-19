@@ -46,6 +46,10 @@
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/sequence/exception.h>
+#include <jogasaki/executor/sequence/info.h>
+#include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/recovery/storage_options.h>
@@ -54,6 +58,8 @@
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/string_manipulation.h>
 
 #include "ddl_common.h"
@@ -75,8 +81,9 @@ namespace {
 
 // information about an auto-generated sequence (for implicit PK or generated identity columns)
 struct generated_sequence_info {
+    std::string column{};
     std::string name{};
-    std::shared_ptr<yugawara::storage::sequence> seq{};
+    std::shared_ptr<yugawara::storage::sequence const> seq{};
 };
 
 std::vector<generated_sequence_info> collect_generated_sequences(
@@ -97,9 +104,7 @@ std::vector<generated_sequence_info> collect_generated_sequences(
         }
         if(seq_name) {
             if(auto s = provider.find_sequence(*seq_name)) {
-                ret.emplace_back(
-                    generated_sequence_info{*seq_name, std::const_pointer_cast<yugawara::storage::sequence>(s)} //TODO avoid using const pointer cast
-                );
+                ret.emplace_back(generated_sequence_info{std::string{col.simple_name()}, *seq_name, std::move(s)});
             }
         }
     }
@@ -112,17 +117,66 @@ bool reset_generated_sequences(
     yugawara::storage::configurable_provider& provider
 ) {
     auto seqs = collect_generated_sequences(t, provider);
-    // remove existing sequence ids first because accessing system table can hit cc errors
+    // validate all the sequences are resettable first, so that no sequence is modified when
+    // the statement results in an error
+    std::vector<executor::sequence::sequence*> targets{};
+    targets.reserve(seqs.size());
     for(auto&& info : seqs) {
-        if(! remove_generated_sequence(context, info.name, *info.seq)) {
+        // though this should not happen normally,
+        // RESTART IDENTITY cannot be fulfilled if the sequence to be reset is not available,
+        // so treat it as an error rather than leaving the sequence as it is
+        if(! info.seq->definition_id().has_value()) {
+            set_error_context(
+                context,
+                error_code::sql_execution_exception,
+                string_builder{} << "sequence for the column \"" << info.column
+                                 << "\" has no definition id. sequence:\""
+                                 << info.name << "\"" << string_builder::to_string,
+                status::err_not_found
+            );
             return false;
         }
+        auto* s = context.sequence_manager()->find_sequence(*info.seq->definition_id());
+        if(s == nullptr) {
+            set_error_context(
+                context,
+                error_code::sql_execution_exception,
+                string_builder{} << "sequence for the column \"" << info.column
+                                 << "\" is not found. sequence:\""
+                                 << info.name << "\" definition id:" << *info.seq->definition_id()
+                                 << string_builder::to_string,
+                status::err_not_found
+            );
+            return false;
+        }
+        if(! s->can_reset()) {
+            auto const& si = s->info();
+            set_error_context(
+                context,
+                error_code::unsupported_runtime_feature_exception,
+                string_builder{} << "sequence for the column \"" << info.column
+                                 << "\" cannot be restarted. sequence:\"" << info.name
+                                 << "\" initial value:" << si.initial_value()
+                                 << " increment:" << si.increment() << string_builder::to_string,
+                status::err_unsupported
+            );
+            return false;
+        }
+        targets.emplace_back(s);
     }
-    // assign new sequence ids while keeping the same sequence object referenced by the table column
-    for(auto&& info : seqs) {
-        if(! create_generated_sequence(context, *info.seq, false)) {
-            return false;
-        }
+    // Reset the value keeping the sequence id and the sequence definition id, so that no entry of
+    // the sequence system table is updated. Re-creating the sequence would delete/create the
+    // sharksfin sequence outside the transaction while updating the system table inside it, and
+    // the system table would point to a deleted sequence when the transaction finally fails.
+    for(auto* s : targets) {
+        s->reset(*context.transaction()->object());
+    }
+    try {
+        context.sequence_manager()->notify_updates(*context.transaction()->object());
+    } catch (executor::sequence::exception const& e) {
+        handle_kvs_errors(context, e.get_status());
+        handle_generic_error(context, e.get_status(), error_code::sql_execution_exception);
+        return false;
     }
     return true;
 }
@@ -179,9 +233,9 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
     bool restart =
         ct_->options().contains(takatori::statement::truncate_table_option_kind::restart_identity);
 
-    // For RESTART IDENTITY, replace existing sequence ids with new ones first
-    // (accessing the system table can cause cc errors, so do it early to bail out cleanly).
-    // We brand-new the seq id on cc engine, but re-use the seq. def. ids, which are part of configurable_provider.
+    // For RESTART IDENTITY, reset the sequence values first
+    // (accessing the cc engine can cause cc errors, so do it early to bail out cleanly).
+    // The sequence ids and the sequence definition ids are kept unchanged.
     if(restart) {
         if(! reset_generated_sequences(context, *t, provider)) {
             return false;

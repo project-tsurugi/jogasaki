@@ -927,9 +927,10 @@ TEST_F(recovery_lazy_delete_test, truncate_table_continue_identity_sequence_surv
 }
 
 TEST_F(recovery_lazy_delete_test, truncate_table_restart_identity_sequence_survives_recovery) {
-    // After TRUNCATE TABLE RESTART IDENTITY followed by stop/start, the newly
-    // created sequence must survive recovery so that the next insert restarts
-    // from the initial value (1).
+    // TRUNCATE TABLE RESTART IDENTITY keeps the sequence itself (sequence id, definition id and
+    // the entry on the sequence system table) and only resets its value. The reset value is made
+    // durable with the truncate tx, so after stop/start the next insert restarts from the initial
+    // value (1).
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -940,14 +941,14 @@ TEST_F(recovery_lazy_delete_test, truncate_table_restart_identity_sequence_survi
     execute_statement("INSERT INTO t (c0) VALUES (1)");
     execute_statement("INSERT INTO t (c0) VALUES (2)");
 
-    // RESTART IDENTITY: old sequence removed, new one created — total count unchanged
+    // RESTART IDENTITY: the sequence entry is kept as it is
     execute_statement("TRUNCATE TABLE t RESTART IDENTITY");
     EXPECT_EQ(seq_before + 1, count_sequences(*db_));
 
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
 
-    // new sequence entry must survive recovery
+    // the sequence entry must survive recovery
     EXPECT_EQ(seq_before + 1, count_sequences(*db_));
 
     // next insert restarts from 1

@@ -110,6 +110,27 @@ public:
     [[nodiscard]] either<sequence_error, sequence_value> next(kvs::transaction& tx);
 
     /**
+     * @brief check whether the sequence can be reset
+     * @details reset() stores the value `initial_value - increment` so that the following next()
+     * returns the initial value. Depending on the sequence definition, the value can be out of the
+     * representable range and then the sequence cannot be reset.
+     * @return true if reset() can be called for this sequence
+     * @return false otherwise
+     */
+    [[nodiscard]] bool can_reset() const noexcept;
+
+    /**
+     * @brief reset the sequence so that the following next() call returns the initial value
+     * @param tx the transaction associated with this sequence value update
+     * @details the sequence version is incremented as with next() so that the update is made durable
+     * together with @p tx . Unlike re-creating the sequence, this keeps the sequence id and the
+     * sequence definition id, so no entry of the sequence system table needs to be updated.
+     * @warning the sequence must be resettable, i.e. can_reset() must return true. Otherwise the
+     * behavior is undefined.
+     */
+    void reset(kvs::transaction& tx);
+
+    /**
      * @brief accessor to the sequence info
      */
     [[nodiscard]] class info const& info() const noexcept;

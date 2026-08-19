@@ -383,6 +383,203 @@ TEST_F(sequence_manager_test, no_cycle_negative_incr) {
     EXPECT_EQ(sequence_error::out_of_lower_bound, s->next(*tx).error());
 }
 
+TEST_F(sequence_manager_test, reset) {
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        4,
+        3,
+        2,
+        9,
+        false
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    ASSERT_TRUE(s->can_reset());
+    auto tx = db_->create_transaction();
+    EXPECT_EQ(4, s->next(*tx).value());
+    EXPECT_EQ(7, s->next(*tx).value());
+    s->reset(*tx);
+    // reset makes the following next() return the initial value again
+    EXPECT_EQ(4, s->next(*tx).value());
+    EXPECT_EQ(7, s->next(*tx).value());
+}
+
+TEST_F(sequence_manager_test, can_reset_out_of_range) {
+    // reset requires `initial value - increment`, that is out of the representable range here
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    constexpr static sequence_value mn = std::numeric_limits<sequence_value>::min();
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        mn,
+        1,
+        mn,
+        mn+3,
+        false
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    EXPECT_FALSE(s->can_reset());
+}
+
+TEST_F(sequence_manager_test, can_reset_out_of_range_max) {
+    // reset requires `initial value - increment`, that is out of the representable range here
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        mx,
+        -1,
+        mx-3,
+        mx,
+        false
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    EXPECT_FALSE(s->can_reset());
+}
+
+TEST_F(sequence_manager_test, reset_positive_incr_around_intmax) {
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        mx-2,
+        3,
+        mx-3,
+        mx,
+        true
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    ASSERT_TRUE(s->can_reset());
+    auto tx = db_->create_transaction();
+    EXPECT_EQ(mx-2, s->next(*tx).value());
+    EXPECT_EQ(mx-3, s->next(*tx).value());
+    s->reset(*tx);
+    // the stored value (mx-5) is out of [min, max] here, and next() must still return the initial value
+    EXPECT_EQ(mx-2, s->next(*tx).value());
+    EXPECT_EQ(mx-3, s->next(*tx).value());
+}
+
+TEST_F(sequence_manager_test, reset_negative_incr_around_intmax) {
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        mx-3,
+        -3,
+        mx-9,
+        mx,
+        false
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    ASSERT_TRUE(s->can_reset());
+    auto tx = db_->create_transaction();
+    EXPECT_EQ(mx-3, s->next(*tx).value());
+    EXPECT_EQ(mx-6, s->next(*tx).value());
+    s->reset(*tx);
+    // the stored value is mx, that is the boundary of the representable range
+    EXPECT_EQ(mx-3, s->next(*tx).value());
+    EXPECT_EQ(mx-6, s->next(*tx).value());
+}
+
+TEST_F(sequence_manager_test, reset_max_range_no_cycle) {
+    // the sequences generated for identity columns cover the range up to intmax
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        0,
+        1,
+        0,
+        mx,
+        false
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    ASSERT_TRUE(s->can_reset());
+    auto tx = db_->create_transaction();
+    EXPECT_EQ(0, s->next(*tx).value());
+    EXPECT_EQ(1, s->next(*tx).value());
+    s->reset(*tx);
+    // the stored value is -1, that is out of [min, max], and max - (-1) overflows if not handled
+    EXPECT_EQ(0, s->next(*tx).value());
+    EXPECT_EQ(1, s->next(*tx).value());
+}
+
+TEST_F(sequence_manager_test, reset_max_range_cycle) {
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        1,
+        1,
+        1,
+        mx,
+        true
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    ASSERT_TRUE(s->can_reset());
+    auto tx = db_->create_transaction();
+    EXPECT_EQ(1, s->next(*tx).value());
+    EXPECT_EQ(2, s->next(*tx).value());
+    s->reset(*tx);
+    // the stored value is 0, that is out of [min, max]
+    EXPECT_EQ(1, s->next(*tx).value());
+    EXPECT_EQ(2, s->next(*tx).value());
+}
+
+TEST_F(sequence_manager_test, reset_max_range_cycle_initial_gt_min) {
+    // the value stored by reset() is out of [min, max], and the following next() must return the
+    // initial value instead of the minimum value used on cycling
+    manager mgr{*db_};
+    EXPECT_EQ(0, mgr.load_id_map());
+    constexpr static sequence_value mx = std::numeric_limits<sequence_value>::max();
+    mgr.register_sequence(
+        nullptr,
+        111,
+        "SEQ1",
+        100,
+        1,
+        1,
+        mx,
+        true
+    );
+    auto* s = mgr.find_sequence(111);
+    ASSERT_TRUE(s);
+    ASSERT_TRUE(s->can_reset());
+    auto tx = db_->create_transaction();
+    EXPECT_EQ(100, s->next(*tx).value());
+    EXPECT_EQ(101, s->next(*tx).value());
+    s->reset(*tx);
+    EXPECT_EQ(100, s->next(*tx).value());
+    EXPECT_EQ(101, s->next(*tx).value());
+}
+
 TEST_F(sequence_manager_test, cycle_positive_incr_around_intmax) {
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());

@@ -653,9 +653,9 @@ TEST_F(sql_lazy_delete_new_state_test, truncate_table_continue_identity_sequence
     EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
 }
 
-// After TRUNCATE TABLE RESTART IDENTITY the sequence metadata entry count must
-// be unchanged (old definition_id removed, new one assigned), but the sequence
-// itself restarts from its initial value.
+// After TRUNCATE TABLE RESTART IDENTITY the sequence metadata entry must be kept as it is
+// (the same definition_id and the same sequence id), while the sequence value is reset so that
+// the sequence restarts from its initial value.
 TEST_F(sql_lazy_delete_new_state_test, truncate_table_restart_identity_sequence_count_unchanged) {
     auto seq_before = count_sequences(*db_);
     execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT GENERATED ALWAYS AS IDENTITY)");
@@ -664,7 +664,7 @@ TEST_F(sql_lazy_delete_new_state_test, truncate_table_restart_identity_sequence_
     execute_statement("INSERT INTO t (c0) VALUES (1)");
     execute_statement("INSERT INTO t (c0) VALUES (2)");
 
-    // RESTART IDENTITY: old sequence entry removed, new one created
+    // RESTART IDENTITY: the sequence entry is kept as it is
     execute_statement("TRUNCATE TABLE t RESTART IDENTITY");
     EXPECT_EQ(seq_before + 1, count_sequences(*db_));
 
@@ -700,8 +700,7 @@ TEST_F(sql_lazy_delete_new_state_test, truncate_table_implicit_pk_continue_ident
 }
 
 // After TRUNCATE TABLE RESTART IDENTITY on a table with an implicit surrogate PK,
-// the sequence count must remain unchanged (old definition_id removed, new one
-// created) and the table must be usable afterwards.
+// the rowid sequence entry must be kept as it is and the table must be usable afterwards.
 TEST_F(sql_lazy_delete_new_state_test, truncate_table_implicit_pk_restart_identity_sequence_count_unchanged) {
     auto seq_before = count_sequences(*db_);
     // no explicit PK → one hidden rowid sequence generated
@@ -711,7 +710,7 @@ TEST_F(sql_lazy_delete_new_state_test, truncate_table_implicit_pk_restart_identi
     execute_statement("INSERT INTO t (c0) VALUES (1)");
     execute_statement("INSERT INTO t (c0) VALUES (2)");
 
-    // RESTART IDENTITY: old rowid sequence entry removed, new one created
+    // RESTART IDENTITY: the rowid sequence entry is kept as it is
     execute_statement("TRUNCATE TABLE t RESTART IDENTITY");
     EXPECT_EQ(seq_before + 1, count_sequences(*db_));
 

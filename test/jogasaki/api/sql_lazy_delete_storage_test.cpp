@@ -329,9 +329,10 @@ TEST_F(sql_lazy_delete_storage_test, single_tx_implicit_pk_identity_col_truncate
 // RESTART IDENTITY resets sequence positions before creating the new storage,
 // exercising an additional code path (reset_generated_sequences) compared to
 // CONTINUE IDENTITY.  Deferred deletion behavior is identical.
-
-// temporarily disabled duet to intermittent CC_ERR on commit
-TEST_F(sql_lazy_delete_storage_test, DISABLED_single_tx_implicit_pk_identity_col_truncate_restart_identity_commit) {
+//
+// Resetting the sequence value does not touch the sequence system table, so repeating TRUNCATE
+// RESTART IDENTITY in a single transaction does not hit cc errors.
+TEST_F(sql_lazy_delete_storage_test, single_tx_implicit_pk_identity_col_truncate_restart_identity_commit) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "crash occurs only with shirakami implementation";
     }

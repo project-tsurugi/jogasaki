@@ -23,6 +23,8 @@
 #include <jogasaki/executor/sequence/info.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/kvs/transaction.h>
+#include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::sequence {
 
@@ -53,24 +55,56 @@ either<sequence_error, sequence_value> sequence::next(kvs::transaction& tx) {
             continue;
         }
         sequence_value val{};
-        if (info_->increment() > 0 && info_->maximum_value() - cur.value_ < info_->increment()) {
+        // the current value can be out of [min, max] just after reset(), so the addition below can
+        // overflow. Note the overflow direction is same as the sign of the increment.
+        sequence_value cand{};
+        bool overflow = __builtin_add_overflow(cur.value_, info_->increment(), std::addressof(cand));
+        if (info_->increment() > 0 && (overflow || cand > info_->maximum_value())) {
             if(info_->cycle()) {
                 val = info_->minimum_value();
             } else {
                 return sequence_error::out_of_upper_bound;
             }
-        } else if (info_->increment() < 0 && cur.value_ - info_->minimum_value() < -info_->increment()) {
+        } else if (info_->increment() < 0 && (overflow || cand < info_->minimum_value())) {
             if(info_->cycle()) {
                 val = info_->maximum_value();
             } else {
                 return sequence_error::out_of_lower_bound;
             }
         } else {
-            val = cur.value_ + info_->increment();
+            val = cand;
         }
         next = {cur.version_ + 1, val};
     } while(! body_.compare_exchange_strong(cur, next));
     return next.value_;
+}
+
+bool sequence::can_reset() const noexcept {
+    sequence_value val{};
+    return ! __builtin_sub_overflow(info_->initial_value(), info_->increment(), std::addressof(val));
+}
+
+void sequence::reset(kvs::transaction& tx) {
+    // the caller must verify the sequence is resettable in advance
+    assert_with_exception(can_reset());
+    parent_->mark_sequence_used_by(tx, *this);
+    aligned_sequence_versioned_value cur{};
+    aligned_sequence_versioned_value next{};
+    do {
+        cur = body_.load();
+        if(cur.version_ == initial_sequence_version) {
+            // the sequence is not used yet and next() already returns the initial value
+            return;
+        }
+        // set the value so that the following next() returns the initial value,
+        // while keeping the version increasing so that the update can be made durable
+        sequence_value val{};
+        if(__builtin_sub_overflow(info_->initial_value(), info_->increment(), std::addressof(val))) {
+            // should not happen because can_reset() is checked above
+            fail_with_exception();
+        }
+        next = {cur.version_ + 1, val};
+    } while(! body_.compare_exchange_strong(cur, next));
 }
 
 class info const& sequence::info() const noexcept {

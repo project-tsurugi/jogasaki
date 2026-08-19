@@ -16,11 +16,15 @@
 
 #include <filesystem>
 #include <fstream>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/udf/udf_loader.h>
 
@@ -38,11 +42,20 @@ class udf_loader_test : public test_root {
         ASSERT_NE(nullptr, test_info);
         ini_path_ = std::filesystem::temp_directory_path()
             / (std::string{"jogasaki_udf_loader_test_"} + test_info->name() + ".ini");
+        jogasaki::global::config_pool(std::make_shared<jogasaki::configuration>());
     }
 
     void TearDown() override {
+        jogasaki::global::config_pool(std::make_shared<jogasaki::configuration>());
         std::error_code ec{};
         std::filesystem::remove(ini_path_, ec);
+    }
+
+    void set_global_udf_defaults(std::string_view endpoint, bool secure) {
+        auto config = std::make_shared<jogasaki::configuration>();
+        config->endpoint(endpoint);
+        config->secure(secure);
+        jogasaki::global::config_pool(config);
     }
 
     void write_ini(std::string_view contents) {
@@ -120,6 +133,51 @@ TEST_F(udf_loader_test, legacy_options_without_grpc_server_endpoint) {
     EXPECT_EQ("dns:///127.0.0.1:50053", config->endpoint());
     EXPECT_FALSE(config->secure());
     EXPECT_FALSE(config->grpc_server_endpoint());
+}
+
+
+TEST_F(udf_loader_test, legacy_options_override_global_defaults) {
+    set_global_udf_defaults("dns:///127.0.0.1:51001", false);
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=dns:///127.0.0.1:52001\n"
+        "secure=true\n"
+        "transport=stream\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    EXPECT_EQ("dns:///127.0.0.1:52001", config->endpoint());
+    EXPECT_TRUE(config->secure());
+
+    EXPECT_EQ("dns:///127.0.0.1:51001", jogasaki::global::config_pool()->endpoint());
+    EXPECT_FALSE(jogasaki::global::config_pool()->secure());
+}
+
+TEST_F(udf_loader_test, missing_legacy_options_keep_global_defaults) {
+    set_global_udf_defaults("dns:///127.0.0.1:51002", true);
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "transport=stream\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    EXPECT_EQ("dns:///127.0.0.1:51002", config->endpoint());
+    EXPECT_TRUE(config->secure());
+
+    EXPECT_EQ("dns:///127.0.0.1:51002", jogasaki::global::config_pool()->endpoint());
+    EXPECT_TRUE(jogasaki::global::config_pool()->secure());
 }
 
 } // namespace jogasaki::testing

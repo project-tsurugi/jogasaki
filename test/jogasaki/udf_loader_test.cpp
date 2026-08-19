@@ -34,7 +34,10 @@ class udf_loader_test : public test_root {
     };
 
     void SetUp() override {
-        ini_path_ = std::filesystem::temp_directory_path() / "jogasaki_udf_loader_test.ini";
+        auto const* test_info = ::testing::UnitTest::GetInstance()->current_test_info();
+        ASSERT_NE(nullptr, test_info);
+        ini_path_ = std::filesystem::temp_directory_path()
+            / (std::string{"jogasaki_udf_loader_test_"} + test_info->name() + ".ini");
     }
 
     void TearDown() override {

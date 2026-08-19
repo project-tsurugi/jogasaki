@@ -113,6 +113,10 @@ class udf_loader : public plugin_loader {
      */
     [[nodiscard]] std::vector<plugin_entry>& get_plugins() noexcept override;
 
+  protected:
+    [[nodiscard]] std::optional<udf_config> parse_ini(
+        std::filesystem::path const& ini_path, std::vector<load_result>& results);
+
   private:
     void load_one_plugin(std::filesystem::path const& ini_path,
         std::map<std::string, std::set<std::string>> const& blocked_stems,
@@ -121,8 +125,6 @@ class udf_loader : public plugin_loader {
     /** List of raw `dlopen()` handles for loaded plugins. */
     [[nodiscard]] load_result create_api_from_handle(
         void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg);
-    [[nodiscard]] std::optional<udf_config> parse_ini(
-        std::filesystem::path const& ini_path, std::vector<load_result>& results);
     /** List of loaded plugin API/client pairs. */
     std::vector<plugin_entry> plugins_;
     std::vector<void*> handles_;

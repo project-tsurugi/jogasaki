@@ -15,6 +15,7 @@
  */
 #include "udf_loader.h"
 
+#include <absl/strings/match.h>
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
@@ -411,7 +412,18 @@ load_result udf_loader::create_api_from_handle(
                                   << "Creating INSECURE channel to endpoint: " << cfg->endpoint();
     }
 
-    auto channel = grpc::CreateChannel(cfg->endpoint(), creds);
+    std::shared_ptr<grpc::Channel> channel;
+    if (absl::StartsWith(cfg->endpoint(), "unix:")) {
+        grpc::ChannelArguments args;
+        args.SetInt(GRPC_ARG_USE_LOCAL_SUBCHANNEL_POOL, 1);
+        VLOG(jogasaki::log_trace)
+            << jogasaki::udf::log::prefix
+            << "Using local gRPC subchannel pool for endpoint: "
+            << cfg->endpoint();
+        channel = grpc::CreateCustomChannel(cfg->endpoint(), creds, args);
+    } else {
+        channel = grpc::CreateChannel(cfg->endpoint(), creds);
+    }
     auto raw_client = factory_ptr->create(channel);
     if (!raw_client) {
         return {load_status::factory_creation_failed, full_path,

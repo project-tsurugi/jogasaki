@@ -248,6 +248,135 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
     return true;
 }
 
+[[nodiscard]] std::optional<bool> parse_boolean(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    if (value == "true") { return true; }
+    if (value == "false") { return false; }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::vector<std::string>> split_list(
+    std::string_view key, std::string const& value, fs::path const& ini_path,
+    std::vector<load_result>& results) {
+    std::vector<std::string> values{};
+    std::size_t begin = 0;
+    while (true) {
+        auto const end = value.find('|', begin);
+        auto token =
+            value.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
+        if (token.empty()) {
+            results.emplace_back(load_status::ini_invalid, ini_path.string(),
+                "Invalid value for " + std::string(key) + " (empty list element)");
+            return std::nullopt;
+        }
+        values.emplace_back(std::move(token));
+        if (end == std::string::npos) { break; }
+        begin = end + 1;
+    }
+    return values;
+}
+
+[[nodiscard]] bool valid_value_count(std::size_t value_count, std::size_t endpoint_count) noexcept {
+    return value_count == 1 || value_count == endpoint_count;
+}
+
+[[nodiscard]] std::optional<bool> parse_enabled(
+    boost::property_tree::ptree const& pt, fs::path const& ini_path,
+    std::vector<load_result>& results) {
+    auto value = pt.get_optional<std::string>("udf.enabled");
+    if (!value) {
+        results.emplace_back(
+            load_status::ini_invalid, ini_path.string(), "Missing required field: udf.enabled");
+        return std::nullopt;
+    }
+
+    auto parsed = parse_boolean(*value);
+    if (!parsed) {
+        results.emplace_back(load_status::ini_invalid, ini_path.string(),
+            "Invalid value for udf.enabled (must be true or false)");
+    }
+    return parsed;
+}
+
+[[nodiscard]] std::optional<std::vector<std::string>> parse_endpoints(
+    boost::property_tree::ptree const& pt, fs::path const& ini_path,
+    std::vector<load_result>& results) {
+    if (auto value = pt.get_optional<std::string>("udf.endpoint")) {
+        return split_list("udf.endpoint", *value, ini_path, results);
+    }
+    return std::vector<std::string>{std::string(jogasaki::global::config_pool()->endpoint())};
+}
+
+[[nodiscard]] std::optional<std::vector<bool>> parse_secure_values(
+    boost::property_tree::ptree const& pt, std::size_t endpoint_count,
+    fs::path const& ini_path, std::vector<load_result>& results) {
+    std::vector<bool> secure_values{};
+    if (auto value = pt.get_optional<std::string>("udf.secure")) {
+        auto values = split_list("udf.secure", *value, ini_path, results);
+        if (!values) { return std::nullopt; }
+
+        secure_values.reserve(values->size());
+        for (auto const& token : *values) {
+            auto parsed = parse_boolean(token);
+            if (!parsed) {
+                results.emplace_back(load_status::ini_invalid, ini_path.string(),
+                    "Invalid value for udf.secure (must be true or false)");
+                return std::nullopt;
+            }
+            secure_values.emplace_back(*parsed);
+        }
+    } else {
+        secure_values.emplace_back(jogasaki::global::config_pool()->secure());
+    }
+
+    if (!valid_value_count(secure_values.size(), endpoint_count)) {
+        results.emplace_back(load_status::ini_invalid, ini_path.string(),
+            "Invalid number of udf.secure values (must be 1 or match udf.endpoint)");
+        return std::nullopt;
+    }
+    return secure_values;
+}
+
+[[nodiscard]] std::optional<std::vector<std::string>> parse_tsurugi_endpoints(
+    boost::property_tree::ptree const& pt,
+    std::optional<std::string> const& legacy_grpc_server_endpoint,
+    std::size_t endpoint_count, fs::path const& ini_path, std::vector<load_result>& results) {
+    std::vector<std::string> values{};
+
+    if (auto value = pt.get_optional<std::string>("udf.tsurugi_endpoint")) {
+        auto parsed = split_list("udf.tsurugi_endpoint", *value, ini_path, results);
+        if (!parsed) { return std::nullopt; }
+        values = std::move(*parsed);
+    } else if (legacy_grpc_server_endpoint) {
+        values.emplace_back(*legacy_grpc_server_endpoint);
+    } else {
+        values.emplace_back(jogasaki::global::config_pool()->grpc_server_endpoint());
+    }
+
+    if (!valid_value_count(values.size(), endpoint_count)) {
+        results.emplace_back(load_status::ini_invalid, ini_path.string(),
+            "Invalid number of udf.tsurugi_endpoint values "
+            "(must be 1 or match udf.endpoint)");
+        return std::nullopt;
+    }
+    return values;
+}
+
+[[nodiscard]] std::vector<udf_server_config> make_server_configs(
+    std::vector<std::string> endpoints, std::vector<bool> const& secure_values,
+    std::vector<std::string> const& tsurugi_endpoints) {
+    std::vector<udf_server_config> servers{};
+    servers.reserve(endpoints.size());
+    for (std::size_t i = 0; i < endpoints.size(); ++i) {
+        servers.emplace_back(udf_server_config{
+            std::move(endpoints[i]),
+            secure_values.size() == 1 ? secure_values.front() : secure_values[i],
+            tsurugi_endpoints.size() == 1 ? tsurugi_endpoints.front() : tsurugi_endpoints[i],
+        });
+    }
+    return servers;
+}
+
 } // namespace
 
 [[nodiscard]] std::string const& client_info::default_endpoint() const noexcept {
@@ -267,123 +396,40 @@ std::optional<udf_config> udf_loader::parse_ini(
     try {
         boost::property_tree::ptree pt;
         boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
-        auto enabled_opt = pt.get_optional<std::string>("udf.enabled");
-        if (!enabled_opt) {
-            results.emplace_back(
-                load_status::ini_invalid, ini_path.string(), "Missing required field: udf.enabled");
-            return std::nullopt;
-        }
-        std::string enabled_str = *enabled_opt;
-        std::transform(enabled_str.begin(), enabled_str.end(), enabled_str.begin(), ::tolower);
-        bool enabled = true;
-        if (enabled_str == "true") {
-            enabled = true;
-        } else if (enabled_str == "false") {
-            enabled = false;
-        } else {
-            results.emplace_back(load_status::ini_invalid, ini_path.string(),
-                "Invalid value for udf.enabled (must be true or false)");
-            return std::nullopt;
-        }
 
-        auto split_list = [&](std::string_view key,
-                              std::string const& value) -> std::optional<std::vector<std::string>> {
-            std::vector<std::string> values{};
-            std::size_t begin = 0;
-            while (true) {
-                auto const end = value.find('|', begin);
-                auto token =
-                    value.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
-                if (token.empty()) {
-                    results.emplace_back(load_status::ini_invalid, ini_path.string(),
-                        "Invalid value for " + std::string(key) + " (empty list element)");
-                    return std::nullopt;
-                }
-                values.emplace_back(std::move(token));
-                if (end == std::string::npos) { break; }
-                begin = end + 1;
-            }
-            return values;
-        };
+        auto enabled = parse_enabled(pt, ini_path, results);
+        if (!enabled) { return std::nullopt; }
 
-        std::vector<std::string> endpoints{};
-        if (auto opt = pt.get_optional<std::string>("udf.endpoint")) {
-            auto values = split_list("udf.endpoint", *opt);
-            if (!values) { return std::nullopt; }
-            endpoints = std::move(*values);
-        } else {
-            endpoints.emplace_back(jogasaki::global::config_pool()->endpoint());
-        }
+        auto endpoints = parse_endpoints(pt, ini_path, results);
+        if (!endpoints) { return std::nullopt; }
 
         std::string transport = "stream";
-        if (auto opt = pt.get_optional<std::string>("udf.transport")) {
-            transport = *opt;
-            if (transport.empty()) { transport = "stream"; }
+        if (auto value = pt.get_optional<std::string>("udf.transport")) {
+            transport = value->empty() ? "stream" : *value;
         }
 
-        std::vector<bool> secure_values{};
-        if (auto opt = pt.get_optional<std::string>("udf.secure")) {
-            auto values = split_list("udf.secure", *opt);
-            if (!values) { return std::nullopt; }
-            secure_values.reserve(values->size());
-            for (auto val : *values) {
-                std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-                if (val == "false") {
-                    secure_values.emplace_back(false);
-                } else if (val == "true") {
-                    secure_values.emplace_back(true);
-                } else {
-                    results.emplace_back(load_status::ini_invalid, ini_path.string(),
-                        "Invalid value for udf.secure (must be true or false)");
-                    return std::nullopt;
-                }
-            }
-        } else {
-            secure_values.emplace_back(jogasaki::global::config_pool()->secure());
-        }
-
-        if (secure_values.size() != 1 && secure_values.size() != endpoints.size()) {
-            results.emplace_back(load_status::ini_invalid, ini_path.string(),
-                "Invalid number of udf.secure values (must be 1 or match udf.endpoint)");
-            return std::nullopt;
-        }
+        auto secure_values =
+            parse_secure_values(pt, endpoints->size(), ini_path, results);
+        if (!secure_values) { return std::nullopt; }
 
         std::optional<std::string> grpc_server_endpoint{};
-        if (auto opt = pt.get_optional<std::string>("grpc_server.endpoint")) {
-            grpc_server_endpoint = *opt;
+        if (auto value = pt.get_optional<std::string>("grpc_server.endpoint")) {
+            grpc_server_endpoint = *value;
         }
 
-        std::vector<std::string> tsurugi_endpoints{};
-        if (auto opt = pt.get_optional<std::string>("udf.tsurugi_endpoint")) {
-            auto values = split_list("udf.tsurugi_endpoint", *opt);
-            if (!values) { return std::nullopt; }
-            tsurugi_endpoints = std::move(*values);
-        } else if (grpc_server_endpoint) {
-            tsurugi_endpoints.emplace_back(*grpc_server_endpoint);
-        } else {
-            tsurugi_endpoints.emplace_back(jogasaki::global::config_pool()->grpc_server_endpoint());
-        }
+        auto tsurugi_endpoints = parse_tsurugi_endpoints(
+            pt, grpc_server_endpoint, endpoints->size(), ini_path, results);
+        if (!tsurugi_endpoints) { return std::nullopt; }
 
-        if (tsurugi_endpoints.size() != 1 && tsurugi_endpoints.size() != endpoints.size()) {
-            results.emplace_back(load_status::ini_invalid, ini_path.string(),
-                "Invalid number of udf.tsurugi_endpoint values "
-                "(must be 1 or match udf.endpoint)");
-            return std::nullopt;
-        }
-
-        std::vector<udf_server_config> servers{};
-        servers.reserve(endpoints.size());
-        for (std::size_t i = 0; i < endpoints.size(); ++i) {
-            servers.emplace_back(udf_server_config{
-                std::move(endpoints[i]),
-                secure_values.size() == 1 ? secure_values.front() : secure_values[i],
-                tsurugi_endpoints.size() == 1 ? tsurugi_endpoints.front() : tsurugi_endpoints[i],
-            });
-        }
+        auto servers = make_server_configs(
+            std::move(*endpoints), *secure_values, *tsurugi_endpoints);
 
         std::optional<std::size_t> timeout{};
-        if (auto opt = pt.get_optional<std::size_t>("udf.timeout")) { timeout = *opt; }
-        return udf_config(enabled, std::move(servers), std::move(transport),
+        if (auto value = pt.get_optional<std::size_t>("udf.timeout")) {
+            timeout = *value;
+        }
+
+        return udf_config(*enabled, std::move(servers), std::move(transport),
             std::move(grpc_server_endpoint), timeout);
     } catch (std::exception const& e) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());

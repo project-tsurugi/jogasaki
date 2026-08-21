@@ -65,36 +65,23 @@ bool bridge::setup(framework::environment& env) {
     return cfg_ != nullptr;
 }
 
-static bool borrow_relay_service(framework::environment& env) {
-    // if config. allows, borrow relay service instance and make it available as global::relay_service().
+static void borrow_relay_service(framework::environment& env) {
+    // Borrow relay service instance and make it available as global::relay_service().
+    // Whether the BLOB relay service is available depends on the server configuration, but that is
+    // out of jogasaki's knowledge. So simply store whatever is given here (possibly nullptr) and
+    // check its availability lazily when the BLOB relay service is really needed.
 
-    bool grpc_server_enabled = false;
-    bool blob_relay_enabled = false;
-    if (auto* section = env.configuration()->get_section("grpc_server")) {
-        if (auto enabled = section->get<bool>("enabled")) {
-            grpc_server_enabled = enabled.value();
-        }
+    auto proxy = env.resource_repository().find<::tateyama::grpc::blob_relay::service_adapter>();
+    if (! proxy) {
+        LOG_LP(INFO) << "data relay service is not available";
+        global::relay_service(nullptr);
+        return;
     }
-    if (auto* section = env.configuration()->get_section("blob_relay")) {
-        if (auto enabled = section->get<bool>("enabled")) {
-            blob_relay_enabled = enabled.value();
-        }
+    auto relay_service = proxy->blob_relay_service();
+    if (! relay_service) {
+        LOG_LP(INFO) << "data relay service is not available";
     }
-
-    if (grpc_server_enabled && blob_relay_enabled) {
-        auto proxy = env.resource_repository().find<::tateyama::grpc::blob_relay::service_adapter>();
-        if (! proxy) {
-            LOG_LP(ERROR) << "failed to find data relay service proxy resource";
-            return false;
-        }
-        auto relay_service = proxy->blob_relay_service();
-        if (! relay_service) {
-            LOG_LP(ERROR) << "failed to get data relay service";
-            return false;
-        }
-        global::relay_service(std::move(relay_service));
-    }
-    return true;
+    global::relay_service(std::move(relay_service));
 }
 
 bool bridge::start(framework::environment& env) {
@@ -105,9 +92,7 @@ bool bridge::start(framework::environment& env) {
         return true;
     }
 
-    if(! borrow_relay_service(env)) {
-        return false;
-    }
+    borrow_relay_service(env);
 
     if (! db_) {
         auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();

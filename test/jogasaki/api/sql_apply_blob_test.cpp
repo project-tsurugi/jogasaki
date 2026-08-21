@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include <takatori/type/int.h>
 #include <takatori/type/lob.h>
 #include <takatori/type/table.h>
 #include <takatori/util/sequence_view.h>
@@ -38,6 +39,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence_stream.h>
 #include <jogasaki/datastore/get_datastore.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/table_valued_function_info.h>
 #include <jogasaki/executor/function/table_valued_function_kind.h>
@@ -229,6 +231,117 @@ TEST_F(sql_apply_blob_test, apply_with_clob) {
     }
 
     EXPECT_EQ(status::ok, tx->commit());
+}
+
+// helper to register a table valued UDF whose body records the invocation
+void register_tvf(std::shared_ptr<yugawara::function::declaration>& decl,
+    std::shared_ptr<bool> const& called, std::size_t id, std::string_view name,
+    std::shared_ptr<takatori::type::data const> const& param_type,
+    std::shared_ptr<takatori::type::data const> const& column_type) {
+    decl = global::regular_function_provider()->add(
+        std::make_shared<yugawara::function::declaration>(
+            id,
+            std::string{name},
+            std::make_shared<t::table>(std::initializer_list<t::table::column_type>{
+                {"output", column_type},
+            }),
+            std::vector<std::shared_ptr<takatori::type::data const>>{param_type},
+            yugawara::function::declaration::feature_set_type{
+                yugawara::function::function_feature::table_valued_function
+            }
+        )
+    );
+    global::table_valued_function_repository().add(
+        id,
+        std::make_shared<table_valued_function_info>(
+            table_valued_function_kind::user_defined,
+            [called](evaluator_context&,
+                sequence_view<data::any>) -> std::unique_ptr<data::any_sequence_stream> {
+                *called = true;
+                std::vector<data::any_sequence> sequences{};
+                sequences.emplace_back(
+                    std::vector<data::any>{data::any{std::in_place_type<std::int32_t>, 1}});
+                return std::make_unique<mock_any_sequence_stream>(std::move(sequences));
+            },
+            1,
+            table_valued_function_info::columns_type{table_valued_function_column{"output"}}
+        )
+    );
+}
+
+TEST_F(sql_apply_blob_test, blob_relay_service_unavailable_for_lob_output) {
+    // scenario where the BLOB relay service is not available (e.g. grpc server is disabled)
+    // verify the table valued udf handling lob results in an error on compiling the statement
+    // instead of crash. The lob appears only in the output columns here.
+    auto called = std::make_shared<bool>(false);
+    register_tvf(decl_, called, 13000UL, "make_lob_tvf", std::make_shared<t::int4>(),
+        std::make_shared<t::clob>());
+
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 CLOB)");
+    execute_statement("INSERT INTO T VALUES (1, 'ABC'::clob)");
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("SELECT R.output FROM T CROSS APPLY make_lob_tvf(T.C0) AS R", *tx,
+            error_code::service_unavailable);
+        // note the tx is left active here because this test harness does not go through the
+        // service layer, which aborts the tx on the compile error. That behavior is verified by
+        // service_api_apply_lob_test.blob_relay_service_unavailable_aborts_tx
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    // the error is detected on compiling the statement, so the function body is never invoked
+    EXPECT_FALSE(*called);
+}
+
+TEST_F(sql_apply_blob_test, blob_relay_service_unavailable_for_lob_parameter) {
+    // same as above, but the lob appears only in the function parameter
+    auto called = std::make_shared<bool>(false);
+    register_tvf(decl_, called, 13000UL, "consume_lob_tvf", std::make_shared<t::clob>(),
+        std::make_shared<t::int4>());
+
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 CLOB)");
+    execute_statement("INSERT INTO T VALUES (1, 'ABC'::clob)");
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("SELECT R.output FROM T CROSS APPLY consume_lob_tvf(T.C1) AS R", *tx,
+            error_code::service_unavailable);
+        // note the tx is left active here because this test harness does not go through the
+        // service layer, which aborts the tx on the compile error. That behavior is verified by
+        // service_api_apply_lob_test.blob_relay_service_unavailable_aborts_tx
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    EXPECT_FALSE(*called);
+}
+
+TEST_F(sql_apply_blob_test, tvf_without_lob_works_when_relay_service_unavailable) {
+    // verify the compile time check does not reject APPLY that has nothing to do with lob,
+    // even when the BLOB relay service is unavailable
+    auto called = std::make_shared<bool>(false);
+    register_tvf(decl_, called, 13000UL, "int_tvf", std::make_shared<t::int4>(),
+        std::make_shared<t::int4>());
+
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 CLOB)");
+    execute_statement("INSERT INTO T VALUES (1, 'ABC'::clob)");
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        execute_query("SELECT R.output FROM T CROSS APPLY int_tvf(T.C0) AS R", *tx, result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ(1, result[0].get_value<std::int32_t>(0));
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    EXPECT_TRUE(*called);
 }
 
 }  // namespace jogasaki::testing

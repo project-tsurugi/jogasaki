@@ -90,8 +90,12 @@ public:
 
     /**
      * @brief accessor to the blob session with lazy initialization
-     * @details creates a new session if one does not already exist
-     * @return pointer to the blob session (never nullptr after successful creation)
+     * @details creates a new session if one does not already exist. The session is created by the
+     * BLOB relay service, so no session is created when the service is unavailable on this server.
+     * @return pointer to the blob session
+     * @return nullptr if the BLOB relay service is unavailable, i.e. the session cannot be created
+     * @attention the caller must check the returned pointer before dereferencing it,
+     * or ensure the BLOB relay service is available before calling this method.
      */
     [[nodiscard]] Session* get_or_create();
 

@@ -179,6 +179,9 @@ inline bool promote_error_if_needed(
         case error_code::unknown_internal_error:
             report_error(res, tateyama::proto::diagnostics::Code::UNKNOWN, err_info->message(), req_info.id());
             break;
+        case error_code::service_unavailable:
+            report_error(res, tateyama::proto::diagnostics::Code::SERVICE_UNAVAILABLE, err_info->message(), req_info.id());
+            break;
         default:
             return false;
     }

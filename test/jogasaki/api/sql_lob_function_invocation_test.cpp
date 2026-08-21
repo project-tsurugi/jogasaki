@@ -517,5 +517,128 @@ TEST_F(sql_lob_function_invocation_test, invalid_reference_tag_upload) {
     EXPECT_TRUE(*called);
 }
 
+TEST_F(sql_lob_function_invocation_test, blob_relay_service_unavailable_for_lob_return) {
+    // scenario where the BLOB relay service is not available (e.g. grpc server is disabled)
+    // verify the udf handling lob results in an error on compiling the statement instead of crash
+    // the lob appears only in the function return value here
+    auto called = std::make_shared<bool>(false);
+    auto id = 1000UL;  // any value to avoid conflict
+
+    global::scalar_function_repository().add(
+        id,
+        std::make_shared<scalar_function_info>(
+            scalar_function_kind::user_defined,
+            [called](evaluator_context&, sequence_view<data::any>) -> data::any {
+                *called = true;
+                return {};
+            },
+            1
+        )
+    );
+    decl_ = global::regular_function_provider()->add({
+        id,
+        "make_lob_fn",
+        t::clob(),
+        {
+            t::int4(),
+        },
+    });
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    execute_statement("insert into t values (0, 'ABC'::clob)");
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("SELECT make_lob_fn(c0) FROM t", *tx, error_code::service_unavailable);
+        // note the tx is left active here because this test harness does not go through the
+        // service layer, which aborts the tx on the compile error. That behavior is verified by
+        // service_api_apply_lob_test.blob_relay_service_unavailable_aborts_tx
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    // the error is detected on compiling the statement, so the function body is never invoked
+    EXPECT_FALSE(*called);
+}
+
+TEST_F(sql_lob_function_invocation_test, blob_relay_service_unavailable_for_lob_parameter) {
+    // same as above, but the lob appears only in the function parameter
+    auto called = std::make_shared<bool>(false);
+    auto id = 1000UL;  // any value to avoid conflict
+
+    global::scalar_function_repository().add(
+        id,
+        std::make_shared<scalar_function_info>(
+            scalar_function_kind::user_defined,
+            [called](evaluator_context&, sequence_view<data::any>) -> data::any {
+                *called = true;
+                return data::any{std::in_place_type<std::int32_t>, 1};
+            },
+            1
+        )
+    );
+    decl_ = global::regular_function_provider()->add({
+        id,
+        "lob_length_fn",
+        t::int4(),
+        {
+            t::clob(),
+        },
+    });
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    execute_statement("insert into t values (0, 'ABC'::clob)");
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("SELECT lob_length_fn(c1) FROM t", *tx, error_code::service_unavailable);
+        // note the tx is left active here because this test harness does not go through the
+        // service layer, which aborts the tx on the compile error. That behavior is verified by
+        // service_api_apply_lob_test.blob_relay_service_unavailable_aborts_tx
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    EXPECT_FALSE(*called);
+}
+
+TEST_F(sql_lob_function_invocation_test, udf_without_lob_works_when_relay_service_unavailable) {
+    // verify the availability of the BLOB relay service is checked only when it's really needed
+    auto called = std::make_shared<bool>(false);
+    auto id = 1000UL;  // any value to avoid conflict
+
+    global::scalar_function_repository().add(
+        id,
+        std::make_shared<scalar_function_info>(
+            scalar_function_kind::user_defined,
+            [called](evaluator_context&, sequence_view<data::any> args) -> data::any {
+                *called = true;
+                return args[0];
+            },
+            1
+        )
+    );
+    decl_ = global::regular_function_provider()->add({
+        id,
+        "identity_int_fn",
+        t::int4(),
+        {
+            t::int4(),
+        },
+    });
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    execute_statement("insert into t values (0, 'ABC'::clob)");
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT identity_int_fn(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[0]);
+    }
+    EXPECT_TRUE(*called);
+}
 
 }  // namespace jogasaki::testing

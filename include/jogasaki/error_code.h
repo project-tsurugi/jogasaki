@@ -97,6 +97,7 @@ enum class error_code : std::int64_t {
     operation_denied = 50014,
     permission_error = 50015,
     unknown_internal_error = 50016,
+    service_unavailable = 50017,
 };
 
 /**
@@ -173,6 +174,7 @@ enum class error_code : std::int64_t {
         case code::operation_denied: return "operation_denied"sv;
         case code::permission_error: return "permission_error"sv;
         case code::unknown_internal_error: return "unknown_internal_error"sv;
+        case code::service_unavailable: return "service_unavailable"sv;
     }
     std::abort();
 }

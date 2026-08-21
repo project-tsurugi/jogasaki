@@ -435,4 +435,96 @@ TEST_F(service_api_apply_lob_test, return_multiple_columns) {
     test_dispose_prepare(query_handle);
 }
 
+// register a table valued UDF taking a CLOB and returning a table with a CLOB column.
+// the body is never expected to be invoked in the tests below.
+void register_lob_tvf(std::shared_ptr<yugawara::function::declaration>& decl,
+    std::shared_ptr<bool> const& called, std::size_t id) {
+    decl = global::regular_function_provider()->add(
+        std::make_shared<yugawara::function::declaration>(
+            id,
+            "append",
+            std::make_shared<takatori::type::table>(
+                std::initializer_list<takatori::type::table::column_type>{
+                    {"output", std::make_shared<takatori::type::clob>()},
+                }),
+            std::vector<std::shared_ptr<takatori::type::data const>>{
+                std::make_shared<takatori::type::clob>(),
+            },
+            yugawara::function::declaration::feature_set_type{
+                yugawara::function::function_feature::table_valued_function
+            }
+        )
+    );
+    global::table_valued_function_repository().add(
+        id,
+        std::make_shared<executor::function::table_valued_function_info>(
+            executor::function::table_valued_function_kind::user_defined,
+            [called](executor::expr::evaluator_context&,
+                takatori::util::sequence_view<data::any>)
+                -> std::unique_ptr<data::any_sequence_stream> {
+                *called = true;
+                return std::make_unique<mock_any_sequence_stream>(
+                    std::vector<data::any_sequence>{});
+            },
+            1,
+            executor::function::table_valued_function_info::columns_type{
+                executor::function::table_valued_function_column{"output"}
+            }
+        )
+    );
+}
+
+TEST_F(service_api_apply_lob_test, blob_relay_service_unavailable_aborts_tx) {
+    // verify the statement using a lob udf is rejected with SERVICE_UNAVAILABLE and the
+    // transaction becomes inactive when the BLOB relay service is not available
+    auto called = std::make_shared<bool>(false);
+    test_statement("create table t (c0 int primary key, c1 clob)");
+    test_statement("insert into t values (1, 'ABC'::clob)");
+    register_lob_tvf(decl_, called, 13000UL);
+
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    {
+        auto s = encode_execute_query(
+            tx_handle, "select r.output from t cross apply append(t.c1) as r");
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+        EXPECT_EQ(tateyama::proto::diagnostics::Code::SERVICE_UNAVAILABLE, res->error_.code());
+    }
+    // the tx is aborted on the compile error, so it's no longer usable
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception);
+    test_dispose_transaction(tx_handle);
+    EXPECT_FALSE(*called);
+}
+
+TEST_F(service_api_apply_lob_test, explain_blob_relay_service_unavailable) {
+    // verify explain also results in SERVICE_UNAVAILABLE for the statement using a lob udf
+    auto called = std::make_shared<bool>(false);
+    test_statement("create table t (c0 int primary key, c1 clob)");
+    register_lob_tvf(decl_, called, 13000UL);
+
+    // simulate the situation where the relay service is not available
+    global::relay_service(nullptr);
+
+    auto s = encode_explain_by_text("select r.output from t cross apply append(t.c1) as r");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_EQ(tateyama::proto::diagnostics::Code::SERVICE_UNAVAILABLE, res->error_.code());
+    EXPECT_FALSE(*called);
+}
+
 }  // namespace jogasaki::api

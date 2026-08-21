@@ -145,13 +145,17 @@ bool apply_context(plugin::udf::generic_client_context& context, evaluator_conte
     auto* bs = ctx.blob_session();
     assert_with_exception(bs != nullptr, bs);
 
-    auto session_id = bs->get_or_create()->session_id();
-    auto metadata = make_blob_grpc_metadata(session_id, cfg.get());
-    if (!metadata.apply(context.grpc_context())) {
-        std::string msg = "Failed to apply gRPC metadata";
-        VLOG_LP(log_error) << msg;
-        ctx.add_error({error_kind::udf_error, msg});
-        return false;
+    // Set blob metadata only when both the service and sessions are available.
+    // If they are not available, the SQL function must not have LOBs as args or return value.
+    // Calling SQL function using LOBs must have hit an error on prepare phase and control does not reach here.
+    if (auto* session = bs->get_or_create(); session != nullptr) {
+        auto metadata = make_blob_grpc_metadata(session->session_id(), cfg.get());
+        if (!metadata.apply(context.grpc_context())) {
+            std::string msg = "Failed to apply gRPC metadata";
+            VLOG_LP(log_error) << msg;
+            ctx.add_error({error_kind::udf_error, msg});
+            return false;
+        }
     }
 
     apply_udf_timeout(context, cfg);

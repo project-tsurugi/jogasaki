@@ -96,6 +96,7 @@ inline sql::error::Code map_error(jogasaki::error_code s) {
         case jogasaki::error_code::operation_denied: return sql::error::SQL_SERVICE_EXCEPTION;
         case jogasaki::error_code::permission_error: return sql::error::SQL_SERVICE_EXCEPTION;
         case jogasaki::error_code::unknown_internal_error: return sql::error::SQL_SERVICE_EXCEPTION;
+        case jogasaki::error_code::service_unavailable: return sql::error::SQL_SERVICE_EXCEPTION;
     }
     std::abort();
 }

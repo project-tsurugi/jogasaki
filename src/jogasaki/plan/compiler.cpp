@@ -136,6 +136,7 @@
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/model/step_kind.h>
+#include <jogasaki/plan/check_blob_relay_availability.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/parameter_set.h>
 #include <jogasaki/plan/plan_exception.h>
@@ -555,6 +556,7 @@ static status create_prepared_statement(
     auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
     auto [mirror_status, mirror] = preprocess_mirror(s, provider, result.info(), ctx);
     if (mirror_status != status::ok) { return mirror_status; }
+    check_blob_relay_availability(*s, result.info());
     out = std::make_shared<plan::prepared_statement>(
         s,
         result.info(),

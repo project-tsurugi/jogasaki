@@ -15,6 +15,7 @@
  */
 #include "udf_loader.h"
 
+#include <absl/strings/match.h>
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
@@ -412,7 +413,7 @@ load_result udf_loader::create_api_from_handle(
     }
 
     std::shared_ptr<grpc::Channel> channel;
-    if (cfg->endpoint().rfind("unix:", 0) == 0) {
+    if (absl::StartsWith(cfg->endpoint(), "unix:")) {
         grpc::ChannelArguments args;
         args.SetInt(GRPC_ARG_USE_LOCAL_SUBCHANNEL_POOL, 1);
         VLOG(jogasaki::log_trace)

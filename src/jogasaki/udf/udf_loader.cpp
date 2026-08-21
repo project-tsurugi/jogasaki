@@ -267,14 +267,12 @@ std::optional<udf_config> udf_loader::parse_ini(
     try {
         boost::property_tree::ptree pt;
         boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
-
         auto enabled_opt = pt.get_optional<std::string>("udf.enabled");
         if (!enabled_opt) {
             results.emplace_back(
                 load_status::ini_invalid, ini_path.string(), "Missing required field: udf.enabled");
             return std::nullopt;
         }
-
         std::string enabled_str = *enabled_opt;
         std::transform(enabled_str.begin(), enabled_str.end(), enabled_str.begin(), ::tolower);
         bool enabled = true;
@@ -288,8 +286,34 @@ std::optional<udf_config> udf_loader::parse_ini(
             return std::nullopt;
         }
 
-        std::string endpoint = std::string(jogasaki::global::config_pool()->endpoint());
-        if (auto opt = pt.get_optional<std::string>("udf.endpoint")) { endpoint = *opt; }
+        auto split_list = [&](std::string_view key,
+                              std::string const& value) -> std::optional<std::vector<std::string>> {
+            std::vector<std::string> values{};
+            std::size_t begin = 0;
+            while (true) {
+                auto const end = value.find('|', begin);
+                auto token =
+                    value.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
+                if (token.empty()) {
+                    results.emplace_back(load_status::ini_invalid, ini_path.string(),
+                        "Invalid value for " + std::string(key) + " (empty list element)");
+                    return std::nullopt;
+                }
+                values.emplace_back(std::move(token));
+                if (end == std::string::npos) { break; }
+                begin = end + 1;
+            }
+            return values;
+        };
+
+        std::vector<std::string> endpoints{};
+        if (auto opt = pt.get_optional<std::string>("udf.endpoint")) {
+            auto values = split_list("udf.endpoint", *opt);
+            if (!values) { return std::nullopt; }
+            endpoints = std::move(*values);
+        } else {
+            endpoints.emplace_back(jogasaki::global::config_pool()->endpoint());
+        }
 
         std::string transport = "stream";
         if (auto opt = pt.get_optional<std::string>("udf.transport")) {
@@ -297,35 +321,75 @@ std::optional<udf_config> udf_loader::parse_ini(
             if (transport.empty()) { transport = "stream"; }
         }
 
-        bool secure = jogasaki::global::config_pool()->secure();
+        std::vector<bool> secure_values{};
         if (auto opt = pt.get_optional<std::string>("udf.secure")) {
-            std::string val = *opt;
-            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-            if (val == "false") {
-                secure = false;
-            } else if (val == "true") {
-                secure = true;
-            } else {
-                results.emplace_back(load_status::ini_invalid, ini_path.string(),
-                    "Invalid value for udf.secure (must be true or false)");
-                return std::nullopt;
+            auto values = split_list("udf.secure", *opt);
+            if (!values) { return std::nullopt; }
+            secure_values.reserve(values->size());
+            for (auto val : *values) {
+                std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+                if (val == "false") {
+                    secure_values.emplace_back(false);
+                } else if (val == "true") {
+                    secure_values.emplace_back(true);
+                } else {
+                    results.emplace_back(load_status::ini_invalid, ini_path.string(),
+                        "Invalid value for udf.secure (must be true or false)");
+                    return std::nullopt;
+                }
             }
+        } else {
+            secure_values.emplace_back(jogasaki::global::config_pool()->secure());
         }
+
+        if (secure_values.size() != 1 && secure_values.size() != endpoints.size()) {
+            results.emplace_back(load_status::ini_invalid, ini_path.string(),
+                "Invalid number of udf.secure values (must be 1 or match udf.endpoint)");
+            return std::nullopt;
+        }
+
         std::optional<std::string> grpc_server_endpoint{};
         if (auto opt = pt.get_optional<std::string>("grpc_server.endpoint")) {
             grpc_server_endpoint = *opt;
         }
+
+        std::vector<std::string> tsurugi_endpoints{};
+        if (auto opt = pt.get_optional<std::string>("udf.tsurugi_endpoint")) {
+            auto values = split_list("udf.tsurugi_endpoint", *opt);
+            if (!values) { return std::nullopt; }
+            tsurugi_endpoints = std::move(*values);
+        } else if (grpc_server_endpoint) {
+            tsurugi_endpoints.emplace_back(*grpc_server_endpoint);
+        } else {
+            tsurugi_endpoints.emplace_back(jogasaki::global::config_pool()->grpc_server_endpoint());
+        }
+
+        if (tsurugi_endpoints.size() != 1 && tsurugi_endpoints.size() != endpoints.size()) {
+            results.emplace_back(load_status::ini_invalid, ini_path.string(),
+                "Invalid number of udf.tsurugi_endpoint values "
+                "(must be 1 or match udf.endpoint)");
+            return std::nullopt;
+        }
+
+        std::vector<udf_server_config> servers{};
+        servers.reserve(endpoints.size());
+        for (std::size_t i = 0; i < endpoints.size(); ++i) {
+            servers.emplace_back(udf_server_config{
+                std::move(endpoints[i]),
+                secure_values.size() == 1 ? secure_values.front() : secure_values[i],
+                tsurugi_endpoints.size() == 1 ? tsurugi_endpoints.front() : tsurugi_endpoints[i],
+            });
+        }
+
         std::optional<std::size_t> timeout{};
         if (auto opt = pt.get_optional<std::size_t>("udf.timeout")) { timeout = *opt; }
-        return udf_config(enabled, std::move(endpoint), std::move(transport), secure,
+        return udf_config(enabled, std::move(servers), std::move(transport),
             std::move(grpc_server_endpoint), timeout);
-
     } catch (std::exception const& e) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());
         return std::nullopt;
     }
 }
-
 std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     fs::path path(dir_path);
     std::vector<load_result> results{};

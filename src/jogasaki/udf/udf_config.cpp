@@ -18,23 +18,42 @@
 #include <cstddef>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace plugin::udf {
 udf_config::udf_config(bool enabled, std::string endpoint, std::string transport, bool secure,
     std::optional<std::string> grpc_server_endpoint, std::optional<std::size_t> timeout)
-    : _enabled(enabled), _endpoint(std::move(endpoint)), _transport(std::move(transport)),
-      _secure(secure), _grpc_server_endpoint(std::move(grpc_server_endpoint)), _timeout(timeout) {}
+    : _enabled(enabled),
+      _servers{{std::move(endpoint), secure, grpc_server_endpoint.value_or("")}},
+      _transport(std::move(transport)),
+      _grpc_server_endpoint(std::move(grpc_server_endpoint)),
+      _timeout(timeout) {}
+
+udf_config::udf_config(bool enabled, std::vector<udf_server_config> servers, std::string transport,
+    std::optional<std::string> grpc_server_endpoint, std::optional<std::size_t> timeout)
+    : _enabled(enabled),
+      _servers(std::move(servers)),
+      _transport(std::move(transport)),
+      _grpc_server_endpoint(std::move(grpc_server_endpoint)),
+      _timeout(timeout) {
+    if (_servers.empty()) {
+        _servers.emplace_back(udf_server_config{"dns:///localhost:50051", false, ""});
+    }
+}
 
 bool udf_config::enabled() const noexcept { return _enabled; }
 
-std::string const& udf_config::endpoint() const noexcept { return _endpoint; }
+
+std::vector<udf_server_config> const& udf_config::servers() const noexcept { return _servers; }
+
+std::string const& udf_config::endpoint() const noexcept { return _servers.front().endpoint; }
 
 std::string const& udf_config::transport() const noexcept { return _transport; }
 
 std::optional<std::string> const& udf_config::grpc_server_endpoint() const noexcept {
     return _grpc_server_endpoint;
 }
-bool udf_config::secure() const noexcept { return _secure; }
+bool udf_config::secure() const noexcept { return _servers.front().secure; }
 
 std::optional<std::size_t> const& udf_config::timeout() const noexcept { return _timeout; }
 

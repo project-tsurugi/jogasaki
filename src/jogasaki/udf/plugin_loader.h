@@ -25,8 +25,10 @@
 
 namespace plugin::udf {
 
-using plugin_entry = std::tuple<std::shared_ptr<plugin::udf::plugin_api>,
-    std::shared_ptr<plugin::udf::generic_client>, std::shared_ptr<const plugin::udf::udf_config>>;
+using generic_client_list = std::vector<std::shared_ptr<plugin::udf::generic_client>>;
+
+using plugin_entry = std::tuple<std::shared_ptr<plugin::udf::plugin_api>, generic_client_list,
+    std::shared_ptr<const plugin::udf::udf_config>>;
 class plugin_loader {
   public:
     plugin_loader() = default;

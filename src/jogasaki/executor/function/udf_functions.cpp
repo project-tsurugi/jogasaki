@@ -1420,7 +1420,7 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
     // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
     yugawara::function::declaration::definition_id_type current_id = 19999;
     for (auto const& tup : plugins) {
-        auto client = std::get<1>(tup);
+        auto client = std::get<1>(tup).front();
         auto plugin = std::get<0>(tup);
         auto cfg = std::get<2>(tup);
         // plugin::udf::print_plugin_info(plugin);

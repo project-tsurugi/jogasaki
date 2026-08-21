@@ -377,6 +377,34 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
     return servers;
 }
 
+[[nodiscard]] std::shared_ptr<grpc::ChannelCredentials> make_channel_credentials(
+    udf_server_config const& server) {
+    if (server.secure) {
+        grpc::SslCredentialsOptions opts;
+        VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
+                                  << "Creating TLS channel to endpoint: " << server.endpoint
+                                  << " (using system root certificates)";
+        return grpc::SslCredentials(opts);
+    }
+
+    VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
+                              << "Creating INSECURE channel to endpoint: " << server.endpoint;
+    return grpc::InsecureChannelCredentials();
+}
+
+[[nodiscard]] std::shared_ptr<grpc::Channel> make_channel(udf_server_config const& server) {
+    auto creds = make_channel_credentials(server);
+    if (absl::StartsWith(server.endpoint, "unix:")) {
+        grpc::ChannelArguments args;
+        args.SetInt(GRPC_ARG_USE_LOCAL_SUBCHANNEL_POOL, 1);
+        VLOG(jogasaki::log_trace)
+            << jogasaki::udf::log::prefix
+            << "Using local gRPC subchannel pool for endpoint: " << server.endpoint;
+        return grpc::CreateCustomChannel(server.endpoint, creds, args);
+    }
+    return grpc::CreateChannel(server.endpoint, creds);
+}
+
 } // namespace
 
 [[nodiscard]] std::string const& client_info::default_endpoint() const noexcept {
@@ -509,39 +537,19 @@ load_result udf_loader::create_api_from_handle(
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
 
-    std::shared_ptr<grpc::ChannelCredentials> creds;
-    if (cfg->secure()) {
-        grpc::SslCredentialsOptions opts;
-        creds = grpc::SslCredentials(opts);
-        VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
-                                  << "Creating TLS channel to endpoint: " << cfg->endpoint()
-                                  << " (using system root certificates)";
-    } else {
-        creds = grpc::InsecureChannelCredentials();
-        VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
-                                  << "Creating INSECURE channel to endpoint: " << cfg->endpoint();
+    generic_client_list clients{};
+    clients.reserve(cfg->servers().size());
+    for (auto const& server : cfg->servers()) {
+        auto channel = make_channel(server);
+        auto raw_client = factory_ptr->create(channel);
+        if (!raw_client) {
+            return {load_status::factory_creation_failed, full_path,
+                "Failed to create generic client from factory for endpoint: " + server.endpoint};
+        }
+        clients.emplace_back(raw_client);
     }
 
-    std::shared_ptr<grpc::Channel> channel;
-    if (absl::StartsWith(cfg->endpoint(), "unix:")) {
-        grpc::ChannelArguments args;
-        args.SetInt(GRPC_ARG_USE_LOCAL_SUBCHANNEL_POOL, 1);
-        VLOG(jogasaki::log_trace)
-            << jogasaki::udf::log::prefix
-            << "Using local gRPC subchannel pool for endpoint: "
-            << cfg->endpoint();
-        channel = grpc::CreateCustomChannel(cfg->endpoint(), creds, args);
-    } else {
-        channel = grpc::CreateChannel(cfg->endpoint(), creds);
-    }
-    auto raw_client = factory_ptr->create(channel);
-    if (!raw_client) {
-        return {load_status::factory_creation_failed, full_path,
-            "Failed to create generic client from factory"};
-    }
-
-    plugins_.emplace_back(
-        std::move(api_sptr), std::shared_ptr<generic_client>(raw_client), std::move(cfg));
+    plugins_.emplace_back(std::move(api_sptr), std::move(clients), std::move(cfg));
     return {load_status::ok, full_path, "Loaded successfully"};
 }
 

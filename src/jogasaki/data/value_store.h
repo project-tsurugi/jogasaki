@@ -292,6 +292,21 @@ public:
     [[nodiscard]] virtual bool empty() const noexcept = 0;
 
     /**
+     * @brief accessor to the number of value ranges allocated in this store
+     * @return the number of value ranges
+     * @note exposed for diagnostics and tests, which need to verify how the stored data got split
+     * by the backing memory resource pages
+     */
+    [[nodiscard]] virtual std::size_t range_count() const noexcept = 0;
+
+    /**
+     * @brief accessor to the number of null flag ranges allocated in this store
+     * @return the number of null flag ranges
+     * @note exposed for diagnostics and tests, see range_count()
+     */
+    [[nodiscard]] virtual std::size_t null_range_count() const noexcept = 0;
+
+    /**
      * @brief getter of begin iterator
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
@@ -465,6 +480,14 @@ public:
 
     [[nodiscard]] bool empty() const noexcept override {
         return count_ == 0;
+    }
+
+    [[nodiscard]] std::size_t range_count() const noexcept override {
+        return value_ranges_.size();
+    }
+
+    [[nodiscard]] std::size_t null_range_count() const noexcept override {
+        return null_ranges_.size();
     }
 
     /**
@@ -818,6 +841,25 @@ public:
 
     [[nodiscard]] bool empty() const noexcept {
         return base_->empty();
+    }
+
+    /**
+     * @brief accessor to the number of value ranges allocated in this store
+     * @return the number of value ranges
+     * @note exposed for diagnostics and tests, which need to verify how the stored data got split
+     * by the backing memory resource pages
+     */
+    [[nodiscard]] std::size_t range_count() const noexcept {
+        return base_->range_count();
+    }
+
+    /**
+     * @brief accessor to the number of null flag ranges allocated in this store
+     * @return the number of null flag ranges
+     * @note exposed for diagnostics and tests, see range_count()
+     */
+    [[nodiscard]] std::size_t null_range_count() const noexcept {
+        return base_->null_range_count();
     }
 
     /**

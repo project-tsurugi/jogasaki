@@ -195,8 +195,10 @@ public:
         if (null_base_ == nullptr) {
             return false;
         }
-        auto const* block = null_base_ + null_offset_ / flags_per_block;
-        return ((*block >> (null_offset_ % flags_per_block)) & 1U) != 0U;
+        auto const* block = null_base_ + null_offset_ / flags_per_block; //NOLINT
+        // widen to unsigned before shifting, otherwise the block integer-promotes to int
+        auto const flags = static_cast<unsigned>(*block);
+        return ((flags >> (null_offset_ % flags_per_block)) & 1U) != 0U;
     }
 
     /// @brief equivalent comparison

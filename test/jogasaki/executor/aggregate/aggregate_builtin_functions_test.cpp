@@ -118,5 +118,40 @@ TEST_F(aggregate_builtin_functions_test, count_distinct_character) {
     ASSERT_EQ(mock::create_nullable_record<kind::int8>(std::int64_t{5}), target);
 }
 
+// regression test for issue #945: with a large number of distinct values the hopscotch bucket
+// array grows beyond a single page (2MiB). Previously the page-based memory resource could not
+// serve such a large contiguous allocation and count_distinct failed with bad_alloc.
+TEST_F(aggregate_builtin_functions_test, count_distinct_large_cardinality) {
+    memory::page_pool pool{};
+    memory::monotonic_paged_memory_resource resource{&pool};
+    memory::monotonic_paged_memory_resource varlen_resource{&pool};
+    data::value_store store{
+        meta::int8_type(),
+        &resource,
+        &varlen_resource
+    };
+
+    constexpr std::int64_t n = 300000;
+    for (std::int64_t i = 0; i < n; ++i) {
+        store.append<std::int64_t>(i);
+    }
+
+    mock::basic_record target{mock::create_nullable_record<kind::int8>()};
+    std::vector<std::reference_wrapper<data::value_store>> args{};
+    args.emplace_back(store);
+    auto meta = target.record_meta();
+    builtin::count_distinct(
+        target.ref(),
+        field_locator{
+            meta->at(0),
+            true,
+            meta->value_offset(0),
+            meta->nullity_offset(0),
+        },
+        args
+    );
+    ASSERT_EQ(mock::create_nullable_record<kind::int8>(n), target);
+}
+
 }
 

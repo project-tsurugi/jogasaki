@@ -102,7 +102,7 @@ class udf_loader : public plugin_loader {
      *
      * Each entry contains:
      * - `std::shared_ptr<plugin_api>`       : plugin API descriptor
-     * - `std::shared_ptr<generic_client>`   : gRPC client for invoking the plugin
+     * - `generic_client_list`               : gRPC clients for invoking the plugin
      * - `std::shared_ptr<const udf_config>` : configuration associated with the plugin
      *
      * The returned vector is owned by the loader implementation.
@@ -125,7 +125,7 @@ class udf_loader : public plugin_loader {
     /** List of raw `dlopen()` handles for loaded plugins. */
     [[nodiscard]] load_result create_api_from_handle(
         void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg);
-    /** List of loaded plugin API/client pairs. */
+    /** List of loaded plugin API/client collections. */
     std::vector<plugin_entry> plugins_;
     std::vector<void*> handles_;
     [[nodiscard]] static bool validate_deps_directory(

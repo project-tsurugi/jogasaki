@@ -90,6 +90,7 @@
 #include <jogasaki/udf/generic_record_impl.h>
 #include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/udf/plugin_loader.h>
+#include <jogasaki/udf/round_robin_selector.h>
 #include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/assign_reference_tag.h>
@@ -112,8 +113,8 @@ namespace {
 constexpr std::size_t SUPPORTED_MAJOR = 0;
 constexpr std::size_t SUPPORTED_MINOR = 4;
 
-blob_grpc_metadata make_blob_grpc_metadata(
-    std::size_t session_id, plugin::udf::udf_config const* cfg);
+blob_grpc_metadata make_blob_grpc_metadata(std::size_t session_id,
+    plugin::udf::udf_config const* cfg, std::size_t server_index);
 
 std::chrono::milliseconds seconds_to_milliseconds(std::size_t seconds) {
     auto const max_ms = std::chrono::milliseconds::max().count();
@@ -141,7 +142,7 @@ void apply_udf_timeout(plugin::udf::generic_client_context& context,
 }
 
 bool apply_context(plugin::udf::generic_client_context& context, evaluator_context& ctx,
-    std::shared_ptr<const plugin::udf::udf_config> const& cfg) {
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg, std::size_t server_index) {
     auto* bs = ctx.blob_session();
     assert_with_exception(bs != nullptr, bs);
 
@@ -149,7 +150,7 @@ bool apply_context(plugin::udf::generic_client_context& context, evaluator_conte
     // If they are not available, the SQL function must not have LOBs as args or return value.
     // Calling SQL function using LOBs must have hit an error on prepare phase and control does not reach here.
     if (auto* session = bs->get_or_create(); session != nullptr) {
-        auto metadata = make_blob_grpc_metadata(session->session_id(), cfg.get());
+        auto metadata = make_blob_grpc_metadata(session->session_id(), cfg.get(), server_index);
         if (!metadata.apply(context.grpc_context())) {
             std::string msg = "Failed to apply gRPC metadata";
             VLOG_LP(log_error) << msg;
@@ -1111,15 +1112,14 @@ data::any build_udf_response(plugin::udf::generic_record_impl& response, evaluat
     ctx.add_error({error_kind::invalid_input_value, msg});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
-blob_grpc_metadata make_blob_grpc_metadata(
-    std::size_t session_id, plugin::udf::udf_config const* cfg) {
+blob_grpc_metadata make_blob_grpc_metadata(std::size_t session_id,
+    plugin::udf::udf_config const* cfg, std::size_t server_index) {
     std::string transport = cfg ? cfg->transport() : std::string{"stream"};
-
     std::string blob_endpoint = std::string(global::config_pool()->grpc_server_endpoint());
 
     if (cfg) {
-        auto const& ep = cfg->grpc_server_endpoint();
-        if (ep.has_value() && !ep->empty()) { blob_endpoint = *ep; }
+        auto const& ep = cfg->servers().at(server_index).tsurugi_endpoint;
+        if (!ep.empty()) { blob_endpoint = ep; }
     }
 
     return blob_grpc_metadata{
@@ -1129,6 +1129,28 @@ blob_grpc_metadata make_blob_grpc_metadata(
         std::move(transport),
         1024ULL * 1024ULL,
     };
+}
+
+using udf_client_list_ptr = std::shared_ptr<const plugin::udf::generic_client_list>;
+using udf_round_robin_selector_ptr = std::shared_ptr<plugin::udf::round_robin_selector>;
+
+struct selected_udf_client {
+    std::shared_ptr<plugin::udf::generic_client> client{};
+    std::size_t server_index{};
+};
+
+[[nodiscard]] selected_udf_client select_udf_client(udf_client_list_ptr const& clients,
+    udf_round_robin_selector_ptr const& selector,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg) {
+    assert_with_exception(clients != nullptr);
+    assert_with_exception(selector != nullptr);
+    assert_with_exception(cfg != nullptr);
+    assert_with_exception(!clients->empty(), clients->size());
+    assert_with_exception(clients->size() == cfg->servers().size(), clients->size(),
+        cfg->servers().size());
+
+    auto const index = selector->next(clients->size());
+    return selected_udf_client{clients->at(index), index};
 }
 
 /**
@@ -1164,27 +1186,30 @@ blob_grpc_metadata make_blob_grpc_metadata(
  * - Errors occurring during streaming are expected to be handled
  *   inside the stream implementation.
  *
- * @param client gRPC UDF client
+ * @param clients gRPC UDF clients
+ * @param selector shared Round Robin selector
  * @param fn     function descriptor
  * @return callable which produces `any_sequence_stream`
  */
 std::function<std::unique_ptr<data::any_sequence_stream>(
     evaluator_context&, sequence_view<data::any>)>
-make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const& client,
+make_udf_server_stream_lambda(udf_client_list_ptr const& clients,
+    udf_round_robin_selector_ptr const& selector,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
-    return [client, fn, cfg](evaluator_context& ctx,
+    return [clients, selector, fn, cfg](evaluator_context& ctx,
                sequence_view<data::any> args) -> std::unique_ptr<data::any_sequence_stream> {
         plugin::udf::generic_record_impl request;
         if (!build_udf_request(request, ctx, fn, args)) {
             // build_udf_request already reports detailed error to ctx
             return {};
         }
+        auto selected = select_udf_client(clients, selector, cfg);
         auto context = std::make_unique<plugin::udf::generic_client_context>();
 
-        if (!apply_context(*context, ctx, cfg)) { return {}; }
+        if (!apply_context(*context, ctx, cfg, selected.server_index)) { return {}; }
 
-        auto udf_stream = client->call_server_streaming_async(
+        auto udf_stream = selected.client->call_server_streaming_async(
             std::move(context), {0, fn->function_index()}, request);
 
         if (!udf_stream) {
@@ -1225,27 +1250,30 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
  *   `call_server_streaming_async(...)` and returns a stream wrapper.
  * - Row-by-row conversion to `any_sequence` happens inside the stream wrapper.
  *
- * @param client gRPC UDF client
+ * @param clients gRPC UDF clients
+ * @param selector shared Round Robin selector
  * @param fn     function descriptor (function_index, input/output schema, etc.)
  * @return scalar callable which returns `data::any`
  */
 std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_scalar_lambda(
-    std::shared_ptr<plugin::udf::generic_client> const& client,
+    udf_client_list_ptr const& clients, udf_round_robin_selector_ptr const& selector,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
-    return [client, fn, cfg](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
+    return [clients, selector, fn, cfg](
+               evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
         plugin::udf::generic_record_impl request;
         if (!build_udf_request(request, ctx, fn, args)) {
             return data::any{std::in_place_type<error>, error(error_kind::udf_error)};
         }
         plugin::udf::generic_record_impl response;
+        auto selected = select_udf_client(clients, selector, cfg);
         plugin::udf::generic_client_context context;
 
-        if (!apply_context(context, ctx, cfg)) {
+        if (!apply_context(context, ctx, cfg, selected.server_index)) {
             return data::any{std::in_place_type<error>, error(error_kind::udf_error)};
         }
 
-        client->call(context, {0, fn->function_index()}, request, response);
+        selected.client->call(context, {0, fn->function_index()}, request, response);
         if (response.error()) {
             std::string msg =
                 "/:jogasaki:executor:function:make_udf_scalar_lambda:operator() response.error() " +
@@ -1324,13 +1352,13 @@ std::shared_ptr<takatori::type::table> build_table_return_type(
 void register_server_stream_function(yugawara::function::configurable_provider& functions,
     executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
-    std::shared_ptr<plugin::udf::generic_client> const& client,
+    udf_client_list_ptr const& clients, udf_round_robin_selector_ptr const& selector,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
 
-    auto tvf_callable = make_udf_server_stream_lambda(client, cfg, fn);
+    auto tvf_callable = make_udf_server_stream_lambda(clients, selector, cfg, fn);
     auto return_type = build_table_return_type(fn);
 
     auto const& input_record = fn->input_record();
@@ -1371,27 +1399,28 @@ void register_server_stream_function(yugawara::function::configurable_provider& 
 void register_scalar_function(yugawara::function::configurable_provider& functions,
     scalar_function_repository& scalar_repo,
     yugawara::function::declaration::definition_id_type& current_id,
-    std::shared_ptr<plugin::udf::generic_client> const& client,
+    udf_client_list_ptr const& clients, udf_round_robin_selector_ptr const& selector,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
-    auto unary_func = make_udf_scalar_lambda(client, cfg, fn);
+    auto unary_func = make_udf_scalar_lambda(clients, selector, cfg, fn);
     register_udf_function_patterns(functions, scalar_repo, current_id, unary_func, fn);
 }
 void register_udf_function(yugawara::function::configurable_provider& functions,
     scalar_function_repository& sf_repo,
     executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
-    std::shared_ptr<plugin::udf::generic_client> const& client,
+    udf_client_list_ptr const& clients, udf_round_robin_selector_ptr const& selector,
     std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
     switch (fn->function_kind()) {
         case plugin::udf::function_kind::unary: {
 
-            register_scalar_function(functions, sf_repo, current_id, client, cfg, fn);
+            register_scalar_function(functions, sf_repo, current_id, clients, selector, cfg, fn);
             break;
         }
         default: {
-            register_server_stream_function(functions, tvf_repo, current_id, client, cfg, fn);
+            register_server_stream_function(
+                functions, tvf_repo, current_id, clients, selector, cfg, fn);
             break;
         }
     }
@@ -1420,9 +1449,13 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
     // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
     yugawara::function::declaration::definition_id_type current_id = 19999;
     for (auto const& tup : plugins) {
-        auto client = std::get<1>(tup);
+        auto clients = std::make_shared<const plugin::udf::generic_client_list>(std::get<1>(tup));
+        auto selector = std::make_shared<plugin::udf::round_robin_selector>();
         auto plugin = std::get<0>(tup);
         auto cfg = std::get<2>(tup);
+        assert_with_exception(!clients->empty(), clients->size());
+        assert_with_exception(clients->size() == cfg->servers().size(), clients->size(),
+            cfg->servers().size());
         // plugin::udf::print_plugin_info(plugin);
         auto packages = plugin->packages();
         for (auto const* pkg : packages) {
@@ -1430,7 +1463,7 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
             for (auto const* svc : pkg->services()) {
                 for (auto const* fn : svc->functions()) {
                     register_udf_function(
-                        functions, sf_repo, tvf_repo, current_id, client, cfg, fn);
+                        functions, sf_repo, tvf_repo, current_id, clients, selector, cfg, fn);
                 }
             }
         }

@@ -270,34 +270,34 @@ public:
      * @warning the returned iterator will be invalid when new append() is called.
      */
 
-    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> begin_boolean() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> begin_int4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> begin_int8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> begin_float4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> begin_float8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> begin_decimal() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::character>> begin_character() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> begin_octet() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::date>> begin_date() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> begin_time_point() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> begin_boolean() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> begin_int4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> begin_int8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> begin_float4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> begin_float8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> begin_decimal() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::character>> begin_character() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> begin_octet() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::date>> begin_date() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> begin_time_point() const = 0;
 
     /**
      * @brief getter of end iterator
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> end_boolean() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> end_int4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> end_int8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> end_float4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> end_float8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> end_decimal() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::character>> end_character() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> end_octet() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::date>> end_date() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> end_time_of_day() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> end_time_point() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> end_boolean() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> end_int4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> end_int8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> end_float4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> end_float8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> end_decimal() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::character>> end_character() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> end_octet() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::date>> end_date() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> end_time_of_day() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> end_time_point() const = 0;
 
     /**
      * @brief reset the store clearing all values
@@ -443,7 +443,7 @@ public:
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
-    [[nodiscard]] iterator<runtime_t<kind::boolean>> begin_boolean() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::boolean>> begin_boolean() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::boolean>>) { //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else { //NOLINT
@@ -451,7 +451,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int4>> begin_int4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int4>> begin_int4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) { //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else { //NOLINT
@@ -459,7 +459,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int8>> begin_int8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int8>> begin_int8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -467,7 +467,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float4>> begin_float4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float4>> begin_float4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -475,7 +475,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float8>> begin_float8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float8>> begin_float8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -483,7 +483,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::decimal>> begin_decimal() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::decimal>> begin_decimal() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::decimal>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -491,7 +491,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::character>> begin_character() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::character>> begin_character() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -499,7 +499,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::octet>> begin_octet() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::octet>> begin_octet() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::octet>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -507,7 +507,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::date>> begin_date() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::date>> begin_date() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::date>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -515,7 +515,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_of_day>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -523,7 +523,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_point>> begin_time_point() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_point>> begin_time_point() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
         } else {  //NOLINT
@@ -536,7 +536,7 @@ public:
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    [[nodiscard]] iterator<runtime_t<kind::boolean>> end_boolean() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::boolean>> end_boolean() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::boolean>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -544,7 +544,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int4>> end_int4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int4>> end_int4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -552,7 +552,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int8>> end_int8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int8>> end_int8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -560,7 +560,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float4>> end_float4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float4>> end_float4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -568,7 +568,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float8>> end_float8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float8>> end_float8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -576,7 +576,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::decimal>> end_decimal() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::decimal>> end_decimal() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::decimal>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -584,7 +584,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::character>> end_character() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::character>> end_character() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -592,7 +592,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::octet>> end_octet() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::octet>> end_octet() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::octet>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -600,7 +600,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::date>> end_date() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::date>> end_date() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::date>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -608,7 +608,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> end_time_of_day() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> end_time_of_day() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_of_day>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -616,7 +616,7 @@ public:
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_point>> end_time_point() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_point>> end_time_point() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
             return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
         } else {  //NOLINT
@@ -782,7 +782,7 @@ public:
      * @warning the returned iterator will be invalid when new append() is called.
      */
     template <class T>
-    [[nodiscard]] details::iterator<T> begin() const noexcept {
+    [[nodiscard]] details::iterator<T> begin() const {
         if constexpr(std::is_same_v<T, runtime_t<kind::boolean>>) {  //NOLINT
             return base_->begin_boolean();
         } else if constexpr(std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
@@ -816,7 +816,7 @@ public:
      * @warning the returned iterator will be invalid when new append() is called
      */
     template <class T>
-    [[nodiscard]] details::iterator<T> end() const noexcept {
+    [[nodiscard]] details::iterator<T> end() const {
         if constexpr(std::is_same_v<T, runtime_t<kind::boolean>>) {  //NOLINT
             return base_->end_boolean();
         } else if constexpr(std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT

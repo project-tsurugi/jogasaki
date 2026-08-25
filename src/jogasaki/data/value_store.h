@@ -66,11 +66,11 @@ public:
     /// @brief type of reference
     using reference = value_type&;
 
-    using null_flag_type = std::uint8_t;
+    using null_block_type = std::uint8_t;
 
-    using null_flag_pointer = null_flag_type*;
+    using null_flag_pointer = null_block_type*;
 
-    using null_flag_const_pointer = null_flag_type const*;
+    using null_flag_const_pointer = null_block_type const*;
 
     struct range {
         range(value_pointer b, value_pointer e) : b_(b), e_(e) {}
@@ -95,20 +95,20 @@ public:
      * @param range indicates the range entry that the constructed iterator start iterating with
      * @param base the base pointer of the current range
      * @param offset the offset of the current entry from the base
-     * @param null_flag_base the base pointer of the null flag value
+     * @param null_base the base pointer of the null flag value
      */
     iterator(
         range_list const& ranges,
         range_list_iterator range,
         value_pointer base,
         std::size_t offset,
-        null_flag_const_pointer null_flag_base
+        null_flag_const_pointer null_base
     ) :
         value_ranges_(std::addressof(ranges)),
         value_current_(range),
         value_base_(base),
         value_offset_(offset),
-        null_flag_base_(null_flag_base)
+        null_base_(null_base)
     {}
 
     /**
@@ -119,14 +119,14 @@ public:
     iterator(
         range_list const& ranges,
         range_list_iterator range,
-        null_flag_const_pointer null_flag_base
+        null_flag_const_pointer null_base
     ) :
         iterator(
             ranges,
             range,
             ranges.end() == range ? nullptr : range->b_,
             0,
-            null_flag_base
+            null_base
         )
     {}
 
@@ -176,10 +176,10 @@ public:
 
     [[nodiscard]] bool is_null() const {
         assert_with_exception(valid());
-        if (null_flag_base_ == nullptr) {
+        if (null_base_ == nullptr) {
             return false;
         }
-        return *(null_flag_base_ + value_offset_) == static_cast<null_flag_type>(1);
+        return *(null_base_ + value_offset_) == static_cast<null_block_type>(1);
     }
 
     /// @brief equivalent comparison
@@ -188,7 +188,7 @@ public:
             this->value_ranges_ == r.value_ranges_ &&
             this->value_current_ == r.value_current_ &&
             this->value_offset_ == r.value_offset_ &&
-            this->null_flag_base_ == r.null_flag_base_;
+            this->null_base_ == r.null_base_;
     }
 
     /// @brief inequivalent comparison
@@ -208,7 +208,7 @@ public:
             <<"] current range [" << takatori::util::print_support(value.value_current_)
             << "] base [" << value.value_base_ << "]"
             << "] offset [" << value.value_offset_ << "]"
-            << "] null_flag_base [" << value.null_flag_base_ << "]";
+            << "] null_base [" << value.null_base_ << "]";
     }
 
 private:
@@ -216,7 +216,7 @@ private:
     range_list_iterator value_current_{};
     value_pointer value_base_{};
     std::size_t value_offset_{};
-    null_flag_const_pointer null_flag_base_{};
+    null_flag_const_pointer null_base_{};
 };
 
 class cache_align typed_store {
@@ -316,7 +316,7 @@ public:
 
     using value_pointer = value_type*;
 
-    using null_flag_type = typename iterator<T>::null_flag_type;
+    using null_block_type = typename iterator<T>::null_block_type;
 
     using null_flag_pointer = typename iterator<T>::null_flag_pointer;
 
@@ -445,7 +445,7 @@ public:
      */
     [[nodiscard]] iterator<runtime_t<kind::boolean>> begin_boolean() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::boolean>>) { //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else { //NOLINT
             return {};
         }
@@ -453,7 +453,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::int4>> begin_int4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) { //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else { //NOLINT
             return {};
         }
@@ -461,7 +461,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::int8>> begin_int8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -469,7 +469,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::float4>> begin_float4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -477,7 +477,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::float8>> begin_float8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -485,7 +485,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::decimal>> begin_decimal() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::decimal>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -493,7 +493,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::character>> begin_character() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -501,7 +501,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::octet>> begin_octet() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::octet>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -509,7 +509,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::date>> begin_date() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::date>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -517,7 +517,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_of_day>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -525,7 +525,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::time_point>> begin_time_point() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -538,7 +538,7 @@ public:
      */
     [[nodiscard]] iterator<runtime_t<kind::boolean>> end_boolean() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::boolean>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -546,7 +546,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::int4>> end_int4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -554,7 +554,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::int8>> end_int8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -562,7 +562,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::float4>> end_float4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -570,7 +570,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::float8>> end_float8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -578,7 +578,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::decimal>> end_decimal() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::decimal>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -586,7 +586,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::character>> end_character() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -594,7 +594,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::octet>> end_octet() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::octet>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -602,7 +602,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::date>> end_date() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::date>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -610,7 +610,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::time_of_day>> end_time_of_day() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_of_day>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -618,7 +618,7 @@ public:
 
     [[nodiscard]] iterator<runtime_t<kind::time_point>> end_time_point() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
-            return iterator<T>{value_ranges_, value_ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -633,7 +633,7 @@ public:
         count_ = 0;
         value_prev_ = nullptr;
         value_ranges_.clear();
-        null_prev_ = nullptr;
+        null_cur_block_ = nullptr;
     }
 
 private:
@@ -643,21 +643,21 @@ private:
     std::size_t count_{};
     value_pointer value_prev_{};
     range_list value_ranges_{};
-    null_flag_pointer null_prev_{};
-    null_flag_pointer null_flag_base_{};
+    null_flag_pointer null_cur_block_{};
+    null_flag_pointer null_ranges_{};
 
     void internal_append_null_flag(bool arg) {
         assert_with_exception(nulls_resource_ != nullptr);
-        auto* p = static_cast<null_flag_pointer>(nulls_resource_->allocate(sizeof(null_flag_type), alignof(null_flag_type)));
+        auto* p = static_cast<null_flag_pointer>(nulls_resource_->allocate(sizeof(null_block_type), alignof(null_block_type)));
         if (!p) fail_with_exception();
-        if (null_prev_ != nullptr && p != null_prev_ + 1) { //NOLINT
+        if (null_cur_block_ != nullptr && p != null_cur_block_ + 1) { //NOLINT
             // currently assuming nulls flags are up to 2M
             // TODO add ranges handling for nulls resource
             fail_with_exception();
         }
-        *p = arg ? static_cast<null_flag_type>(1) : static_cast<null_flag_type>(0);
-        null_prev_ = p;
-        null_flag_base_ = (null_flag_base_ == nullptr) ? p : null_flag_base_;
+        *p = arg ? static_cast<null_block_type>(1) : static_cast<null_block_type>(0);
+        null_cur_block_ = p;
+        null_ranges_ = (null_ranges_ == nullptr) ? p : null_ranges_;
     }
 
     void internal_append(void* src) {

@@ -28,6 +28,18 @@ namespace jogasaki {
 class mock_memory_resource : public memory::paged_memory_resource {
 public:
     using monotonic_buffer_resource = boost::container::pmr::monotonic_buffer_resource;
+    /**
+     * @brief create a mock paged memory resource that emulates page boundaries
+     * @param max_bytes the maximum number of bytes served from a single page. When a new
+     * allocation would make the current page exceed this size, a fresh (non-contiguous) page is
+     * started before serving the allocation. 0 means unlimited (no byte-based page split).
+     * @param max_allocations the maximum number of allocations served from a single page. When a
+     * new allocation would exceed this count on the current page, a fresh (non-contiguous) page is
+     * started before serving the allocation. 0 means unlimited (no count-based page split).
+     * @note each page is backed by a separate monotonic_buffer_resource, so allocations on
+     * different pages are non-adjacent in memory. This lets tests control how the stored data is
+     * split into ranges (e.g. value ranges or null flag ranges in value_store).
+     */
     explicit mock_memory_resource(std::size_t max_bytes = 0, std::size_t max_allocations = 0) :
             max_bytes_(max_bytes), max_allocations_(max_allocations)
     {

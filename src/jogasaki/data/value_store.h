@@ -66,11 +66,13 @@ public:
     /// @brief type of reference
     using reference = value_type&;
 
-    using null_flag_type = std::uint8_t;
+    /// @brief block type holding bit-packed null flags (8 flags per block)
+    using null_block_type = std::uint8_t;
 
-    using null_flag_pointer = null_flag_type*;
+    /// @brief number of null flags packed into a single block
+    static constexpr std::size_t flags_per_block = 8;
 
-    using null_flag_const_pointer = null_flag_type const*;
+    static_assert(flags_per_block == sizeof(null_block_type) * 8);
 
     struct range {
         range(value_pointer b, value_pointer e) : b_(b), e_(e) {}
@@ -84,6 +86,19 @@ public:
     /// @brief type for list of ranges
     using range_list_iterator = typename range_list::const_iterator;
 
+    /// @brief range of contiguous null flag blocks
+    struct null_range {
+        null_range(null_block_type* b, null_block_type* e) : b_(b), e_(e) {}
+        null_block_type* b_; //NOLINT
+        null_block_type* e_; //NOLINT
+    };
+
+    /// @brief type for list of null flag ranges
+    using null_range_list = std::vector<null_range>;
+
+    /// @brief type for iterating null flag ranges
+    using null_range_list_iterator = typename null_range_list::const_iterator;
+
     /**
      * @brief create empty object
      */
@@ -92,58 +107,59 @@ public:
     /**
      * @brief construct new iterator
      * @param ranges indicates the ranges container
-     * @param range indicates the range entry that the constructed iterator start iterating with
-     * @param base the base pointer of the current range
-     * @param offset the offset of the current entry from the base
-     * @param null_flag_base the base pointer of the null flag value
+     * @param current indicates the range entry that the constructed iterator starts iterating with.
+     * This is expected to be either @c ranges.begin() (to build a begin iterator) or @c ranges.end()
+     * (to build an end iterator). Passing any other range entry is not supported.
+     * @param null_ranges indicates the null flag ranges container
+     * @throws std::logic_error if @c current is neither @c ranges.begin() nor @c ranges.end().
      */
     iterator(
         range_list const& ranges,
-        range_list_iterator range,
-        value_pointer base,
-        std::size_t offset,
-        null_flag_const_pointer null_flag_base
+        range_list_iterator current,
+        null_range_list const& null_ranges
     ) :
-        ranges_(std::addressof(ranges)),
-        range_(range),
-        base_(base),
-        offset_(offset),
-        null_flag_base_(null_flag_base)
-    {}
-
-    /**
-     * @brief construct new iterator
-     * @param container the target record store that the constructed object iterates
-     * @param range indicates the range entry that the constructed iterator start iterating with
-     */
-    iterator(
-        range_list const& ranges,
-        range_list_iterator range,
-        null_flag_const_pointer null_flag_base
-    ) :
-        iterator(
-            ranges,
-            range,
-            ranges.end() == range ? nullptr : range->b_,
-            0,
-            null_flag_base
-        )
-    {}
+        value_base_(ranges.end() == current ? nullptr : current->b_),
+        value_current_(current),
+        null_base_(
+            (ranges.end() == current || null_ranges.empty()) ? nullptr : null_ranges.begin()->b_),
+        null_current_(ranges.end() == current ? null_ranges.end() : null_ranges.begin()),
+        value_ranges_(std::addressof(ranges)),
+        null_ranges_(std::addressof(null_ranges))
+    {
+        assert_with_exception(current == ranges.begin() || current == ranges.end());
+    }
 
     /**
      * @brief increment iterator
      * @return reference after the increment
      */
     iterator& operator++() {
-        ++offset_;
-        if (offset_ >= static_cast<std::size_t>(range_->e_ - range_->b_)) {
-            ++range_;
-            if(range_ != ranges_->end()) {
-                base_ = range_->b_;
+        ++value_offset_;
+        if (value_offset_ >= static_cast<std::size_t>(value_current_->e_ - value_current_->b_)) {
+            ++value_current_;
+            if(value_current_ != value_ranges_->end()) {
+                value_base_ = value_current_->b_;
             } else {
-                base_ = nullptr;
+                value_base_ = nullptr;
             }
-            offset_ = 0;
+            value_offset_ = 0;
+        }
+        // advance the null flag cursor independently from the value cursor, mirroring the value
+        // cursor above: null_offset_ is the flag offset within the current null range and may span
+        // multiple 8-flag blocks
+        if (null_base_ != nullptr) {
+            ++null_offset_;
+            auto const range_flags =
+                static_cast<std::size_t>(null_current_->e_ - null_current_->b_) * flags_per_block;
+            if (null_offset_ >= range_flags) {
+                ++null_current_;
+                if (null_current_ != null_ranges_->end()) {
+                    null_base_ = null_current_->b_;
+                } else {
+                    null_base_ = nullptr;
+                }
+                null_offset_ = 0;
+            }
         }
         return *this;
     }
@@ -162,7 +178,7 @@ public:
      * @brief returns if the iterator is pointing valid value
      */
     [[nodiscard]] bool valid() const noexcept {
-        return base_ != nullptr;
+        return value_base_ != nullptr;
     }
 
     /**
@@ -171,24 +187,30 @@ public:
      */
     [[nodiscard]] value_type operator*() {
         assert_with_exception(valid());
-        return *(base_+offset_);
+        return *(value_base_+value_offset_);
     }
 
     [[nodiscard]] bool is_null() const {
         assert_with_exception(valid());
-        if (null_flag_base_ == nullptr) {
+        if (null_base_ == nullptr) {
             return false;
         }
-        return *(null_flag_base_ + offset_) == static_cast<null_flag_type>(1);
+        auto const* block = null_base_ + null_offset_ / flags_per_block; //NOLINT
+        // widen to unsigned before shifting, otherwise the block integer-promotes to int
+        auto const flags = static_cast<unsigned>(*block);
+        return ((flags >> (null_offset_ % flags_per_block)) & 1U) != 0U;
     }
 
     /// @brief equivalent comparison
     constexpr bool operator==(iterator const& r) const noexcept {
-        return this->base_ == r.base_ &&
-            this->ranges_ == r.ranges_ &&
-            this->range_ == r.range_ &&
-            this->offset_ == r.offset_ &&
-            this->null_flag_base_ == r.null_flag_base_;
+        // Calculate the current position based on the value part portion of the iterator.
+        // The null part portion of the iterator is not considered for equality comparison
+        // because the null part is expected to be in sync with the value part.
+        return this->value_base_ == r.value_base_ &&
+            this->value_ranges_ == r.value_ranges_ &&
+            this->null_ranges_ == r.null_ranges_ &&
+            this->value_current_ == r.value_current_ &&
+            this->value_offset_ == r.value_offset_;
     }
 
     /// @brief inequivalent comparison
@@ -204,19 +226,26 @@ public:
      */
     friend inline std::ostream& operator<<(std::ostream& out, iterator value) {
         return out << std::hex
-            << "ranges [" << takatori::util::print_support(value.ranges_)
-            <<"] current range [" << takatori::util::print_support(value.range_)
-            << "] base [" << value.base_ << "]"
-            << "] offset [" << value.offset_ << "]"
-            << "] null_flag_base [" << value.null_flag_base_ << "]";
+            << "ranges [" << takatori::util::print_support(value.value_ranges_)
+            <<"] current range [" << takatori::util::print_support(value.value_current_)
+            << "] base [" << value.value_base_
+            << "] offset [" << value.value_offset_
+            << "] null_base [" << static_cast<void const*>(value.null_base_)
+            << "] null_offset [" << value.null_offset_ << "]";
     }
 
 private:
-    range_list const* ranges_{};
-    range_list_iterator range_{};
-    value_pointer base_{};
-    std::size_t offset_{};
-    null_flag_const_pointer null_flag_base_{};
+    // order hot fields first
+    std::size_t value_offset_{}; // offset based on value_base_
+    std::size_t null_offset_{}; // bit offset based on null_base_. Can be greater than flags_per_block
+
+    value_pointer value_base_{};
+    range_list_iterator value_current_{};
+    null_block_type const* null_base_{};
+    null_range_list_iterator null_current_{};
+
+    range_list const* value_ranges_{};
+    null_range_list const* null_ranges_{};
 };
 
 class cache_align typed_store {
@@ -265,39 +294,54 @@ public:
     [[nodiscard]] virtual bool empty() const noexcept = 0;
 
     /**
+     * @brief accessor to the number of value ranges allocated in this store
+     * @return the number of value ranges
+     * @note exposed for diagnostics and tests, which need to verify how the stored data got split
+     * by the backing memory resource pages
+     */
+    [[nodiscard]] virtual std::size_t range_count() const noexcept = 0;
+
+    /**
+     * @brief accessor to the number of null flag ranges allocated in this store
+     * @return the number of null flag ranges
+     * @note exposed for diagnostics and tests, see range_count()
+     */
+    [[nodiscard]] virtual std::size_t null_range_count() const noexcept = 0;
+
+    /**
      * @brief getter of begin iterator
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
 
-    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> begin_boolean() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> begin_int4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> begin_int8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> begin_float4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> begin_float8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> begin_decimal() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::character>> begin_character() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> begin_octet() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::date>> begin_date() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> begin_time_point() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> begin_boolean() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> begin_int4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> begin_int8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> begin_float4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> begin_float8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> begin_decimal() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::character>> begin_character() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> begin_octet() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::date>> begin_date() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> begin_time_point() const = 0;
 
     /**
      * @brief getter of end iterator
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> end_boolean() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> end_int4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> end_int8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> end_float4() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> end_float8() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> end_decimal() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::character>> end_character() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> end_octet() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::date>> end_date() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> end_time_of_day() const noexcept = 0;
-    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> end_time_point() const noexcept = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::boolean>> end_boolean() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int4>> end_int4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::int8>> end_int8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float4>> end_float4() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::float8>> end_float8() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::decimal>> end_decimal() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::character>> end_character() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::octet>> end_octet() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::date>> end_date() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_of_day>> end_time_of_day() const = 0;
+    [[nodiscard]] virtual iterator<runtime_t<kind::time_point>> end_time_point() const = 0;
 
     /**
      * @brief reset the store clearing all values
@@ -316,9 +360,11 @@ public:
 
     using value_pointer = value_type*;
 
-    using null_flag_type = typename iterator<T>::null_flag_type;
+    using null_block_type = typename iterator<T>::null_block_type;
 
-    using null_flag_pointer = typename iterator<T>::null_flag_pointer;
+    using null_range_list = typename iterator<T>::null_range_list;
+
+    static constexpr std::size_t flags_per_block = iterator<T>::flags_per_block;
 
     using range_list = typename iterator<T>::range_list;
 
@@ -438,94 +484,102 @@ public:
         return count_ == 0;
     }
 
+    [[nodiscard]] std::size_t range_count() const noexcept override {
+        return value_ranges_.size();
+    }
+
+    [[nodiscard]] std::size_t null_range_count() const noexcept override {
+        return null_ranges_.size();
+    }
+
     /**
      * @brief getter of begin iterator
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
-    [[nodiscard]] iterator<runtime_t<kind::boolean>> begin_boolean() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::boolean>> begin_boolean() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::boolean>>) { //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else { //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int4>> begin_int4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int4>> begin_int4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) { //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else { //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int8>> begin_int8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int8>> begin_int8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float4>> begin_float4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float4>> begin_float4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float8>> begin_float8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float8>> begin_float8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::decimal>> begin_decimal() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::decimal>> begin_decimal() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::decimal>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::character>> begin_character() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::character>> begin_character() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::octet>> begin_octet() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::octet>> begin_octet() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::octet>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::date>> begin_date() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::date>> begin_date() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::date>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> begin_time_of_day() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_of_day>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_point>> begin_time_point() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_point>> begin_time_point() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.begin(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.begin(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -536,89 +590,89 @@ public:
      * @return iterator at the end of the store
      * @warning the returned iterator will be invalid when new append() is called
      */
-    [[nodiscard]] iterator<runtime_t<kind::boolean>> end_boolean() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::boolean>> end_boolean() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::boolean>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int4>> end_int4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int4>> end_int4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::int8>> end_int8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::int8>> end_int8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::int8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float4>> end_float4() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float4>> end_float4() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float4>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::float8>> end_float8() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::float8>> end_float8() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::float8>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::decimal>> end_decimal() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::decimal>> end_decimal() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::decimal>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::character>> end_character() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::character>> end_character() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::character>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::octet>> end_octet() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::octet>> end_octet() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::octet>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::date>> end_date() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::date>> end_date() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::date>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> end_time_of_day() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_of_day>> end_time_of_day() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_of_day>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
     }
 
-    [[nodiscard]] iterator<runtime_t<kind::time_point>> end_time_point() const noexcept override {
+    [[nodiscard]] iterator<runtime_t<kind::time_point>> end_time_point() const override {
         if constexpr (std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
-            return iterator<T>{ranges_, ranges_.end(), null_flag_base_};
+            return iterator<T>{value_ranges_, value_ranges_.end(), null_ranges_};
         } else {  //NOLINT
             return {};
         }
@@ -631,39 +685,54 @@ public:
      */
     void reset() noexcept override {
         count_ = 0;
-        prev_ = nullptr;
-        ranges_.clear();
-        null_prev_ = nullptr;
+        value_prev_ = nullptr;
+        value_ranges_.clear();
+        null_ranges_.clear();
+        null_cur_block_ = nullptr;
+        null_next_bit_ = 0;
     }
 
 private:
+    // write-hot scalars first
+    std::size_t count_{};
+    value_pointer value_prev_{};
+    std::size_t null_next_bit_{};
+    null_block_type* null_cur_block_{};
+
+    range_list value_ranges_{};
+    null_range_list null_ranges_{};
+
     memory::paged_memory_resource* resource_{};
     memory::paged_memory_resource* varlen_resource_{};
     memory::paged_memory_resource* nulls_resource_{};
-    std::size_t count_{};
-    value_pointer prev_{};
-    range_list ranges_{};
-    null_flag_pointer null_prev_{};
-    null_flag_pointer null_flag_base_{};
 
     void internal_append_null_flag(bool arg) {
         assert_with_exception(nulls_resource_ != nullptr);
-        auto* p = static_cast<null_flag_pointer>(nulls_resource_->allocate(sizeof(null_flag_type), alignof(null_flag_type)));
-        if (!p) fail_with_exception();
-        if (null_prev_ != nullptr && p != null_prev_ + 1) { //NOLINT
-            // currently assuming nulls flags are up to 2M
-            // TODO add ranges handling for nulls resource
-            fail_with_exception();
+        if (null_next_bit_ == 0) {
+            // a new block is needed to store the next 8 flags
+            auto* p = static_cast<null_block_type*>(
+                nulls_resource_->allocate(sizeof(null_block_type), alignof(null_block_type)));
+            assert_with_exception(p != nullptr);
+            *p = 0;
+            if (null_cur_block_ == nullptr || p != null_cur_block_ + 1) { //NOLINT
+                // not contiguous with the previous block (e.g. crossing a page boundary):
+                // start a new range so that null flags are not required to be contiguous
+                null_ranges_.emplace_back(p, nullptr);
+            }
+            null_ranges_.back().e_ = p + 1; //NOLINT
+            null_cur_block_ = p;
         }
-        *p = arg ? static_cast<null_flag_type>(1) : static_cast<null_flag_type>(0);
-        null_prev_ = p;
-        null_flag_base_ = (null_flag_base_ == nullptr) ? p : null_flag_base_;
+        if (arg) {
+            *null_cur_block_ |= static_cast<null_block_type>(1U << null_next_bit_);
+        }
+        null_next_bit_ = (null_next_bit_ + 1) % flags_per_block;
     }
 
     void internal_append(void* src) {
-        // If src is null, arbitrary value is copied and stored. Used to store null.
+        // Even if src is null, the value space is kept to calculate the offset.
+        // TODO optimize to save the space for values when the value is null
         auto* p = static_cast<value_pointer>(resource_->allocate(value_length, value_alignment));
-        if (!p) std::abort();
+        assert_with_exception(p != nullptr);
         if (src != nullptr) {
             if constexpr (std::is_same_v<T, accessor::text>) {  //NOLINT
                 assert_with_exception(varlen_resource_ != nullptr);
@@ -682,12 +751,12 @@ private:
         }
         ++count_;
 
-        if (prev_ == nullptr || p != prev_ + 1) { //NOLINT
+        if (value_prev_ == nullptr || p != value_prev_ + 1) { //NOLINT
             // starting new range
-            ranges_.emplace_back(p, nullptr);
+            value_ranges_.emplace_back(p, nullptr);
         }
-        ranges_.back().e_ = p + 1; //NOLINT
-        prev_ = p;
+        value_ranges_.back().e_ = p + 1; //NOLINT
+        value_prev_ = p;
     }
 };
 
@@ -777,12 +846,31 @@ public:
     }
 
     /**
+     * @brief accessor to the number of value ranges allocated in this store
+     * @return the number of value ranges
+     * @note exposed for diagnostics and tests, which need to verify how the stored data got split
+     * by the backing memory resource pages
+     */
+    [[nodiscard]] std::size_t range_count() const noexcept {
+        return base_->range_count();
+    }
+
+    /**
+     * @brief accessor to the number of null flag ranges allocated in this store
+     * @return the number of null flag ranges
+     * @note exposed for diagnostics and tests, see range_count()
+     */
+    [[nodiscard]] std::size_t null_range_count() const noexcept {
+        return base_->null_range_count();
+    }
+
+    /**
      * @brief getter of begin iterator
      * @return iterator at the beginning of the store
      * @warning the returned iterator will be invalid when new append() is called.
      */
     template <class T>
-    [[nodiscard]] details::iterator<T> begin() const noexcept {
+    [[nodiscard]] details::iterator<T> begin() const {
         if constexpr(std::is_same_v<T, runtime_t<kind::boolean>>) {  //NOLINT
             return base_->begin_boolean();
         } else if constexpr(std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT
@@ -816,7 +904,7 @@ public:
      * @warning the returned iterator will be invalid when new append() is called
      */
     template <class T>
-    [[nodiscard]] details::iterator<T> end() const noexcept {
+    [[nodiscard]] details::iterator<T> end() const {
         if constexpr(std::is_same_v<T, runtime_t<kind::boolean>>) {  //NOLINT
             return base_->end_boolean();
         } else if constexpr(std::is_same_v<T, runtime_t<kind::int4>>) {  //NOLINT

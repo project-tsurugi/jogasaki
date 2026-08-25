@@ -54,7 +54,7 @@
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_or_heap_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -240,24 +240,43 @@ namespace details {
 
 template<class T>
 static std::int64_t count_distinct(data::value_store const& store) {
-    using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<T, 62, false>;
     using hash_table_allocator = boost::container::pmr::polymorphic_allocator<T>;
     using hash_set = tsl::hopscotch_set<T, std::hash<T>, std::equal_to<>, hash_table_allocator>;
-    // hopscotch default power_of_two_growth_policy forces the # of buckets to be power of two,
-    // so round down here to avoid going over allocator limit
-    constexpr static std::size_t default_initial_hash_table_size =
-        utils::round_down_to_power_of_two(memory::page_size / sizeof(bucket_type) - 32); // hopscotch has some (~1KB)
-                                                                                     // overhead outside bucket storage
+
+    // The bucket array is a single contiguous allocation of hopscotch buckets.
+    // Its element type depends on the neighborhood size. We borrow the default used in tsl::hopscotch_set.
+    // We need it to compute how many buckets fit in a single pooled page.
+    constexpr std::size_t neighborhood_size = 62;
+    using bucket_type = tsl::detail_hopscotch_hash::hopscotch_bucket<T, neighborhood_size, false>;
+
+    // The largest power-of-two bucket count whose array still fits in a single page. tsl rounds a
+    // requested bucket count up to a power of two (power_of_two_growth_policy) and then allocates
+    // bucket_count + neighborhood_size - 1 buckets (extra trailing buckets so the neighborhood of
+    // the last bucket stays in bounds).
+    // For safety, let's round down to a power of two after subtracting the neighborhood size so we don't exceed a page.
+    constexpr std::size_t page_fitting_buckets = utils::round_down_to_power_of_two(
+        memory::page_size / sizeof(bucket_type) - (neighborhood_size - 1));
+
+    // verify the computation above really keeps the initial bucket array within one page.
+    // This is in case for the internal change in tsl hopscotch_set implementation.
+    static_assert(
+        sizeof(bucket_type) * (page_fitting_buckets + neighborhood_size - 1) <= memory::page_size);
+
+    // Serve the bucket array from a pooled page while it fits, and spill to the heap once it grows
+    // past a page. This avoids the bad_alloc that occurred when a page-based resource had to serve a
+    // single allocation larger than one page for large distinct cardinality.
+    memory::page_or_heap_memory_resource resource{std::addressof(global::page_pool())};
+
+    // Pre-size the table to the largest bucket count that still fits in a single pooled page so the
+    // common large-cardinality case allocates once and rehashes zero times. Tables larger than that
+    // grow onto the heap by doubling.
+    // This intentionally optimizes for groups with many records: the initial bucket array is
+    // allocated (and zero-initialized) at its full page-fitting size regardless of the actual input
+    // size. TODO revisit the initial size
+    hash_set values{page_fitting_buckets, hash_table_allocator{std::addressof(resource)}};
 
     auto b = store.begin<T>();
     auto e = store.end<T>();
-    memory::monotonic_paged_memory_resource resource{&global::page_pool()};
-    hash_set values{
-        default_initial_hash_table_size,
-        std::hash<T>{},
-        std::equal_to<>{},
-        hash_table_allocator{&resource}
-    };
     while(b != e) {
         if (! b.is_null()) {
             values.emplace(*b);

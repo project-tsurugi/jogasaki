@@ -66,11 +66,13 @@ public:
     /// @brief type of reference
     using reference = value_type&;
 
+    /// @brief block type holding bit-packed null flags (8 flags per block)
     using null_block_type = std::uint8_t;
 
-    using null_flag_pointer = null_block_type*;
+    /// @brief number of null flags packed into a single block
+    static constexpr std::size_t flags_per_block = 8;
 
-    using null_flag_const_pointer = null_block_type const*;
+    static_assert(flags_per_block == sizeof(null_block_type) * 8);
 
     struct range {
         range(value_pointer b, value_pointer e) : b_(b), e_(e) {}
@@ -84,6 +86,19 @@ public:
     /// @brief type for list of ranges
     using range_list_iterator = typename range_list::const_iterator;
 
+    /// @brief range of contiguous null flag blocks
+    struct null_range {
+        null_range(null_block_type* b, null_block_type* e) : b_(b), e_(e) {}
+        null_block_type* b_; //NOLINT
+        null_block_type* e_; //NOLINT
+    };
+
+    /// @brief type for list of null flag ranges
+    using null_range_list = std::vector<null_range>;
+
+    /// @brief type for iterating null flag ranges
+    using null_range_list_iterator = typename null_range_list::const_iterator;
+
     /**
      * @brief create empty object
      */
@@ -92,43 +107,27 @@ public:
     /**
      * @brief construct new iterator
      * @param ranges indicates the ranges container
-     * @param range indicates the range entry that the constructed iterator start iterating with
-     * @param base the base pointer of the current range
-     * @param offset the offset of the current entry from the base
-     * @param null_base the base pointer of the null flag value
+     * @param current indicates the range entry that the constructed iterator starts iterating with.
+     * This is expected to be either @c ranges.begin() (to build a begin iterator) or @c ranges.end()
+     * (to build an end iterator). Passing any other range entry is not supported.
+     * @param null_ranges indicates the null flag ranges container
+     * @throws std::logic_error if @c current is neither @c ranges.begin() nor @c ranges.end().
      */
     iterator(
         range_list const& ranges,
-        range_list_iterator range,
-        value_pointer base,
-        std::size_t offset,
-        null_flag_const_pointer null_base
+        range_list_iterator current,
+        null_range_list const& null_ranges
     ) :
+        value_base_(ranges.end() == current ? nullptr : current->b_),
+        value_current_(current),
+        null_base_(
+            (ranges.end() == current || null_ranges.empty()) ? nullptr : null_ranges.begin()->b_),
+        null_current_(ranges.end() == current ? null_ranges.end() : null_ranges.begin()),
         value_ranges_(std::addressof(ranges)),
-        value_current_(range),
-        value_base_(base),
-        value_offset_(offset),
-        null_base_(null_base)
-    {}
-
-    /**
-     * @brief construct new iterator
-     * @param container the target record store that the constructed object iterates
-     * @param range indicates the range entry that the constructed iterator start iterating with
-     */
-    iterator(
-        range_list const& ranges,
-        range_list_iterator range,
-        null_flag_const_pointer null_base
-    ) :
-        iterator(
-            ranges,
-            range,
-            ranges.end() == range ? nullptr : range->b_,
-            0,
-            null_base
-        )
-    {}
+        null_ranges_(std::addressof(null_ranges))
+    {
+        assert_with_exception(current == ranges.begin() || current == ranges.end());
+    }
 
     /**
      * @brief increment iterator
@@ -144,6 +143,23 @@ public:
                 value_base_ = nullptr;
             }
             value_offset_ = 0;
+        }
+        // advance the null flag cursor independently from the value cursor, mirroring the value
+        // cursor above: null_offset_ is the flag offset within the current null range and may span
+        // multiple 8-flag blocks
+        if (null_base_ != nullptr) {
+            ++null_offset_;
+            auto const range_flags =
+                static_cast<std::size_t>(null_current_->e_ - null_current_->b_) * flags_per_block;
+            if (null_offset_ >= range_flags) {
+                ++null_current_;
+                if (null_current_ != null_ranges_->end()) {
+                    null_base_ = null_current_->b_;
+                } else {
+                    null_base_ = nullptr;
+                }
+                null_offset_ = 0;
+            }
         }
         return *this;
     }
@@ -179,16 +195,20 @@ public:
         if (null_base_ == nullptr) {
             return false;
         }
-        return *(null_base_ + value_offset_) == static_cast<null_block_type>(1);
+        auto const* block = null_base_ + null_offset_ / flags_per_block;
+        return ((*block >> (null_offset_ % flags_per_block)) & 1U) != 0U;
     }
 
     /// @brief equivalent comparison
     constexpr bool operator==(iterator const& r) const noexcept {
+        // Calculate the current position based on the value part portion of the iterator.
+        // The null part portion of the iterator is not considered for equality comparison
+        // because the null part is expected to be in sync with the value part.
         return this->value_base_ == r.value_base_ &&
             this->value_ranges_ == r.value_ranges_ &&
+            this->null_ranges_ == r.null_ranges_ &&
             this->value_current_ == r.value_current_ &&
-            this->value_offset_ == r.value_offset_ &&
-            this->null_base_ == r.null_base_;
+            this->value_offset_ == r.value_offset_;
     }
 
     /// @brief inequivalent comparison
@@ -208,15 +228,22 @@ public:
             <<"] current range [" << takatori::util::print_support(value.value_current_)
             << "] base [" << value.value_base_ << "]"
             << "] offset [" << value.value_offset_ << "]"
-            << "] null_base [" << value.null_base_ << "]";
+            << "] null_base [" << static_cast<void const*>(value.null_base_) << "]"
+            << "] null_offset [" << value.null_offset_ << "]";
     }
 
 private:
-    range_list const* value_ranges_{};
-    range_list_iterator value_current_{};
+    // order hot fields first
+    std::size_t value_offset_{}; // offset based on value_base_
+    std::size_t null_offset_{}; // bit offset based on null_base_. Can be greater than flags_per_block
+
     value_pointer value_base_{};
-    std::size_t value_offset_{};
-    null_flag_const_pointer null_base_{};
+    range_list_iterator value_current_{};
+    null_block_type const* null_base_{};
+    null_range_list_iterator null_current_{};
+
+    range_list const* value_ranges_{};
+    null_range_list const* null_ranges_{};
 };
 
 class cache_align typed_store {
@@ -318,7 +345,9 @@ public:
 
     using null_block_type = typename iterator<T>::null_block_type;
 
-    using null_flag_pointer = typename iterator<T>::null_flag_pointer;
+    using null_range_list = typename iterator<T>::null_range_list;
+
+    static constexpr std::size_t flags_per_block = iterator<T>::flags_per_block;
 
     using range_list = typename iterator<T>::range_list;
 
@@ -633,37 +662,52 @@ public:
         count_ = 0;
         value_prev_ = nullptr;
         value_ranges_.clear();
+        null_ranges_.clear();
         null_cur_block_ = nullptr;
+        null_next_bit_ = 0;
     }
 
 private:
+    // write-hot scalars first
+    std::size_t count_{};
+    value_pointer value_prev_{};
+    std::size_t null_next_bit_{};
+    null_block_type* null_cur_block_{};
+
+    range_list value_ranges_{};
+    null_range_list null_ranges_{};
+
     memory::paged_memory_resource* resource_{};
     memory::paged_memory_resource* varlen_resource_{};
     memory::paged_memory_resource* nulls_resource_{};
-    std::size_t count_{};
-    value_pointer value_prev_{};
-    range_list value_ranges_{};
-    null_flag_pointer null_cur_block_{};
-    null_flag_pointer null_ranges_{};
 
     void internal_append_null_flag(bool arg) {
         assert_with_exception(nulls_resource_ != nullptr);
-        auto* p = static_cast<null_flag_pointer>(nulls_resource_->allocate(sizeof(null_block_type), alignof(null_block_type)));
-        if (!p) fail_with_exception();
-        if (null_cur_block_ != nullptr && p != null_cur_block_ + 1) { //NOLINT
-            // currently assuming nulls flags are up to 2M
-            // TODO add ranges handling for nulls resource
-            fail_with_exception();
+        if (null_next_bit_ == 0) {
+            // a new block is needed to store the next 8 flags
+            auto* p = static_cast<null_block_type*>(
+                nulls_resource_->allocate(sizeof(null_block_type), alignof(null_block_type)));
+            assert_with_exception(p != nullptr);
+            *p = 0;
+            if (null_cur_block_ == nullptr || p != null_cur_block_ + 1) { //NOLINT
+                // not contiguous with the previous block (e.g. crossing a page boundary):
+                // start a new range so that null flags are not required to be contiguous
+                null_ranges_.emplace_back(p, nullptr);
+            }
+            null_ranges_.back().e_ = p + 1; //NOLINT
+            null_cur_block_ = p;
         }
-        *p = arg ? static_cast<null_block_type>(1) : static_cast<null_block_type>(0);
-        null_cur_block_ = p;
-        null_ranges_ = (null_ranges_ == nullptr) ? p : null_ranges_;
+        if (arg) {
+            *null_cur_block_ |= static_cast<null_block_type>(1U << null_next_bit_);
+        }
+        null_next_bit_ = (null_next_bit_ + 1) % flags_per_block;
     }
 
     void internal_append(void* src) {
-        // If src is null, arbitrary value is copied and stored. Used to store null.
+        // Even if src is null, the value space is kept to calculate the offset.
+        // TODO optimize to save the space for values when the value is null
         auto* p = static_cast<value_pointer>(resource_->allocate(value_length, value_alignment));
-        if (!p) std::abort();
+        assert_with_exception(p != nullptr);
         if (src != nullptr) {
             if constexpr (std::is_same_v<T, accessor::text>) {  //NOLINT
                 assert_with_exception(varlen_resource_ != nullptr);

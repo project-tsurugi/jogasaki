@@ -36,18 +36,18 @@ class udf_config {
     udf_config(bool enabled, std::string endpoint, std::string transport, bool secure,
         std::optional<std::string> grpc_server_endpoint = std::nullopt,
         std::optional<std::size_t> timeout = std::nullopt);
-        udf_config(bool enabled, std::vector<udf_server_config> servers, std::string transport,
+    udf_config(bool enabled, std::vector<udf_server_config> servers, std::string transport,
         std::optional<std::string> grpc_server_endpoint = std::nullopt,
         std::optional<std::size_t> timeout = std::nullopt);
-udf_config& operator=(udf_config const&) = default;
+    udf_config& operator=(udf_config const&) = default;
     udf_config& operator=(udf_config&&) noexcept = default;
     ~udf_config() = default;
 
     // Accessors
     [[nodiscard]] bool enabled() const noexcept;
-        [[nodiscard]] std::vector<udf_server_config> const& servers() const noexcept;
+    [[nodiscard]] std::vector<udf_server_config> const& servers() const noexcept;
 
-[[nodiscard]] std::string const& endpoint() const noexcept;
+    [[nodiscard]] std::string const& endpoint() const noexcept;
     [[nodiscard]] std::string const& transport() const noexcept;
     [[nodiscard]] bool secure() const noexcept;
     [[nodiscard]] std::optional<std::string> const& grpc_server_endpoint() const noexcept;

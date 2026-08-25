@@ -226,9 +226,9 @@ public:
         return out << std::hex
             << "ranges [" << takatori::util::print_support(value.value_ranges_)
             <<"] current range [" << takatori::util::print_support(value.value_current_)
-            << "] base [" << value.value_base_ << "]"
-            << "] offset [" << value.value_offset_ << "]"
-            << "] null_base [" << static_cast<void const*>(value.null_base_) << "]"
+            << "] base [" << value.value_base_
+            << "] offset [" << value.value_offset_
+            << "] null_base [" << static_cast<void const*>(value.null_base_)
             << "] null_offset [" << value.null_offset_ << "]";
     }
 

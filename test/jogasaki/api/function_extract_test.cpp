@@ -222,6 +222,44 @@ TEST_F(function_extract_test, second_from_timestamp_precision_star) {
         std::tuple{decimal_type()}, triple{56'789'000'000, -9})), result[0]);
 }
 
+// the subsecond precision is clamped into the range [0, 9]
+TEST_F(function_extract_test, second_from_timestamp_precision_over_max_is_clamped) {
+    prepare(ts_type, "TIMESTAMP'2026-07-01 12:34:56.789'");
+    // the largest size the parser accepts is 2^64-2, since 2^64-1 is reserved for the "*" notation
+    for(auto&& n : {"10"sv, "100"sv, "2147483647"sv, "2147483648"sv,
+        "9223372036854775808"sv, "18446744073709551614"sv}) {
+        auto result = run("EXTRACT(SECOND("s + std::string{n} + ") FROM c0)");
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
+            std::tuple{decimal_type()}, triple{56'789'000'000, -9})), result[0]);
+    }
+}
+
+// a precision beyond the parsable size range is a syntax error, rather than being silently
+// resolved to zero - see issue #1514
+TEST_F(function_extract_test, second_from_timestamp_precision_out_of_size_range_is_syntax_error) {
+    prepare(ts_type, "TIMESTAMP'2026-07-01 12:34:56.789'");
+    for(auto&& n : {"18446744073709551615"sv, "18446744073709551616"sv,
+        "100000000000000000000"sv}) {
+        test_stmt_err("SELECT EXTRACT(SECOND("s + std::string{n} + ") FROM c0) FROM s",
+            error_code::syntax_exception);
+    }
+}
+
+TEST_F(function_extract_test, year_to_second_from_timestamp_precision_out_of_size_range) {
+    prepare(ts_type, "TIMESTAMP'2026-07-01 12:34:56.789'");
+    // within the parsable range the precision is clamped, beyond it the statement is rejected
+    {
+        auto result = run("EXTRACT(YEAR TO SECOND(18446744073709551614) FROM c0)");
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)},
+                      time_point{date{2026, 7, 1}, time_of_day{12, 34, 56, 789ms}})),
+            result[0]);
+    }
+    test_stmt_err("SELECT EXTRACT(YEAR TO SECOND(100000000000000000000) FROM c0) FROM s",
+        error_code::syntax_exception);
+}
+
 ///////////
 // TIMESTAMP operand, second notation
 ///////////

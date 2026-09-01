@@ -388,5 +388,26 @@ TEST_F(udf_loader_test, old_udf_tsurugi_endpoint_does_not_override_grpc_server_e
     EXPECT_EQ("B", config->servers()[1].endpoint);
     EXPECT_EQ("Y", config->servers()[1].tsurugi_endpoint);
 }
+TEST_F(udf_loader_test, old_udf_tsurugi_endpoint_is_ignored) {
+    jogasaki::global::config_pool()->grpc_server_endpoint("GLOBAL");
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A|B\n"
+        "secure=false\n"
+        "tsurugi_endpoint=OLD_X|OLD_Y\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+
+    ASSERT_EQ(2, config->servers().size());
+    EXPECT_EQ("GLOBAL", config->servers()[0].tsurugi_endpoint);
+    EXPECT_EQ("GLOBAL", config->servers()[1].tsurugi_endpoint);
+}
 
 } // namespace jogasaki::testing

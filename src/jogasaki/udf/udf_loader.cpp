@@ -546,7 +546,8 @@ load_result udf_loader::create_api_from_handle(
             return {load_status::factory_creation_failed, full_path,
                 "Failed to create generic client from factory for endpoint: " + server.endpoint};
         }
-        clients.emplace_back(raw_client);
+        clients.emplace_back(
+            udf_connection{std::move(channel), std::shared_ptr<generic_client>{raw_client}});
     }
 
     plugins_.emplace_back(std::move(api_sptr), std::move(clients), std::move(cfg));

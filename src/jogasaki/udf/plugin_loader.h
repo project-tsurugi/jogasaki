@@ -18,6 +18,8 @@
 #include <tuple>
 #include <vector>
 
+#include <grpcpp/channel.h>
+
 #include "error_info.h"
 #include "generic_client.h"
 #include "plugin_api.h"
@@ -25,7 +27,13 @@
 
 namespace plugin::udf {
 
-using generic_client_list = std::vector<std::shared_ptr<plugin::udf::generic_client>>;
+/** @brief gRPC channel to a UDF server and the plugin-provided client bound to it */
+struct udf_connection {
+    std::shared_ptr<grpc::Channel> channel{};
+    std::shared_ptr<plugin::udf::generic_client> client{};
+};
+
+using generic_client_list = std::vector<udf_connection>;
 
 using plugin_entry = std::tuple<std::shared_ptr<plugin::udf::plugin_api>, generic_client_list,
     std::shared_ptr<const plugin::udf::udf_config>>;

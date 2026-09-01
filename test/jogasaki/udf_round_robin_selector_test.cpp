@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <cstddef>
+
 #include <gtest/gtest.h>
 
 #include <jogasaki/udf/round_robin_selector.h>
@@ -37,6 +39,19 @@ TEST(udf_round_robin_selector_test, single_endpoint_always_selects_zero) {
     EXPECT_EQ(0, selector.next(1));
     EXPECT_EQ(0, selector.next(1));
     EXPECT_EQ(0, selector.next(1));
+}
+
+TEST(udf_round_robin_selector_test, unavailable_endpoint_does_not_skew_distribution) {
+    plugin::udf::round_robin_selector selector{};
+    auto available = [](std::size_t index) { return index != 1; };
+
+    // with endpoint 1 unavailable out of 3, the remaining two are selected evenly
+    EXPECT_EQ(0, selector.next(3, available));
+    EXPECT_EQ(2, selector.next(3, available));
+    EXPECT_EQ(0, selector.next(3, available));
+    EXPECT_EQ(2, selector.next(3, available));
+    EXPECT_EQ(0, selector.next(3, available));
+    EXPECT_EQ(2, selector.next(3, available));
 }
 
 } // namespace jogasaki::testing

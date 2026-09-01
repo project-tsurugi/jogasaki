@@ -79,6 +79,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/udf/bridge/udf_record_flattening.h>
+#include <jogasaki/udf/channel_state.h>
 #include <jogasaki/udf/bridge/udf_semantic_mappings.h>
 #include <jogasaki/udf/bridge/udf_special_records.h>
 #include <jogasaki/udf/data/udf_any_sequence_stream.h>
@@ -1134,6 +1135,33 @@ blob_grpc_metadata make_blob_grpc_metadata(std::size_t session_id,
 using udf_client_list_ptr = std::shared_ptr<const plugin::udf::generic_client_list>;
 using udf_round_robin_selector_ptr = std::shared_ptr<plugin::udf::round_robin_selector>;
 
+/** upper bound of the wait for a channel in IDLE/CONNECTING to settle on selection */
+constexpr std::chrono::milliseconds udf_channel_connect_timeout{5000};
+
+/**
+ * @brief wait until the channel connectivity settles to READY or a failure state
+ * @details triggers connection establishment when the channel is IDLE, then waits until the
+ * state leaves IDLE/CONNECTING. Unlike grpc::ChannelInterface::WaitForConnected(), this returns
+ * as soon as the state settles to TRANSIENT_FAILURE or SHUTDOWN instead of waiting for the
+ * deadline, so that the caller can move on to the next candidate immediately.
+ * @param channel the channel to wait on
+ * @param timeout upper bound of the wait
+ * @return the settled state (READY on success), or the last observed IDLE/CONNECTING when the
+ * timeout expired before the state settled
+ */
+[[nodiscard]] grpc_connectivity_state wait_until_connected(
+    grpc::Channel& channel, std::chrono::milliseconds timeout) {
+    auto const deadline = std::chrono::system_clock::now() + timeout;
+    auto state = channel.GetState(true);
+    while (state == GRPC_CHANNEL_IDLE || state == GRPC_CHANNEL_CONNECTING) {
+        if (!channel.WaitForStateChange(state, deadline)) {
+            break;
+        }
+        state = channel.GetState(true);
+    }
+    return state;
+}
+
 struct selected_udf_client {
     std::shared_ptr<plugin::udf::generic_client> client{};
     std::size_t server_index{};
@@ -1149,8 +1177,25 @@ struct selected_udf_client {
     assert_with_exception(clients->size() == cfg->servers().size(), clients->size(),
         cfg->servers().size());
 
-    auto const index = selector->next(clients->size());
-    return selected_udf_client{clients->at(index), index};
+    // starting from the round robin position, pick the first server whose channel is READY.
+    // A channel in IDLE/CONNECTING is waited on until the connection settles (READY or failure)
+    // so that its state never has to be guessed; TRANSIENT_FAILURE/SHUTDOWN, a failed connection
+    // attempt, and a wait timeout are skipped. If no server is usable, the selector falls back
+    // to the round robin position so that the request is issued (and fails) while the position
+    // advances.
+    auto const index = selector->next(clients->size(), [&](std::size_t candidate) {
+        auto& channel = *clients->at(candidate).channel;
+        auto state = channel.GetState(false);
+        if (state == GRPC_CHANNEL_IDLE || state == GRPC_CHANNEL_CONNECTING) {
+            state = wait_until_connected(channel, udf_channel_connect_timeout);
+        }
+        if (state == GRPC_CHANNEL_READY) { return true; }
+        VLOG_LP(log_debug) << jogasaki::udf::log::grpc_prefix << "skipping UDF server endpoint="
+                           << cfg->servers().at(candidate).endpoint
+                           << " state=" << plugin::udf::to_string_view(state);
+        return false;
+    });
+    return selected_udf_client{clients->at(index).client, index};
 }
 
 /**

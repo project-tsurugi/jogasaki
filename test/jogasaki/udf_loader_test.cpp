@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/configuration.h>
+#include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/udf/udf_loader.h>
@@ -210,6 +211,35 @@ TEST_F(udf_loader_test, multi_endpoint_options_are_normalized) {
 
     EXPECT_EQ("A", config->endpoint());
     EXPECT_FALSE(config->secure());
+}
+
+TEST_F(udf_loader_test, grpc_server_endpoints_are_used_for_blob_metadata) {
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A|B\n"
+        "secure=false\n"
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X|Y\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    ASSERT_EQ(2, config->servers().size());
+
+    auto metadata0 =
+        ::jogasaki::executor::function::details::make_blob_grpc_metadata(
+            100, &*config, 0);
+    EXPECT_EQ("X", metadata0.endpoint());
+
+    auto metadata1 =
+        ::jogasaki::executor::function::details::make_blob_grpc_metadata(
+            101, &*config, 1);
+    EXPECT_EQ("Y", metadata1.endpoint());
 }
 
 TEST_F(udf_loader_test, single_values_are_broadcast_to_all_endpoints) {

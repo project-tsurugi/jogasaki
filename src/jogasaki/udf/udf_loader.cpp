@@ -338,24 +338,20 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
 }
 
 [[nodiscard]] std::optional<std::vector<std::string>> parse_tsurugi_endpoints(
-    boost::property_tree::ptree const& pt,
-    std::optional<std::string> const& legacy_grpc_server_endpoint,
+    std::optional<std::string> const& grpc_server_endpoint,
     std::size_t endpoint_count, fs::path const& ini_path, std::vector<load_result>& results) {
     std::vector<std::string> values{};
-
-    if (auto value = pt.get_optional<std::string>("udf.tsurugi_endpoint")) {
-        auto parsed = split_list("udf.tsurugi_endpoint", *value, ini_path, results);
+    if (grpc_server_endpoint) {
+        auto parsed =
+            split_list("grpc_server.endpoint", *grpc_server_endpoint, ini_path, results);
         if (!parsed) { return std::nullopt; }
         values = std::move(*parsed);
-    } else if (legacy_grpc_server_endpoint) {
-        values.emplace_back(*legacy_grpc_server_endpoint);
     } else {
         values.emplace_back(jogasaki::global::config_pool()->grpc_server_endpoint());
     }
-
     if (!valid_value_count(values.size(), endpoint_count)) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(),
-            "Invalid number of udf.tsurugi_endpoint values "
+            "Invalid number of grpc_server.endpoint values "
             "(must be 1 or match udf.endpoint)");
         return std::nullopt;
     }
@@ -446,7 +442,7 @@ std::optional<udf_config> udf_loader::parse_ini(
         }
 
         auto tsurugi_endpoints = parse_tsurugi_endpoints(
-            pt, grpc_server_endpoint, endpoints->size(), ini_path, results);
+            grpc_server_endpoint, endpoints->size(), ini_path, results);
         if (!tsurugi_endpoints) { return std::nullopt; }
 
         auto servers = make_server_configs(

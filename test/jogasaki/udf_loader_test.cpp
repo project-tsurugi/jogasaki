@@ -187,7 +187,9 @@ TEST_F(udf_loader_test, multi_endpoint_options_are_normalized) {
         "enabled=true\n"
         "endpoint=A|B|C\n"
         "secure=false|true|false\n"
-        "tsurugi_endpoint=X|Y|Z\n");
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X|Y|Z\n");
 
     test_loader loader{};
     std::vector<::plugin::udf::load_result> results{};
@@ -216,7 +218,9 @@ TEST_F(udf_loader_test, single_values_are_broadcast_to_all_endpoints) {
         "enabled=true\n"
         "endpoint=A|B\n"
         "secure=true\n"
-        "tsurugi_endpoint=X\n");
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X\n");
 
     test_loader loader{};
     std::vector<::plugin::udf::load_result> results{};
@@ -231,7 +235,7 @@ TEST_F(udf_loader_test, single_values_are_broadcast_to_all_endpoints) {
     EXPECT_EQ("X", config->servers()[1].tsurugi_endpoint);
 }
 
-TEST_F(udf_loader_test, legacy_grpc_server_endpoint_is_used_as_tsurugi_endpoint) {
+TEST_F(udf_loader_test, grpc_server_endpoint_is_broadcast_to_all_udf_endpoints) {
     write_ini(
         "[udf]\n"
         "enabled=true\n"
@@ -284,8 +288,7 @@ TEST_F(udf_loader_test, secure_count_mismatch_is_rejected) {
         "[udf]\n"
         "enabled=true\n"
         "endpoint=A|B|C\n"
-        "secure=false|true\n"
-        "tsurugi_endpoint=X\n");
+        "secure=false|true\n");
 
     test_loader loader{};
     std::vector<::plugin::udf::load_result> results{};
@@ -296,13 +299,15 @@ TEST_F(udf_loader_test, secure_count_mismatch_is_rejected) {
     EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
 }
 
-TEST_F(udf_loader_test, tsurugi_endpoint_count_mismatch_is_rejected) {
+TEST_F(udf_loader_test, grpc_server_endpoint_count_mismatch_is_rejected) {
     write_ini(
         "[udf]\n"
         "enabled=true\n"
         "endpoint=A|B|C\n"
         "secure=false\n"
-        "tsurugi_endpoint=X|Y\n");
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X|Y\n");
 
     test_loader loader{};
     std::vector<::plugin::udf::load_result> results{};
@@ -318,8 +323,7 @@ TEST_F(udf_loader_test, empty_endpoint_element_is_rejected) {
         "[udf]\n"
         "enabled=true\n"
         "endpoint=A||C\n"
-        "secure=false\n"
-        "tsurugi_endpoint=X\n");
+        "secure=false\n");
 
     test_loader loader{};
     std::vector<::plugin::udf::load_result> results{};
@@ -328,6 +332,31 @@ TEST_F(udf_loader_test, empty_endpoint_element_is_rejected) {
     EXPECT_FALSE(config);
     ASSERT_EQ(1, results.size());
     EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+TEST_F(udf_loader_test, old_udf_tsurugi_endpoint_does_not_override_grpc_server_endpoint) {
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A|B\n"
+        "secure=false\n"
+        "tsurugi_endpoint=OLD_X|OLD_Y\n"
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X|Y\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+
+    ASSERT_EQ(2, config->servers().size());
+    EXPECT_EQ("A", config->servers()[0].endpoint);
+    EXPECT_EQ("X", config->servers()[0].tsurugi_endpoint);
+
+    EXPECT_EQ("B", config->servers()[1].endpoint);
+    EXPECT_EQ("Y", config->servers()[1].tsurugi_endpoint);
 }
 
 } // namespace jogasaki::testing

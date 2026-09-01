@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -49,6 +50,11 @@ class blob_grpc_metadata {
         : session_id_(session_id), endpoint_(std::move(endpoint)), secure_(secure),
           transport_(std::move(transport)), chunk_size_(chunk_size) {}
 
+
+    [[nodiscard]] std::string const& endpoint() const noexcept {
+        return endpoint_;
+    }
+
     [[nodiscard]] bool apply(grpc::ClientContext& ctx) const noexcept;
     ~blob_grpc_metadata() noexcept = default;
     blob_grpc_metadata() = delete;
@@ -60,4 +66,13 @@ class blob_grpc_metadata {
     std::string transport_{"stream"};
     const std::uint64_t chunk_size_{1048576}; // 1MB
 };
+namespace details {
+
+[[nodiscard]] blob_grpc_metadata make_blob_grpc_metadata(
+    std::size_t session_id,
+    plugin::udf::udf_config const* cfg,
+    std::size_t server_index);
+
+} // namespace details
+
 } // namespace jogasaki::executor::function

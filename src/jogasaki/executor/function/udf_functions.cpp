@@ -114,7 +114,7 @@ namespace {
 constexpr std::size_t SUPPORTED_MAJOR = 0;
 constexpr std::size_t SUPPORTED_MINOR = 4;
 
-blob_grpc_metadata make_blob_grpc_metadata(std::size_t session_id,
+blob_grpc_metadata make_blob_grpc_metadata_impl(std::size_t session_id,
     plugin::udf::udf_config const* cfg, std::size_t server_index);
 
 std::chrono::milliseconds seconds_to_milliseconds(std::size_t seconds) {
@@ -151,7 +151,7 @@ bool apply_context(plugin::udf::generic_client_context& context, evaluator_conte
     // If they are not available, the SQL function must not have LOBs as args or return value.
     // Calling SQL function using LOBs must have hit an error on prepare phase and control does not reach here.
     if (auto* session = bs->get_or_create(); session != nullptr) {
-        auto metadata = make_blob_grpc_metadata(session->session_id(), cfg.get(), server_index);
+        auto metadata = make_blob_grpc_metadata_impl(session->session_id(), cfg.get(), server_index);
         if (!metadata.apply(context.grpc_context())) {
             std::string msg = "Failed to apply gRPC metadata";
             VLOG_LP(log_error) << msg;
@@ -1113,7 +1113,7 @@ data::any build_udf_response(plugin::udf::generic_record_impl& response, evaluat
     ctx.add_error({error_kind::invalid_input_value, msg});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
-blob_grpc_metadata make_blob_grpc_metadata(std::size_t session_id,
+blob_grpc_metadata make_blob_grpc_metadata_impl(std::size_t session_id,
     plugin::udf::udf_config const* cfg, std::size_t server_index) {
     std::string transport = cfg ? cfg->transport() : std::string{"stream"};
     std::string blob_endpoint = std::string(global::config_pool()->grpc_server_endpoint());
@@ -1471,6 +1471,14 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
     }
 }
 } // namespace
+
+
+blob_grpc_metadata details::make_blob_grpc_metadata(
+    std::size_t session_id,
+    plugin::udf::udf_config const* cfg,
+    std::size_t server_index) {
+    return make_blob_grpc_metadata_impl(session_id, cfg, server_index);
+}
 
 bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-session", std::to_string(session_id_));

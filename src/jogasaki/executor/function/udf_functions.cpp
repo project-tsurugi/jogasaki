@@ -112,7 +112,7 @@ using jogasaki::executor::expr::error_kind;
 namespace {
 
 constexpr std::size_t SUPPORTED_MAJOR = 0;
-constexpr std::size_t SUPPORTED_MINOR = 4;
+constexpr std::size_t SUPPORTED_MINOR = 5;
 
 blob_grpc_metadata make_blob_grpc_metadata_impl(std::size_t session_id,
     plugin::udf::udf_config const* cfg, std::size_t server_index);

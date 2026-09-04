@@ -46,9 +46,12 @@ class blob_grpc_metadata {
     blob_grpc_metadata& operator=(blob_grpc_metadata&&) = delete;
 
     explicit blob_grpc_metadata(std::uint64_t session_id, std::string endpoint, bool secure,
-        std::string transport, std::uint64_t chunk_size) noexcept
+        std::string transport, std::uint64_t chunk_size, bool grdma_commit_upload = true,
+        bool grdma_commit_download = true) noexcept
         : session_id_(session_id), endpoint_(std::move(endpoint)), secure_(secure),
-          transport_(std::move(transport)), chunk_size_(chunk_size) {}
+          transport_(std::move(transport)), chunk_size_(chunk_size),
+          grdma_commit_upload_(grdma_commit_upload),
+          grdma_commit_download_(grdma_commit_download) {}
 
 
     [[nodiscard]] std::string const& endpoint() const noexcept {
@@ -60,8 +63,6 @@ class blob_grpc_metadata {
     [[nodiscard]] bool grdma_commit_download() const noexcept {
         return grdma_commit_download_;
     }
-    void grdma_commit_upload(bool value) noexcept { grdma_commit_upload_ = value; }
-    void grdma_commit_download(bool value) noexcept { grdma_commit_download_ = value; }
 
     [[nodiscard]] bool apply(grpc::ClientContext& ctx) const noexcept;
     ~blob_grpc_metadata() noexcept = default;

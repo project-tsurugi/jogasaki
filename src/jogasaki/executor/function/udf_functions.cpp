@@ -1123,18 +1123,15 @@ blob_grpc_metadata make_blob_grpc_metadata_impl(std::size_t session_id,
         if (!ep.empty()) { blob_endpoint = ep; }
     }
 
-    auto metadata = blob_grpc_metadata{
+    return blob_grpc_metadata{
         session_id,
         std::move(blob_endpoint),
         global::config_pool()->grpc_server_secure(),
         std::move(transport),
         1024ULL * 1024ULL,
+        cfg ? cfg->grdma_commit_upload() : true,
+        cfg ? cfg->grdma_commit_download() : true,
     };
-    if (cfg) {
-        metadata.grdma_commit_upload(cfg->grdma_commit_upload());
-        metadata.grdma_commit_download(cfg->grdma_commit_download());
-    }
-    return metadata;
 }
 
 using udf_client_list_ptr = std::shared_ptr<const plugin::udf::generic_client_list>;

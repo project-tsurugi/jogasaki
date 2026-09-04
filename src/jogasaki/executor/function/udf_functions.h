@@ -46,13 +46,22 @@ class blob_grpc_metadata {
     blob_grpc_metadata& operator=(blob_grpc_metadata&&) = delete;
 
     explicit blob_grpc_metadata(std::uint64_t session_id, std::string endpoint, bool secure,
-        std::string transport, std::uint64_t chunk_size) noexcept
+        std::string transport, std::uint64_t chunk_size, bool grdma_commit_upload = true,
+        bool grdma_commit_download = true) noexcept
         : session_id_(session_id), endpoint_(std::move(endpoint)), secure_(secure),
-          transport_(std::move(transport)), chunk_size_(chunk_size) {}
+          transport_(std::move(transport)), chunk_size_(chunk_size),
+          grdma_commit_upload_(grdma_commit_upload),
+          grdma_commit_download_(grdma_commit_download) {}
 
 
     [[nodiscard]] std::string const& endpoint() const noexcept {
         return endpoint_;
+    }
+    [[nodiscard]] bool grdma_commit_upload() const noexcept {
+        return grdma_commit_upload_;
+    }
+    [[nodiscard]] bool grdma_commit_download() const noexcept {
+        return grdma_commit_download_;
     }
 
     [[nodiscard]] bool apply(grpc::ClientContext& ctx) const noexcept;
@@ -65,6 +74,8 @@ class blob_grpc_metadata {
     bool secure_{false};
     std::string transport_{"stream"};
     const std::uint64_t chunk_size_{1048576}; // 1MB
+    bool grdma_commit_upload_{true};
+    bool grdma_commit_download_{true};
 };
 namespace details {
 

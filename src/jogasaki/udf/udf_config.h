@@ -52,6 +52,10 @@ class udf_config {
     [[nodiscard]] bool secure() const noexcept;
     [[nodiscard]] std::optional<std::string> const& grpc_server_endpoint() const noexcept;
     [[nodiscard]] std::optional<std::size_t> const& timeout() const noexcept;
+    [[nodiscard]] bool grdma_commit_upload() const noexcept;
+    [[nodiscard]] bool grdma_commit_download() const noexcept;
+    void grdma_commit_upload(bool value) noexcept;
+    void grdma_commit_download(bool value) noexcept;
 
   private:
     bool _enabled{true};
@@ -59,6 +63,8 @@ class udf_config {
     std::string _transport{"stream"};
     std::optional<std::string> _grpc_server_endpoint{};
     std::optional<std::size_t> _timeout{std::nullopt};
+    bool _grdma_commit_upload{true};
+    bool _grdma_commit_download{true};
 };
 
 } // namespace plugin::udf

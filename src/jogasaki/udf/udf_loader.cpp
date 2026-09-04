@@ -254,6 +254,19 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
     if (value == "false") { return false; }
     return std::nullopt;
 }
+[[nodiscard]] std::optional<bool> parse_boolean_option(boost::property_tree::ptree const& pt,
+    std::string_view key, bool default_value, fs::path const& ini_path,
+    std::vector<load_result>& results) {
+    auto value = pt.get_optional<std::string>(std::string{key});
+    if (!value) { return default_value; }
+    auto parsed = parse_boolean(*value);
+    if (!parsed) {
+        results.emplace_back(load_status::ini_invalid, ini_path.string(),
+            "Invalid value for " + std::string{key} + " (must be true or false)");
+    }
+    return parsed;
+}
+
 
 [[nodiscard]] std::optional<std::vector<std::string>> split_list(
     std::string_view key, std::string const& value, fs::path const& ini_path,
@@ -432,6 +445,13 @@ std::optional<udf_config> udf_loader::parse_ini(
             transport = value->empty() ? "stream" : *value;
         }
 
+        auto grdma_commit_upload =
+            parse_boolean_option(pt, "udf.grdma_commit_upload", true, ini_path, results);
+        if (!grdma_commit_upload) { return std::nullopt; }
+        auto grdma_commit_download =
+            parse_boolean_option(pt, "udf.grdma_commit_download", true, ini_path, results);
+        if (!grdma_commit_download) { return std::nullopt; }
+
         auto secure_values =
             parse_secure_values(pt, endpoints->size(), ini_path, results);
         if (!secure_values) { return std::nullopt; }
@@ -453,8 +473,11 @@ std::optional<udf_config> udf_loader::parse_ini(
             timeout = *value;
         }
 
-        return udf_config(*enabled, std::move(servers), std::move(transport),
+        auto config = udf_config(*enabled, std::move(servers), std::move(transport),
             std::move(grpc_server_endpoint), timeout);
+        config.grdma_commit_upload(*grdma_commit_upload);
+        config.grdma_commit_download(*grdma_commit_download);
+        return config;
     } catch (std::exception const& e) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());
         return std::nullopt;

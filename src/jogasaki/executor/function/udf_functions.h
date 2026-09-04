@@ -54,6 +54,14 @@ class blob_grpc_metadata {
     [[nodiscard]] std::string const& endpoint() const noexcept {
         return endpoint_;
     }
+    [[nodiscard]] bool grdma_commit_upload() const noexcept {
+        return grdma_commit_upload_;
+    }
+    [[nodiscard]] bool grdma_commit_download() const noexcept {
+        return grdma_commit_download_;
+    }
+    void grdma_commit_upload(bool value) noexcept { grdma_commit_upload_ = value; }
+    void grdma_commit_download(bool value) noexcept { grdma_commit_download_ = value; }
 
     [[nodiscard]] bool apply(grpc::ClientContext& ctx) const noexcept;
     ~blob_grpc_metadata() noexcept = default;
@@ -65,6 +73,8 @@ class blob_grpc_metadata {
     bool secure_{false};
     std::string transport_{"stream"};
     const std::uint64_t chunk_size_{1048576}; // 1MB
+    bool grdma_commit_upload_{true};
+    bool grdma_commit_download_{true};
 };
 namespace details {
 

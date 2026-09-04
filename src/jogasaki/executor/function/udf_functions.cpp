@@ -1123,13 +1123,18 @@ blob_grpc_metadata make_blob_grpc_metadata_impl(std::size_t session_id,
         if (!ep.empty()) { blob_endpoint = ep; }
     }
 
-    return blob_grpc_metadata{
+    auto metadata = blob_grpc_metadata{
         session_id,
         std::move(blob_endpoint),
         global::config_pool()->grpc_server_secure(),
         std::move(transport),
         1024ULL * 1024ULL,
     };
+    if (cfg) {
+        metadata.grdma_commit_upload(cfg->grdma_commit_upload());
+        metadata.grdma_commit_download(cfg->grdma_commit_download());
+    }
+    return metadata;
 }
 
 using udf_client_list_ptr = std::shared_ptr<const plugin::udf::generic_client_list>;
@@ -1486,6 +1491,12 @@ bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-secure", secure_ ? "true" : "false");
     ctx.AddMetadata("x-tsurugi-blob-transport", transport_);
     ctx.AddMetadata("x-tsurugi-blob-stream-chunk-size", std::to_string(chunk_size_));
+    if (transport_ == "grdma") {
+        ctx.AddMetadata("x-tsurugi-blob-grdma-commit-upload",
+            grdma_commit_upload_ ? "true" : "false");
+        ctx.AddMetadata("x-tsurugi-blob-grdma-commit-download",
+            grdma_commit_download_ ? "true" : "false");
+    }
     VLOG_LP(log_trace) << jogasaki::udf::log::grpc_prefix << "udf grpc metadata"
                        << " session=" << std::to_string(session_id_) << ", endpoint=" << endpoint_
                        << ", secure=" << (secure_ ? "true" : "false")

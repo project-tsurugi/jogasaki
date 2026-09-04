@@ -410,4 +410,123 @@ TEST_F(udf_loader_test, old_udf_tsurugi_endpoint_is_ignored) {
     EXPECT_EQ("GLOBAL", config->servers()[1].tsurugi_endpoint);
 }
 
+
+TEST_F(udf_loader_test, grdma_commit_options_default_to_true) {
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A\n"
+        "secure=false\n"
+        "transport=grdma\n"
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    EXPECT_TRUE(config->grdma_commit_upload());
+    EXPECT_TRUE(config->grdma_commit_download());
+
+    auto metadata = ::jogasaki::executor::function::details::make_blob_grpc_metadata(
+        100, &*config, 0);
+    EXPECT_TRUE(metadata.grdma_commit_upload());
+    EXPECT_TRUE(metadata.grdma_commit_download());
+}
+
+TEST_F(udf_loader_test, grdma_commit_options_are_propagated_to_blob_metadata) {
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A\n"
+        "secure=false\n"
+        "transport=grdma\n"
+        "grdma_commit_upload=false\n"
+        "grdma_commit_download=true\n"
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    EXPECT_FALSE(config->grdma_commit_upload());
+    EXPECT_TRUE(config->grdma_commit_download());
+
+    auto metadata = ::jogasaki::executor::function::details::make_blob_grpc_metadata(
+        101, &*config, 0);
+    EXPECT_FALSE(metadata.grdma_commit_upload());
+    EXPECT_TRUE(metadata.grdma_commit_download());
+}
+
+TEST_F(udf_loader_test, grdma_commit_options_can_be_set_independently) {
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A\n"
+        "secure=false\n"
+        "transport=grdma\n"
+        "grdma_commit_upload=true\n"
+        "grdma_commit_download=false\n"
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=X\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    EXPECT_TRUE(config->grdma_commit_upload());
+    EXPECT_FALSE(config->grdma_commit_download());
+
+    auto metadata = ::jogasaki::executor::function::details::make_blob_grpc_metadata(
+        102, &*config, 0);
+    EXPECT_TRUE(metadata.grdma_commit_upload());
+    EXPECT_FALSE(metadata.grdma_commit_download());
+}
+
+TEST_F(udf_loader_test, invalid_grdma_commit_upload_is_rejected) {
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A\n"
+        "secure=false\n"
+        "transport=grdma\n"
+        "grdma_commit_upload=invalid\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+
+TEST_F(udf_loader_test, invalid_grdma_commit_download_is_rejected) {
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=A\n"
+        "secure=false\n"
+        "transport=grdma\n"
+        "grdma_commit_download=invalid\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+
 } // namespace jogasaki::testing

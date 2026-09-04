@@ -57,4 +57,12 @@ bool udf_config::secure() const noexcept { return _servers.front().secure; }
 
 std::optional<std::size_t> const& udf_config::timeout() const noexcept { return _timeout; }
 
+bool udf_config::grdma_commit_upload() const noexcept { return _grdma_commit_upload; }
+
+bool udf_config::grdma_commit_download() const noexcept { return _grdma_commit_download; }
+
+void udf_config::grdma_commit_upload(bool value) noexcept { _grdma_commit_upload = value; }
+
+void udf_config::grdma_commit_download(bool value) noexcept { _grdma_commit_download = value; }
+
 } // namespace plugin::udf

@@ -58,6 +58,14 @@ class udf_loader_test : public test_root {
         config->secure(secure);
         jogasaki::global::config_pool(config);
     }
+    void set_global_udf_defaults(std::string_view endpoint,
+        std::vector<bool> const& secure_values, std::string_view grpc_server_endpoint) {
+        auto config = std::make_shared<jogasaki::configuration>();
+        config->endpoint(endpoint);
+        config->secure_values(secure_values);
+        config->grpc_server_endpoint(grpc_server_endpoint);
+        jogasaki::global::config_pool(config);
+    }
 
     void write_ini(std::string_view contents) {
         std::ofstream out{ini_path_};
@@ -181,6 +189,199 @@ TEST_F(udf_loader_test, missing_legacy_options_keep_global_defaults) {
     EXPECT_TRUE(jogasaki::global::config_pool()->secure());
 }
 
+
+TEST_F(udf_loader_test, global_multi_values_are_normalized) {
+    set_global_udf_defaults("A|B|C", {false, true, false}, "X|Y|Z");
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "transport=stream\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    ASSERT_EQ(3, config->servers().size());
+    EXPECT_EQ("A", config->servers()[0].endpoint);
+    EXPECT_FALSE(config->servers()[0].secure);
+    EXPECT_EQ("X", config->servers()[0].tsurugi_endpoint);
+    EXPECT_EQ("B", config->servers()[1].endpoint);
+    EXPECT_TRUE(config->servers()[1].secure);
+    EXPECT_EQ("Y", config->servers()[1].tsurugi_endpoint);
+    EXPECT_EQ("C", config->servers()[2].endpoint);
+    EXPECT_FALSE(config->servers()[2].secure);
+    EXPECT_EQ("Z", config->servers()[2].tsurugi_endpoint);
+}
+
+TEST_F(udf_loader_test, global_single_values_are_broadcast) {
+    set_global_udf_defaults("A|B", {true}, "X");
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    ASSERT_EQ(2, config->servers().size());
+    EXPECT_TRUE(config->servers()[0].secure);
+    EXPECT_TRUE(config->servers()[1].secure);
+    EXPECT_EQ("X", config->servers()[0].tsurugi_endpoint);
+    EXPECT_EQ("X", config->servers()[1].tsurugi_endpoint);
+}
+
+TEST_F(udf_loader_test, plugin_values_override_global_values) {
+    // Deliberately use three global values and two plugin values. If unused global
+    // values are validated after override, this test fails.
+    set_global_udf_defaults(
+        "GLOBAL_A|GLOBAL_B|GLOBAL_C", {true, true, true}, "GLOBAL_X|GLOBAL_Y|GLOBAL_Z");
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=P|Q\n"
+        "secure=false|true\n"
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=S|T\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    ASSERT_EQ(2, config->servers().size());
+    EXPECT_EQ("P", config->servers()[0].endpoint);
+    EXPECT_FALSE(config->servers()[0].secure);
+    EXPECT_EQ("S", config->servers()[0].tsurugi_endpoint);
+    EXPECT_EQ("Q", config->servers()[1].endpoint);
+    EXPECT_TRUE(config->servers()[1].secure);
+    EXPECT_EQ("T", config->servers()[1].tsurugi_endpoint);
+}
+
+TEST_F(udf_loader_test, plugin_endpoint_only_overrides_global_endpoint) {
+    set_global_udf_defaults("GLOBAL_A|GLOBAL_B", {false, true}, "X|Y");
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "endpoint=P|Q\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    ASSERT_EQ(2, config->servers().size());
+    EXPECT_EQ("P", config->servers()[0].endpoint);
+    EXPECT_FALSE(config->servers()[0].secure);
+    EXPECT_EQ("X", config->servers()[0].tsurugi_endpoint);
+    EXPECT_EQ("Q", config->servers()[1].endpoint);
+    EXPECT_TRUE(config->servers()[1].secure);
+    EXPECT_EQ("Y", config->servers()[1].tsurugi_endpoint);
+}
+
+TEST_F(udf_loader_test, plugin_secure_and_grpc_server_endpoint_override_global_values) {
+    set_global_udf_defaults("A|B", {false, false}, "GLOBAL_X|GLOBAL_Y");
+
+    write_ini(
+        "[udf]\n"
+        "enabled=true\n"
+        "secure=true\n"
+        "\n"
+        "[grpc_server]\n"
+        "endpoint=P\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    ASSERT_TRUE(config);
+    EXPECT_TRUE(results.empty());
+    ASSERT_EQ(2, config->servers().size());
+    EXPECT_EQ("A", config->servers()[0].endpoint);
+    EXPECT_TRUE(config->servers()[0].secure);
+    EXPECT_EQ("P", config->servers()[0].tsurugi_endpoint);
+    EXPECT_EQ("B", config->servers()[1].endpoint);
+    EXPECT_TRUE(config->servers()[1].secure);
+    EXPECT_EQ("P", config->servers()[1].tsurugi_endpoint);
+}
+
+TEST_F(udf_loader_test, empty_global_secure_values_are_rejected) {
+    set_global_udf_defaults("A", std::vector<bool>{}, "X");
+
+    EXPECT_FALSE(jogasaki::global::config_pool()->secure());
+
+    write_ini("[udf]\nenabled=true\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+
+TEST_F(udf_loader_test, global_secure_count_mismatch_is_rejected) {
+    set_global_udf_defaults("A|B|C", {false, true}, "X");
+    write_ini("[udf]\nenabled=true\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+
+TEST_F(udf_loader_test, global_grpc_server_endpoint_count_mismatch_is_rejected) {
+    set_global_udf_defaults("A|B|C", {false}, "X|Y");
+    write_ini("[udf]\nenabled=true\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+
+TEST_F(udf_loader_test, global_empty_udf_endpoint_element_is_rejected) {
+    set_global_udf_defaults("A||C", {false}, "X");
+    write_ini("[udf]\nenabled=true\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+
+TEST_F(udf_loader_test, global_empty_grpc_server_endpoint_element_is_rejected) {
+    set_global_udf_defaults("A|B", {false}, "X||Z");
+    write_ini("[udf]\nenabled=true\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
 
 TEST_F(udf_loader_test, multi_endpoint_options_are_normalized) {
     write_ini(

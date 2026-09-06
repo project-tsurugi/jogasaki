@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <vector>
 
 #include <jogasaki/request_cancel_config.h>
 
@@ -572,11 +573,19 @@ public:
     }
 
     [[nodiscard]] bool secure() const noexcept {
-        return secure_;
+        return secure_values_.empty() ? false : secure_values_.front();
     }
 
-    void secure(bool arg) noexcept {
-        secure_ = arg;
+    void secure(bool arg) {
+        secure_values_ = {arg};
+    }
+
+    [[nodiscard]] std::vector<bool> const& secure_values() const noexcept {
+        return secure_values_;
+    }
+
+    void secure_values(std::vector<bool> const& arg) {
+        secure_values_ = arg;
     }
 
     [[nodiscard]] bool enable_disjunction_range_hinting() const noexcept {
@@ -779,7 +788,7 @@ private:
     std::size_t maintenance_interval_ms_ = 100;
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"dns:///localhost:50051"};
-    bool secure_ = false;
+    std::vector<bool> secure_values_{false};
     bool enable_disjunction_range_hinting_ = true;
     bool enable_truncate_ = true;
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};

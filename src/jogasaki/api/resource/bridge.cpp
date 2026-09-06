@@ -22,7 +22,6 @@
 #include <optional>
 #include <ostream>
 #include <string>
-#include <string_view>
 #include <vector>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <boost/thread.hpp>
@@ -138,43 +137,6 @@ static std::string toupper(std::string_view src) {
     std::string ret(src.size(), '\0');
     std::transform(src.cbegin(), src.cend(), ret.begin(), ::toupper);
     return ret;
-}
-
-
-[[nodiscard]] static std::optional<std::vector<bool>> parse_boolean_list(std::string_view value) {
-    std::vector<bool> values{};
-    std::size_t begin = 0;
-    while (true) {
-        auto const end = value.find('|', begin);
-        auto token = value.substr(
-            begin,
-            end == std::string_view::npos ? std::string_view::npos : end - begin);
-
-        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front()))) {
-            token.remove_prefix(1);
-        }
-        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.back()))) {
-            token.remove_suffix(1);
-        }
-        if (token.empty()) {
-            return std::nullopt;
-        }
-
-        auto const normalized = toupper(token);
-        if (normalized == "TRUE" || normalized == "YES" || normalized == "1") {
-            values.emplace_back(true);
-        } else if (normalized == "FALSE" || normalized == "NO" || normalized == "0") {
-            values.emplace_back(false);
-        } else {
-            return std::nullopt;
-        }
-
-        if (end == std::string_view::npos) {
-            break;
-        }
-        begin = end + 1;
-    }
-    return values;
 }
 
 template <class ...Args>
@@ -412,14 +374,8 @@ static bool process_udf_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<std::string>("endpoint")) {
         ret->endpoint(v.value());
     }
-    if (auto v = jogasaki_config->get<std::string>("secure")) {
-        auto values = parse_boolean_list(v.value());
-        if (!values) {
-            LOG_LP(ERROR) << "invalid configuration - boolean list value \"" << v.value()
-                          << "\" specified for parameter \"udf.secure\"";
-            return false;
-        }
-        ret->secure_values(*values);
+    if (auto v = jogasaki_config->get_vector<bool>("secure", "|")) {
+        ret->secure_values(v.value());
     }
     if (auto v = jogasaki_config->get<size_t>("timeout")) {
         ret->udf_client_timeout(v.value());

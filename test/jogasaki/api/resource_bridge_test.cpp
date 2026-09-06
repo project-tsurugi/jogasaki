@@ -204,24 +204,6 @@ TEST_F(resource_bridge_test, udf_multi_secure_cfg) {
     EXPECT_TRUE(c->grpc_server_secure()); // grpc_server.secure remains scalar
 }
 
-
-TEST_F(resource_bridge_test, udf_multi_secure_legacy_boolean_values) {
-    std::stringstream ss{
-        "[udf]\n"
-        "endpoint=A|B|C|D\n"
-        "secure=yes|0|1|NO\n"
-    };
-    tateyama::api::configuration::whole cfg{ss, udf_default_configuration};
-
-    auto c = api::resource::convert_config(cfg);
-    ASSERT_TRUE(c);
-    ASSERT_EQ(4, c->secure_values().size());
-    EXPECT_TRUE(c->secure_values()[0]);
-    EXPECT_FALSE(c->secure_values()[1]);
-    EXPECT_TRUE(c->secure_values()[2]);
-    EXPECT_FALSE(c->secure_values()[3]);
-}
-
 TEST_F(resource_bridge_test, invalid_udf_multi_secure_cfg) {
     std::stringstream ss{
         "[udf]\n"

@@ -317,7 +317,8 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
     if (auto value = pt.get_optional<std::string>("udf.endpoint")) {
         return split_list("udf.endpoint", *value, ini_path, results);
     }
-    return std::vector<std::string>{std::string(jogasaki::global::config_pool()->endpoint())};
+    auto const endpoint = std::string(jogasaki::global::config_pool()->endpoint());
+    return split_list("udf.endpoint", endpoint, ini_path, results);
 }
 
 [[nodiscard]] std::optional<std::vector<bool>> parse_secure_values(
@@ -339,7 +340,7 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
             secure_values.emplace_back(*parsed);
         }
     } else {
-        secure_values.emplace_back(jogasaki::global::config_pool()->secure());
+        secure_values = jogasaki::global::config_pool()->secure_values();
     }
 
     if (!valid_value_count(secure_values.size(), endpoint_count)) {
@@ -360,7 +361,11 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
         if (!parsed) { return std::nullopt; }
         values = std::move(*parsed);
     } else {
-        values.emplace_back(jogasaki::global::config_pool()->grpc_server_endpoint());
+        auto const endpoint =
+            std::string(jogasaki::global::config_pool()->grpc_server_endpoint());
+        auto parsed = split_list("grpc_server.endpoint", endpoint, ini_path, results);
+        if (!parsed) { return std::nullopt; }
+        values = std::move(*parsed);
     }
     if (!valid_value_count(values.size(), endpoint_count)) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(),

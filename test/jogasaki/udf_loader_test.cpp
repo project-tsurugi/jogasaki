@@ -315,6 +315,22 @@ TEST_F(udf_loader_test, plugin_secure_and_grpc_server_endpoint_override_global_v
     EXPECT_EQ("P", config->servers()[1].tsurugi_endpoint);
 }
 
+TEST_F(udf_loader_test, empty_global_secure_values_are_rejected) {
+    set_global_udf_defaults("A", std::vector<bool>{}, "X");
+
+    EXPECT_FALSE(jogasaki::global::config_pool()->secure());
+
+    write_ini("[udf]\nenabled=true\n");
+
+    test_loader loader{};
+    std::vector<::plugin::udf::load_result> results{};
+    auto config = loader.parse_ini(ini_path_, results);
+
+    EXPECT_FALSE(config);
+    ASSERT_EQ(1, results.size());
+    EXPECT_EQ(::plugin::udf::load_status::ini_invalid, results.front().status());
+}
+
 TEST_F(udf_loader_test, global_secure_count_mismatch_is_rejected) {
     set_global_udf_defaults("A|B|C", {false, true}, "X");
     write_ini("[udf]\nenabled=true\n");

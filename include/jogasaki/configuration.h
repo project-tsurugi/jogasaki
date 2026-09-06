@@ -573,7 +573,7 @@ public:
     }
 
     [[nodiscard]] bool secure() const noexcept {
-        return secure_values_.front();
+        return secure_values_.empty() ? false : secure_values_.front();
     }
 
     void secure(bool arg) {

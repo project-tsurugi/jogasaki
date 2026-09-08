@@ -184,23 +184,23 @@ TEST_F(resource_bridge_test, udf_secure_default_value) {
 TEST_F(resource_bridge_test, udf_multi_secure_cfg) {
     std::stringstream ss{
         "[udf]\n"
-        "endpoint=A|B|C\n"
-        "secure=false|true|false\n"
+        "endpoint=A | B | C\n"
+        "secure=false | true | false\n"
         "[grpc_server]\n"
-        "endpoint=X|Y|Z\n"
+        "endpoint=X | Y | Z\n"
         "secure=true\n"
     };
     tateyama::api::configuration::whole cfg{ss, udf_default_configuration};
 
     auto c = api::resource::convert_config(cfg);
     ASSERT_TRUE(c);
-    EXPECT_EQ("A|B|C", c->endpoint());
+    EXPECT_EQ("A | B | C", c->endpoint());
     ASSERT_EQ(3, c->secure_values().size());
     EXPECT_FALSE(c->secure_values()[0]);
     EXPECT_TRUE(c->secure_values()[1]);
     EXPECT_FALSE(c->secure_values()[2]);
     EXPECT_FALSE(c->secure()); // legacy scalar accessor returns the first UDF value
-    EXPECT_EQ("X|Y|Z", c->grpc_server_endpoint());
+    EXPECT_EQ("X | Y | Z", c->grpc_server_endpoint());
     EXPECT_TRUE(c->grpc_server_secure()); // grpc_server.secure remains scalar
 }
 

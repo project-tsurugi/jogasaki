@@ -191,7 +191,7 @@ TEST_F(udf_loader_test, missing_legacy_options_keep_global_defaults) {
 
 
 TEST_F(udf_loader_test, global_multi_values_are_normalized) {
-    set_global_udf_defaults("A|B|C", {false, true, false}, "X|Y|Z");
+    set_global_udf_defaults("A | B | C", {false, true, false}, "X | Y | Z");
 
     write_ini(
         "[udf]\n"
@@ -358,7 +358,7 @@ TEST_F(udf_loader_test, global_grpc_server_endpoint_count_mismatch_is_rejected) 
 }
 
 TEST_F(udf_loader_test, global_empty_udf_endpoint_element_is_rejected) {
-    set_global_udf_defaults("A||C", {false}, "X");
+    set_global_udf_defaults("A |   | C", {false}, "X");
     write_ini("[udf]\nenabled=true\n");
 
     test_loader loader{};
@@ -371,7 +371,7 @@ TEST_F(udf_loader_test, global_empty_udf_endpoint_element_is_rejected) {
 }
 
 TEST_F(udf_loader_test, global_empty_grpc_server_endpoint_element_is_rejected) {
-    set_global_udf_defaults("A|B", {false}, "X||Z");
+    set_global_udf_defaults("A | B", {false}, "X |   | Z");
     write_ini("[udf]\nenabled=true\n");
 
     test_loader loader{};
@@ -387,11 +387,11 @@ TEST_F(udf_loader_test, multi_endpoint_options_are_normalized) {
     write_ini(
         "[udf]\n"
         "enabled=true\n"
-        "endpoint=A|B|C\n"
-        "secure=false|true|false\n"
+        "endpoint=A | B | C\n"
+        "secure=false | true | false\n"
         "\n"
         "[grpc_server]\n"
-        "endpoint=X|Y|Z\n");
+        "endpoint=X | Y | Z\n");
 
     test_loader loader{};
     std::vector<::plugin::udf::load_result> results{};
@@ -553,7 +553,7 @@ TEST_F(udf_loader_test, empty_endpoint_element_is_rejected) {
     write_ini(
         "[udf]\n"
         "enabled=true\n"
-        "endpoint=A||C\n"
+        "endpoint=A |   | C\n"
         "secure=false\n");
 
     test_loader loader{};

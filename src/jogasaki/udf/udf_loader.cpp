@@ -41,6 +41,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/utils/string_utils.h>
 #include <jogasaki/udf/descriptor/descriptor_analyzer.h>
 #include <jogasaki/udf/descriptor/validation/message_duplicate_validator.h>
 #include <jogasaki/udf/descriptor/validation/rpc_duplicate_validator.h>
@@ -275,14 +276,15 @@ void log_blocked_plugin(fs::path const& so_path, std::set<std::string> const& co
     std::size_t begin = 0;
     while (true) {
         auto const end = value.find('|', begin);
-        auto token =
+        auto const token =
             value.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
-        if (token.empty()) {
+        auto const trimmed = jogasaki::utils::ltrim(jogasaki::utils::rtrim(token));
+        if (trimmed.empty()) {
             results.emplace_back(load_status::ini_invalid, ini_path.string(),
                 "Invalid value for " + std::string(key) + " (empty list element)");
             return std::nullopt;
         }
-        values.emplace_back(std::move(token));
+        values.emplace_back(trimmed);
         if (end == std::string::npos) { break; }
         begin = end + 1;
     }

@@ -24,14 +24,14 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/callback.h>
-#include <jogasaki/event.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/common/utils.h>
+#include <jogasaki/executor/common/task_completion.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::process {
@@ -56,14 +56,12 @@ model::task_result task::operator()() {
     }
 
     auto status = executor_->run();
+    bool dag_scheduled{};
     switch (status) {
         case abstract::status::completed:
-            // raise appropriate event if needed
-            common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
-            break;
         case abstract::status::completed_with_errors:
-            // raise appropriate event if needed
-            common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
+            common::complete_dag_task(*context(), step()->id(), id());
+            dag_scheduled = true;
             break;
         case abstract::status::to_sleep:
             // TODO support sleep/yield
@@ -77,15 +75,17 @@ model::task_result task::operator()() {
             break;
     }
 
-    if(global::config_pool()->inplace_dag_schedule()) {
-        scheduler::dag_schedule(*context());
-    } else {
-        context()->scheduler()->schedule_task(
-            scheduler::flat_task{
-                scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
-                    context()
-            }
-        );
+    if (! dag_scheduled) {
+        if(global::config_pool()->inplace_dag_schedule()) {
+            scheduler::dag_schedule(*context());
+        } else {
+            context()->scheduler()->schedule_task(
+                scheduler::flat_task{
+                    scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
+                        context()
+                }
+            );
+        }
     }
 
     if(auto&& cb = step()->will_end_task(); cb) {
@@ -109,6 +109,3 @@ model::task_transaction_kind task::transaction_capability() {
 }
 
 } // namespace jogasaki::executor::process
-
-
-

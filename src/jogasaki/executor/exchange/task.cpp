@@ -21,9 +21,8 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/event.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/common/utils.h>
+#include <jogasaki/executor/common/task_completion.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/model/task.h>
@@ -44,19 +43,7 @@ model::task_result task::operator()() {
             return model::task_result::complete;
         }
     }
-    common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
-
-    if(global::config_pool()->inplace_dag_schedule()) {
-        scheduler::dag_schedule(*context());
-        return model::task_result::complete;
-    }
-
-    context()->scheduler()->schedule_task(
-        scheduler::flat_task{
-            scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
-                context()
-        }
-    );
+    common::complete_dag_task(*context(), step()->id(), id());
     return model::task_result::complete;
 }
 

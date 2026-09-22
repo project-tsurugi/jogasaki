@@ -141,6 +141,7 @@
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/external_log_utils.h>
+#include <jogasaki/utils/finally.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -280,13 +281,16 @@ status database::start() {
     if (! init()) {
         return status::err_aborted;
     }
+    bool startup_completed = false;
+    utils::finally rollback{[this, &startup_completed] {
+        if (!startup_completed) {
+            cleanup_start_failure();
+        }
+    }};
     if(auto st = init_kvs_db(); st != status::ok) {
         return st;
     }
     if(auto res = kvs::setup_system_storage(); res != status::ok) {
-        (void) kvs_db_->close();
-        kvs_db_.reset();
-        deinit();
         return res;
     }
     // setup analytics tables if not exist
@@ -313,15 +317,9 @@ status database::start() {
     }
 
     if(auto res = recover_metadata(); res != status::ok) {
-        (void) kvs_db_->close();
-        kvs_db_.reset();
-        deinit();
         return res;
     }
     if(auto res = initialize_from_providers(); res != status::ok) {
-        (void) kvs_db_->close();
-        kvs_db_.reset();
-        deinit();
         return res;
     }
 
@@ -348,7 +346,33 @@ status database::start() {
         maintenance_thread_ = std::thread{[this]() { maintenance_loop(); }};
     }
 
+    startup_completed = true;
     return status::ok;
+}
+
+void database::cleanup_start_failure() noexcept {
+    stop_requested_ = true;
+    if (maintenance_thread_.joinable()) {
+        maintenance_stop_requested_ = true;
+        maintenance_cv_.notify_all();
+        maintenance_thread_.join();
+    }
+    if (task_scheduler_) {
+        task_scheduler_->stop();
+        task_scheduler_.reset();
+    }
+    sequence_manager_.reset();
+    prepared_statements_.clear();
+    statement_stores_.clear();
+    transactions_.clear();
+    transaction_stores_.clear();
+    if (kvs_db_) {
+        if (!kvs_db_->close()) {
+            LOG_LP(ERROR) << "closing database during start failure cleanup failed";
+        }
+        kvs_db_.reset();
+    }
+    deinit();
 }
 
 status database::stop() {

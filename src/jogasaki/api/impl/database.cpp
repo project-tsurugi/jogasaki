@@ -373,7 +373,7 @@ void database::cleanup_start_failure() noexcept {
     statement_stores_.clear();
     transactions_.clear();
     transaction_stores_.clear();
-    if (kvs_db_) {
+    if (kvs_db_ && !kvs_db_borrowed_) {
         if (!kvs_db_->close()) {
             LOG_LP(ERROR) << "closing database during start failure cleanup failed";
         }
@@ -441,7 +441,8 @@ database::database(
 
 database::database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db) :
     cfg_(std::move(cfg)),
-    kvs_db_(std::make_shared<kvs::database>(db))
+    kvs_db_(std::make_shared<kvs::database>(db)),
+    kvs_db_borrowed_(true)
 {
     custom_external_log_cfg(cfg_);
     global::db(kvs_db_);

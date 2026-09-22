@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/storage.h>
@@ -44,7 +45,7 @@ protected:
     jogasaki::test::temporary_folder temporary_{};
 };
 
-TEST_F(database_start_failure_test, failed_start_is_rolled_back_and_can_be_retried) {
+TEST_F(database_start_failure_test, borrowed_kvs_survives_failed_start_and_retry) {
     auto database_path = temporary_.path() + "/database";
     auto kvs_database = kvs::database::open({{"location", database_path}});
     ASSERT_TRUE(kvs_database);
@@ -57,11 +58,44 @@ TEST_F(database_start_failure_test, failed_start_is_rolled_back_and_can_be_retri
     config->db_location(database_path);
     auto database = create_database(config, kvs_database->handle());
 
-    EXPECT_NE(status::ok, database->start());
+    ASSERT_NE(status::ok, database->start());
+    ASSERT_TRUE(impl::get_impl(*database).kvs_db());
+    EXPECT_EQ(kvs_database->handle(), impl::get_impl(*database).kvs_db()->handle());
 
     ASSERT_EQ(status::ok, broken_storage->delete_storage());
     broken_storage.reset();
+    ASSERT_EQ(status::ok, database->start());
+    EXPECT_EQ(kvs_database->handle(), impl::get_impl(*database).kvs_db()->handle());
+    EXPECT_EQ(status::ok, database->stop());
+}
+
+TEST_F(database_start_failure_test, owned_kvs_is_reopened_after_failed_start) {
+    auto database_path = temporary_.path() + "/database";
+    auto kvs_database = kvs::database::open({{"location", database_path}});
+    ASSERT_TRUE(kvs_database);
+    ::sharksfin::StorageOptions options{};
+    options.payload("invalid storage metadata");
+    auto broken_storage = kvs_database->create_storage("BROKEN", options);
+    ASSERT_TRUE(broken_storage);
+    broken_storage.reset();
+    ASSERT_TRUE(kvs_database->close());
     kvs_database.reset();
+
+    auto config = std::make_shared<configuration>();
+    config->db_location(database_path);
+    auto database = create_database(config);
+    ASSERT_NE(status::ok, database->start());
+    ASSERT_FALSE(impl::get_impl(*database).kvs_db());
+
+    kvs_database = kvs::database::open({{"location", database_path}});
+    ASSERT_TRUE(kvs_database);
+    broken_storage = kvs_database->get_storage("BROKEN");
+    ASSERT_TRUE(broken_storage);
+    ASSERT_EQ(status::ok, broken_storage->delete_storage());
+    broken_storage.reset();
+    ASSERT_TRUE(kvs_database->close());
+    kvs_database.reset();
+
     ASSERT_EQ(status::ok, database->start());
     EXPECT_EQ(status::ok, database->stop());
 }

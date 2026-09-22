@@ -353,6 +353,7 @@ private:
         global::regular_function_provider()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
+    bool kvs_db_borrowed_{false};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::shared_ptr<impl::prepared_statement>> prepared_statements_{};

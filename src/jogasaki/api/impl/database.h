@@ -372,6 +372,12 @@ private:
 
     void maintenance_loop() noexcept;
 
+    /**
+     * @brief releases resources initialized by an unsuccessful start()
+     * @details Unlike stop(), this does not wait for requests because the database has not become available yet.
+     */
+    void cleanup_start_failure() noexcept;
+
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
@@ -399,4 +405,3 @@ inline api::impl::database& get_impl(api::database& db) {
 }
 
 } // namespace jogasaki::api::impl
-

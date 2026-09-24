@@ -23,6 +23,18 @@
 
 namespace jogasaki::accessor {
 
+text text::copy(
+    memory::paged_memory_resource& resource,
+    char const* data,
+    text::size_type size
+) {
+    return text{std::addressof(resource), data, size};
+}
+
+text text::copy(memory::paged_memory_resource& resource, std::string_view str) {
+    return text{std::addressof(resource), str};
+}
+
 text::text(memory::paged_memory_resource *resource, const char *data, text::size_type size) { //NOLINT
     if (size <= short_text::max_size) {
         s_ = short_text(data, size);  //NOLINT(cppcoreguidelines-pro-type-union-access)

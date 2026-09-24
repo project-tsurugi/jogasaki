@@ -47,6 +47,27 @@ public:
     constexpr text() noexcept: s_(nullptr) {}  //NOLINT
 
     /**
+     * @brief create a new object by copying the given data
+     * @param resource memory resource used to allocate storage for long format
+     * @param data pointer to the data area to copy
+     * @param size size of the data area
+     * @return the newly created object
+     */
+    [[nodiscard]] static text copy(
+        memory::paged_memory_resource& resource,
+        char const* data,
+        size_type size
+    );
+
+    /**
+     * @brief create a new object by copying the given string
+     * @param resource memory resource used to allocate storage for long format
+     * @param str text string data to copy
+     * @return the newly created object
+     */
+    [[nodiscard]] static text copy(memory::paged_memory_resource& resource, std::string_view str);
+
+    /**
      * @brief construct new object allocating from the given memory resource when long format is needed
      * @param resource memory resource used to allocate storage for long format
      * @param data pointer to the data area that is copied into tne new object
@@ -288,4 +309,3 @@ struct std::hash<jogasaki::accessor::text> {
         return std::hash<std::string_view>{}(static_cast<std::string_view>(value));
     }
 };
-

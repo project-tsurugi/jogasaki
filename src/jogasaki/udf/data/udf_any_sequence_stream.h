@@ -23,6 +23,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/udf/data/udf_semantic_type.h>
 #include <jogasaki/udf/generic_record.h>
@@ -43,9 +44,12 @@ class udf_any_sequence_stream : public ::jogasaki::data::any_sequence_stream {
      * @brief constructs a new adapter with the specified generic_record_stream.
      * @param udf_stream the underlying UDF stream
      * @param column_types the types of the columns in the result table
+     * @param resource memory resource used to copy variable-length values
+     * @attention resource must not be nullptr
      */
     udf_any_sequence_stream(std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
-        std::vector<jogasaki::udf::data::udf_wire_kind> column_types);
+        std::vector<jogasaki::udf::data::udf_wire_kind> column_types,
+        memory::paged_memory_resource* resource);
 
     /**
      * @brief attempts to retrieve the next record from the stream without blocking.
@@ -78,6 +82,7 @@ class udf_any_sequence_stream : public ::jogasaki::data::any_sequence_stream {
   private:
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream_;
     std::vector<jogasaki::udf::data::udf_wire_kind> column_types_;
+    memory::paged_memory_resource* resource_{};
 
     /**
      * @brief converts a generic_record to any_sequence.

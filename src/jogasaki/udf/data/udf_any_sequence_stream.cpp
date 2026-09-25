@@ -67,18 +67,21 @@ void emplace_nullable_with(std::vector<any>& values, Opt const& opt, F const& f)
     }
 }
 template <class F>
-void emplace_nullable_binary(std::vector<data::any>& values, F fetcher) {
+void emplace_nullable_binary(
+    std::vector<data::any>& values,
+    memory::paged_memory_resource& resource,
+    F fetcher
+) {
     auto v = fetcher();
     if (!v) {
         values.emplace_back();
     } else {
         values.emplace_back(
             std::in_place_type<accessor::binary>,
-            accessor::binary{v->value.data(), v->value.size()}
+            accessor::binary::copy(resource, v->value.data(), v->value.size())
         );
     }
 }
-
 void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     if (auto v = cursor.fetch_decimal()) {
         if (VLOG_IS_ON(log_trace)) {
@@ -222,8 +225,13 @@ using base_stream = ::jogasaki::data::any_sequence_stream;
 
 udf_any_sequence_stream::udf_any_sequence_stream(
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
-    std::vector<jogasaki::udf::data::udf_wire_kind> column_types)
-    : udf_stream_(std::move(udf_stream)), column_types_(std::move(column_types)) {}
+    std::vector<jogasaki::udf::data::udf_wire_kind> column_types,
+    memory::paged_memory_resource* resource)
+    : udf_stream_(std::move(udf_stream)),
+      column_types_(std::move(column_types)),
+      resource_(resource) {
+    assert_with_exception(resource_ != nullptr, resource_);
+}
 
 base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
     if (!udf_stream_) { return status_type::end_of_stream; }
@@ -306,11 +314,13 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
 
             case kind::character:
                 emplace_nullable_with<accessor::text>(values, cursor->fetch_string(),
-                    [](auto const& s) { return accessor::text{s}; });
+                    [this](auto const& s) {
+                        return accessor::text::copy(*resource_, s);
+                    });
                 break;
 
             case kind::octet:
-                emplace_nullable_binary(values, [&]() { return cursor->fetch_bytes(); });
+                emplace_nullable_binary(values, *resource_, [&]() { return cursor->fetch_bytes(); });
                 break;
 
             case kind::decimal: append_decimal(values, *cursor); break;

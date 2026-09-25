@@ -1270,7 +1270,7 @@ make_udf_server_stream_lambda(udf_client_list_ptr const& clients,
         }
         auto column_types = jogasaki::udf::bridge::build_output_wire_kinds(*fn);
         return std::make_unique<udf::data::udf_any_sequence_stream>(
-            std::move(udf_stream), std::move(column_types));
+            std::move(udf_stream), std::move(column_types), ctx.resource());
     };
 }
 /**

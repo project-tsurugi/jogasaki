@@ -115,6 +115,17 @@ TEST_F(text_test, create_from_sv) {
     EXPECT_TRUE(t0.is_short());
 }
 
+TEST_F(text_test, copy_preserves_long_value_after_source_changes) {
+    mock_memory_resource resource;
+    std::string source{"A234567890123456"};
+
+    auto value = text::copy(resource, source);
+    source.assign(source.size(), 'X');
+
+    EXPECT_EQ("A234567890123456"sv, static_cast<std::string_view>(value));
+    EXPECT_EQ(16, resource.total_bytes_allocated_);
+}
+
 TEST_F(text_test, print_content) {
     mock_memory_resource resource;
     text t0{&resource, "ABC"sv};
@@ -221,4 +232,3 @@ TEST_F(text_test, cast) {
 
 }
 }
-

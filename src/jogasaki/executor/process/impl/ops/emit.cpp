@@ -31,7 +31,6 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -64,7 +63,7 @@ emit::emit(
 operation_status emit::process_record(abstract::task_context *context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<emit_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<emit_context>(index());
     if (! p) {
         p = ctx.make_context<emit_context>(
             index(),
@@ -187,11 +186,10 @@ operator_kind emit::kind() const noexcept {
 void emit::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if (auto* p = find_context<emit_context>(index(), ctx.contexts())) {
+    if (auto* p = ctx.find_context<emit_context>(index())) {
         p->release();
     }
 }
 
 }
-
 

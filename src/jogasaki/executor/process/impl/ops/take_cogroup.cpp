@@ -31,7 +31,6 @@
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/variable_order.h>
@@ -124,7 +123,7 @@ take_cogroup::take_cogroup(
 operation_status take_cogroup::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<take_cogroup_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<take_cogroup_context>(index());
     if (! p) {
         p = ctx.make_context<take_cogroup_context>(
             index(),
@@ -273,7 +272,7 @@ void take_cogroup::finish(abstract::task_context* context) {
     if (! context) return;
     using iterator = data::iterable_record_store::iterator;
     context_helper c{*context};
-    if (auto* p = find_context<take_cogroup_context>(index(), c.contexts())) {
+    if (auto* p = c.find_context<take_cogroup_context>(index())) {
         p->release();
     }
     if (downstream_) {

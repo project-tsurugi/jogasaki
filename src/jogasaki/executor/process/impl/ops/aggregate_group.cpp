@@ -37,7 +37,6 @@
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
@@ -74,7 +73,7 @@ aggregate_group::aggregate_group(
 
 aggregate_group_context* aggregate_group::create_context_if_not_found(abstract::task_context* context) {
     context_helper ctx{*context};
-    auto* p = find_context<aggregate_group_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<aggregate_group_context>(index());
     if (! p) {
         std::vector<data::value_store> stores{};
         std::vector<std::unique_ptr<memory::lifo_paged_memory_resource>> resources{};

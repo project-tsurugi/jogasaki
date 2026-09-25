@@ -19,7 +19,6 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/utils/assert.h>
 
@@ -44,7 +43,7 @@ buffer::buffer(
 operation_status buffer::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<buffer_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<buffer_context>(index());
     if (! p) {
         p = ctx.make_context<buffer_context>(
             index(),
@@ -93,7 +92,7 @@ void buffer::finish(abstract::task_context* context) {
         return;
     }
     context_helper ctx{*context};
-    if (auto* p = find_context<buffer_context>(index(), ctx.contexts())) {
+    if (auto* p = ctx.find_context<buffer_context>(index())) {
         p->release();
     }
     for (auto& downstream : downstreams_) {

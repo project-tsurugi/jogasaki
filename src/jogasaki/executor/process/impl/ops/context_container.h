@@ -17,16 +17,13 @@
 
 #include <cstddef>
 #include <memory>
+#include <utility>
 #include <vector>
-
-#include <takatori/util/downcast.h>
 
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
-
-using takatori::util::unsafe_downcast;
 
 class context_base;
 
@@ -53,12 +50,15 @@ public:
     );
 
     /**
-     * @brief setter for the context at the given index
+     * @brief store the context at the given index if it is not assigned yet
      * @param idx the index of the context
      * @param ctx the context to be stored
-     * @return reference to the stored context
+     * @return the context stored at the index and whether the new context was stored
+     * @throws std::logic_error if the index is out of range
      */
-    std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx);
+    [[nodiscard]] std::pair<context_base*, bool> try_emplace(
+        std::size_t idx,
+        std::unique_ptr<context_base>&& ctx);
 
     /**
      * @brief returns whether the context is stored at the given index
@@ -85,18 +85,4 @@ private:
     contexts_type contexts_{};
 };
 
-/**
- * @brief helper function to get the context of specified type `T`
- * @tparam T the type of the context
- * @param idx the index to find the context in the container
- * @param container the container to find the context
- * @return context object at the index of the container
- * @return nullptr if no context object is found
- */
-template<class T>
-[[nodiscard]] T* find_context(std::size_t idx, context_container& container) {
-    return unsafe_downcast<T>(container.at(idx));
 }
-
-}
-

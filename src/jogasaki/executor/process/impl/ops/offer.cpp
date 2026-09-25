@@ -27,7 +27,6 @@
 #include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/conv/unify.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/variable_order.h>
@@ -61,7 +60,7 @@ offer::offer(
 operation_status offer::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<offer_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<offer_context>(index());
     if (! p) {
         p = ctx.make_context<offer_context>(
             index(),
@@ -157,7 +156,7 @@ void offer::finish(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context->deactivate_writer(writer_index_);
     context_helper ctx{*context};
-    if (auto* p = find_context<offer_context>(index(), ctx.contexts())) {
+    if (auto* p = ctx.find_context<offer_context>(index())) {
         p->release();
     }
 }

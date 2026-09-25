@@ -45,7 +45,6 @@
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/write_create_context.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -90,7 +89,7 @@ static void abort_transaction(transaction_context& tx) {
 void write_create::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if(auto* p = find_context<write_create_context>(index(), ctx.contexts())) {
+    if(auto* p = ctx.find_context<write_create_context>(index())) {
         p->release();
     }
 }
@@ -179,7 +178,7 @@ operation_status write_create::operator()(write_create_context& ctx) {
 operation_status write_create::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<write_create_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<write_create_context>(index());
     if (! p) {
         std::vector<index::secondary_context> contexts{};
         contexts.reserve(core_->secondaries().size());

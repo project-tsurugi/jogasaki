@@ -18,6 +18,7 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/kvs/database.h>
@@ -42,8 +43,12 @@ variable_table_list& context_helper::variable_tables() {
     return work_context_->variable_tables();
 }
 
-context_container& context_helper::contexts() const noexcept {
-    return work_context_->contexts();
+context_base* context_helper::store_context(std::size_t index, std::unique_ptr<context_base> context) {
+    return work_context_->contexts().try_emplace(index, std::move(context)).first;
+}
+
+context_base* context_helper::find_context_base(std::size_t index) const noexcept {
+    return work_context_->contexts().at(index);
 }
 
 context_helper::memory_resource* context_helper::resource() const noexcept {
@@ -95,5 +100,3 @@ relay::blob_session_container& context_helper::blob_session_container() const no
 }
 
 }
-
-

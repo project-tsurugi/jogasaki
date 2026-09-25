@@ -29,7 +29,6 @@
 #include <jogasaki/executor/exchange/forward/reader.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_reader.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/take_flat_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -73,7 +72,7 @@ take_flat::take_flat(
 operation_status take_flat::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<take_flat_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<take_flat_context>(index());
     if (! p) {
         p = ctx.make_context<take_flat_context>(
             index(),
@@ -166,7 +165,7 @@ const maybe_shared_ptr<meta::record_meta>& take_flat::meta() const noexcept {
 void take_flat::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper c{*context};
-    if(auto* p = find_context<take_flat_context>(index(), c.contexts())) {
+    if(auto* p = c.find_context<take_flat_context>(index())) {
         p->release();
     }
     if (downstream_) {

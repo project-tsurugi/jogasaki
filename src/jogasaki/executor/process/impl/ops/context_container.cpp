@@ -26,15 +26,18 @@ context_container::context_container(std::size_t size) :
     contexts_(size)
 {}
 
-std::unique_ptr<context_base>& context_container::set(
+std::pair<context_base*, bool> context_container::try_emplace(
     std::size_t idx,
-    std::unique_ptr<context_base> ctx
+    std::unique_ptr<context_base>&& ctx
 ) {
     if (idx >= contexts_.size()) {
         fail_with_exception();
     }
+    if (contexts_[idx]) {
+        return {contexts_[idx].get(), false};
+    }
     contexts_[idx] = std::move(ctx);
-    return contexts_[idx];
+    return {contexts_[idx].get(), true};
 }
 
 bool context_container::exists(std::size_t idx) const noexcept {
@@ -51,4 +54,3 @@ ops::context_base* context_container::at(std::size_t idx) const noexcept {
 }
 
 }
-

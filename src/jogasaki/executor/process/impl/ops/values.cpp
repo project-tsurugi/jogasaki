@@ -25,7 +25,6 @@
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/executor/expr/evaluator.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variables_view.h>
@@ -77,7 +76,7 @@ values::values(
 operation_status values::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<values_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<values_context>(index());
     if (! p) {
         p = ctx.make_context<values_context>(
             index(),
@@ -153,7 +152,7 @@ operator_kind values::kind() const noexcept {
 void values::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if (auto* p = find_context<values_context>(index(), ctx.contexts())) {
+    if (auto* p = ctx.find_context<values_context>(index())) {
         p->release();
     }
     if (downstream_) {

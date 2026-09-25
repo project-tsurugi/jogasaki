@@ -353,6 +353,7 @@ private:
         global::regular_function_provider()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
+    bool kvs_db_borrowed_{false};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::shared_ptr<impl::prepared_statement>> prepared_statements_{};
@@ -371,6 +372,13 @@ private:
     std::atomic_bool maintenance_stop_requested_{false};
 
     void maintenance_loop() noexcept;
+
+    /**
+     * @brief releases resources initialized by an unsuccessful start()
+     * @details Unlike stop(), this does not wait for requests because the database has not become available yet.
+     */
+    void cleanup_start_failure() noexcept;
+    [[nodiscard]] status prepare_analytics_benchmark_tables();
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,
@@ -399,4 +407,3 @@ inline api::impl::database& get_impl(api::database& db) {
 }
 
 } // namespace jogasaki::api::impl
-

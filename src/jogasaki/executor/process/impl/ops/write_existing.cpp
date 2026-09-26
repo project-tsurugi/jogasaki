@@ -45,7 +45,6 @@
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/write_existing_context.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -81,7 +80,7 @@ using takatori::util::throw_exception;
 void write_existing::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if(auto* p = find_context<write_existing_context>(index(), ctx.contexts())) {
+    if(auto* p = ctx.find_context<write_existing_context>(index())) {
         p->release();
     }
 }
@@ -336,7 +335,7 @@ operation_status write_existing::do_delete(write_existing_context& ctx) {
 operation_status write_existing::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<write_existing_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<write_existing_context>(index());
     if (! p) {
         std::vector<index::secondary_context> contexts{};
         contexts.reserve(secondaries_.size());

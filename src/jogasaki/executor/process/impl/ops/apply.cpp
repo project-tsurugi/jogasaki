@@ -37,7 +37,6 @@
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/expr/lob_processing.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -84,7 +83,7 @@ apply::apply(
 operation_status apply::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<apply_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<apply_context>(index());
     if (! p) {
         p = ctx.make_context<apply_context>(
             index(),
@@ -273,7 +272,7 @@ void apply::finish(abstract::task_context* context) {
         return;
     }
     context_helper ctx{*context};
-    if (auto* p = find_context<apply_context>(index(), ctx.contexts())) {
+    if (auto* p = ctx.find_context<apply_context>(index())) {
         p->release();
     }
     if (downstream_) {

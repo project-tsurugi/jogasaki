@@ -31,7 +31,6 @@
 
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -116,7 +115,7 @@ operation_status find::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     ctx.acquire_strand_if_needed();
-    auto* p = find_context<class find_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<class find_context>(index());
     if (! p) {
         p = ctx.make_context<class find_context>(
             index(),
@@ -300,7 +299,7 @@ std::string_view find::secondary_storage_name() const noexcept {
 void find::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if(auto* p = find_context<class find_context>(index(), ctx.contexts())) {
+    if(auto* p = ctx.find_context<class find_context>(index())) {
         p->release();
     }
     if (downstream_) {

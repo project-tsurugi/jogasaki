@@ -18,20 +18,20 @@
 #include <cstddef>
 #include <memory>
 #include <utility>
-#include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
-#include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/variables_view.h>
-#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/relay/blob_session_container.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/transaction_context.h>
+
+namespace jogasaki::executor::process::impl {
+class work_context;
+}
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -71,18 +71,25 @@ public:
      */
     template<class T, class ... Args>
     [[nodiscard]] T* make_context(std::size_t index, std::size_t block_index, Args&&...args) {
-        auto& p = contexts().set(index, std::make_unique<T>(
+        auto context = std::make_unique<T>(
             context_,
             impl::variables_view{variable_tables(), block_index},
             std::forward<Args>(args)...
-        ));
-        return unsafe_downcast<T>(p.get());
+        );
+        return unsafe_downcast<T>(store_context(index, std::move(context)));
     }
 
     /**
-     * @brief accessor to context_container
+     * @brief find operator context of specified type
+     * @tparam T the operator context type
+     * @param index the index to find the context in the context list
+     * @return context object at the index of the context list
+     * @return nullptr if no context object is found
      */
-    [[nodiscard]] context_container& contexts() const noexcept;
+    template<class T>
+    [[nodiscard]] T* find_context(std::size_t index) const noexcept {
+        return unsafe_downcast<T>(find_context_base(index));
+    }
 
     /**
      * @brief accessor to memory resource for work area
@@ -147,10 +154,13 @@ public:
     [[nodiscard]] relay::blob_session_container& blob_session_container() const noexcept;
 
 private:
+    [[nodiscard]] context_base* store_context(
+        std::size_t index,
+        std::unique_ptr<context_base> context);
+    [[nodiscard]] context_base* find_context_base(std::size_t index) const noexcept;
+
     abstract::task_context *context_{};
     impl::work_context* work_context_{};
 };
 
 }
-
-

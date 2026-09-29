@@ -175,6 +175,39 @@ TEST_F(function_char_length_test, invalid_utf8_4byte) {
     EXPECT_EQ((create_nullable_record<kind::int8>(std::nullopt)), result[0]);
 }
 
+TEST_F(function_char_length_test, invalid_utf8_truncated_sequence) {
+    execute_statement("create table t (id int primary key, c0 varchar(100))");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character}};
+    std::vector<std::string> values{
+        std::string("\xC2", 1),
+        std::string("\xE2", 1),
+        std::string("\xE2\x82", 2),
+        std::string("\xF0", 1),
+        std::string("\xF0\x9F", 2),
+        std::string("\xF0\x9F\x8D", 3),
+        std::string("a") + std::string("\xC2", 1),
+        std::string("a") + std::string("\xE2", 1),
+        std::string("a") + std::string("\xE2\x82", 2),
+        std::string("a") + std::string("\xF0", 1),
+        std::string("a") + std::string("\xF0\x9F", 2),
+        std::string("a") + std::string("\xF0\x9F\x8D", 3),
+    };
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        auto ps = api::create_parameter_set();
+        ps->set_character("p0", values[i]);
+        execute_statement(
+            "INSERT INTO t (id, c0) VALUES (" + std::to_string(i) + ", :p0)", variables, *ps);
+    }
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT char_length(c0) FROM t ORDER BY id", result);
+    ASSERT_EQ(values.size(), result.size());
+    for (auto const& record : result) {
+        EXPECT_EQ((create_nullable_record<kind::int8>(std::nullopt)), record);
+    }
+}
+
 TEST_F(function_char_length_test, null) {
     std::vector<mock::basic_record> result{};
     execute_statement("create table t (c0 varchar(5))");

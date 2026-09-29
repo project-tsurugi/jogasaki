@@ -1486,19 +1486,19 @@ static encoding_type detect_next_encoding(std::string_view view, const size_t of
     auto first            = static_cast<unsigned char>(view[offset]);
     if (first <= 0x7FU) { return encoding_type::ASCII_1BYTE; }
     if (first >= 0xC2U && first <= 0xDFU) {
-        return (view.size() >= 2 && is_continuation_byte(view[offset_2nd]))
+        return (offset_2nd < view.size() && is_continuation_byte(view[offset_2nd]))
                    ? encoding_type::UTF8_2BYTE
                    : encoding_type::INVALID;
     }
     if (first >= 0xE0U && first <= 0xEFU) {
-        return (view.size() >= 3 && is_continuation_byte(view[offset_2nd]) &&
+        return (offset_3rd < view.size() && is_continuation_byte(view[offset_2nd]) &&
                    is_continuation_byte(view[offset_3rd]))
                    ? encoding_type::UTF8_3BYTE
                    : encoding_type::INVALID;
     }
     if (first >= 0xF0U && first <= 0xF4U) {
         const auto offset_4th = offset + 3;
-        return (view.size() >= 4 && is_continuation_byte(view[offset_2nd]) &&
+        return (offset_4th < view.size() && is_continuation_byte(view[offset_2nd]) &&
                    is_continuation_byte(view[offset_3rd]) && is_continuation_byte(view[offset_4th]))
                    ? encoding_type::UTF8_4BYTE
                    : encoding_type::INVALID;

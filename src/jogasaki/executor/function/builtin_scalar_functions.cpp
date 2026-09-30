@@ -103,6 +103,11 @@ public:
         repo_(repo)
     {}
 
+    function_registrar(function_registrar const&) = delete;
+    function_registrar& operator=(function_registrar const&) = delete;
+    function_registrar(function_registrar&&) = delete;
+    function_registrar& operator=(function_registrar&&) = delete;
+
     /**
      * @brief register the function overload identified by the given id
      * @param id the function id

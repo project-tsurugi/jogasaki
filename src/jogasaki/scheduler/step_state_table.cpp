@@ -16,10 +16,12 @@
 #include "step_state_table.h"
 
 #include <algorithm>
+#include <sstream>
 #include <stdexcept>
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/step_state.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::scheduler {
 
@@ -51,11 +53,29 @@ void step_state_table::register_task(step_state_table::kind k, step_state_table:
 step_state_table::kind step_state_table::task_state(model::task::identity_type id, task_state_kind st) {
     auto it = std::find(main_slots_.begin(), main_slots_.end(), id);
     if (it != main_slots_.end()) {
+        if (auto status = main_status_.find(id);
+            status != main_status_.end() && status->second == task_state_kind::completed) {
+            std::ostringstream message{};
+            message << "task state is updated after completion task_id=" << id
+                    << " task_kind=main next_state=" << to_string_view(st)
+                    << " step_state=" << to_string_view(state_)
+                    << " main_slots=" << main_slots_.size() << " pre_slots=" << sub_slots_.size();
+            fail_with_exception_msg(message.str());
+        }
         main_status_[*it] = st;
         return kind::main;
     }
     it = std::find(sub_slots_.begin(), sub_slots_.end(), id);
     if (it != sub_slots_.end()) {
+        if (auto status = sub_status_.find(id);
+            status != sub_status_.end() && status->second == task_state_kind::completed) {
+            std::ostringstream message{};
+            message << "task state is updated after completion task_id=" << id
+                    << " task_kind=pre next_state=" << to_string_view(st)
+                    << " step_state=" << to_string_view(state_)
+                    << " main_slots=" << main_slots_.size() << " pre_slots=" << sub_slots_.size();
+            fail_with_exception_msg(message.str());
+        }
         sub_status_[*it] = st;
         return kind::pre;
     }

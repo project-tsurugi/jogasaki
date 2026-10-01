@@ -25,6 +25,11 @@ class request_context;
 namespace jogasaki::executor::common {
 
 /**
+ * @brief processes DAG events inline or schedules their processing
+ */
+void schedule_dag_events(request_context& context);
+
+/**
  * @brief completes a DAG task and schedules the resulting DAG events
  */
 void complete_dag_task(

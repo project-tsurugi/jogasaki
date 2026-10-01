@@ -32,7 +32,10 @@ void complete_dag_task(
     model::task::identity_type task_id
 ) {
     send_event(context, event_enum_tag<event_kind::task_completed>, step_id, task_id);
+    schedule_dag_events(context);
+}
 
+void schedule_dag_events(request_context& context) {
     if (global::config_pool()->inplace_dag_schedule()) {
         scheduler::dag_schedule(context);
         return;

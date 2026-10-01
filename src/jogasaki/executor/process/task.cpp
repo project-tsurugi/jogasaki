@@ -30,8 +30,6 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/scheduler/flat_task.h>
-#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::process {
@@ -56,12 +54,10 @@ model::task_result task::operator()() {
     }
 
     auto status = executor_->run();
-    bool dag_scheduled{};
     switch (status) {
         case abstract::status::completed:
         case abstract::status::completed_with_errors:
             common::complete_dag_task(*context(), step()->id(), id());
-            dag_scheduled = true;
             break;
         case abstract::status::to_sleep:
             // TODO support sleep/yield
@@ -69,23 +65,11 @@ model::task_result task::operator()() {
             fail_with_exception();
             break;
         case abstract::status::to_yield:
+            common::schedule_dag_events(*context());
             break;
         default:
             fail_with_exception();
             break;
-    }
-
-    if (! dag_scheduled) {
-        if(global::config_pool()->inplace_dag_schedule()) {
-            scheduler::dag_schedule(*context());
-        } else {
-            context()->scheduler()->schedule_task(
-                scheduler::flat_task{
-                    scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
-                        context()
-                }
-            );
-        }
     }
 
     if(auto&& cb = step()->will_end_task(); cb) {

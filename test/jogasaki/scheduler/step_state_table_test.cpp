@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <initializer_list>
 #include <stdexcept>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -40,26 +42,33 @@ TEST(step_state_table_test, reject_unknown_task_completion) {
     EXPECT_THROW(table.task_state(100, task_state_kind::completed), std::domain_error);
 }
 
-TEST(step_state_table_test, preserve_duplicate_task_completion) {
-    step_state_table table{};
-    table.assign_slot(model::task_kind::main, 1);
-    table.register_task(model::task_kind::main, 0, 100);
-    table.task_state(100, task_state_kind::running);
-    table.task_state(100, task_state_kind::completed);
+TEST(step_state_table_test, reject_updates_after_completion) {
+    for (auto kind : {model::task_kind::main, model::task_kind::pre}) {
+        for (auto next_state : {task_state_kind::uninitialized, task_state_kind::running, task_state_kind::completed}) {
+            SCOPED_TRACE(to_string_view(kind));
+            SCOPED_TRACE(to_string_view(next_state));
+            step_state_table table{};
+            table.state_ = step_state_kind::running;
+            table.assign_slot(kind, 1);
+            table.register_task(kind, 0, 100);
+            EXPECT_EQ(kind, table.task_state(100, task_state_kind::running));
+            EXPECT_EQ(kind, table.task_state(100, task_state_kind::completed));
 
-    EXPECT_NO_THROW(table.task_state(100, task_state_kind::completed));
-    EXPECT_TRUE(table.completed(model::task_kind::main));
-}
-
-TEST(step_state_table_test, preserve_transition_after_completion) {
-    step_state_table table{};
-    table.assign_slot(model::task_kind::pre, 1);
-    table.register_task(model::task_kind::pre, 0, 100);
-    table.task_state(100, task_state_kind::running);
-    table.task_state(100, task_state_kind::completed);
-
-    EXPECT_NO_THROW(table.task_state(100, task_state_kind::running));
-    EXPECT_FALSE(table.completed(model::task_kind::pre));
+            try {
+                table.task_state(100, next_state);
+                FAIL() << "completed task accepted a state update";
+            } catch (std::logic_error const& error) {
+                std::string message{error.what()};
+                EXPECT_NE(std::string::npos, message.find("task_id=100"));
+                EXPECT_NE(std::string::npos, message.find("task_kind=" + std::string{to_string_view(kind)}));
+                EXPECT_NE(std::string::npos, message.find("next_state=" + std::string{to_string_view(next_state)}));
+                EXPECT_NE(std::string::npos, message.find("step_state=running"));
+                auto expected_slots = kind == model::task_kind::main ? "main_slots=1 pre_slots=0" : "main_slots=0 pre_slots=1";
+                EXPECT_NE(std::string::npos, message.find(expected_slots));
+            }
+            EXPECT_TRUE(table.completed(kind));
+        }
+    }
 }
 
 }

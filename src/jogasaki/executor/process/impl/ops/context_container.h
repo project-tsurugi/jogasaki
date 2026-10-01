@@ -17,7 +17,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <utility>
 #include <vector>
 
 #include <jogasaki/executor/process/impl/ops/context_base.h>
@@ -50,15 +49,13 @@ public:
     );
 
     /**
-     * @brief store the context at the given index if it is not assigned yet
+     * @brief store the context at the given index
      * @param idx the index of the context
      * @param ctx the context to be stored
-     * @return the context stored at the index and whether the new context was stored
-     * @throws std::logic_error if the index is out of range
+     * @return reference to the stored context
+     * @throws std::logic_error if the index is out of range or already has a context
      */
-    [[nodiscard]] std::pair<context_base*, bool> try_emplace(
-        std::size_t idx,
-        std::unique_ptr<context_base>&& ctx);
+    std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx);
 
     /**
      * @brief returns whether the context is stored at the given index

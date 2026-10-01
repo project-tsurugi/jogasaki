@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <memory>
+#include <stdexcept>
 
 #include <gtest/gtest.h>
 
@@ -33,31 +34,39 @@ public:
     void release() override {}
 };
 
-TEST_F(context_container_test, try_emplace) {
+TEST_F(context_container_test, set) {
     context_container container{1};
     auto context = std::make_unique<test_context>();
     auto* expected = context.get();
 
-    auto [actual, inserted] = container.try_emplace(0, std::move(context));
+    auto& actual = container.set(0, std::move(context));
 
-    EXPECT_TRUE(inserted);
-    EXPECT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual.get());
     EXPECT_EQ(expected, container.at(0));
 }
 
-TEST_F(context_container_test, keep_first_assignment) {
+TEST_F(context_container_test, reject_duplicate_assignment) {
     context_container container{1};
     auto context = std::make_unique<test_context>();
     auto* expected = context.get();
-    (void) container.try_emplace(0, std::move(context));
-    std::unique_ptr<context_base> replacement = std::make_unique<test_context>();
+    container.set(0, std::move(context));
 
-    auto [actual, inserted] = container.try_emplace(0, std::move(replacement));
-
-    EXPECT_FALSE(inserted);
-    EXPECT_EQ(expected, actual);
+    EXPECT_THROW(container.set(0, std::make_unique<test_context>()), std::logic_error);
     EXPECT_EQ(expected, container.at(0));
-    EXPECT_NE(nullptr, replacement);
+}
+
+TEST_F(context_container_test, reject_out_of_range_assignment) {
+    context_container container{1};
+
+    EXPECT_THROW(container.set(1, std::make_unique<test_context>()), std::logic_error);
+    EXPECT_THROW(container.set(2, std::make_unique<test_context>()), std::logic_error);
+    EXPECT_EQ(nullptr, container.at(0));
+}
+
+TEST_F(context_container_test, reject_assignment_to_empty_container) {
+    context_container container{};
+
+    EXPECT_THROW(container.set(0, std::make_unique<test_context>()), std::logic_error);
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

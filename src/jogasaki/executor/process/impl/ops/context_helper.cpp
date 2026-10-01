@@ -44,7 +44,7 @@ variable_table_list& context_helper::variable_tables() {
 }
 
 context_base* context_helper::store_context(std::size_t index, std::unique_ptr<context_base> context) {
-    return work_context_->contexts().try_emplace(index, std::move(context)).first;
+    return work_context_->contexts().set(index, std::move(context)).get();
 }
 
 context_base* context_helper::find_context_base(std::size_t index) const noexcept {

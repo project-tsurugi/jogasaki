@@ -377,6 +377,17 @@ private:
      * @details Unlike stop(), this does not wait for requests because the database has not become available yet.
      */
     void cleanup_start_failure();
+
+    enum class shutdown_mode {
+        startup_failure,
+        normal,
+    };
+
+    /**
+     * @brief shut down the database after a failed start or a normal stop
+     * @details A failed start skips waiting for requests and preserves a borrowed KVS handle for retry.
+     */
+    [[nodiscard]] status shutdown(shutdown_mode mode);
     [[nodiscard]] status prepare_analytics_benchmark_tables();
 
     [[nodiscard]] status prepare_common(

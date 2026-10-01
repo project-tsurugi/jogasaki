@@ -364,67 +364,60 @@ status database::prepare_analytics_benchmark_tables() {
 }
 
 void database::cleanup_start_failure() {
+    (void) shutdown(shutdown_mode::startup_failure);
+}
+
+status database::stop() {
+    return shutdown(shutdown_mode::normal);
+}
+
+status database::shutdown(shutdown_mode mode) {
+    bool const failed_start = mode == shutdown_mode::startup_failure;
     stop_requested_ = true;
     if (maintenance_thread_.joinable()) {
         maintenance_stop_requested_ = true;
         maintenance_cv_.notify_all();
         maintenance_thread_.join();
     }
-    if (task_scheduler_) {
+    if (!failed_start) {
+        std::size_t cnt = 0;
+        while(requests_inprocess_.count() != 1) {
+            std::this_thread::sleep_for(std::chrono::milliseconds{1});
+            if(++cnt > 1000) {
+                LOG_LP(ERROR) << "Request to stop engine timed out.";
+                return status::err_time_out;
+            }
+        }
+    }
+    // Normal stop is not called on maintenance/quiescent mode.
+    if ((failed_start || cfg_->activate_scheduler()) && task_scheduler_) {
         task_scheduler_->stop();
         task_scheduler_.reset();
     }
     sequence_manager_.reset();
+    if (!failed_start) {
+        global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
+        deinit();
+    }
     prepared_statements_.clear();
     statement_stores_.clear();
     transactions_.clear();
     transaction_stores_.clear();
-    if (kvs_db_ && !kvs_db_->handle_borrowed()) {
+    // Keep the externally supplied handle available for another start attempt.
+    if (kvs_db_ && (!failed_start || !kvs_db_->handle_borrowed())) {
         if (!kvs_db_->close()) {
+            if (!failed_start) {
+                return status::err_io_error;
+            }
             LOG_LP(ERROR) << "closing database during start failure cleanup failed";
         }
         kvs_db_.reset();
     }
-    deinit();
-}
-
-status database::stop() {
-    stop_requested_ = true;
-    if (maintenance_thread_.joinable()) {
-        maintenance_stop_requested_ = true;
-        maintenance_cv_.notify_all();
-        maintenance_thread_.join();
+    if (failed_start) {
+        deinit();
+    } else {
+        commit_stats_->dump();
     }
-    std::size_t cnt = 0;
-    while(requests_inprocess_.count() != 1) {
-        std::this_thread::sleep_for(std::chrono::milliseconds{1});
-        if(++cnt > 1000) {
-            LOG_LP(ERROR) << "Request to stop engine timed out.";
-            return status::err_time_out;
-        }
-    }
-    // this function is not called on maintenance/quiescent mode
-    if (cfg_->activate_scheduler() && task_scheduler_) {
-        task_scheduler_->stop();
-        task_scheduler_.reset();
-    }
-    sequence_manager_.reset();
-
-    global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
-    deinit();
-    prepared_statements_.clear();
-    statement_stores_.clear();
-
-    transactions_.clear();
-    transaction_stores_.clear();
-    if (kvs_db_) {
-        if(! kvs_db_->close()) {
-            return status::err_io_error;
-        }
-        kvs_db_ = nullptr;
-    }
-
-    commit_stats_->dump();
     return status::ok;
 }
 

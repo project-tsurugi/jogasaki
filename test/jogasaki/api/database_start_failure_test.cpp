@@ -87,8 +87,10 @@ TEST_F(database_start_failure_test, owned_kvs_is_reopened_after_failed_start) {
     auto config = std::make_shared<configuration>();
     config->db_location(database_path);
     auto database = create_database(config);
+    auto pending_request = impl::get_impl(*database).requests_inprocess();
     ASSERT_NE(status::ok, database->start());
     ASSERT_FALSE(impl::get_impl(*database).kvs_db());
+    pending_request.reset();
 
     kvs_database = kvs::database::open({{"location", database_path}});
     ASSERT_TRUE(kvs_database);
@@ -101,6 +103,56 @@ TEST_F(database_start_failure_test, owned_kvs_is_reopened_after_failed_start) {
 
     ASSERT_EQ(status::ok, database->start());
     EXPECT_EQ(status::ok, database->stop());
+}
+
+TEST_F(database_start_failure_test, owned_database_can_restart_after_stop) {
+    auto config = std::make_shared<configuration>();
+    config->db_location(temporary_.path() + "/database");
+    config->single_thread(true);
+    config->enable_maintenance_thread(true);
+    auto database = create_database(config);
+
+    ASSERT_EQ(status::ok, database->start());
+    ASSERT_TRUE(impl::get_impl(*database).scheduler());
+    ASSERT_EQ(status::ok, database->stop());
+    EXPECT_FALSE(impl::get_impl(*database).scheduler());
+    EXPECT_FALSE(impl::get_impl(*database).kvs_db());
+
+    ASSERT_EQ(status::ok, database->start());
+    ASSERT_TRUE(impl::get_impl(*database).scheduler());
+    EXPECT_EQ(status::ok, database->stop());
+}
+
+TEST_F(database_start_failure_test, stop_without_scheduler_releases_owned_kvs) {
+    auto config = std::make_shared<configuration>();
+    config->db_location(temporary_.path() + "/database");
+    config->activate_scheduler(false);
+    config->enable_maintenance_thread(false);
+    auto database = create_database(config);
+
+    ASSERT_EQ(status::ok, database->start());
+    EXPECT_FALSE(impl::get_impl(*database).scheduler());
+    ASSERT_EQ(status::ok, database->stop());
+    EXPECT_FALSE(impl::get_impl(*database).kvs_db());
+}
+
+TEST_F(database_start_failure_test, stop_timeout_preserves_resources_until_requests_finish) {
+    auto config = std::make_shared<configuration>();
+    config->db_location(temporary_.path() + "/database");
+    config->single_thread(true);
+    config->enable_maintenance_thread(false);
+    auto database = create_database(config);
+
+    ASSERT_EQ(status::ok, database->start());
+    auto pending_request = impl::get_impl(*database).requests_inprocess();
+    EXPECT_EQ(status::err_time_out, database->stop());
+    EXPECT_TRUE(impl::get_impl(*database).scheduler());
+    EXPECT_TRUE(impl::get_impl(*database).kvs_db());
+
+    pending_request.reset();
+    EXPECT_EQ(status::ok, database->stop());
+    EXPECT_FALSE(impl::get_impl(*database).scheduler());
+    EXPECT_FALSE(impl::get_impl(*database).kvs_db());
 }
 
 } // namespace jogasaki::api

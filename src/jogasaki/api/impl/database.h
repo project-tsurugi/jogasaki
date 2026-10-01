@@ -376,7 +376,7 @@ private:
      * @brief releases resources initialized by an unsuccessful start()
      * @details Unlike stop(), this does not wait for requests because the database has not become available yet.
      */
-    void cleanup_start_failure() noexcept;
+    void cleanup_start_failure();
     [[nodiscard]] status prepare_analytics_benchmark_tables();
 
     [[nodiscard]] status prepare_common(

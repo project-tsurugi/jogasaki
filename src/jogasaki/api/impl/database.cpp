@@ -284,7 +284,13 @@ status database::start() {
     bool startup_completed = false;
     utils::finally rollback{[this, &startup_completed] {
         if (!startup_completed) {
-            cleanup_start_failure();
+            try {
+                cleanup_start_failure();
+            } catch (std::exception const& e) {
+                LOG_LP(ERROR) << "start failure cleanup failed: " << e.what();
+            } catch (...) {
+                LOG_LP(ERROR) << "start failure cleanup failed with an unknown exception";
+            }
         }
     }};
     if(auto st = init_kvs_db(); st != status::ok) {
@@ -357,7 +363,7 @@ status database::prepare_analytics_benchmark_tables() {
     return status::ok;
 }
 
-void database::cleanup_start_failure() noexcept {
+void database::cleanup_start_failure() {
     stop_requested_ = true;
     if (maintenance_thread_.joinable()) {
         maintenance_stop_requested_ = true;

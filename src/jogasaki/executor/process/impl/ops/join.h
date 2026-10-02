@@ -43,7 +43,6 @@
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/cogroup.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
@@ -107,7 +106,7 @@ public:
     operation_status process_cogroup(abstract::task_context* context, cogroup<iterator>& cgrp) override {
         assert_with_exception(context != nullptr, context);
         context_helper ctx{*context};
-        auto* p = find_context<join_context<iterator>>(index(), ctx.contexts());
+        auto* p = ctx.find_context<join_context<iterator>>(index());
         if (! p) {
             p = ctx.make_context<join_context<iterator>>(
                 index(),
@@ -453,7 +452,7 @@ resume_calling_child_7:
     void finish(abstract::task_context* context) override {
         if (! context) return;
         context_helper ctx{*context};
-        if (auto* p = find_context<join_context<iterator>>(index(), ctx.contexts())) {
+        if (auto* p = ctx.find_context<join_context<iterator>>(index())) {
             p->release();
         }
         if (downstream_) {

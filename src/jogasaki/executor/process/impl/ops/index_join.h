@@ -290,7 +290,7 @@ public:
         assert_with_exception(context != nullptr, context);
         context_helper ctx{*context};
         ctx.acquire_strand_if_needed();
-        auto* p = find_context<index_join_context<MatchInfo>>(index(), ctx.contexts());
+        auto* p = ctx.find_context<index_join_context<MatchInfo>>(index());
         if (! p) {
             p = ctx.make_context<index_join_context<MatchInfo>>(
                 index(),
@@ -482,7 +482,7 @@ resume_calling_child:
     void finish(abstract::task_context* context) override {
         if (! context) return;
         context_helper ctx{*context};
-        if (auto* p = find_context<index_join_context<MatchInfo>>(index(), ctx.contexts())) {
+        if (auto* p = ctx.find_context<index_join_context<MatchInfo>>(index())) {
             p->release();
         }
         if (downstream_) {

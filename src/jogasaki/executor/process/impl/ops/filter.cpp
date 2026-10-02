@@ -23,7 +23,6 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -52,7 +51,7 @@ filter::filter(
 operation_status filter::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<filter_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<filter_context>(index());
     if (! p) {
         p = ctx.make_context<filter_context>(
             index(),
@@ -112,7 +111,7 @@ operator_kind filter::kind() const noexcept {
 void filter::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if(auto* p = find_context<filter_context>(index(), ctx.contexts())) {
+    if(auto* p = ctx.find_context<filter_context>(index())) {
         p->release();
     }
     if (downstream_) {

@@ -19,14 +19,10 @@
 #include <memory>
 #include <vector>
 
-#include <takatori/util/downcast.h>
-
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
-
-using takatori::util::unsafe_downcast;
 
 class context_base;
 
@@ -53,10 +49,11 @@ public:
     );
 
     /**
-     * @brief setter for the context at the given index
+     * @brief store the context at the given index
      * @param idx the index of the context
      * @param ctx the context to be stored
      * @return reference to the stored context
+     * @throws std::logic_error if the index is out of range or already has a context
      */
     std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx);
 
@@ -85,18 +82,4 @@ private:
     contexts_type contexts_{};
 };
 
-/**
- * @brief helper function to get the context of specified type `T`
- * @tparam T the type of the context
- * @param idx the index to find the context in the container
- * @param container the container to find the context
- * @return context object at the index of the container
- * @return nullptr if no context object is found
- */
-template<class T>
-[[nodiscard]] T* find_context(std::size_t idx, context_container& container) {
-    return unsafe_downcast<T>(container.at(idx));
 }
-
-}
-

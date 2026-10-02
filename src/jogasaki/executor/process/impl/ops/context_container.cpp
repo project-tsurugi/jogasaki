@@ -33,6 +33,9 @@ std::unique_ptr<context_base>& context_container::set(
     if (idx >= contexts_.size()) {
         fail_with_exception();
     }
+    if (contexts_[idx]) {
+        fail_with_exception();
+    }
     contexts_[idx] = std::move(ctx);
     return contexts_[idx];
 }
@@ -51,4 +54,3 @@ ops::context_base* context_container::at(std::size_t idx) const noexcept {
 }
 
 }
-

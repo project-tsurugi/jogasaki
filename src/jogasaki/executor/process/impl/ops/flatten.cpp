@@ -20,7 +20,6 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
 
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/utils/assert.h>
 
 #include "context_helper.h"
@@ -48,7 +47,7 @@ operation_status flatten::process_group(abstract::task_context* context, member_
         return operation_status_kind::ok;
     }
     context_helper ctx{*context};
-    auto* p = find_context<flatten_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<flatten_context>(index());
     if (! p) {
         p = ctx.make_context<flatten_context>(
             index(),
@@ -94,7 +93,7 @@ operator_kind flatten::kind() const noexcept {
 void flatten::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if (auto* p = find_context<flatten_context>(index(), ctx.contexts())) {
+    if (auto* p = ctx.find_context<flatten_context>(index())) {
         p->release();
     }
     if (downstream_) {

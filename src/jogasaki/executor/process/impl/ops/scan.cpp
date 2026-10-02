@@ -35,7 +35,6 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/bound.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/executor/process/impl/ops/write_existing.h>
 #include <jogasaki/executor/process/impl/scan_range.h>
@@ -117,7 +116,7 @@ operation_status scan::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
     ctx.acquire_strand_if_needed();
-    auto* p = find_context<scan_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<scan_context>(index());
     auto stg = utils::get_storage_by_index_name(storage_name());
     assert_with_exception(stg); //TODO handle error
     if (! p) {
@@ -261,7 +260,7 @@ std::string_view scan::secondary_storage_name() const noexcept {
 void scan::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if(auto* p = find_context<scan_context>(index(), ctx.contexts())) {
+    if(auto* p = ctx.find_context<scan_context>(index())) {
         close(*p);
         p->release();
     }

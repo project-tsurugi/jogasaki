@@ -27,7 +27,6 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/take_group_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -74,7 +73,7 @@ take_group::take_group(
 operation_status take_group::process_record(abstract::task_context* context) {
     assert_with_exception(context != nullptr, context);
     context_helper ctx{*context};
-    auto* p = find_context<take_group_context>(index(), ctx.contexts());
+    auto* p = ctx.find_context<take_group_context>(index());
     if (! p) {
         p = ctx.make_context<take_group_context>(
             index(),
@@ -229,7 +228,7 @@ const maybe_shared_ptr<meta::group_meta>& take_group::meta() const noexcept {
 void take_group::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper c{*context};
-    if(auto* p = find_context<take_group_context>(index(), c.contexts())) {
+    if(auto* p = c.find_context<take_group_context>(index())) {
         p->release();
     }
     if (downstream_) {

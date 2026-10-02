@@ -77,6 +77,10 @@ sharksfin::DatabaseHandle database::handle() const noexcept {
     return handle_;
 }
 
+bool database::handle_borrowed() const noexcept {
+    return handle_borrowed_;
+}
+
 std::unique_ptr<transaction> database::create_transaction(
     kvs::transaction_option const& options
 ) {

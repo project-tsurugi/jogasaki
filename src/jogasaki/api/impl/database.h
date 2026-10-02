@@ -372,6 +372,14 @@ private:
 
     void maintenance_loop() noexcept;
 
+    /**
+     * @brief shut down the database after a failed start or a normal stop
+     * @details Releases owned resources and preserves a borrowed KVS handle for another start attempt.
+     * Does not wait for requests; stop() waits before calling this function.
+     */
+    [[nodiscard]] status shutdown();
+    [[nodiscard]] status prepare_analytics_benchmark_tables();
+
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
@@ -399,4 +407,3 @@ inline api::impl::database& get_impl(api::database& db) {
 }
 
 } // namespace jogasaki::api::impl
-

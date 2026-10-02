@@ -102,6 +102,12 @@ public:
     [[nodiscard]] sharksfin::DatabaseHandle handle() const noexcept;
 
     /**
+     * @brief return whether the native handle is borrowed
+     * @return true if close and destruction leave the native handle to its owner
+     */
+    [[nodiscard]] bool handle_borrowed() const noexcept;
+
+    /**
      * @brief create and start new transaction
      * @param options transaction options
      * @return transaction object

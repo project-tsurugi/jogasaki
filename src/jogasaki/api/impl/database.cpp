@@ -141,6 +141,7 @@
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/external_log_utils.h>
+#include <jogasaki/utils/finally.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -280,48 +281,32 @@ status database::start() {
     if (! init()) {
         return status::err_aborted;
     }
+    bool startup_completed = false;
+    utils::finally rollback{[this, &startup_completed] {
+        if (!startup_completed) {
+            try {
+                (void) shutdown();
+            } catch (std::exception const& e) {
+                LOG_LP(ERROR) << "start failure cleanup failed: " << e.what();
+            } catch (...) {
+                LOG_LP(ERROR) << "start failure cleanup failed with an unknown exception";
+            }
+        }
+    }};
     if(auto st = init_kvs_db(); st != status::ok) {
         return st;
     }
     if(auto res = kvs::setup_system_storage(); res != status::ok) {
-        (void) kvs_db_->close();
-        kvs_db_.reset();
-        deinit();
         return res;
     }
-    // setup analytics tables if not exist
-    // this works as if DDL executed on start-up if storages do not exist
-    if(cfg_->prepare_analytics_benchmark_tables()) {
-        auto tables = std::make_shared<yugawara::storage::configurable_provider>();
-        executor::add_analytics_benchmark_tables(*tables);
-
-        bool success = true;
-        std::string name{};
-        tables->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
-            if (! success) {
-                return;
-            }
-            if (auto status = kvs::create_storage_from_provider(id, id, *tables); status != status::ok) {
-                success = false;
-                name = id;
-            }
-        });
-        if (! success) {
-            LOG_LP(ERROR) << "creating table schema entries failed name:" << name;
-            return status::err_io_error;
-        }
+    if (auto res = prepare_analytics_benchmark_tables(); res != status::ok) {
+        return res;
     }
 
     if(auto res = recover_metadata(); res != status::ok) {
-        (void) kvs_db_->close();
-        kvs_db_.reset();
-        deinit();
         return res;
     }
     if(auto res = initialize_from_providers(); res != status::ok) {
-        (void) kvs_db_->close();
-        kvs_db_.reset();
-        deinit();
         return res;
     }
 
@@ -348,16 +333,38 @@ status database::start() {
         maintenance_thread_ = std::thread{[this]() { maintenance_loop(); }};
     }
 
+    startup_completed = true;
+    return status::ok;
+}
+
+status database::prepare_analytics_benchmark_tables() {
+    if (!cfg_->prepare_analytics_benchmark_tables()) {
+        return status::ok;
+    }
+    // This works as if DDL were executed on start-up if storages do not exist.
+    auto tables = std::make_shared<yugawara::storage::configurable_provider>();
+    executor::add_analytics_benchmark_tables(*tables);
+
+    bool success = true;
+    std::string name{};
+    tables->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
+        if (!success) {
+            return;
+        }
+        if (auto status = kvs::create_storage_from_provider(id, id, *tables); status != status::ok) {
+            success = false;
+            name = id;
+        }
+    });
+    if (!success) {
+        LOG_LP(ERROR) << "creating table schema entries failed name:" << name;
+        return status::err_io_error;
+    }
     return status::ok;
 }
 
 status database::stop() {
     stop_requested_ = true;
-    if (maintenance_thread_.joinable()) {
-        maintenance_stop_requested_ = true;
-        maintenance_cv_.notify_all();
-        maintenance_thread_.join();
-    }
     std::size_t cnt = 0;
     while(requests_inprocess_.count() != 1) {
         std::this_thread::sleep_for(std::chrono::milliseconds{1});
@@ -366,28 +373,40 @@ status database::stop() {
             return status::err_time_out;
         }
     }
-    // this function is not called on maintenance/quiescent mode
-    if (cfg_->activate_scheduler() && task_scheduler_) {
+    if (auto res = shutdown(); res != status::ok) {
+        return res;
+    }
+    global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
+    commit_stats_->dump();
+    return status::ok;
+}
+
+status database::shutdown() {
+    stop_requested_ = true;
+    if (maintenance_thread_.joinable()) {
+        maintenance_stop_requested_ = true;
+        maintenance_cv_.notify_all();
+        maintenance_thread_.join();
+    }
+    if (task_scheduler_) {
         task_scheduler_->stop();
         task_scheduler_.reset();
     }
     sequence_manager_.reset();
-
-    global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
     deinit();
     prepared_statements_.clear();
     statement_stores_.clear();
-
     transactions_.clear();
     transaction_stores_.clear();
-    if (kvs_db_) {
-        if(! kvs_db_->close()) {
+    // The borrowed handle remains available to its owner and for another start attempt.
+    if (kvs_db_ && !kvs_db_->handle_borrowed()) {
+        bool const closed = kvs_db_->close();
+        kvs_db_.reset();
+        if (!closed) {
+            LOG_LP(ERROR) << "closing database failed";
             return status::err_io_error;
         }
-        kvs_db_ = nullptr;
     }
-
-    commit_stats_->dump();
     return status::ok;
 }
 
@@ -434,30 +453,33 @@ bool database::init() {
         *regular_functions_,
         global::scalar_function_repository()
     );
-    loader_ = std::make_unique<plugin::udf::udf_loader>();
-    auto results = loader_->load(std::string(cfg_->plugin_directory()));
-    for (auto const& result : results) {
-        auto const status = result.status();
-        auto const outcome = plugin::udf::classify(status);
+    // Keep loaded libraries alive across retries while plugin entries and function bodies reference them.
+    if (!loader_) {
+        loader_ = std::make_unique<plugin::udf::udf_loader>();
+        auto results = loader_->load(std::string(cfg_->plugin_directory()));
+        for (auto const& result : results) {
+            auto const status = result.status();
+            auto const outcome = plugin::udf::classify(status);
 
-        std::ostringstream oss;
+            std::ostringstream oss;
 
-        oss << jogasaki::udf::log::prefix << plugin::udf::to_string_view(outcome)
-            << " status=" << plugin::udf::to_string_view(status) << " file=" << result.file()
-            << " detail=" << result.detail();
+            oss << jogasaki::udf::log::prefix << plugin::udf::to_string_view(outcome)
+                << " status=" << plugin::udf::to_string_view(status) << " file=" << result.file()
+                << " detail=" << result.detail();
 
-        auto const message = oss.str();
+            auto const message = oss.str();
 
-        switch (outcome) {
-            case plugin::udf::load_outcome::ok: LOG_LP(INFO) << message; break;
-            case plugin::udf::load_outcome::skipped: LOG_LP(WARNING) << message; break;
-            case plugin::udf::load_outcome::fail: LOG_LP(ERROR) << message; break;
-            default: LOG_LP(ERROR) << message; break;
+            switch (outcome) {
+                case plugin::udf::load_outcome::ok: LOG_LP(INFO) << message; break;
+                case plugin::udf::load_outcome::skipped: LOG_LP(WARNING) << message; break;
+                case plugin::udf::load_outcome::fail: LOG_LP(ERROR) << message; break;
+                default: LOG_LP(ERROR) << message; break;
+            }
         }
-    }
-    for (auto& plugin : loader_->get_plugins()) {
-        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
-            std::move(std::get<2>(plugin)));
+        for (auto& plugin : loader_->get_plugins()) {
+            plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
+                std::move(std::get<2>(plugin)));
+        }
     }
     executor::function::add_udf_functions(*regular_functions_, global::scalar_function_repository(),
         global::table_valued_function_repository(), plugins_);

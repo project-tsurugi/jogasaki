@@ -66,6 +66,17 @@ TEST_F(kvs_database_test, compare_and_print) {
     ASSERT_TRUE(db2->close());
 }
 
+TEST_F(kvs_database_test, borrowed_handle_survives_close_and_destruction) {
+    ASSERT_FALSE(db_->handle_borrowed());
+    {
+        database borrowed{db_->handle()};
+        ASSERT_TRUE(borrowed.handle_borrowed());
+        ASSERT_TRUE(borrowed.close());
+        ASSERT_TRUE(db_->create_storage("AFTER_CLOSE"));
+    }
+    ASSERT_TRUE(db_->create_storage("AFTER_DESTRUCTION"));
+}
+
 TEST_F(kvs_database_test, create_storage) {
     auto t1 = db_->create_storage("T");
     ASSERT_TRUE(t1);

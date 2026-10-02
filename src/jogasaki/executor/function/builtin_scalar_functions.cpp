@@ -15,12 +15,12 @@
  */
 #include "builtin_scalar_functions.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <algorithm>
 #include <array>
-#include <initializer_list>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <sstream>
 #include <string>

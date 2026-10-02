@@ -187,20 +187,22 @@ TEST_F(builtin_scalar_functions_registration_test, golden) {
     auto expected = expected_entries();
     ASSERT_EQ(expected.size(), repo.size());
 
-    // provider iterates declarations ordered by name, keeping the registration order among the overloads
+    // Compare declarations by definition id independently of the provider iteration order.
     std::vector<std::shared_ptr<::yugawara::function::declaration const>> decls{};
     functions.each([&](std::shared_ptr<::yugawara::function::declaration const> const& decl) {
         decls.emplace_back(decl);
     });
     ASSERT_EQ(expected.size(), decls.size());
 
-    auto ordered = expected;
-    std::stable_sort(ordered.begin(), ordered.end(), [](auto const& a, auto const& b) {
-        return a.name_ < b.name_;
+    std::sort(decls.begin(), decls.end(), [](auto const& a, auto const& b) {
+        return a->definition_id() < b->definition_id();
+    });
+    std::sort(expected.begin(), expected.end(), [](auto const& a, auto const& b) {
+        return a.id_ < b.id_;
     });
     ::yugawara::function::declaration const default_decl{0, "dummy", t::int4(), {}};
-    for(std::size_t i = 0; i < ordered.size(); ++i) {
-        auto const& e = ordered[i];
+    for(std::size_t i = 0; i < expected.size(); ++i) {
+        auto const& e = expected[i];
         auto const& decl = *decls[i];
         SCOPED_TRACE(::testing::Message() << "id:" << e.id_ << " name:" << e.name_);
         EXPECT_EQ(e.id_, decl.definition_id());

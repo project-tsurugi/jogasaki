@@ -70,6 +70,12 @@ TEST_F(database_start_failure_test, borrowed_kvs_survives_failed_start_and_retry
     auto storage = kvs_database->create_storage("AFTER_STOP");
     ASSERT_TRUE(storage);
     EXPECT_EQ(status::ok, storage->delete_storage());
+    storage.reset();
+    ASSERT_TRUE(impl::get_impl(*database).kvs_db());
+    EXPECT_EQ(kvs_database->handle(), impl::get_impl(*database).kvs_db()->handle());
+    ASSERT_EQ(status::ok, database->start());
+    EXPECT_EQ(kvs_database->handle(), impl::get_impl(*database).kvs_db()->handle());
+    EXPECT_EQ(status::ok, database->stop());
 }
 
 TEST_F(database_start_failure_test, owned_kvs_is_reopened_after_failed_start) {

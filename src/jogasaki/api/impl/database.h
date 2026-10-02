@@ -373,21 +373,11 @@ private:
     void maintenance_loop() noexcept;
 
     /**
-     * @brief releases resources initialized by an unsuccessful start()
-     * @details Unlike stop(), this does not wait for requests because the database has not become available yet.
-     */
-    void cleanup_start_failure();
-
-    enum class shutdown_mode {
-        startup_failure,
-        normal,
-    };
-
-    /**
      * @brief shut down the database after a failed start or a normal stop
-     * @details A failed start skips waiting for requests and preserves a borrowed KVS handle for retry.
+     * @details Releases owned resources and preserves a borrowed KVS handle for another start attempt.
+     * Does not wait for requests; stop() waits before calling this function.
      */
-    [[nodiscard]] status shutdown(shutdown_mode mode);
+    [[nodiscard]] status shutdown();
     [[nodiscard]] status prepare_analytics_benchmark_tables();
 
     [[nodiscard]] status prepare_common(

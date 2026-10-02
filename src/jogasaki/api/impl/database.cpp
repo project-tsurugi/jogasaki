@@ -285,7 +285,7 @@ status database::start() {
     utils::finally rollback{[this, &startup_completed] {
         if (!startup_completed) {
             try {
-                cleanup_start_failure();
+                (void) shutdown();
             } catch (std::exception const& e) {
                 LOG_LP(ERROR) << "start failure cleanup failed: " << e.what();
             } catch (...) {
@@ -363,60 +363,49 @@ status database::prepare_analytics_benchmark_tables() {
     return status::ok;
 }
 
-void database::cleanup_start_failure() {
-    (void) shutdown(shutdown_mode::startup_failure);
-}
-
 status database::stop() {
-    return shutdown(shutdown_mode::normal);
+    stop_requested_ = true;
+    std::size_t cnt = 0;
+    while(requests_inprocess_.count() != 1) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{1});
+        if(++cnt > 1000) {
+            LOG_LP(ERROR) << "Request to stop engine timed out.";
+            return status::err_time_out;
+        }
+    }
+    if (auto res = shutdown(); res != status::ok) {
+        return res;
+    }
+    global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
+    commit_stats_->dump();
+    return status::ok;
 }
 
-status database::shutdown(shutdown_mode mode) {
-    bool const failed_start = mode == shutdown_mode::startup_failure;
+status database::shutdown() {
     stop_requested_ = true;
     if (maintenance_thread_.joinable()) {
         maintenance_stop_requested_ = true;
         maintenance_cv_.notify_all();
         maintenance_thread_.join();
     }
-    if (!failed_start) {
-        std::size_t cnt = 0;
-        while(requests_inprocess_.count() != 1) {
-            std::this_thread::sleep_for(std::chrono::milliseconds{1});
-            if(++cnt > 1000) {
-                LOG_LP(ERROR) << "Request to stop engine timed out.";
-                return status::err_time_out;
-            }
-        }
-    }
-    // Normal stop is not called on maintenance/quiescent mode.
-    if ((failed_start || cfg_->activate_scheduler()) && task_scheduler_) {
+    if (task_scheduler_) {
         task_scheduler_->stop();
         task_scheduler_.reset();
     }
     sequence_manager_.reset();
-    if (!failed_start) {
-        global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
-        deinit();
-    }
+    deinit();
     prepared_statements_.clear();
     statement_stores_.clear();
     transactions_.clear();
     transaction_stores_.clear();
-    // Keep the externally supplied handle available for another start attempt.
-    if (kvs_db_ && (!failed_start || !kvs_db_->handle_borrowed())) {
-        if (!kvs_db_->close()) {
-            if (!failed_start) {
-                return status::err_io_error;
-            }
-            LOG_LP(ERROR) << "closing database during start failure cleanup failed";
-        }
+    // The borrowed handle remains available to its owner and for another start attempt.
+    if (kvs_db_ && !kvs_db_->handle_borrowed()) {
+        bool const closed = kvs_db_->close();
         kvs_db_.reset();
-    }
-    if (failed_start) {
-        deinit();
-    } else {
-        commit_stats_->dump();
+        if (!closed) {
+            LOG_LP(ERROR) << "closing database failed";
+            return status::err_io_error;
+        }
     }
     return status::ok;
 }

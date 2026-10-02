@@ -15,15 +15,17 @@
  */
 #include "builtin_scalar_functions.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <boost/algorithm/string.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
@@ -43,6 +45,7 @@
 #include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/type/varying.h>
+#include <takatori/util/rvalue_reference_wrapper.h>
 #include <takatori/util/sequence_view.h>
 #include <yugawara/function/configurable_provider.h>
 #include <yugawara/function/declaration.h>
@@ -83,1284 +86,450 @@ using jogasaki::executor::expr::error;
 
 using kind = meta::field_type_kind;
 
+namespace {
+
+/**
+ * @brief helper to register the overloads of built-in scalar function to the provider and the repository
+ */
+class function_registrar {
+public:
+    using type_rvalue_list = std::initializer_list<takatori::util::rvalue_reference_wrapper<takatori::type::data>>;
+
+    function_registrar(
+        ::yugawara::function::configurable_provider& functions,
+        executor::function::scalar_function_repository& repo
+    ) noexcept :
+        functions_(functions),
+        repo_(repo)
+    {}
+
+    function_registrar(function_registrar const&) = delete;
+    function_registrar& operator=(function_registrar const&) = delete;
+    function_registrar(function_registrar&&) = delete;
+    function_registrar& operator=(function_registrar&&) = delete;
+    ~function_registrar() = default;
+
+    /**
+     * @brief register the function overload identified by the given id
+     * @param id the function id
+     * @param name the function name
+     * @param info the function info shared among the overloads with same kind, body and arg count
+     * @param return_type the return type of the overload
+     * @param parameter_types the parameter types of the overload
+     */
+    void add(
+        scalar_function_id id,
+        std::string_view name,
+        std::shared_ptr<scalar_function_info> const& info,
+        takatori::type::data&& return_type,
+        type_rvalue_list parameter_types
+    ) {
+        repo_.add(id, info);
+        functions_.add({
+            id,
+            name,
+            std::move(return_type),
+            parameter_types,
+        });
+    }
+
+private:
+    ::yugawara::function::configurable_provider& functions_;
+    executor::function::scalar_function_repository& repo_;
+};
+
+std::shared_ptr<scalar_function_info> make_info(
+    scalar_function_kind kind,
+    scalar_function_type function_body,
+    std::size_t arg_count
+) {
+    return std::make_shared<scalar_function_info>(kind, std::move(function_body), arg_count);
+}
+
+}  // namespace
+
 void add_builtin_scalar_functions(
     ::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo
 ) {
     namespace t = takatori::type;
-    using namespace ::yugawara;
+    function_registrar reg{functions, repo};
 
     /////////
     // octet_length
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::octet_length,
-            builtin::octet_length,
-            1
-        );
         auto name = "octet_length";
-        auto id = scalar_function_id::id_11000;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {
-                t::character(t::varying),
-            },
-        });
-        id = scalar_function_id::id_11001;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {
-                t::octet(t::varying),
-            },
-        });
+        auto info = make_info(scalar_function_kind::octet_length, builtin::octet_length, 1);
+        reg.add(scalar_function_id::id_11000, name, info, t::int8(), {t::character(t::varying)});
+        reg.add(scalar_function_id::id_11001, name, info, t::int8(), {t::octet(t::varying)});
     }
-
     /////////
     // current_date
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::current_date,
-            builtin::current_date,
-            0
-        );
         auto name = "current_date";
-        auto id = scalar_function_id::id_11002;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {},
-        });
+        auto info = make_info(scalar_function_kind::current_date, builtin::current_date, 0);
+        reg.add(scalar_function_id::id_11002, name, info, t::date(), {});
     }
     /////////
     // localtime
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::localtime,
-            builtin::localtime,
-            0
-        );
         auto name = "localtime";
-        auto id = scalar_function_id::id_11003;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::time_of_day(),
-            {},
-        });
+        auto info = make_info(scalar_function_kind::localtime, builtin::localtime, 0);
+        reg.add(scalar_function_id::id_11003, name, info, t::time_of_day(), {});
     }
     /////////
     // current_timestamp
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::current_timestamp,
-            builtin::current_timestamp,
-            0
-        );
         auto name = "current_timestamp";
-        auto id = scalar_function_id::id_11004;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::time_point(t::with_time_zone),
-            {},
-        });
+        auto info = make_info(scalar_function_kind::current_timestamp, builtin::current_timestamp, 0);
+        reg.add(scalar_function_id::id_11004, name, info, t::time_point(t::with_time_zone), {});
     }
     /////////
     // localtimestamp
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::localtimestamp,
-            builtin::localtimestamp,
-            0
-        );
         auto name = "localtimestamp";
-        auto id = scalar_function_id::id_11005;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::time_point(),
-            {},
-        });
+        auto info = make_info(scalar_function_kind::localtimestamp, builtin::localtimestamp, 0);
+        reg.add(scalar_function_id::id_11005, name, info, t::time_point(), {});
     }
     /////////
     // substring
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substring, builtin::substring, 3);
         auto name = "substring";
-        auto id   = scalar_function_id::id_11006;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {t::character(t::varying), t::int8(), t::int8()},
-        });
-        info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substring, builtin::substring, 2);
-        id = scalar_function_id::id_11007;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {t::character(t::varying), t::int8()},
-        });
-        info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substring, builtin::substring, 3);
-        id = scalar_function_id::id_11008;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::octet(t::varying),
-            {t::octet(t::varying), t::int8(), t::int8()},
-        });
-        info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substring, builtin::substring, 2);
-        id = scalar_function_id::id_11009;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::octet(t::varying),
-            {t::octet(t::varying), t::int8()},
-        });
+        auto info = make_info(scalar_function_kind::substring, builtin::substring, 3);
+        auto info_without_length = make_info(scalar_function_kind::substring, builtin::substring, 2);
+        reg.add(scalar_function_id::id_11006, name, info, t::character(t::varying),
+            {t::character(t::varying), t::int8(), t::int8()});
+        reg.add(scalar_function_id::id_11007, name, info_without_length, t::character(t::varying),
+            {t::character(t::varying), t::int8()});
+        reg.add(scalar_function_id::id_11008, name, info, t::octet(t::varying),
+            {t::octet(t::varying), t::int8(), t::int8()});
+        reg.add(scalar_function_id::id_11009, name, info_without_length, t::octet(t::varying),
+            {t::octet(t::varying), t::int8()});
     }
     /////////
     // upper
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::upper,
-            builtin::upper,
-            1
-        );
         auto name = "upper";
-        auto id = scalar_function_id::id_11010;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::upper, builtin::upper, 1);
+        reg.add(scalar_function_id::id_11010, name, info, t::character(t::varying), {t::character(t::varying)});
     }
     /////////
     // lower
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::lower,
-            builtin::lower,
-            1
-        );
         auto name = "lower";
-        auto id = scalar_function_id::id_11011;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::lower, builtin::lower, 1);
+        reg.add(scalar_function_id::id_11011, name, info, t::character(t::varying), {t::character(t::varying)});
     }
     /////////
     // character_length
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::character_length,
-            builtin::character_length,
-            1
-        );
         auto name = "character_length";
-        auto id = scalar_function_id::id_11012;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::character_length, builtin::character_length, 1);
+        reg.add(scalar_function_id::id_11012, name, info, t::int8(), {t::character(t::varying)});
     }
     /////////
     // char_length
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::char_length,
-            builtin::character_length,
-            1
-        );
         auto name = "char_length";
-        auto id = scalar_function_id::id_11013;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::char_length, builtin::character_length, 1);
+        reg.add(scalar_function_id::id_11013, name, info, t::int8(), {t::character(t::varying)});
     }
     /////////
     // abs
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::abs,
-            builtin::abs,
-            1
-        );
         auto name = "abs";
-        auto id = scalar_function_id::id_11014;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::int4()},
-        });
-        id = scalar_function_id::id_11015;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::int8()},
-        });
-        id = scalar_function_id::id_11016;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float4(),
-            {t::float4()},
-        });
-        id = scalar_function_id::id_11017;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float8(),
-            {t::float8()},
-        });
-        id = scalar_function_id::id_11018;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::decimal()},
-        });
+        auto info = make_info(scalar_function_kind::abs, builtin::abs, 1);
+        reg.add(scalar_function_id::id_11014, name, info, t::int4(), {t::int4()});
+        reg.add(scalar_function_id::id_11015, name, info, t::int8(), {t::int8()});
+        reg.add(scalar_function_id::id_11016, name, info, t::float4(), {t::float4()});
+        reg.add(scalar_function_id::id_11017, name, info, t::float8(), {t::float8()});
+        reg.add(scalar_function_id::id_11018, name, info, t::decimal(), {t::decimal()});
     }
     /////////
     // position
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::position, builtin::position, 2);
         auto name = "position";
-        auto id   = scalar_function_id::id_11019;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {
-                t::character(t::varying),
-                t::character(t::varying),
-            },
-        });
+        auto info = make_info(scalar_function_kind::position, builtin::position, 2);
+        reg.add(scalar_function_id::id_11019, name, info, t::int8(),
+            {t::character(t::varying), t::character(t::varying)});
     }
     /////////
     // mod
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::mod, builtin::mod, 2);
         auto name = "mod";
-        auto id   = scalar_function_id::id_11020;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {
-                t::int4(),
-                t::int4()
-            },
-        });
-        id   = scalar_function_id::id_11021;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {
-                t::int4(),
-                t::int8()
-            },
-        });
-        id   = scalar_function_id::id_11022;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {
-                t::int8(),
-                t::int4()
-            },
-        });
-        id   = scalar_function_id::id_11023;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {
-                t::int8(),
-                t::int8()
-            },
-        });
-        //
-        id   = scalar_function_id::id_11024;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {
-                t::int4(),
-                t::decimal()
-            },
-        });
-        id   = scalar_function_id::id_11025;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {
-                t::decimal(),
-                t::int4()
-            },
-        });
-        id   = scalar_function_id::id_11026;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {
-                t::decimal(),
-                t::int8()
-            },
-        });
-        id   = scalar_function_id::id_11027;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {
-                t::int8(),
-                t::decimal()
-            },
-        });
-        id   = scalar_function_id::id_11028;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {
-                t::decimal(),
-                t::decimal()
-            },
-        });
+        auto info = make_info(scalar_function_kind::mod, builtin::mod, 2);
+        reg.add(scalar_function_id::id_11020, name, info, t::int4(), {t::int4(), t::int4()});
+        reg.add(scalar_function_id::id_11021, name, info, t::int8(), {t::int4(), t::int8()});
+        reg.add(scalar_function_id::id_11022, name, info, t::int8(), {t::int8(), t::int4()});
+        reg.add(scalar_function_id::id_11023, name, info, t::int8(), {t::int8(), t::int8()});
+        reg.add(scalar_function_id::id_11024, name, info, t::decimal(), {t::int4(), t::decimal()});
+        reg.add(scalar_function_id::id_11025, name, info, t::decimal(), {t::decimal(), t::int4()});
+        reg.add(scalar_function_id::id_11026, name, info, t::decimal(), {t::decimal(), t::int8()});
+        reg.add(scalar_function_id::id_11027, name, info, t::decimal(), {t::int8(), t::decimal()});
+        reg.add(scalar_function_id::id_11028, name, info, t::decimal(), {t::decimal(), t::decimal()});
     }
     /////////
     // substr
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substr, builtin::substring, 3);
         auto name = "substr";
-        auto id   = scalar_function_id::id_11029;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {
-                t::character(t::varying),
-                t::int8(),
-                t::int8()
-            },
-        });
-        info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substr, builtin::substring, 2);
-        id = scalar_function_id::id_11030;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {
-                t::character(t::varying),
-                t::int8()
-            },
-        });
-        info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substr, builtin::substring, 3);
-        id = scalar_function_id::id_11031;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::octet(t::varying),
-            {
-                t::octet(t::varying),
-                t::int8(),
-                t::int8()
-            },
-        });
-        info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::substr, builtin::substring, 2);
-        id = scalar_function_id::id_11032;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::octet(t::varying),
-            {
-                t::octet(t::varying),
-                t::int8()
-            },
-        });
+        auto info = make_info(scalar_function_kind::substr, builtin::substring, 3);
+        auto info_without_length = make_info(scalar_function_kind::substr, builtin::substring, 2);
+        reg.add(scalar_function_id::id_11029, name, info, t::character(t::varying),
+            {t::character(t::varying), t::int8(), t::int8()});
+        reg.add(scalar_function_id::id_11030, name, info_without_length, t::character(t::varying),
+            {t::character(t::varying), t::int8()});
+        reg.add(scalar_function_id::id_11031, name, info, t::octet(t::varying),
+            {t::octet(t::varying), t::int8(), t::int8()});
+        reg.add(scalar_function_id::id_11032, name, info_without_length, t::octet(t::varying),
+            {t::octet(t::varying), t::int8()});
     }
     /////////
     // ceil
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::ceil,
-            builtin::ceil,
-            1
-        );
         auto name = "ceil";
-        auto id = scalar_function_id::id_11033;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::int4()},
-        });
-        id = scalar_function_id::id_11034;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::int8()},
-        });
-        id = scalar_function_id::id_11035;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float4(),
-            {t::float4()},
-        });
-        id = scalar_function_id::id_11036;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float8(),
-            {t::float8()},
-        });
-        id = scalar_function_id::id_11037;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::decimal()},
-        });
+        auto info = make_info(scalar_function_kind::ceil, builtin::ceil, 1);
+        reg.add(scalar_function_id::id_11033, name, info, t::int4(), {t::int4()});
+        reg.add(scalar_function_id::id_11034, name, info, t::int8(), {t::int8()});
+        reg.add(scalar_function_id::id_11035, name, info, t::float4(), {t::float4()});
+        reg.add(scalar_function_id::id_11036, name, info, t::float8(), {t::float8()});
+        reg.add(scalar_function_id::id_11037, name, info, t::decimal(), {t::decimal()});
     }
     /////////
     // floor
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::floor,
-            builtin::floor,
-            1
-        );
         auto name = "floor";
-        auto id = scalar_function_id::id_11038;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::int4()},
-        });
-        id = scalar_function_id::id_11039;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::int8()},
-        });
-        id = scalar_function_id::id_11040;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float4(),
-            {t::float4()},
-        });
-        id = scalar_function_id::id_11041;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float8(),
-            {t::float8()},
-        });
-        id = scalar_function_id::id_11042;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::decimal()},
-        });
+        auto info = make_info(scalar_function_kind::floor, builtin::floor, 1);
+        reg.add(scalar_function_id::id_11038, name, info, t::int4(), {t::int4()});
+        reg.add(scalar_function_id::id_11039, name, info, t::int8(), {t::int8()});
+        reg.add(scalar_function_id::id_11040, name, info, t::float4(), {t::float4()});
+        reg.add(scalar_function_id::id_11041, name, info, t::float8(), {t::float8()});
+        reg.add(scalar_function_id::id_11042, name, info, t::decimal(), {t::decimal()});
     }
     /////////
     // round
     /////////
     {
-        auto info =
-            std::make_shared<scalar_function_info>(scalar_function_kind::round, builtin::round, 1);
         auto name = "round";
-        auto id   = scalar_function_id::id_11043;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::int4()},
-        });
-        id = scalar_function_id::id_11044;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::int8()},
-        });
-        id = scalar_function_id::id_11045;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float4(),
-            {t::float4()},
-        });
-        id = scalar_function_id::id_11046;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float8(),
-            {t::float8()},
-        });
-        id = scalar_function_id::id_11047;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::decimal()},
-        });
-
-        info =
-            std::make_shared<scalar_function_info>(scalar_function_kind::round, builtin::round, 2);
-        id = scalar_function_id::id_11048;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::int4(), t::int4()},
-        });
-        id = scalar_function_id::id_11049;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::int8(), t::int4()},
-        });
-        id = scalar_function_id::id_11050;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float4(),
-            {t::float4(), t::int4()},
-        });
-        id = scalar_function_id::id_11051;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float8(),
-            {t::float8(), t::int4()},
-        });
-        id = scalar_function_id::id_11052;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::decimal(), t::int4()},
-        });
-
-        id = scalar_function_id::id_11053;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::int4(), t::int8()},
-        });
-        id = scalar_function_id::id_11054;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int8(),
-            {t::int8(), t::int8()},
-        });
-        id = scalar_function_id::id_11055;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float4(),
-            {t::float4(), t::int8()},
-        });
-        id = scalar_function_id::id_11056;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::float8(),
-            {t::float8(), t::int8()},
-        });
-        id = scalar_function_id::id_11057;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::decimal(), t::int8()},
-        });
+        auto info = make_info(scalar_function_kind::round, builtin::round, 1);
+        auto info_with_scale = make_info(scalar_function_kind::round, builtin::round, 2);
+        reg.add(scalar_function_id::id_11043, name, info, t::int4(), {t::int4()});
+        reg.add(scalar_function_id::id_11044, name, info, t::int8(), {t::int8()});
+        reg.add(scalar_function_id::id_11045, name, info, t::float4(), {t::float4()});
+        reg.add(scalar_function_id::id_11046, name, info, t::float8(), {t::float8()});
+        reg.add(scalar_function_id::id_11047, name, info, t::decimal(), {t::decimal()});
+        reg.add(scalar_function_id::id_11048, name, info_with_scale, t::int4(), {t::int4(), t::int4()});
+        reg.add(scalar_function_id::id_11049, name, info_with_scale, t::int8(), {t::int8(), t::int4()});
+        reg.add(scalar_function_id::id_11050, name, info_with_scale, t::float4(), {t::float4(), t::int4()});
+        reg.add(scalar_function_id::id_11051, name, info_with_scale, t::float8(), {t::float8(), t::int4()});
+        reg.add(scalar_function_id::id_11052, name, info_with_scale, t::decimal(), {t::decimal(), t::int4()});
+        reg.add(scalar_function_id::id_11053, name, info_with_scale, t::int4(), {t::int4(), t::int8()});
+        reg.add(scalar_function_id::id_11054, name, info_with_scale, t::int8(), {t::int8(), t::int8()});
+        reg.add(scalar_function_id::id_11055, name, info_with_scale, t::float4(), {t::float4(), t::int8()});
+        reg.add(scalar_function_id::id_11056, name, info_with_scale, t::float8(), {t::float8(), t::int8()});
+        reg.add(scalar_function_id::id_11057, name, info_with_scale, t::decimal(), {t::decimal(), t::int8()});
     }
     /////////
     // encode
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::encode,
-            builtin::encode,
-            2
-        );
         auto name = "encode";
-        auto id = scalar_function_id::id_11058;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {t::octet(t::varying),t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::encode, builtin::encode, 2);
+        reg.add(scalar_function_id::id_11058, name, info, t::character(t::varying),
+            {t::octet(t::varying), t::character(t::varying)});
     }
     /////////
     // decode
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::decode,
-            builtin::decode,
-            2
-        );
         auto name = "decode";
-        auto id = scalar_function_id::id_11059;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::octet(t::varying),
-            {t::character(t::varying),t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::decode, builtin::decode, 2);
+        reg.add(scalar_function_id::id_11059, name, info, t::octet(t::varying),
+            {t::character(t::varying), t::character(t::varying)});
     }
     /////////
     // rtrim
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::rtrim,
-            builtin::rtrim,
-            1
-        );
         auto name = "rtrim";
-        auto id = scalar_function_id::id_11060;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::rtrim, builtin::rtrim, 1);
+        reg.add(scalar_function_id::id_11060, name, info, t::character(t::varying), {t::character(t::varying)});
     }
     /////////
     // ltrim
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::ltrim,
-            builtin::ltrim,
-            1
-        );
         auto name = "ltrim";
-        auto id = scalar_function_id::id_11061;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::character(t::varying),
-            {t::character(t::varying)},
-        });
+        auto info = make_info(scalar_function_kind::ltrim, builtin::ltrim, 1);
+        reg.add(scalar_function_id::id_11061, name, info, t::character(t::varying), {t::character(t::varying)});
     }
     /////////
     // extract_year
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year,
-            builtin::extract_year,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year,
-            builtin::extract_year_with_time_zone,
-            1
-        );
         auto name = "extract_year";
-        auto id = scalar_function_id::id_11062;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::date()},
-        });
-        id = scalar_function_id::id_11063;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11064;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_year, builtin::extract_year, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_year, builtin::extract_year_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11062, name, info, t::int4(), {t::date()});
+        reg.add(scalar_function_id::id_11063, name, info, t::int4(), {t::time_point()});
+        reg.add(scalar_function_id::id_11064, name, info_wtz, t::int4(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_month
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_month,
-            builtin::extract_month,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_month,
-            builtin::extract_month_with_time_zone,
-            1
-        );
         auto name = "extract_month";
-        auto id = scalar_function_id::id_11065;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::date()},
-        });
-        id = scalar_function_id::id_11066;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11067;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_month, builtin::extract_month, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_month, builtin::extract_month_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11065, name, info, t::int4(), {t::date()});
+        reg.add(scalar_function_id::id_11066, name, info, t::int4(), {t::time_point()});
+        reg.add(scalar_function_id::id_11067, name, info_wtz, t::int4(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_day
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_day,
-            builtin::extract_day,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_day,
-            builtin::extract_day_with_time_zone,
-            1
-        );
         auto name = "extract_day";
-        auto id = scalar_function_id::id_11068;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::date()},
-        });
-        id = scalar_function_id::id_11069;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11070;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_day, builtin::extract_day, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_day, builtin::extract_day_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11068, name, info, t::int4(), {t::date()});
+        reg.add(scalar_function_id::id_11069, name, info, t::int4(), {t::time_point()});
+        reg.add(scalar_function_id::id_11070, name, info_wtz, t::int4(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_hour
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_hour,
-            builtin::extract_hour,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_hour,
-            builtin::extract_hour_with_time_zone,
-            1
-        );
         auto name = "extract_hour";
-        auto id = scalar_function_id::id_11071;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_of_day()},
-        });
-        id = scalar_function_id::id_11072;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11073;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_hour, builtin::extract_hour, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_hour, builtin::extract_hour_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11071, name, info, t::int4(), {t::time_of_day()});
+        reg.add(scalar_function_id::id_11072, name, info, t::int4(), {t::time_point()});
+        reg.add(scalar_function_id::id_11073, name, info_wtz, t::int4(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_minute
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_minute,
-            builtin::extract_minute,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_minute,
-            builtin::extract_minute_with_time_zone,
-            1
-        );
         auto name = "extract_minute";
-        auto id = scalar_function_id::id_11074;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_of_day()},
-        });
-        id = scalar_function_id::id_11075;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11076;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_minute, builtin::extract_minute, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_minute, builtin::extract_minute_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11074, name, info, t::int4(), {t::time_of_day()});
+        reg.add(scalar_function_id::id_11075, name, info, t::int4(), {t::time_point()});
+        reg.add(scalar_function_id::id_11076, name, info_wtz, t::int4(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_second
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_second,
-            builtin::extract_second,
-            2
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_second,
-            builtin::extract_second_with_time_zone,
-            2
-        );
         auto name = "extract_second";
-        auto id = scalar_function_id::id_11077;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::time_of_day(), t::int4()},
-        });
-        id = scalar_function_id::id_11078;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::time_point(), t::int4()},
-        });
-        id = scalar_function_id::id_11079;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::decimal(),
-            {t::time_point(t::with_time_zone), t::int4()},
-        });
+        auto info = make_info(scalar_function_kind::extract_second, builtin::extract_second, 2);
+        auto info_wtz = make_info(scalar_function_kind::extract_second, builtin::extract_second_with_time_zone, 2);
+        reg.add(scalar_function_id::id_11077, name, info, t::decimal(), {t::time_of_day(), t::int4()});
+        reg.add(scalar_function_id::id_11078, name, info, t::decimal(), {t::time_point(), t::int4()});
+        reg.add(scalar_function_id::id_11079, name, info_wtz, t::decimal(),
+            {t::time_point(t::with_time_zone), t::int4()});
     }
     /////////
     // extract_timezone_hour
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_timezone_hour,
-            builtin::extract_timezone_hour,
-            1
-        );
         auto name = "extract_timezone_hour";
-        auto id = scalar_function_id::id_11080;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_timezone_hour, builtin::extract_timezone_hour, 1);
+        reg.add(scalar_function_id::id_11080, name, info, t::int4(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_timezone_minute
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_timezone_minute,
-            builtin::extract_timezone_minute,
-            1
-        );
         auto name = "extract_timezone_minute";
-        auto id = scalar_function_id::id_11081;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::int4(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_timezone_minute, builtin::extract_timezone_minute, 1);
+        reg.add(scalar_function_id::id_11081, name, info, t::int4(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // date
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::date,
-            builtin::extract_date,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::date,
-            builtin::extract_date_with_time_zone,
-            1
-        );
         auto name = "date";
-        auto id = scalar_function_id::id_11082;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::date()},
-        });
-        id = scalar_function_id::id_11083;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11084;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::date, builtin::extract_date, 1);
+        auto info_wtz = make_info(scalar_function_kind::date, builtin::extract_date_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11082, name, info, t::date(), {t::date()});
+        reg.add(scalar_function_id::id_11083, name, info, t::date(), {t::time_point()});
+        reg.add(scalar_function_id::id_11084, name, info_wtz, t::date(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_year_to_month
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_month,
-            builtin::extract_year_to_month,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_month,
-            builtin::extract_year_to_month_with_time_zone,
-            1
-        );
         auto name = "extract_year_to_month";
-        auto id = scalar_function_id::id_11085;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::date()},
-        });
-        id = scalar_function_id::id_11086;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11087;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_year_to_month, builtin::extract_year_to_month, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_year_to_month,
+            builtin::extract_year_to_month_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11085, name, info, t::date(), {t::date()});
+        reg.add(scalar_function_id::id_11086, name, info, t::date(), {t::time_point()});
+        reg.add(scalar_function_id::id_11087, name, info_wtz, t::date(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_year_to_day (alias of date)
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_day,
-            builtin::extract_date,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_day,
-            builtin::extract_date_with_time_zone,
-            1
-        );
         auto name = "extract_year_to_day";
-        auto id = scalar_function_id::id_11088;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::date()},
-        });
-        id = scalar_function_id::id_11089;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11090;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::date(),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_year_to_day, builtin::extract_date, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_year_to_day, builtin::extract_date_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11088, name, info, t::date(), {t::date()});
+        reg.add(scalar_function_id::id_11089, name, info, t::date(), {t::time_point()});
+        reg.add(scalar_function_id::id_11090, name, info_wtz, t::date(), {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_year_to_hour
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_hour,
-            builtin::extract_year_to_hour,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_hour,
-            builtin::extract_year_to_hour_with_time_zone,
-            1
-        );
         auto name = "extract_year_to_hour";
-        auto id = scalar_function_id::id_11091;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::time_point(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11092;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::time_point(t::with_time_zone),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_year_to_hour, builtin::extract_year_to_hour, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_year_to_hour,
+            builtin::extract_year_to_hour_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11091, name, info, t::time_point(), {t::time_point()});
+        reg.add(scalar_function_id::id_11092, name, info_wtz, t::time_point(t::with_time_zone),
+            {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_year_to_minute
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_minute,
-            builtin::extract_year_to_minute,
-            1
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_minute,
-            builtin::extract_year_to_minute_with_time_zone,
-            1
-        );
         auto name = "extract_year_to_minute";
-        auto id = scalar_function_id::id_11093;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::time_point(),
-            {t::time_point()},
-        });
-        id = scalar_function_id::id_11094;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::time_point(t::with_time_zone),
-            {t::time_point(t::with_time_zone)},
-        });
+        auto info = make_info(scalar_function_kind::extract_year_to_minute, builtin::extract_year_to_minute, 1);
+        auto info_wtz = make_info(scalar_function_kind::extract_year_to_minute,
+            builtin::extract_year_to_minute_with_time_zone, 1);
+        reg.add(scalar_function_id::id_11093, name, info, t::time_point(), {t::time_point()});
+        reg.add(scalar_function_id::id_11094, name, info_wtz, t::time_point(t::with_time_zone),
+            {t::time_point(t::with_time_zone)});
     }
     /////////
     // extract_year_to_second
     /////////
     {
-        auto info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_second,
-            builtin::extract_year_to_second,
-            2
-        );
-        auto info_wtz = std::make_shared<scalar_function_info>(
-            scalar_function_kind::extract_year_to_second,
-            builtin::extract_year_to_second_with_time_zone,
-            2
-        );
         auto name = "extract_year_to_second";
-        auto id = scalar_function_id::id_11095;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::time_point(),
-            {t::time_point(), t::int4()},
-        });
-        id = scalar_function_id::id_11096;
-        repo.add(id, info_wtz);
-        functions.add({
-            id,
-            name,
-            t::time_point(t::with_time_zone),
-            {t::time_point(t::with_time_zone), t::int4()},
-        });
+        auto info = make_info(scalar_function_kind::extract_year_to_second, builtin::extract_year_to_second, 2);
+        auto info_wtz = make_info(scalar_function_kind::extract_year_to_second,
+            builtin::extract_year_to_second_with_time_zone, 2);
+        reg.add(scalar_function_id::id_11095, name, info, t::time_point(), {t::time_point(), t::int4()});
+        reg.add(scalar_function_id::id_11096, name, info_wtz, t::time_point(t::with_time_zone),
+            {t::time_point(t::with_time_zone), t::int4()});
     }
 }
 

@@ -71,6 +71,36 @@ TEST_F(bit_interval_value_test, long_bit_requires_resource) {
     EXPECT_EQ(15, accessor::bit(nullptr, std::string(15, '1')).size());
 }
 
+TEST_F(bit_interval_value_test, copied_bit_checks_resource_at_inline_boundary) {
+    for (std::size_t length : {0, 7, 15, 16, 137}) {
+        std::string text(length, '1');
+        accessor::bit source{&resource_, text};
+        if (length <= 15) {
+            accessor::bit copied{nullptr, source};
+            EXPECT_EQ(text, static_cast<std::string_view>(copied));
+        } else {
+            EXPECT_THROW((void)accessor::bit(nullptr, source), std::invalid_argument);
+        }
+        accessor::bit copied{&resource_, source};
+        EXPECT_EQ(text, static_cast<std::string_view>(copied));
+        if (length > 15) {
+            EXPECT_NE(static_cast<std::string_view>(source).data(), static_cast<std::string_view>(copied).data());
+        }
+    }
+}
+
+TEST_F(bit_interval_value_test, bit_construction_rejects_non_binary_characters) {
+    for (auto const& text : {std::string{"abc"}, std::string{"102"}, std::string{" 01"},
+                             std::string{"01\n"}, std::string{"01\0", 3}, std::string(16, 'x')}) {
+        EXPECT_THROW((void)accessor::bit(&resource_, text), std::invalid_argument);
+        EXPECT_THROW((void)accessor::bit(nullptr, text), std::invalid_argument);
+    }
+    for (auto const& text : {std::string{}, std::string{"0"}, std::string{"1"}, std::string{"1010101"}, std::string(137, '0')}) {
+        accessor::bit value{&resource_, text};
+        EXPECT_EQ(text, static_cast<std::string_view>(value));
+    }
+}
+
 TEST_F(bit_interval_value_test, copied_record_survives_source_resource_release) {
     auto meta = std::make_shared<meta::record_meta>(std::vector<meta::field_type>{
         meta::field_type{meta::field_enum_tag<meta::field_type_kind::bit>},

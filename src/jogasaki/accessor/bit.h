@@ -13,7 +13,7 @@ class bit {
 public:
     bit() = default;
     explicit bit(memory::paged_memory_resource* resource, std::string_view value) : value_(make_text(resource, value)) {}
-    bit(memory::paged_memory_resource* resource, bit value) : value_(resource, value.value_) {}
+    bit(memory::paged_memory_resource* resource, bit value) : value_(make_text(resource, static_cast<std::string_view>(value))) {}
     [[nodiscard]] std::size_t size() const noexcept { return value_.size(); }
     [[nodiscard]] explicit operator std::string_view() const & noexcept { return static_cast<std::string_view>(value_); }
     explicit operator std::string_view() && = delete;
@@ -22,6 +22,9 @@ public:
     friend std::ostream& operator<<(std::ostream& out, bit const& value) { return out << value.value_; }
 private:
     static text make_text(memory::paged_memory_resource* resource, std::string_view value) {
+        if (value.find_first_not_of("01") != std::string_view::npos) {
+            throw std::invalid_argument("BIT value must contain only '0' and '1'");
+        }
         if (!resource && value.size() > 15) throw std::invalid_argument("long BIT literal requires a memory resource");
         return resource ? text{resource, value} : text{value};
     }

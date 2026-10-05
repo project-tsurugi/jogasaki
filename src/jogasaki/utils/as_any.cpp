@@ -18,8 +18,10 @@
 #include <utility>
 
 #include <takatori/type/type_kind.h>
+#include <takatori/value/bit.h>
 #include <takatori/value/character.h>
 #include <takatori/value/data.h>
+#include <takatori/value/datetime_interval.h>
 #include <takatori/value/decimal.h>
 #include <takatori/value/octet.h>
 #include <takatori/value/time_of_day.h>
@@ -66,6 +68,12 @@ data::any as_any(
                 resource == nullptr ? accessor::binary{bin} : accessor::binary{resource, bin}
             };
         }
+        case t::bit: {
+            std::string bits;
+            boost::to_string(unsafe_downcast<takatori::value::bit>(arg).get(), bits);
+            return {std::in_place_type<accessor::bit>, accessor::bit{resource, bits}};
+        }
+        case t::datetime_interval: return {std::in_place_type<takatori::datetime::datetime_interval>, unsafe_downcast<takatori::value::datetime_interval>(arg).get()};
         case t::decimal: return {std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, value_of<takatori::value::decimal>(arg)};
         case t::date: return {std::in_place_type<runtime_t<meta::field_type_kind::date>>, value_of<takatori::value::date>(arg)};
         case t::time_of_day: return {std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, value_of<takatori::value::time_of_day>(arg)};

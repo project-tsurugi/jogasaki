@@ -1260,7 +1260,7 @@ static void create_mirror_for_execute(
                 auto idx = rmap->output_index(*offer);
                 map->add_output(idx, unsafe_downcast<executor::exchange::step>(steps.at(&exchange)));
             }
-            unsafe_downcast<executor::process::step>(step)->io_exchange_map(std::move(map));
+            unsafe_downcast<executor::process::step>(step)->bind_io(std::move(map));
         }
     }
     ctx.executable_statement(std::make_shared<executable_statement>(

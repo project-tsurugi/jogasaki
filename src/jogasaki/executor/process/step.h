@@ -68,6 +68,18 @@ public:
 
     void activate(request_context& rctx) override;
 
+    /**
+     * @brief bind complete exchange connections and prepare their I/O metadata
+     * @details Exchange metadata must be complete and remain stable during execution.
+     * Rebinding before execution invalidates the previous I/O metadata.
+     * @throws std::invalid_argument if connection maps are missing, counts differ,
+     * or an input/output slot is unbound
+     */
+    void bind_io(std::shared_ptr<class io_exchange_map> exchanges);
+
+    /** @brief prepare I/O metadata after exchange bindings are complete */
+    void prepare_io_info();
+
     void executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept;
 
     [[nodiscard]] std::shared_ptr<abstract::process_executor_factory> const& executor_factory() const noexcept;

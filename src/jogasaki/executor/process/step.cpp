@@ -147,13 +147,7 @@ void step::bind_io(std::shared_ptr<class io_exchange_map> exchanges) {
         }
     }
     io_exchange_map(std::move(exchanges));
-    prepare_io_info();
-}
-
-void step::prepare_io_info() {
-    if (!io_info_) {
-        io_info_ = create_io_info();
-    }
+    io_info_ = create_io_info();
 }
 
 void step::activate(request_context& rctx) {
@@ -209,7 +203,6 @@ std::shared_ptr<class relation_io_map> const& step::relation_io_map() const noex
 
 void step::io_exchange_map(std::shared_ptr<class io_exchange_map> arg) noexcept {
     io_exchange_map_ = std::move(arg);
-    io_info_.reset();
 }
 
 std::shared_ptr<class io_exchange_map> const& step::io_exchange_map() const noexcept {

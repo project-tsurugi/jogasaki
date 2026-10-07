@@ -71,14 +71,11 @@ public:
     /**
      * @brief bind complete exchange connections and prepare their I/O metadata
      * @details Exchange metadata must be complete and remain stable during execution.
-     * Rebinding before execution invalidates the previous I/O metadata.
+     * Rebinding before execution rebuilds the I/O metadata.
      * @throws std::logic_error if connection maps are missing, counts differ,
      * or an input/output slot is unbound
      */
     void bind_io(std::shared_ptr<class io_exchange_map> exchanges);
-
-    /** @brief prepare I/O metadata after exchange bindings are complete */
-    void prepare_io_info();
 
     void executor_factory(std::shared_ptr<abstract::process_executor_factory> factory) noexcept;
 

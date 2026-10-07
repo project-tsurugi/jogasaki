@@ -27,7 +27,7 @@
 
 namespace jogasaki::executor::process {
 
-TEST(process_io_binding_test, initializes_before_activation_and_reuses_metadata) {
+TEST(process_io_binding_test, initializes_before_activation) {
     step process{};
     process.relation_io_map(std::make_shared<relation_io_map>());
     auto exchanges = std::make_shared<io_exchange_map>();
@@ -36,8 +36,6 @@ TEST(process_io_binding_test, initializes_before_activation_and_reuses_metadata)
     auto metadata = process.io_info();
     ASSERT_TRUE(metadata);
     EXPECT_EQ(exchanges, process.io_exchange_map());
-    process.prepare_io_info();
-    EXPECT_EQ(metadata, process.io_info());
 }
 
 TEST(process_io_binding_test, activation_rejects_unprepared_metadata) {

@@ -16,7 +16,6 @@
 #include "step.h"
 
 #include <memory>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -133,18 +132,18 @@ void step::bind_io(std::shared_ptr<class io_exchange_map> exchanges) {
     auto const& relations = relation_io_map();
     if (!relations || !exchanges || exchanges->input_count() != relations->input_count() ||
         exchanges->output_count() != relations->output_count()) {
-        throw std::invalid_argument("process relation and runtime I/O bindings disagree");
+        fail_with_exception_msg("process relation and runtime I/O bindings disagree");
     }
     // Every slot needs an exchange: create_io_info() dereferences these pointers
     // to obtain column types and order. Reject incomplete bindings before replacing state.
     for (std::size_t i = 0; i < exchanges->input_count(); ++i) {
         if (!exchanges->input_at(i)) {
-            throw std::invalid_argument("unbound process input slot");
+            fail_with_exception_msg("unbound process input slot");
         }
     }
     for (std::size_t i = 0; i < exchanges->output_count(); ++i) {
         if (!exchanges->output_at(i)) {
-            throw std::invalid_argument("unbound process output slot");
+            fail_with_exception_msg("unbound process output slot");
         }
     }
     io_exchange_map(std::move(exchanges));
@@ -158,7 +157,9 @@ void step::prepare_io_info() {
 }
 
 void step::activate(request_context& rctx) {
-    prepare_io_info();
+    if (!io_info_) {
+        fail_with_exception_msg("process I/O metadata must be prepared before activation");
+    }
     data_flow_object(
         rctx,
         std::make_unique<flow>(

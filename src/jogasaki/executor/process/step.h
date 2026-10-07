@@ -72,7 +72,7 @@ public:
      * @brief bind complete exchange connections and prepare their I/O metadata
      * @details Exchange metadata must be complete and remain stable during execution.
      * Rebinding before execution invalidates the previous I/O metadata.
-     * @throws std::invalid_argument if connection maps are missing, counts differ,
+     * @throws std::logic_error if connection maps are missing, counts differ,
      * or an input/output slot is unbound
      */
     void bind_io(std::shared_ptr<class io_exchange_map> exchanges);

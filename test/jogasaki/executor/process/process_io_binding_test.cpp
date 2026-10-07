@@ -40,17 +40,28 @@ TEST(process_io_binding_test, initializes_before_activation_and_reuses_metadata)
     EXPECT_EQ(metadata, process.io_info());
 }
 
+TEST(process_io_binding_test, activation_rejects_unprepared_metadata) {
+    step process{};
+    process.relation_io_map(std::make_shared<relation_io_map>());
+    auto exchanges = std::make_shared<io_exchange_map>();
+    process.io_exchange_map(exchanges);
+    request_context request{};
+    EXPECT_THROW(process.activate(request), std::logic_error);
+    EXPECT_FALSE(process.io_info());
+    EXPECT_EQ(exchanges, process.io_exchange_map());
+}
+
 TEST(process_io_binding_test, rejects_missing_maps_and_count_mismatch_without_changing_bindings) {
     step process{};
     auto original = process.io_exchange_map();
-    EXPECT_THROW(process.bind_io({}), std::invalid_argument);
+    EXPECT_THROW(process.bind_io({}), std::logic_error);
     process.relation_io_map({});
-    EXPECT_THROW(process.bind_io(std::make_shared<io_exchange_map>()), std::invalid_argument);
+    EXPECT_THROW(process.bind_io(std::make_shared<io_exchange_map>()), std::logic_error);
     process.relation_io_map(std::make_shared<relation_io_map>());
     auto exchanges = std::make_shared<io_exchange_map>();
     exchange::forward::step output{};
     exchanges->add_output(0, &output);
-    EXPECT_THROW(process.bind_io(exchanges), std::invalid_argument);
+    EXPECT_THROW(process.bind_io(exchanges), std::logic_error);
     EXPECT_EQ(original, process.io_exchange_map());
     EXPECT_FALSE(process.io_info());
 }
@@ -63,7 +74,7 @@ TEST(process_io_binding_test, invalid_rebinding_preserves_prepared_metadata) {
     auto metadata = process.io_info();
     auto invalid = std::make_shared<io_exchange_map>();
     invalid->add_output(0, nullptr);
-    EXPECT_THROW(process.bind_io(invalid), std::invalid_argument);
+    EXPECT_THROW(process.bind_io(invalid), std::logic_error);
     EXPECT_EQ(original, process.io_exchange_map());
     EXPECT_EQ(metadata, process.io_info());
 }
@@ -75,10 +86,10 @@ TEST(process_io_binding_test, rejects_unbound_input_and_output_slots) {
     auto exchanges = std::make_shared<io_exchange_map>();
     exchanges->add_input(0, nullptr);
     exchanges->add_output(0, nullptr);
-    EXPECT_THROW(process.bind_io(exchanges), std::invalid_argument);
+    EXPECT_THROW(process.bind_io(exchanges), std::logic_error);
     exchange::forward::step input{};
     exchanges->add_input(0, &input);
-    EXPECT_THROW(process.bind_io(exchanges), std::invalid_argument);
+    EXPECT_THROW(process.bind_io(exchanges), std::logic_error);
     EXPECT_FALSE(process.io_info());
 }
 

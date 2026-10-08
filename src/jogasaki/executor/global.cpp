@@ -16,6 +16,7 @@
 #include "global.h"
 
 #include <memory>
+#include <mutex>
 #include <utility>
 
 #include <yugawara/function/configurable_provider.h>
@@ -50,8 +51,10 @@ memory::page_pool& page_pool(pool_operation op) {
 }
 
 executor::function::function_registry& function_registry(
-    std::shared_ptr<executor::function::function_registry> owner) {
+    std::shared_ptr<executor::function::function_registry> const& owner) {
     static std::weak_ptr<executor::function::function_registry> active{};
+    static std::mutex active_mutex{};
+    std::lock_guard<std::mutex> guard{active_mutex};
     if (owner) { active = owner; }
     auto registry = active.lock();
     if (!registry) { fail_with_exception(); }

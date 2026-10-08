@@ -61,6 +61,21 @@ using blocked_stem_map = std::map<std::string, std::set<std::string>>;
 
 namespace {
 
+// Members are destroyed in reverse order: plugin objects precede their library.
+template<class T>
+struct plugin_object_owner {
+    std::shared_ptr<void> library{};
+    std::unique_ptr<T> object{};
+};
+
+template<class T>
+std::shared_ptr<T> retain_plugin_library(std::shared_ptr<void> const& library, std::unique_ptr<T> object) {
+    auto owner = std::make_shared<plugin_object_owner<T>>();
+    owner->library = library;
+    owner->object = std::move(object);
+    return {owner, owner->object.get()};
+}
+
 [[nodiscard]] bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
     if (!fs::exists(path)) {
         results.emplace_back(load_status::path_not_found, path.string(), "Directory not found");
@@ -545,10 +560,7 @@ load_result udf_loader::create_api_from_handle(
     if (!api_uptr) {
         return {load_status::api_init_failed, full_path, "Failed to initialize plugin API"};
     }
-    std::shared_ptr<plugin_api> api_sptr{api_uptr.release(), [library = library](plugin_api* api) mutable {
-        delete api;
-        library.reset();
-    }};
+    auto api_sptr = retain_plugin_library(library, std::move(api_uptr));
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(
@@ -573,10 +585,7 @@ load_result udf_loader::create_api_from_handle(
             return {load_status::factory_creation_failed, full_path,
                 "Failed to create generic client from factory for endpoint: " + server.endpoint};
         }
-        auto client = std::shared_ptr<generic_client>{raw_client, [library = library](generic_client* value) mutable {
-            delete value;
-            library.reset();
-        }};
+        auto client = retain_plugin_library(library, std::unique_ptr<generic_client>{raw_client});
         clients.emplace_back(udf_connection{std::move(channel), std::move(client)});
     }
 

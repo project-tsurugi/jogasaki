@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -21,6 +22,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -113,6 +115,7 @@ TEST(function_registry_lifecycle_test, loader_release_keeps_live_plugin_objects_
     client.reset();
     EXPECT_TRUE(api_observer.expired());
     EXPECT_TRUE(client_observer.expired());
+    // Weak observers remain alive: they must not keep plugin code mapped.
     EXPECT_FALSE(library_loaded());
 }
 
@@ -209,6 +212,27 @@ TEST_F(database_function_lifecycle_test, global_access_does_not_keep_the_registr
     temporary.reset();
     EXPECT_TRUE(observer.expired());
     EXPECT_ANY_THROW((void) global::scalar_function_repository());
+}
+
+TEST_F(database_function_lifecycle_test, concurrent_registry_binding_and_lookup) {
+    auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
+    utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
+    auto first = std::make_shared<function_registry>();
+    auto second = std::make_shared<function_registry>();
+    (void) global::function_registry(first);
+    std::atomic<bool> ready{false};
+    std::thread writer{[&] {
+        ready.store(true);
+        for (std::size_t i = 0; i < 10000; ++i) {
+            (void) global::function_registry(i % 2 == 0 ? first : second);
+        }
+    }};
+    while (!ready.load()) { std::this_thread::yield(); }
+    for (std::size_t i = 0; i < 10000; ++i) {
+        auto* registry = &global::function_registry();
+        EXPECT_TRUE(registry == first.get() || registry == second.get());
+    }
+    writer.join();
 }
 
 TEST_F(database_function_lifecycle_test, stop_releases_registration_and_resources) {

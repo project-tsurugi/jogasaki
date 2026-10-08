@@ -15,6 +15,7 @@
  */
 #include <chrono>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <optional>
 #include <string_view>
@@ -242,6 +243,55 @@ TEST_F(batch_executor_test, variation3) {
         GTEST_SKIP() << "jogasaki-memory timed out the testcase";
     }
     test_bootstrap({{1}, {1}, {1}, {1}, {1}});
+}
+
+TEST_F(batch_executor_test, concurrent_file_release_notifies_once) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+    execute_statement("CREATE TABLE TT (C0 BIGINT NOT NULL PRIMARY KEY)");
+    auto file = boost::filesystem::path{path()} / "release-race.parquet";
+    create_test_file(file, {0}, 0);
+
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)",
+        {{"p0", api::field_type_kind::int8}}, prepared));
+    auto parameters = api::create_parameter_set();
+    parameters->set_reference_column("p0", "C0");
+
+    std::atomic_size_t release_count{};
+    std::atomic_size_t completion_count{};
+    std::shared_ptr<batch_executor> root{};
+    root = batch_executor::create_batch_executor(
+        {file.string()},
+        batch_execution_info{
+            db_impl()->find_statement(prepared),
+            std::shared_ptr{std::move(parameters)},
+            db_impl(),
+            [&] { ++completion_count; },
+            batch_executor_option{
+                [&](batch_file_executor* released_file) {
+                    if (release_count.fetch_add(1) != 0) return;
+                    // The first release keeps the file alive while a second caller tries to release it.
+                    auto duplicate = std::async(std::launch::async, [&] {
+                        return root->release(released_file);
+                    }).get();
+                    EXPECT_FALSE(duplicate.first);
+                    EXPECT_EQ(0, duplicate.second);
+                    root->end_of_file(released_file);
+                    EXPECT_EQ(0, completion_count.load());
+                }
+            }
+        }
+    );
+    ASSERT_TRUE(root->bootstrap());
+    db_impl()->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
+
+    EXPECT_EQ(1, release_count.load());
+    EXPECT_EQ(1, completion_count.load());
+    std::vector<mock::basic_record> records{};
+    execute_query("SELECT * FROM TT", records);
+    EXPECT_TRUE(records.empty());
 }
 
 TEST_F(batch_executor_test, max_file_block_params) {

@@ -134,10 +134,11 @@ bool batch_executor::bootstrap() {
 std::pair<std::shared_ptr<batch_file_executor>, std::size_t> batch_executor::release(batch_file_executor *arg) {
     std::shared_ptr<batch_file_executor> ret{};
     decltype(children_)::accessor acc{};
-    if (children_.find(acc, arg)) {
-        ret = std::move(acc->second);
-        children_.erase(acc);
+    if (!children_.find(acc, arg)) {
+        return {nullptr, remaining_file_count_.load()};
     }
+    ret = std::move(acc->second);
+    children_.erase(acc);
     auto cnt = --remaining_file_count_;
 
     if(info_.options().release_file_cb()) {
@@ -178,7 +179,9 @@ void batch_executor::end_of_file(batch_file_executor *arg) {
     }
 
     auto [f, cnt] = release(arg);
-    (void) f;
+    if (!f) {
+        return;
+    }
 
     if (file) {
         return;

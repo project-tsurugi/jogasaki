@@ -127,6 +127,9 @@ std::size_t step::partitions() const noexcept {
 }
 
 void step::bind_io(std::shared_ptr<class io_exchange_map> exchanges) {
+    if (io_info_) {
+        fail_with_exception_msg("process I/O bindings must be initialized only once");
+    }
     // Relation slots and runtime exchanges must describe the same inputs and outputs.
     // Otherwise operators can read or write using an incorrect slot index.
     auto const& relations = relation_io_map();
@@ -135,7 +138,7 @@ void step::bind_io(std::shared_ptr<class io_exchange_map> exchanges) {
         fail_with_exception_msg("process relation and runtime I/O bindings disagree");
     }
     // Every slot needs an exchange: create_io_info() dereferences these pointers
-    // to obtain column types and order. Reject incomplete bindings before replacing state.
+    // to obtain column types and order.
     for (std::size_t i = 0; i < exchanges->input_count(); ++i) {
         if (!exchanges->input_at(i)) {
             fail_with_exception_msg("unbound process input slot");

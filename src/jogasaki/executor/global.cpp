@@ -25,13 +25,13 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/function_registry.h>
-#include <jogasaki/utils/fail.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::global {
 

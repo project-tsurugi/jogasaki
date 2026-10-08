@@ -45,11 +45,12 @@ class udf_any_sequence_stream : public ::jogasaki::data::any_sequence_stream {
      * @param udf_stream the underlying UDF stream
      * @param column_types the types of the columns in the result table
      * @param resource memory resource used to copy variable-length values
+     * @param plugin_owner ownership retained until the underlying stream is destroyed
      * @attention resource must not be nullptr
      */
     udf_any_sequence_stream(std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
         std::vector<jogasaki::udf::data::udf_wire_kind> column_types,
-        memory::paged_memory_resource* resource);
+        memory::paged_memory_resource* resource, std::shared_ptr<const void> plugin_owner = {});
 
     /**
      * @brief attempts to retrieve the next record from the stream without blocking.
@@ -80,6 +81,8 @@ class udf_any_sequence_stream : public ::jogasaki::data::any_sequence_stream {
     void close() override;
 
   private:
+    // Declared first so the plugin stream is destroyed before its code and clients.
+    std::shared_ptr<const void> plugin_owner_;
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream_;
     std::vector<jogasaki::udf::data::udf_wire_kind> column_types_;
     memory::paged_memory_resource* resource_{};

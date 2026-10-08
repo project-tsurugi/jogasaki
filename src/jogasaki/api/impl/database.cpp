@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,10 +86,6 @@
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/executor.h>
-#include <jogasaki/executor/function/builtin_functions.h>
-#include <jogasaki/executor/function/builtin_scalar_functions.h>
-#include <jogasaki/executor/function/incremental/builtin_functions.h>
-#include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
@@ -132,9 +128,7 @@
 #include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/error_info.h>
 #include <jogasaki/udf/generic_client.h>
-#include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/udf/plugin_loader.h>
-#include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/binary_printer.h>
@@ -173,7 +167,7 @@ std::shared_ptr<yugawara::storage::configurable_provider> const& database::table
 }
 
 std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::aggregate_functions() const noexcept {
-    return aggregate_functions_;
+    return functions_->aggregate_provider();
 }
 
 #define LOGCFG (LOG(INFO) << lp << std::boolalpha)
@@ -398,6 +392,8 @@ status database::shutdown() {
     statement_stores_.clear();
     transactions_.clear();
     transaction_stores_.clear();
+    // Execution objects are gone before releasing declarations, implementations, and plugins.
+    functions_->clear();
     // The borrowed handle remains available to its owner and for another start attempt.
     if (kvs_db_ && !kvs_db_->handle_borrowed()) {
         bool const closed = kvs_db_->close();
@@ -448,50 +444,8 @@ bool database::init() {
         return true;
     }
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
-    regular_functions_ = global::regular_function_provider(std::make_shared<yugawara::function::configurable_provider>());
-    executor::function::add_builtin_scalar_functions(
-        *regular_functions_,
-        global::scalar_function_repository()
-    );
-    // Keep loaded libraries alive across retries while plugin entries and function bodies reference them.
-    if (!loader_) {
-        loader_ = std::make_unique<plugin::udf::udf_loader>();
-        auto results = loader_->load(std::string(cfg_->plugin_directory()));
-        for (auto const& result : results) {
-            auto const status = result.status();
-            auto const outcome = plugin::udf::classify(status);
-
-            std::ostringstream oss;
-
-            oss << jogasaki::udf::log::prefix << plugin::udf::to_string_view(outcome)
-                << " status=" << plugin::udf::to_string_view(status) << " file=" << result.file()
-                << " detail=" << result.detail();
-
-            auto const message = oss.str();
-
-            switch (outcome) {
-                case plugin::udf::load_outcome::ok: LOG_LP(INFO) << message; break;
-                case plugin::udf::load_outcome::skipped: LOG_LP(WARNING) << message; break;
-                case plugin::udf::load_outcome::fail: LOG_LP(ERROR) << message; break;
-                default: LOG_LP(ERROR) << message; break;
-            }
-        }
-        for (auto& plugin : loader_->get_plugins()) {
-            plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
-                std::move(std::get<2>(plugin)));
-        }
-    }
-    executor::function::add_udf_functions(*regular_functions_, global::scalar_function_repository(),
-        global::table_valued_function_repository(), plugins_);
-    aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
-    executor::function::incremental::add_builtin_aggregate_functions(
-        *aggregate_functions_,
-        global::incremental_aggregate_function_repository()
-    );
-    executor::function::add_builtin_aggregate_functions(
-        *aggregate_functions_,
-        global::aggregate_function_repository()
-    );
+    (void) global::function_registry(functions_);
+    functions_->initialize(*cfg_);
     initialized_ = true;
     return true;
 }
@@ -499,7 +453,6 @@ bool database::init() {
 void database::deinit() {
     if(! initialized_) return;
     tables_.reset();
-    aggregate_functions_.reset();
     initialized_ = false;
 }
 
@@ -550,8 +503,8 @@ status database::prepare_common(
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
-    ctx->aggregate_provider(aggregate_functions_);
-    ctx->function_provider(regular_functions_);
+    ctx->aggregate_provider(functions_->aggregate_provider());
+    ctx->function_provider(functions_->regular_provider());
     ctx->variable_provider(std::move(provider));
     ctx->option(option);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
@@ -869,8 +822,8 @@ status database::resolve_common(
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
-    ctx->aggregate_provider(aggregate_functions_);
-    ctx->function_provider(regular_functions_);
+    ctx->aggregate_provider(functions_->aggregate_provider());
+    ctx->function_provider(functions_->regular_provider());
     auto& ps = stmt.body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);

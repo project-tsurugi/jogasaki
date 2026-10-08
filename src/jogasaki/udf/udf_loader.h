@@ -17,6 +17,7 @@
 
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string_view>
@@ -46,11 +47,10 @@ namespace plugin::udf {
  *
  * Notes:
  * - Only files with `.so` extension are considered.
- * - `plugin_api` and `generic_client_factory` lifetime management is delegated to the caller.
- * - Uses `RTLD_NOW | RTLD_GLOBAL`:
+ * - API and client objects retain library ownership until their destruction.
+ * - Uses `RTLD_NOW | RTLD_LOCAL`:
  *   - **RTLD_NOW**: Resolve all undefined symbols immediately at load time (fail early if missing).
- *   - **RTLD_GLOBAL**: Make the loaded symbols available for symbol resolution in subsequently
- * loaded libraries.
+ *   - **RTLD_LOCAL**: Keep plugin symbols local to this library.
  *
  * @see plugin_loader
  */
@@ -93,7 +93,7 @@ class udf_loader : public plugin_loader {
     /**
      * @brief Unloads all currently loaded plugins.
      *
-     * Calls `dlclose()` on each loaded handle and clears the internal handle list.
+     * Releases loader ownership; libraries close after their last API/client owner is released.
      * Safe to call multiple times.
      */
     void unload_all() override;
@@ -106,8 +106,7 @@ class udf_loader : public plugin_loader {
      * - `std::shared_ptr<const udf_config>` : configuration associated with the plugin
      *
      * The returned vector is owned by the loader implementation.
-     * All shared_ptr instances remain valid as long as the loader (or database)
-     * that owns them is alive.
+     * API and client instances retain their shared library independently of the loader.
      *
      * @return Reference to a vector of plugin entries.
      */
@@ -122,12 +121,13 @@ class udf_loader : public plugin_loader {
         std::map<std::string, std::set<std::string>> const& blocked_stems,
         jogasaki::udf::descriptor::message_diagnostics const& message_duplicates,
         std::vector<load_result>& results);
-    /** List of raw `dlopen()` handles for loaded plugins. */
+    /** Create plugin objects retaining ownership of their shared library. */
     [[nodiscard]] load_result create_api_from_handle(
-        void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg);
+        std::shared_ptr<void> const& library, std::string const& full_path, std::shared_ptr<const udf_config> cfg);
     /** List of loaded plugin API/client collections. */
     std::vector<plugin_entry> plugins_;
-    std::vector<void*> handles_;
+    /** Shared `dlopen()` handles; plugin objects may retain them after unloading. */
+    std::vector<std::shared_ptr<void>> handles_;
     [[nodiscard]] static bool validate_deps_directory(
         std::filesystem::path const& dir, std::vector<load_result>& results);
 };

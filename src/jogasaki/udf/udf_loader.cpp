@@ -524,14 +524,12 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
 
 void udf_loader::unload_all() {
     plugins_.clear();
-    for (auto* h : handles_) {
-        if (h) { dlclose(h); }
-    }
     handles_.clear();
 }
 
 load_result udf_loader::create_api_from_handle(
-    void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg) {
+    std::shared_ptr<void> const& library, std::string const& full_path, std::shared_ptr<const udf_config> cfg) {
+    auto* handle = library.get();
     if (!handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
     using create_api_func = plugin_api* (*)();
@@ -547,7 +545,10 @@ load_result udf_loader::create_api_from_handle(
     if (!api_uptr) {
         return {load_status::api_init_failed, full_path, "Failed to initialize plugin API"};
     }
-    std::shared_ptr<plugin_api> api_sptr = std::move(api_uptr);
+    std::shared_ptr<plugin_api> api_sptr{api_uptr.release(), [library = library](plugin_api* api) mutable {
+        delete api;
+        library.reset();
+    }};
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(
@@ -572,8 +573,11 @@ load_result udf_loader::create_api_from_handle(
             return {load_status::factory_creation_failed, full_path,
                 "Failed to create generic client from factory for endpoint: " + server.endpoint};
         }
-        clients.emplace_back(
-            udf_connection{std::move(channel), std::shared_ptr<generic_client>{raw_client}});
+        auto client = std::shared_ptr<generic_client>{raw_client, [library = library](generic_client* value) mutable {
+            delete value;
+            library.reset();
+        }};
+        clients.emplace_back(udf_connection{std::move(channel), std::move(client)});
     }
 
     plugins_.emplace_back(std::move(api_sptr), std::move(clients), std::move(cfg));
@@ -610,7 +614,12 @@ void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map cons
 
     std::string full_path = so_path.string();
     dlerror();
-    void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
+    // Generated Protobuf descriptors remain in the process-wide pool after
+    // plugin objects are released. Keep their code/data mapped across reloads
+    // so descriptor registration is not repeated and retained pointers stay valid.
+    // API/client ownership is still released normally; replacing plugin binaries
+    // requires a process restart.
+    void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
     if (!handle) {
         const char* err = dlerror();
         results.emplace_back(
@@ -618,12 +627,11 @@ void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map cons
         return;
     }
 
+    auto library = std::shared_ptr<void>{handle, [](void* value) { dlclose(value); }};
     auto cfg_sp = std::make_shared<udf_config>(std::move(*udf_config_value));
-    auto res = create_api_from_handle(handle, full_path, cfg_sp);
+    auto res = create_api_from_handle(library, full_path, cfg_sp);
     if (res.status() == load_status::ok) {
-        handles_.push_back(handle);
-    } else {
-        dlclose(handle);
+        handles_.push_back(std::move(library));
     }
     results.push_back(std::move(res));
 }

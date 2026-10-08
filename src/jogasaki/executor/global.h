@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ class aggregate_function_repository;
 }
 
 namespace jogasaki::executor::function {
+class function_registry;
 class scalar_function_repository;
 }
 
@@ -95,29 +96,36 @@ enum class pool_operation : std::int32_t {
 [[nodiscard]] memory::page_pool& page_pool(pool_operation op = pool_operation::get);
 
 /**
+ * @brief non-owning compatibility access to the active owner's function registry
+ * @attention The owner must outlive all accesses; binding and shutdown require quiescence.
+ */
+[[nodiscard]] executor::function::function_registry& function_registry(
+    std::shared_ptr<executor::function::function_registry> owner = {});
+
+/**
  * @brief thread-safe accessor to the global repository for incremental aggregate functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @details refers to the active owner's registry; no repository is owned by this accessor.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository();
 
 /**
  * @brief thread-safe accessor to the global repository for aggregate functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @details refers to the active owner's registry; no repository is owned by this accessor.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
 
 /**
  * @brief thread-safe accessor to the global repository for aggregate functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @details refers to the active owner's registry; no repository is owned by this accessor.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::scalar_function_repository& scalar_function_repository();
 
 /**
  * @brief thread-safe accessor to the global repository for table-valued functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @details refers to the active owner's registry; no repository is owned by this accessor.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::table_valued_function_repository& table_valued_function_repository();
@@ -132,7 +140,7 @@ takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::uti
 
 /**
  * @brief thread-safe accessor to the global function provider that manages regular functions (scalar and table-valued)
- * @details the provider will be initialized on the first call and can be shared by multiple threads
+ * @details refers to the provider in the active owner's function registry.
  * @param arg updated provider. Pass nullptr just to refer current value.
  * @return reference to the function provider
  */

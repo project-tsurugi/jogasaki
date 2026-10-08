@@ -173,22 +173,19 @@ std::shared_ptr<batch_executor> batch_executor::shared() {
 }
 
 void batch_executor::end_of_file(batch_file_executor *arg) {
-    auto [s, file] = next_file();
-    if (! s) {
-        return;
-    }
-
-    auto [f, cnt] = release(arg);
+    auto f = release(arg).first;
     if (!f) {
         return;
     }
 
-    if (file) {
+    auto [s, file] = next_file();
+    if (!s || file) {
         return;
     }
 
     // no more file
-    if(cnt != 0) {
+    // next_file() may have released empty files, so read the updated count.
+    if(remaining_file_count_.load() != 0) {
         // other files are in progress, so leave finalizing batch to it
         return;
     }

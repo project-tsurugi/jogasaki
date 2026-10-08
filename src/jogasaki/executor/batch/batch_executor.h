@@ -78,6 +78,7 @@ public:
     /**
      * @brief detach the child file executor from this object to release
      * @details detach the child file executor and returns its ownership
+     * Only the caller that detaches the child updates the remaining count and invokes the release callback.
      * @param arg the file executor to be released
      * @return the pair of file executor released (nullptr if the file executor is not owned by this object)
      * and the remaining incomplete files

@@ -15,6 +15,7 @@
  */
 #include <chrono>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <optional>
 #include <string_view>
@@ -85,6 +86,7 @@ public:
         std::size_t max_concurrent_blocks_per_file = batch_executor_option::undefined,
         bool log_records = true
     );
+    void test_duplicate_file_release();
     void test_error(
         std::vector<std::vector<std::size_t>> block_def_list,
         status expected,
@@ -242,6 +244,71 @@ TEST_F(batch_executor_test, variation3) {
         GTEST_SKIP() << "jogasaki-memory timed out the testcase";
     }
     test_bootstrap({{1}, {1}, {1}, {1}, {1}});
+}
+
+TEST_F(batch_executor_test, concurrent_file_release_notifies_once) {
+    test_duplicate_file_release();
+}
+
+TEST_F(batch_executor_test, completion_with_empty_replacement_file) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+    test_bootstrap({{1}, {0}}, 1, 1);
+}
+
+void batch_executor_test::test_duplicate_file_release() {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+    execute_statement("CREATE TABLE TT (C0 BIGINT NOT NULL PRIMARY KEY)");
+    auto file = boost::filesystem::path{path()} / "release-race.parquet";
+    auto replacement = boost::filesystem::path{path()} / "empty-replacement.parquet";
+    create_test_file(file, {0}, 0);
+    create_test_file(replacement, {0}, 0);
+
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)",
+        {{"p0", api::field_type_kind::int8}}, prepared));
+    auto parameters = api::create_parameter_set();
+    parameters->set_reference_column("p0", "C0");
+
+    std::atomic_size_t release_count{};
+    std::atomic_size_t completion_count{};
+    std::shared_ptr<batch_executor> root{};
+    root = batch_executor::create_batch_executor(
+        {file.string(), replacement.string()},
+        batch_execution_info{
+            db_impl()->find_statement(prepared),
+            std::shared_ptr{std::move(parameters)},
+            db_impl(),
+            [&] { ++completion_count; },
+            batch_executor_option{
+                1,
+                1,
+                [&](batch_file_executor* released_file) {
+                    if (release_count.fetch_add(1) != 0) return;
+                    // The first release keeps the file alive while a second caller tries to release it.
+                    auto duplicate = std::async(std::launch::async, [&] {
+                        return root->release(released_file);
+                    }).get();
+                    EXPECT_FALSE(duplicate.first);
+                    EXPECT_EQ(1, duplicate.second);
+                    root->end_of_file(released_file);
+                    EXPECT_EQ(1, release_count.load()); // The duplicate must not consume the replacement file.
+                    EXPECT_EQ(0, completion_count.load());
+                }
+            }
+        }
+    );
+    ASSERT_TRUE(root->bootstrap());
+    db_impl()->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
+
+    EXPECT_EQ(2, release_count.load());
+    EXPECT_EQ(1, completion_count.load());
+    std::vector<mock::basic_record> records{};
+    execute_query("SELECT * FROM TT", records);
+    EXPECT_TRUE(records.empty());
 }
 
 TEST_F(batch_executor_test, max_file_block_params) {

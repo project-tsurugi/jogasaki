@@ -226,8 +226,9 @@ using base_stream = ::jogasaki::data::any_sequence_stream;
 udf_any_sequence_stream::udf_any_sequence_stream(
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
     std::vector<jogasaki::udf::data::udf_wire_kind> column_types,
-    memory::paged_memory_resource* resource)
-    : udf_stream_(std::move(udf_stream)),
+    memory::paged_memory_resource* resource, std::shared_ptr<const void> plugin_owner)
+    : plugin_owner_(std::move(plugin_owner)),
+      udf_stream_(std::move(udf_stream)),
       column_types_(std::move(column_types)),
       resource_(resource) {
     assert_with_exception(resource_ != nullptr, resource_);

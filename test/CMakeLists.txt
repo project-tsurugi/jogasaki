@@ -172,3 +172,14 @@ foreach(file ${SRCS})
     endif()
 endforeach()
 
+# A real shared library exercises dlopen/dlclose ownership without an RPC server.
+add_library(udf_lifecycle_plugin SHARED fixtures/udf_lifecycle_plugin.cpp)
+target_link_libraries(udf_lifecycle_plugin PRIVATE jogasaki-impl gRPC::grpc++)
+set_target_properties(udf_lifecycle_plugin PROPERTIES PREFIX "")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(udf_lifecycle_plugin PRIVATE -fno-gnu-unique)
+endif()
+add_dependencies(function_registry_lifecycle_test udf_lifecycle_plugin)
+target_link_libraries(function_registry_lifecycle_test PRIVATE ${CMAKE_DL_LIBS})
+target_compile_definitions(function_registry_lifecycle_test PRIVATE
+    UDF_LIFECYCLE_PLUGIN_PATH="$<TARGET_FILE:udf_lifecycle_plugin>")

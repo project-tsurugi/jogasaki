@@ -81,7 +81,8 @@ class udf_any_sequence_stream : public ::jogasaki::data::any_sequence_stream {
     void close() override;
 
   private:
-    // Declared first so the plugin stream is destroyed before its code and clients.
+    // Declared first so it is destroyed last, ensuring udf_stream_ is destroyed
+    // before releasing plugin ownership for its code and clients.
     std::shared_ptr<const void> plugin_owner_;
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream_;
     std::vector<jogasaki::udf::data::udf_wire_kind> column_types_;

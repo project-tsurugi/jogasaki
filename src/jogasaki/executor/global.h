@@ -97,35 +97,36 @@ enum class pool_operation : std::int32_t {
 
 /**
  * @brief non-owning compatibility access to the active owner's function registry
- * @attention The owner must outlive all accesses; binding and shutdown require quiescence.
+ * @details Active registry lookup and binding are synchronized.
+ * @attention The owner must outlive all accesses. Initialize or clear registry contents only under quiescence.
  */
 [[nodiscard]] executor::function::function_registry& function_registry(
-    std::shared_ptr<executor::function::function_registry> owner = {});
+    std::shared_ptr<executor::function::function_registry> const& owner = {});
 
 /**
- * @brief thread-safe accessor to the global repository for incremental aggregate functions
- * @details refers to the active owner's registry; no repository is owned by this accessor.
+ * @brief compatibility accessor to the active incremental aggregate function repository
+ * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository();
 
 /**
- * @brief thread-safe accessor to the global repository for aggregate functions
- * @details refers to the active owner's registry; no repository is owned by this accessor.
+ * @brief compatibility accessor to the active function repository
+ * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
 
 /**
- * @brief thread-safe accessor to the global repository for aggregate functions
- * @details refers to the active owner's registry; no repository is owned by this accessor.
+ * @brief compatibility accessor to the active function repository
+ * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::scalar_function_repository& scalar_function_repository();
 
 /**
- * @brief thread-safe accessor to the global repository for table-valued functions
- * @details refers to the active owner's registry; no repository is owned by this accessor.
+ * @brief compatibility accessor to the active table-valued function repository
+ * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::table_valued_function_repository& table_valued_function_repository();
@@ -139,8 +140,8 @@ enum class pool_operation : std::int32_t {
 takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::util::maybe_shared_ptr<configuration> arg = nullptr);
 
 /**
- * @brief thread-safe accessor to the global function provider that manages regular functions (scalar and table-valued)
- * @details refers to the provider in the active owner's function registry.
+ * @brief compatibility accessor to the active regular function provider (scalar and table-valued)
+ * @details The owner must outlive use; provider replacement requires quiescence.
  * @param arg updated provider. Pass nullptr just to refer current value.
  * @return reference to the function provider
  */

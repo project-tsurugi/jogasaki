@@ -614,12 +614,7 @@ void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map cons
 
     std::string full_path = so_path.string();
     dlerror();
-    // Generated Protobuf descriptors remain in the process-wide pool after
-    // plugin objects are released. Keep their code/data mapped across reloads
-    // so descriptor registration is not repeated and retained pointers stay valid.
-    // API/client ownership is still released normally; replacing plugin binaries
-    // requires a process restart.
-    void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
+    void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
         const char* err = dlerror();
         results.emplace_back(

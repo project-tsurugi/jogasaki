@@ -61,6 +61,21 @@ using blocked_stem_map = std::map<std::string, std::set<std::string>>;
 
 namespace {
 
+// Members are destroyed in reverse order: plugin objects precede their library.
+template<class T>
+struct plugin_object_owner {
+    std::shared_ptr<void> library{};
+    std::unique_ptr<T> object{};
+};
+
+template<class T>
+std::shared_ptr<T> retain_plugin_library(std::shared_ptr<void> const& library, std::unique_ptr<T> object) {
+    auto owner = std::make_shared<plugin_object_owner<T>>();
+    owner->library = library;
+    owner->object = std::move(object);
+    return {owner, owner->object.get()};
+}
+
 [[nodiscard]] bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
     if (!fs::exists(path)) {
         results.emplace_back(load_status::path_not_found, path.string(), "Directory not found");
@@ -524,14 +539,12 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
 
 void udf_loader::unload_all() {
     plugins_.clear();
-    for (auto* h : handles_) {
-        if (h) { dlclose(h); }
-    }
     handles_.clear();
 }
 
 load_result udf_loader::create_api_from_handle(
-    void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg) {
+    std::shared_ptr<void> const& library, std::string const& full_path, std::shared_ptr<const udf_config> cfg) {
+    auto* handle = library.get();
     if (!handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
     using create_api_func = plugin_api* (*)();
@@ -547,7 +560,7 @@ load_result udf_loader::create_api_from_handle(
     if (!api_uptr) {
         return {load_status::api_init_failed, full_path, "Failed to initialize plugin API"};
     }
-    std::shared_ptr<plugin_api> api_sptr = std::move(api_uptr);
+    auto api_sptr = retain_plugin_library(library, std::move(api_uptr));
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(
@@ -572,8 +585,8 @@ load_result udf_loader::create_api_from_handle(
             return {load_status::factory_creation_failed, full_path,
                 "Failed to create generic client from factory for endpoint: " + server.endpoint};
         }
-        clients.emplace_back(
-            udf_connection{std::move(channel), std::shared_ptr<generic_client>{raw_client}});
+        auto client = retain_plugin_library(library, std::unique_ptr<generic_client>{raw_client});
+        clients.emplace_back(udf_connection{std::move(channel), std::move(client)});
     }
 
     plugins_.emplace_back(std::move(api_sptr), std::move(clients), std::move(cfg));
@@ -618,12 +631,11 @@ void udf_loader::load_one_plugin(fs::path const& ini_path, blocked_stem_map cons
         return;
     }
 
+    auto library = std::shared_ptr<void>{handle, [](void* value) { dlclose(value); }};
     auto cfg_sp = std::make_shared<udf_config>(std::move(*udf_config_value));
-    auto res = create_api_from_handle(handle, full_path, cfg_sp);
+    auto res = create_api_from_handle(library, full_path, cfg_sp);
     if (res.status() == load_status::ok) {
-        handles_.push_back(handle);
-    } else {
-        dlclose(handle);
+        handles_.push_back(std::move(library));
     }
     results.push_back(std::move(res));
 }

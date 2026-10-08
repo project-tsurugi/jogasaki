@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 #include "global.h"
 
 #include <memory>
+#include <mutex>
 #include <utility>
 
 #include <yugawara/function/configurable_provider.h>
@@ -24,12 +25,14 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/function_registry.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::global {
 
@@ -47,34 +50,38 @@ memory::page_pool& page_pool(pool_operation op) {
     return *pool;
 }
 
+executor::function::function_registry& function_registry(
+    std::shared_ptr<executor::function::function_registry> const& owner) {
+    static std::weak_ptr<executor::function::function_registry> active{};
+    static std::mutex active_mutex{};
+    std::lock_guard<std::mutex> guard{active_mutex};
+    if (owner) { active = owner; }
+    auto registry = active.lock();
+    if (!registry) { fail_with_exception(); }
+    return *registry;
+}
+
 executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository() {
-    static executor::function::incremental::aggregate_function_repository repo{};
-    return repo;
+    return function_registry().incremental_functions();
 }
 
 executor::function::aggregate_function_repository& aggregate_function_repository() {
-    static executor::function::aggregate_function_repository repo{};
-    return repo;
+    return function_registry().aggregate_functions();
 }
 
 executor::function::scalar_function_repository& scalar_function_repository() {
-    static executor::function::scalar_function_repository repo{};
-    return repo;
+    return function_registry().scalar_functions();
 }
 
 executor::function::table_valued_function_repository& table_valued_function_repository() {
-    static executor::function::table_valued_function_repository repo{};
-    return repo;
+    return function_registry().table_functions();
 }
 
 std::shared_ptr<yugawara::function::configurable_provider> const&
 regular_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg) {
-    static std::shared_ptr<yugawara::function::configurable_provider> provider =
-        std::make_shared<yugawara::function::configurable_provider>();
-    if(arg) {
-        provider = std::move(arg);
-    }
-    return provider;
+    auto& registry = function_registry();
+    if (arg) { registry.regular_provider(std::move(arg)); }
+    return registry.regular_provider();
 }
 
 maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuration> arg) {

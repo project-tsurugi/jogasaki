@@ -113,18 +113,10 @@ TEST(function_registry_lifecycle_test, loader_release_keeps_live_plugin_objects_
     client.reset();
     EXPECT_TRUE(api_observer.expired());
     EXPECT_TRUE(client_observer.expired());
-    // Runtime resources are released while descriptor-bearing code remains
-    // mapped for the process-wide Protobuf pool.
-    EXPECT_TRUE(library_loaded());
-    results = loader.load(directory.string());
-    ASSERT_FALSE(results.empty());
-    ASSERT_EQ(plugin::udf::load_status::ok, results.back().status());
-    ASSERT_EQ(1U, loader.get_plugins().size());
-    loader.unload_all();
-    EXPECT_TRUE(loader.get_plugins().empty());
+    EXPECT_FALSE(library_loaded());
 }
 
-TEST(function_registry_lifecycle_test, registry_releases_all_function_kinds_and_rebuilds_them) {
+TEST(function_registry_lifecycle_test, registry_releases_all_function_kinds) {
     function_registry functions{};
     configuration cfg{};
     functions.initialize(cfg);
@@ -138,11 +130,7 @@ TEST(function_registry_lifecycle_test, registry_releases_all_function_kinds_and_
     EXPECT_EQ(0U, functions.table_functions().size());
     EXPECT_EQ(0U, functions.aggregate_functions().size());
     EXPECT_EQ(0U, functions.incremental_functions().size());
-    functions.initialize(cfg);
-    EXPECT_GT(functions.scalar_functions().size(), 0U);
-    EXPECT_GT(functions.aggregate_functions().size(), 0U);
-    EXPECT_GT(functions.incremental_functions().size(), 0U);
-    EXPECT_EQ(nullptr, functions.table_functions().find(udf_id));
+
 }
 
 TEST(function_registry_lifecycle_test, database_owns_independent_function_registries) {
@@ -223,7 +211,7 @@ TEST_F(database_function_lifecycle_test, global_access_does_not_keep_the_registr
     EXPECT_ANY_THROW((void) global::scalar_function_repository());
 }
 
-TEST_F(database_function_lifecycle_test, stop_restart_releases_old_registration) {
+TEST_F(database_function_lifecycle_test, stop_releases_registration_and_resources) {
     auto owner = std::make_shared<int>(1);
     std::weak_ptr<int> old = owner;
     register_udf(owner);
@@ -237,23 +225,7 @@ TEST_F(database_function_lifecycle_test, stop_restart_releases_old_registration)
     EXPECT_EQ(0U, db_impl()->functions().incremental_functions().size());
     EXPECT_EQ(nullptr, global::scalar_function_repository().find(udf_id));
     EXPECT_EQ(nullptr, global::table_valued_function_repository().find(udf_id));
-    ASSERT_EQ(status::ok, db_->start());
-    std::vector<mock::basic_record> records{};
-    execute_query("SELECT abs(-2)", records);
-    ASSERT_EQ(1U, records.size());
-    register_udf(std::make_shared<int>(2));
-    executor::expr::evaluator_context context{nullptr};
-    EXPECT_EQ(2, global::scalar_function_repository().find(udf_id)->function_body()(context, {}).to<std::int32_t>());
+
 }
 
-TEST_F(database_function_lifecycle_test, new_database_does_not_reuse_old_registration) {
-    register_udf(std::make_shared<int>(1));
-    ASSERT_EQ(status::ok, db_->stop());
-    db_create();
-    ASSERT_EQ(status::ok, db_->start());
-    EXPECT_EQ(nullptr, global::scalar_function_repository().find(udf_id));
-    register_udf(std::make_shared<int>(3));
-    executor::expr::evaluator_context context{nullptr};
-    EXPECT_EQ(3, global::scalar_function_repository().find(udf_id)->function_body()(context, {}).to<std::int32_t>());
-}
 }

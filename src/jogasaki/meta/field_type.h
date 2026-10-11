@@ -27,11 +27,11 @@
 
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/meta/character_field_option.h>
-#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_option.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 
@@ -186,6 +186,8 @@ public:
             case k::decimal: return field_type_traits<k::decimal>::size;
             case k::character: return field_type_traits<k::character>::size;
             case k::octet: return field_type_traits<k::octet>::size;
+            case k::bit: return field_type_traits<k::bit>::size;
+            case k::time_interval: return field_type_traits<k::time_interval>::size;
             case k::date: return field_type_traits<k::date>::size;
             case k::time_of_day: return field_type_traits<k::time_of_day>::size;
             case k::time_point: return field_type_traits<k::time_point>::size;
@@ -219,6 +221,8 @@ public:
             case k::decimal: return field_type_traits<k::decimal>::alignment;
             case k::character: return field_type_traits<k::character>::alignment;
             case k::octet: return field_type_traits<k::octet>::alignment;
+            case k::bit: return field_type_traits<k::bit>::alignment;
+            case k::time_interval: return field_type_traits<k::time_interval>::alignment;
             case k::date: return field_type_traits<k::date>::alignment;
             case k::time_of_day: return field_type_traits<k::time_of_day>::alignment;
             case k::time_point: return field_type_traits<k::time_point>::alignment;

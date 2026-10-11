@@ -45,7 +45,7 @@ If installing these packages from `apt install` command fails, issue below comma
 
 ```
 sudo apt install -y -V lsb-release
-wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+wget https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt update
 sudo apt install -y -V libparquet-dev=24.0.0-1 libparquet2400=24.0.0-1 libarrow-dev=24.0.0-1 libarrow2400=24.0.0-1

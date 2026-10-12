@@ -42,6 +42,10 @@ error_info::error_info(
     supplemental_text_(create_supplemental_text())
 {}
 
+error_info::error_info(error_code code, std::string_view message, jogasaki::status st, std::string_view supplemental_text)
+    : error_code_(code), message_(message), status_(st), supplemental_text_(supplemental_text)
+{}
+
 std::string error_info::create_supplemental_text() noexcept {
     using json = nlohmann::json;
     try {

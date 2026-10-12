@@ -34,6 +34,8 @@ enum class statement_kind : std::size_t {
     grant_table,
     revoke_table,
     truncate_table,
+    create_foreign_catalog,
+    drop_foreign_catalog,
 };
 
 /**
@@ -55,6 +57,8 @@ enum class statement_kind : std::size_t {
         case kind::grant_table: return "grant_table"sv;
         case kind::revoke_table: return "revoke_table"sv;
         case kind::truncate_table: return "truncate_table"sv;
+        case kind::create_foreign_catalog: return "create_foreign_catalog"sv;
+        case kind::drop_foreign_catalog: return "drop_foreign_catalog"sv;
     }
     std::abort();
 }

@@ -68,6 +68,7 @@ public:
 
     /**
      * @brief stop the scheduler
+     * @details discards both tasks and conditional tasks accumulated on the calling thread without running them
      */
     void stop() override;
 

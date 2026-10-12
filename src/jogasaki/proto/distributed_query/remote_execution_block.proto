@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package jogasaki.proto.distributed_query;
+
+message ResultSchema {
+  repeated ResultColumn columns = 1;
+}
+
+message ResultColumn {
+  uint64 column_id = 1;
+  string type = 2;
+  bool nullable = 3;
+  bytes type_payload = 4;
+}
+
+message RemoteExecutionResult {
+  uint32 version = 1;
+  ResultSchema schema = 2;
+  repeated ResultRow rows = 3;
+  repeated bytes encoded_rows = 4;
+}
+
+message ResultRow {
+  repeated ResultValue values = 1;
+}
+
+message ResultValue {
+  bool is_null = 1;
+  oneof value {
+    int64 int8_value = 2;
+  }
+}
+
+// Explicit type parameters; display strings are never used to reconstruct types.
+message PortableType {
+  string kind = 1;
+  // Explicit presence, including zero, for older Protobuf generators.
+  oneof precision_presence {
+    uint64 precision = 2;
+  }
+  // Explicit presence, including zero, for older Protobuf generators.
+  oneof scale_presence {
+    uint64 scale = 3;
+  }
+  // Explicit presence, including zero, for older Protobuf generators.
+  oneof length_presence {
+    uint64 length = 4;
+  }
+  bool varying = 5;
+  bool with_time_zone = 6;
+}

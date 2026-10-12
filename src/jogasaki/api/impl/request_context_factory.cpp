@@ -37,9 +37,12 @@ std::shared_ptr<request_context> create_request_context(
     request_info const& req_info,
     bool has_result_records,
     std::shared_ptr<scheduler::request_detail> request_detail,
+    scheduler::task_scheduler* scheduler_override,
     bool emits_ordered_relation
 ) {
     auto& c = db.configuration();
+    // request, statement and job registration must refer to the same scheduler
+    auto& ts = scheduler_override ? *scheduler_override : *db.task_scheduler();
     auto rctx = std::make_shared<request_context>(
         c,
         std::move(resource),
@@ -49,14 +52,21 @@ std::shared_ptr<request_context> create_request_context(
         channel
     );
     rctx->req_info(req_info);
-    rctx->scheduler(db.scheduler());
+    if(scheduler_override) {
+        rctx->scheduler(maybe_shared_ptr<scheduler::task_scheduler>{scheduler_override});
+    } else {
+        rctx->scheduler(db.scheduler());
+    }
     rctx->stmt_scheduler(
         std::make_shared<scheduler::statement_scheduler>(
             db.configuration(),
-            *db.task_scheduler()
+            ts
         )
     );
     rctx->storage_provider(db.tables());
+    rctx->remote_catalogs(db.remote_catalogs());
+    rctx->remote_catalogs_manager(db.remote_catalogs_manager());
+    rctx->remote_server_channels(std::addressof(db.remote_server_channels()));
 
     // Initialize writer_pool if record_channel is provided for query
     if(channel && has_result_records) {
@@ -87,7 +97,6 @@ std::shared_ptr<request_context> create_request_context(
 
     rctx->job(maybe_shared_ptr{job.get()});
 
-    auto& ts = *db.task_scheduler();
     ts.register_job(job);
     return rctx;
 }

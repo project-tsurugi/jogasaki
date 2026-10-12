@@ -55,6 +55,10 @@
 #include <jogasaki/api/transaction_option.h>
 #include <jogasaki/auth/authorized_users_action_set.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/dist/remote_catalog_manager.h>
+#include <jogasaki/dist/remote_function_id_registry.h>
+#include <jogasaki/dist/remote_server_channel_manager.h>
+#include <jogasaki/dist/symbol_locations.h>
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info.h>
@@ -73,6 +77,7 @@
 #include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/udf/udf_config.h>
 #include <jogasaki/utils/use_counter.h>
+
 #include "commit_stats.h"
 
 namespace jogasaki::scheduler {
@@ -218,10 +223,23 @@ public:
 
     [[nodiscard]] std::shared_ptr<yugawara::storage::configurable_provider> const& tables() const noexcept;
 
+    [[nodiscard]] dist::remote_server_channel_manager& remote_server_channels() noexcept;
+    [[nodiscard]] std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs() const noexcept;
+
+    [[nodiscard]] std::shared_ptr<dist::remote_catalog_manager> remote_catalogs_manager() const noexcept;
+
+    /**
+     * @brief coordinator-side definition IDs of remote function declarations, owned here rather than by the manager.
+     */
+    [[nodiscard]] std::shared_ptr<dist::remote_function_id_registry> const& remote_function_ids() const noexcept;
+
     void reset_tables();
 
     [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const&
         aggregate_functions() const noexcept;
+
+    [[nodiscard]] std::shared_ptr<yugawara::function::configurable_provider> const&
+        regular_functions() const noexcept;
 
     [[nodiscard]] scheduler::task_scheduler* task_scheduler() const noexcept;
 
@@ -342,12 +360,22 @@ protected:
     ) override;
 
 private:
+    status start_distributed_query();
+    status initialize_remote_catalogs();
+    void cleanup_failed_start() noexcept;
+
     std::shared_ptr<class configuration> cfg_{};
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{
         std::make_shared<yugawara::storage::configurable_provider>()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;
+    std::unique_ptr<dist::remote_server_channel_manager> remote_server_channels_{
+        std::make_unique<dist::remote_server_channel_manager>()};
+    std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
+    std::shared_ptr<dist::remote_catalog_manager> remote_catalogs_manager_{};
+    std::shared_ptr<dist::remote_function_id_registry> remote_function_ids_{};
+    std::shared_ptr<dist::location_registry> remote_location_registry_{};
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
     tbb::concurrent_hash_map<api::statement_handle, std::shared_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::shared_ptr<transaction_context>> transactions_{};

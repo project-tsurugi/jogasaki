@@ -54,6 +54,11 @@ public:
     [[nodiscard]] model::step_kind kind() const noexcept override;
 
     /**
+     * @brief accessor to the compile-time processor information
+     */
+    [[nodiscard]] std::shared_ptr<processor_info> const& info() const noexcept;
+
+    /**
      * @brief declare the number of partitions
      * @details process step has the model level knowledge about the number of partitions this process can run.
      * E.g. the process contains some logic that forces to run it only on single partition.

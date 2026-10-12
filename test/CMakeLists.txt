@@ -183,3 +183,8 @@ add_dependencies(function_registry_lifecycle_test udf_lifecycle_plugin)
 target_link_libraries(function_registry_lifecycle_test PRIVATE ${CMAKE_DL_LIBS})
 target_compile_definitions(function_registry_lifecycle_test PRIVATE
     UDF_LIFECYCLE_PLUGIN_PATH="$<TARGET_FILE:udf_lifecycle_plugin>")
+
+if(ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+    target_compile_definitions(remote_process_handler_test PRIVATE ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+    target_compile_definitions(remote_process_sql_test PRIVATE ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+endif()

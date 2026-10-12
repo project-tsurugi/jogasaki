@@ -9,6 +9,10 @@ set(SqlProtoFiles
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/error.proto
         )
 
+set(DistributedQueryProtoFiles
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/distributed_query/remote_execution_block.proto
+        )
+
 set(MetadataProtoFiles
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/metadata/common.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/metadata/storage.proto
@@ -25,9 +29,13 @@ set(KvsserviceProtoFiles
 # Work-around this with PROTOBUF_GENERATE_CPP_APPEND_PATH
 set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
 
+PROTOBUF_GENERATE_CPP(DistributedQueryProtobufSources DistributedQueryProtobufHeaders ${DistributedQueryProtoFiles})
+
 PROTOBUF_GENERATE_CPP(SqlProtobufSources SqlProtobufHeaders ${SqlProtoFiles})
 PROTOBUF_GENERATE_CPP(MetadataProtobufSources MetadataProtobufHeaders ${MetadataProtoFiles})
 PROTOBUF_GENERATE_CPP(KvsserviceProtobufSources KvsserviceProtobufHeaders ${KvsserviceProtoFiles})
+
+set(GENERATED_DISTRIBUTED_QUERY_PROTO_SRCS ${DistributedQueryProtobufSources})
 
 set(GENERATED_SQL_PROTO_SRCS ${SqlProtobufSources})
 set(GENERATED_METADATA_PROTO_SRCS ${MetadataProtobufSources})
@@ -36,6 +44,8 @@ set(GENERATED_KVSSERVICE_PROTO_SRCS ${KvsserviceProtobufSources})
 
 add_custom_target(build_protos
         DEPENDS
+        ${DistributedQueryProtobufSources}
+        ${DistributedQueryProtoFiles}
         ${SqlProtobufSources}
         ${SqlProtoFiles}
         ${MetadataProtobufSources}
@@ -49,6 +59,7 @@ install(DIRECTORY
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jogasaki
         FILES_MATCHING
         PATTERN "proto/sql/*.pb.h"
+        PATTERN "proto/distributed_query/*.pb.h"
         )
 
 install(DIRECTORY
@@ -71,6 +82,7 @@ file(GLOB SOURCES
         "jogasaki/data/*.cpp"
         "jogasaki/datastore/*.cpp"
         "jogasaki/error/*.cpp"
+        "jogasaki/dist/*.cpp"
         "jogasaki/external_log/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/batch/*.cpp"
@@ -136,6 +148,7 @@ list (APPEND SOURCES ${SRC_ALTIMETER_ENABLED})
 endif()
 
 set_source_files_properties(
+        ${GENERATED_DISTRIBUTED_QUERY_PROTO_SRCS}
         ${GENERATED_SQL_PROTO_SRCS}
         ${GENERATED_METADATA_PROTO_SRCS}
         ${GENERATED_KVSSERVICE_PROTO_SRCS}
@@ -143,8 +156,18 @@ set_source_files_properties(
         GENERATED TRUE
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
 )
+if(ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+    set_source_files_properties(jogasaki/dist/fixture_remote_catalog_provider.cpp
+        jogasaki/dist/remote_process_handler.cpp
+        jogasaki/api/resource/bridge.cpp
+        jogasaki/executor/process/flow.cpp
+        jogasaki/plan/compiler.cpp
+        PROPERTIES COMPILE_DEFINITIONS ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+endif()
+
 add_library(${ENGINE}
         ${SOURCES}
+        ${GENERATED_DISTRIBUTED_QUERY_PROTO_SRCS}
         ${GENERATED_SQL_PROTO_SRCS}
         ${GENERATED_METADATA_PROTO_SRCS}
         ${GENERATED_KVSSERVICE_PROTO_SRCS}

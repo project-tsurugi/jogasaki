@@ -13,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unistd.h>
 #include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
@@ -213,6 +216,103 @@ TEST_F(resource_bridge_test, invalid_udf_multi_secure_cfg) {
 
     auto c = api::resource::convert_config(cfg);
     EXPECT_FALSE(c);
+}
+
+TEST_F(resource_bridge_test, fixture_metadata_does_not_create_local_tables) {
+    if (!dist::distributed_query_fixtures_available()) { GTEST_SKIP(); }
+    auto path = std::filesystem::temp_directory_path() / ("jogasaki-bridge-fixture-" + std::to_string(::getpid()) + ".json");
+    std::ofstream{path} << R"({"version":1,"catalogs":[{"name":"remote_catalog","server":"worker","schemas":[{"name":"public","tables":[{"name":"remote_only","columns":[{"name":"id","type":"bigint","nullable":false}],"primary_key":["id"]}]}]}]})";
+    db_teardown();
+    auto cfg = std::make_shared<configuration>();
+    cfg->distributed_query_coordinator_enabled(true);
+    cfg->distributed_query_remote_servers({{"worker", "dns:///localhost:12345", false, dist::root_certificate_source::none, {}}});
+    cfg->distributed_query_catalog({dist::remote_catalog_source::fixture, path.string()});
+    db_setup(cfg);
+    std::filesystem::remove(path);
+    ASSERT_TRUE(db_impl()->remote_catalogs());
+    EXPECT_EQ(1, db_impl()->remote_catalogs()->catalogs().size());
+    EXPECT_FALSE(db_impl()->tables()->find_table("remote_only"));
+    auto borrowed = db_impl()->remote_catalogs();
+    execute_statement("CREATE TABLE local_only (id BIGINT PRIMARY KEY)");
+    EXPECT_TRUE(db_impl()->tables()->find_table("local_only"));
+    db_teardown();
+    EXPECT_EQ(1, borrowed->catalogs().size());
+    db_setup();
+}
+
+
+TEST_F(resource_bridge_test, remote_catalog_failure_allows_database_start_retry) {
+    ASSERT_EQ(status::ok, db_impl()->stop());
+    auto cfg = db_impl()->configuration();
+    cfg->distributed_query_coordinator_enabled(true);
+    cfg->distributed_query_remote_servers({});
+    cfg->distributed_query_catalog({dist::remote_catalog_source::rpc, {}});
+    EXPECT_EQ(status::err_invalid_argument, db_impl()->start());
+    cfg->distributed_query_remote_servers({{"worker", "dns:///localhost:12345", false, dist::root_certificate_source::none, {}}});
+    // nothing listens on the worker: catalog_source=rpc starts empty and does not call GetRemoteCatalog
+    ASSERT_EQ(status::ok, db_impl()->start());
+    auto manager = db_impl()->remote_catalogs_manager();
+    ASSERT_TRUE(manager);
+    ASSERT_TRUE(manager->entries());
+    EXPECT_TRUE(manager->entries()->empty());
+    EXPECT_TRUE(db_impl()->remote_server_channels().find_channel("worker"));
+    auto channel = db_impl()->remote_server_channels().find_channel("worker");
+    ASSERT_EQ(status::ok, db_impl()->stop());
+    ASSERT_EQ(status::ok, db_impl()->start());
+    EXPECT_NE(channel, db_impl()->remote_server_channels().find_channel("worker"));
+}
+
+TEST_F(resource_bridge_test, distributed_query_roles_are_independent) {
+    for (bool coordinator : {false, true}) {
+        for (bool remote : {false, true}) {
+            std::stringstream ss{};
+            ss << "[distributed_query_coordinator]\nenabled=" << (coordinator ? "true" : "false")
+               << "\n[distributed_query_remote]\nenabled=" << (remote ? "true" : "false")
+               << "\n[distributed_query_client]\nname=worker\nuri=dns:///localhost:12345\n";
+            tateyama::api::configuration::whole cfg{ss, "[distributed_query_coordinator]\nenabled=false\n[distributed_query_remote]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+            auto converted = api::resource::convert_config(cfg);
+            ASSERT_TRUE(converted);
+            EXPECT_EQ(coordinator, converted->distributed_query_coordinator_enabled());
+            EXPECT_EQ(coordinator ? 1U : 0U, converted->distributed_query_remote_servers().size());
+        }
+    }
+}
+
+TEST_F(resource_bridge_test, disabled_coordinator_ignores_invalid_client_settings) {
+    for (auto const& role : {"", "[distributed_query_coordinator]\nenabled=false\n"}) {
+        std::stringstream ss{std::string{role} + "[distributed_query_client]\nname=worker\nuri=invalid\nsecure=invalid\ncatalog_source=unknown\n"};
+        tateyama::api::configuration::whole cfg{ss, "[distributed_query_coordinator]\nenabled=false\n[distributed_query_remote]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+        auto converted = api::resource::convert_config(cfg);
+        ASSERT_TRUE(converted);
+        EXPECT_FALSE(converted->distributed_query_coordinator_enabled());
+        EXPECT_TRUE(converted->distributed_query_remote_servers().empty());
+        EXPECT_EQ(dist::remote_catalog_source::disabled, converted->distributed_query_catalog().source);
+    }
+}
+
+TEST_F(resource_bridge_test, enabled_coordinator_requires_remote_servers) {
+    for (auto const& client : {"", "[distributed_query_client]\nname=\nuri=\n"}) {
+        std::stringstream ss{std::string{"[distributed_query_coordinator]\nenabled=true\n"} + client};
+        tateyama::api::configuration::whole cfg{ss, "[distributed_query_coordinator]\nenabled=false\n[distributed_query_remote]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+        EXPECT_FALSE(api::resource::convert_config(cfg));
+    }
+}
+
+TEST_F(resource_bridge_test, invalid_coordinator_flag_is_rejected) {
+    std::stringstream ss{"[distributed_query_coordinator]\nenabled=invalid\n"};
+    tateyama::api::configuration::whole cfg{ss, "[distributed_query_coordinator]\nenabled=false\n[distributed_query_remote]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+    EXPECT_FALSE(api::resource::convert_config(cfg));
+}
+
+TEST_F(resource_bridge_test, disabled_coordinator_does_not_initialize_channels_or_catalogs) {
+    ASSERT_EQ(status::ok, db_impl()->stop());
+    auto cfg = db_impl()->configuration();
+    cfg->distributed_query_coordinator_enabled(false);
+    cfg->distributed_query_remote_servers({{"worker", "dns:///localhost:12345", false, dist::root_certificate_source::none, {}}});
+    cfg->distributed_query_catalog({dist::remote_catalog_source::rpc, {}});
+    ASSERT_EQ(status::ok, db_impl()->start());
+    EXPECT_FALSE(db_impl()->remote_server_channels().find_channel("worker"));
+    EXPECT_FALSE(db_impl()->remote_catalogs());
 }
 
 }

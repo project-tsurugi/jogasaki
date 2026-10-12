@@ -704,6 +704,8 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
     }
     rctx->enable_stats();
     auto& e = s.body();
+    // Execute against the catalog identities retained at compilation, even after DROP.
+    rctx->remote_catalogs(e->mirrors()->remote_catalogs());
     auto job = rctx->job();
     auto& ts = *rctx->scheduler();
 

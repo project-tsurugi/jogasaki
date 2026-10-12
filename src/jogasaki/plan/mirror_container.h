@@ -21,6 +21,8 @@
 
 #include <takatori/plan/process.h>
 
+#include <jogasaki/dist/operation_location.h>
+#include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/plan/statement_work_level.h>
@@ -110,12 +112,34 @@ public:
      */
     [[nodiscard]] storage::storage_operation const& storage_operation() const noexcept;
 
+    /**
+     * @brief set the process placement captured from the compiler's operation location result
+     * @param locations the captured placement, or nullptr if the compiler provided no such result
+     */
+    void process_locations(std::shared_ptr<dist::process_locations const> locations) noexcept;
+
+    /**
+     * @brief accessor to the captured process placement
+     * @returns the placement, or nullptr if not captured
+     */
+    [[nodiscard]] std::shared_ptr<dist::process_locations const> const& process_locations() const noexcept;
+
+    // Prepared and executable statements share this snapshot after catalog DROP.
+    void remote_catalogs(std::shared_ptr<dist::remote_catalog_snapshot const> snapshot) noexcept {
+        remote_catalogs_ = std::move(snapshot);
+    }
+    [[nodiscard]] std::shared_ptr<dist::remote_catalog_snapshot const> const& remote_catalogs() const noexcept {
+        return remote_catalogs_;
+    }
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
     std::shared_ptr<meta::external_record_meta> external_writer_meta_{};
     statement_work_level work_level_{};
     storage::storage_operation storage_operation_{};
+    std::shared_ptr<dist::process_locations const> process_locations_{};
+    std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
 };
 
 } // namespace jogasaki::plan

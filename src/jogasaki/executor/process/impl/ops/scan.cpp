@@ -45,6 +45,7 @@
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/request_cancel_config.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
@@ -169,7 +170,9 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto scan_block_size = global::config_pool()->scan_block_size();
     auto scan_yield_interval = static_cast<std::int64_t>(global::config_pool()->scan_yield_interval());
     auto previous_time = std::chrono::steady_clock::now();
-    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::scan);
+    // A remote worker request lives only within its RPC, so RPC cancellation is always observed.
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::scan)
+        || (ctx.req_context() != nullptr && ctx.req_context()->remote_worker());
     while(true) {
         if(ctx.state() != context_state::calling_child) {
             if (cancel_enabled && cancel_if_needed(ctx)) {

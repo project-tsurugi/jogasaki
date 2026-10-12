@@ -15,6 +15,11 @@
  */
 #pragma once
 
+
+#include <optional>
+#include <string>
+#include <utility>
+
 #include <takatori/graph/graph.h>
 #include <takatori/plan/graph.h>
 #include <takatori/relation/expression_kind.h>
@@ -107,6 +112,22 @@ public:
         return host_variables_;
     }
 
+    /**
+     * @brief records the placement captured from the compiler's operation location result
+     * @param server the remote server name, or empty for the coordinator
+     */
+    void captured_location(std::string server) {
+        captured_location_ = std::move(server);
+    }
+
+    /**
+     * @brief accessor to the captured placement
+     * @return the placement, or empty if no operation location result was captured
+     */
+    [[nodiscard]] std::optional<std::string> const& captured_location() const noexcept {
+        return captured_location_;
+    }
+
 private:
     relation::graph_type const* relations_{};
     yugawara::compiled_info info_{};
@@ -114,6 +135,7 @@ private:
     maybe_shared_ptr<impl::block_indices const> block_indices_{};
     processor_details details_{};
     variable_table const* host_variables_{};
+    std::optional<std::string> captured_location_{};
 
     processor_details create_details();
 };

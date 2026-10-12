@@ -41,6 +41,7 @@
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/request_cancel_config.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
@@ -171,7 +172,9 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     std::string_view k{};
     std::string_view v{};
     auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
-    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::find);
+    // A remote worker request lives only within its RPC, so RPC cancellation is always observed.
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::find)
+        || (ctx.req_context() != nullptr && ctx.req_context()->remote_worker());
     if (ctx.state() == context_state::calling_child) {
         VLOG_LP(log_trace) << "resuming find op. after downstream yield";
         if (use_secondary_) {

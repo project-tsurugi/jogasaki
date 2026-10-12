@@ -25,10 +25,16 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/transaction_context.h>
 
 namespace jogasaki::api::impl {
 
+/**
+ * @param scheduler_override task scheduler used for the request, statement and job registration instead of
+ * the database task scheduler. The caller must keep it alive until the job completes and the returned
+ * request context is released. Pass nullptr to use the database task scheduler.
+ */
 std::shared_ptr<request_context> create_request_context(
     impl::database& db,
     std::shared_ptr<transaction_context> tx,
@@ -36,7 +42,8 @@ std::shared_ptr<request_context> create_request_context(
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
     request_info const& req_info,
     bool has_result_records,
-    std::shared_ptr<scheduler::request_detail> request_detail = nullptr
+    std::shared_ptr<scheduler::request_detail> request_detail = nullptr,
+    scheduler::task_scheduler* scheduler_override = nullptr
 );
 
 }

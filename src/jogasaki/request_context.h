@@ -46,6 +46,7 @@
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki {
+namespace dist { class remote_server_channel_manager; class remote_catalog_snapshot; class remote_catalog_manager; }
 
 using takatori::util::maybe_shared_ptr;
 
@@ -65,6 +66,16 @@ public:
      * @brief create default context object
      */
     request_context();
+    void remote_catalogs(std::shared_ptr<dist::remote_catalog_snapshot const> value) noexcept { remote_catalogs_ = std::move(value); }
+    [[nodiscard]] std::shared_ptr<dist::remote_catalog_snapshot const> const& remote_catalogs() const noexcept { return remote_catalogs_; }
+    void remote_server_channels(dist::remote_server_channel_manager* value) noexcept { remote_server_channels_ = value; }
+    [[nodiscard]] dist::remote_server_channel_manager* remote_server_channels() const noexcept { return remote_server_channels_; }
+    /** @brief Retains the database-owned runtime registry during catalog DDL execution. */
+    void remote_catalogs_manager(std::shared_ptr<dist::remote_catalog_manager> value) noexcept { remote_catalogs_manager_ = std::move(value); }
+    [[nodiscard]] std::shared_ptr<dist::remote_catalog_manager> const& remote_catalogs_manager() const noexcept { return remote_catalogs_manager_; }
+    void remote_worker(bool value) noexcept { remote_worker_ = value; }
+    [[nodiscard]] bool remote_worker() const noexcept { return remote_worker_; }
+
 
     /**
      * @brief create new context object
@@ -296,6 +307,10 @@ public:
     void writer_pool(std::shared_ptr<executor::io::writer_pool> arg) noexcept;
 
 private:
+    std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
+    dist::remote_server_channel_manager* remote_server_channels_{};
+    std::shared_ptr<dist::remote_catalog_manager> remote_catalogs_manager_{};
+    bool remote_worker_{};
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
     std::shared_ptr<kvs::database> database_{};

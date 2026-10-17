@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "catalogs": [{
+    "name": "remote_catalog",
+    "server": "worker",
+    "schemas": [{
+      "name": "public",
+      "tables": [{
+        "name": "t",
+        "columns": [
+          {"name": "c0", "type": "bigint", "nullable": false},
+          {"name": "c1", "type": "bigint", "nullable": true}
+        ],
+        "primary_key": ["c0"]
+      }]
+    }]
+  }]
+}

@@ -172,3 +172,8 @@ foreach(file ${SRCS})
     endif()
 endforeach()
 
+
+if(ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+    target_compile_definitions(remote_process_handler_test PRIVATE ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+    target_compile_definitions(remote_process_sql_test PRIVATE ENABLE_DISTRIBUTED_QUERY_FIXTURES)
+endif()

@@ -78,6 +78,8 @@
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/dist/rpc_remote_catalog_fetcher.h>
+#include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info_factory.h>
@@ -164,6 +166,22 @@ std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
 }
 
+dist::remote_server_channel_manager& database::remote_server_channels() noexcept {
+    return *remote_server_channels_;
+}
+
+std::shared_ptr<dist::remote_catalog_snapshot const> database::remote_catalogs() const noexcept {
+    return remote_catalogs_manager_ ? remote_catalogs_manager_->snapshot() : remote_catalogs_;
+}
+
+std::shared_ptr<dist::remote_catalog_manager> database::remote_catalogs_manager() const noexcept {
+    return remote_catalogs_manager_;
+}
+
+std::shared_ptr<dist::remote_function_id_registry> const& database::remote_function_ids() const noexcept {
+    return remote_function_ids_;
+}
+
 void database::reset_tables() {
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
 }
@@ -174,6 +192,10 @@ std::shared_ptr<yugawara::storage::configurable_provider> const& database::table
 
 std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::aggregate_functions() const noexcept {
     return aggregate_functions_;
+}
+
+std::shared_ptr<yugawara::function::configurable_provider> const& database::regular_functions() const noexcept {
+    return regular_functions_;
 }
 
 #define LOGCFG (LOG(INFO) << lp << std::boolalpha)
@@ -270,6 +292,77 @@ status database::init_kvs_db() noexcept {
     }
     return status::ok;
 }
+status database::initialize_remote_catalogs() {
+    // Formal startup is empty. CREATE fetches over RPC without an additional catalog setting.
+    // Only the development fixture replaces the fetcher and preloads metadata.
+    std::shared_ptr<dist::remote_catalog_fetcher> fetcher = std::make_shared<dist::rpc_remote_catalog_fetcher>();
+    std::shared_ptr<dist::snapshot_remote_catalog_fetcher> fixture_fetcher{};
+    if (cfg_->distributed_query_catalog().source == dist::remote_catalog_source::fixture) {
+        std::string diagnostic{};
+        if (auto st = dist::load_remote_catalogs(cfg_->distributed_query_catalog(),
+                cfg_->distributed_query_remote_servers(), remote_catalogs_, diagnostic); st != status::ok) {
+            LOG_LP(ERROR) << diagnostic;
+            return st;
+        }
+        fixture_fetcher = std::make_shared<dist::snapshot_remote_catalog_fetcher>(remote_catalogs_);
+        fetcher = fixture_fetcher;
+    }
+    // local built-in and user-defined declarations were registered by init(); remote IDs never collide with them
+    remote_function_ids_ = std::make_shared<dist::remote_function_id_registry>();
+    regular_functions_->each([&](std::shared_ptr<yugawara::function::declaration const> const& function) {
+        if (function) remote_function_ids_->exclude_function(function->definition_id());
+    });
+    aggregate_functions_->each([&](std::shared_ptr<yugawara::aggregate::declaration const> const& function) {
+        if (function) remote_function_ids_->exclude_aggregate_function(function->definition_id());
+    });
+    remote_catalogs_manager_ = std::make_shared<dist::remote_catalog_manager>(std::move(fetcher),
+        dist::remote_catalog_manager::default_fetch_timeout, remote_function_ids_);
+    if (auto st = remote_catalogs_manager_->start(); st != status::ok) return st;
+    if (fixture_fetcher) {
+        LOG_LP(WARNING) << "distributed query catalog source=fixture (development metadata)";
+        for (auto const& reference : fixture_fetcher->references()) {
+            std::string diagnostic{};
+            if (auto st = remote_catalogs_manager_->create(reference, *remote_server_channels_, diagnostic);
+                    st != status::ok) {
+                LOG_LP(ERROR) << diagnostic;
+                return st;
+            }
+        }
+    }
+    return status::ok;
+}
+
+status database::start_distributed_query() {
+    remote_server_channels_ = std::make_unique<dist::remote_server_channel_manager>();
+    remote_location_registry_ = std::make_shared<dist::location_registry>();
+    if (cfg_->distributed_query_coordinator_enabled()) {
+        if (cfg_->distributed_query_remote_servers().empty()) {
+            LOG_LP(ERROR) << "distributed query coordinator requires at least one remote server";
+            return status::err_invalid_argument;
+        }
+#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
+        if (auto* override_server = std::getenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER"); override_server && *override_server) {
+            LOG_LP(WARNING) << "development remote execution override is enabled; matching local plans may be sent to a remote worker";
+        }
+#endif
+        if (auto st = remote_server_channels_->start(cfg_->distributed_query_remote_servers()); st != status::ok) {
+            return st;
+        }
+        return initialize_remote_catalogs();
+    }
+    return status::ok;
+}
+
+void database::cleanup_failed_start() noexcept {
+    try {
+        (void) shutdown();
+    } catch (std::exception const& e) {
+        LOG_LP(ERROR) << "start failure cleanup failed: " << e.what();
+    } catch (...) {
+        LOG_LP(ERROR) << "start failure cleanup failed with an unknown exception";
+    }
+}
+
 status database::start() {
     LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
     dump_public_configurations(*cfg_);
@@ -284,15 +377,12 @@ status database::start() {
     bool startup_completed = false;
     utils::finally rollback{[this, &startup_completed] {
         if (!startup_completed) {
-            try {
-                (void) shutdown();
-            } catch (std::exception const& e) {
-                LOG_LP(ERROR) << "start failure cleanup failed: " << e.what();
-            } catch (...) {
-                LOG_LP(ERROR) << "start failure cleanup failed with an unknown exception";
-            }
+            cleanup_failed_start();
         }
     }};
+    if (auto st = start_distributed_query(); st != status::ok) {
+        return st;
+    }
     if(auto st = init_kvs_db(); st != status::ok) {
         return st;
     }
@@ -382,6 +472,13 @@ status database::stop() {
 }
 
 status database::shutdown() {
+    if (remote_catalogs_manager_) (void) remote_catalogs_manager_->stop();
+    remote_catalogs_manager_.reset();
+    // snapshots still borrowed elsewhere keep their declarations; their leases no longer have IDs to release
+    remote_function_ids_.reset();
+    remote_server_channels_->stop();
+    remote_catalogs_.reset();
+    remote_location_registry_.reset();
     stop_requested_ = true;
     if (maintenance_thread_.joinable()) {
         maintenance_stop_requested_ = true;
@@ -550,9 +647,23 @@ status database::prepare_common(
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
+    ctx->remote_catalogs(remote_catalogs());
     ctx->aggregate_provider(aggregate_functions_);
     ctx->function_provider(regular_functions_);
     ctx->variable_provider(std::move(provider));
+    if (cfg_->distributed_query_coordinator_enabled() && ctx->remote_catalogs()) {
+        // Name resolution and symbol locations retain the same catalog/declaration identities.
+        try {
+            ctx->symbol_locations(std::make_shared<dist::symbol_locations>(
+                ctx->remote_catalogs(), remote_location_registry_, tables_, regular_functions_, aggregate_functions_,
+                ctx->variable_provider()));
+        } catch (std::exception const& e) {
+            out = create_error_info(error_code::unsupported_compiler_feature_exception, e.what(), status::err_unsupported);
+            req->status(scheduler::request_detail_status::finishing);
+            log_request(*req, false);
+            return status::err_unsupported;
+        }
+    }
     ctx->option(option);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         req->status(scheduler::request_detail_status::finishing);
@@ -872,7 +983,19 @@ status database::resolve_common(
     ctx->aggregate_provider(aggregate_functions_);
     ctx->function_provider(regular_functions_);
     auto& ps = stmt.body();
+    ctx->remote_catalogs(ps->mirrors()->remote_catalogs());
     ctx->variable_provider(ps->host_variables());
+    if (cfg_->distributed_query_coordinator_enabled() && ctx->remote_catalogs()) {
+        // Name resolution and symbol locations retain the same catalog/declaration identities.
+        try {
+            ctx->symbol_locations(std::make_shared<dist::symbol_locations>(
+                ctx->remote_catalogs(), remote_location_registry_, tables_, regular_functions_, aggregate_functions_,
+                ctx->variable_provider()));
+        } catch (std::exception const& e) {
+            out = create_error_info(error_code::unsupported_compiler_feature_exception, e.what(), status::err_unsupported);
+            return status::err_unsupported;
+        }
+    }
     ctx->prepared_statement(ps);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {

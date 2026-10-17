@@ -117,6 +117,10 @@ model::step_kind step::kind() const noexcept {
     return model::step_kind::process;
 }
 
+std::shared_ptr<processor_info> const& step::info() const noexcept {
+    return info_;
+}
+
 std::size_t step::partitions() const noexcept {
     if (info_->details().has_scan_operator() ||
         info_->details().has_find_operator() ||
@@ -126,10 +130,12 @@ std::size_t step::partitions() const noexcept {
     return global::config_pool()->default_partitions();
 }
 
+void step::prepare_io_info() {
+    if (!io_info_) io_info_ = create_io_info();
+}
+
 void step::activate(request_context& rctx) {
-    if(! io_info_) {
-        io_info_ = create_io_info();
-    }
+    prepare_io_info();
     data_flow_object(
         rctx,
         std::make_unique<flow>(

@@ -1270,7 +1270,7 @@ make_udf_server_stream_lambda(udf_client_list_ptr const& clients,
         }
         auto column_types = jogasaki::udf::bridge::build_output_wire_kinds(*fn);
         return std::make_unique<udf::data::udf_any_sequence_stream>(
-            std::move(udf_stream), std::move(column_types), ctx.resource());
+            std::move(udf_stream), std::move(column_types), ctx.resource(), clients);
     };
 }
 /**
@@ -1509,8 +1509,16 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
     // @see
     // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
     yugawara::function::declaration::definition_id_type current_id = 19999;
+    struct function_resources {
+        std::shared_ptr<plugin::udf::plugin_api> plugin;
+        plugin::udf::generic_client_list clients;
+    };
     for (auto const& tup : plugins) {
-        auto clients = std::make_shared<const plugin::udf::generic_client_list>(std::get<1>(tup));
+        // The callable retains descriptors, clients, and their shared library together.
+        auto resources = std::make_shared<function_resources>(
+            function_resources{std::get<0>(tup), std::get<1>(tup)});
+        // An aliasing pointer keeps the descriptor API alive through existing client-list captures.
+        auto clients = std::shared_ptr<const plugin::udf::generic_client_list>{resources, &resources->clients};
         auto selector = std::make_shared<plugin::udf::round_robin_selector>();
         auto plugin = std::get<0>(tup);
         auto cfg = std::get<2>(tup);

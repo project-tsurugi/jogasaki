@@ -71,6 +71,7 @@
 #include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/forward/source.h>
 #include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/function/function_registry.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
@@ -220,6 +221,8 @@ class cli {
 public:
     // entry point from main
     int operator()(params& param, std::shared_ptr<configuration> const& cfg) {
+        auto functions = std::make_shared<executor::function::function_registry>();
+        (void) global::function_registry(functions);
         run(param, cfg);
         utils::get_watch().set_point(time_point_release_pool, 0);
         LOG(INFO) << "start releasing memory pool";

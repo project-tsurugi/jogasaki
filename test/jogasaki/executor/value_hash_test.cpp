@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <limits>
 #include <gtest/gtest.h>
 
@@ -46,6 +48,35 @@ TEST_F(value_hash_test, float4_nan) {
     float nan1 = -std::numeric_limits<float>::quiet_NaN();
     ASSERT_TRUE(std::signbit(nan1));
     expect_same_hash(nan0, nan1);
+}
+
+TEST_F(value_hash_test, float8_nan_different_payloads) {
+    // IEEE 754 quiet NaNs with the same sign and different payloads.
+    std::uint64_t bits0 = 0x7ff8000000000001ULL;
+    std::uint64_t bits1 = 0x7ff8000000000002ULL;
+    double nan0{};
+    double nan1{};
+    static_assert(sizeof(nan0) == sizeof(bits0));
+    std::memcpy(&nan0, &bits0, sizeof(nan0));
+    std::memcpy(&nan1, &bits1, sizeof(nan1));
+    ASSERT_TRUE(std::isnan(nan0));
+    ASSERT_TRUE(std::isnan(nan1));
+    expect_same_hash(nan0, nan1);
+    expect_same_hash(nan0, std::numeric_limits<double>::quiet_NaN());
+}
+
+TEST_F(value_hash_test, float4_nan_different_payloads) {
+    std::uint32_t bits0 = 0x7fc00001U;
+    std::uint32_t bits1 = 0x7fc00002U;
+    float nan0{};
+    float nan1{};
+    static_assert(sizeof(nan0) == sizeof(bits0));
+    std::memcpy(&nan0, &bits0, sizeof(nan0));
+    std::memcpy(&nan1, &bits1, sizeof(nan1));
+    ASSERT_TRUE(std::isnan(nan0));
+    ASSERT_TRUE(std::isnan(nan1));
+    expect_same_hash(nan0, nan1);
+    expect_same_hash(nan0, std::numeric_limits<float>::quiet_NaN());
 }
 
 TEST_F(value_hash_test, float_zero) {

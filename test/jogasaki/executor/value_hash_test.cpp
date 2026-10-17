@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cmath>
+#include <limits>
 #include <gtest/gtest.h>
 
 #include <takatori/decimal/triple.h>
@@ -29,6 +31,26 @@ template <class T>
 void expect_same_hash(T x, T y) {
     ASSERT_TRUE(equal_to(x, y));
     EXPECT_EQ(value_hash<T>{}(x), value_hash<T>{}(y));
+}
+
+TEST_F(value_hash_test, float8_nan) {
+    // NaNs with different bit patterns
+    double nan0 = std::numeric_limits<double>::quiet_NaN();
+    double nan1 = -std::numeric_limits<double>::quiet_NaN();
+    ASSERT_TRUE(std::signbit(nan1));
+    expect_same_hash(nan0, nan1);
+}
+
+TEST_F(value_hash_test, float4_nan) {
+    float nan0 = std::numeric_limits<float>::quiet_NaN();
+    float nan1 = -std::numeric_limits<float>::quiet_NaN();
+    ASSERT_TRUE(std::signbit(nan1));
+    expect_same_hash(nan0, nan1);
+}
+
+TEST_F(value_hash_test, float_zero) {
+    expect_same_hash(0.0, -0.0);
+    expect_same_hash(0.0F, -0.0F);
 }
 
 TEST_F(value_hash_test, decimal_different_representations) {

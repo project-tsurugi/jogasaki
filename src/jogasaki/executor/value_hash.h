@@ -15,8 +15,10 @@
  */
 #pragma once
 
+#include <cmath>
 #include <cstddef>
 #include <functional>
+#include <limits>
 
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
@@ -34,6 +36,33 @@ template <class T>
 struct value_hash {
     std::size_t operator()(T const& value) const noexcept {
         return std::hash<T>{}(value);
+    }
+};
+
+template <class T>
+std::size_t float_hash(T value) noexcept {
+    // NaNs can have different bit patterns (e.g. calculated by Infinity - Infinity), so normalize them
+    if(std::isnan(value)) {
+        return std::hash<T>{}(std::numeric_limits<T>::quiet_NaN());
+    }
+    // +0 and -0 are equal
+    if(value == 0) {
+        return std::hash<T>{}(T{0});
+    }
+    return std::hash<T>{}(value);
+}
+
+template <>
+struct value_hash<runtime_t<meta::field_type_kind::float4>> {
+    std::size_t operator()(runtime_t<meta::field_type_kind::float4> const& value) const noexcept {
+        return float_hash(value);
+    }
+};
+
+template <>
+struct value_hash<runtime_t<meta::field_type_kind::float8>> {
+    std::size_t operator()(runtime_t<meta::field_type_kind::float8> const& value) const noexcept {
+        return float_hash(value);
     }
 };
 

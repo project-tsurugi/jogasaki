@@ -243,14 +243,7 @@ namespace details {
 template<class T>
 struct distinct_value_equal_to {
     bool operator()(T const& x, T const& y) const noexcept {
-        return std::equal_to<T>{}(x, y);
-    }
-};
-
-template<>
-struct distinct_value_equal_to<runtime_t<kind::decimal>> {
-    bool operator()(runtime_t<kind::decimal> const& x, runtime_t<kind::decimal> const& y) const noexcept {
-        // compare numerically, not by the representation
+        // use the same equivalence as grouping (e.g. decimals are compared numerically, NaNs are equal)
         return executor::equal_to(x, y);
     }
 };

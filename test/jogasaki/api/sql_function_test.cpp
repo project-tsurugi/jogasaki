@@ -228,6 +228,42 @@ TEST_F(sql_function_test, count_distinct_null) {
     EXPECT_EQ(0, rec.get_value<std::int64_t>(0));
 }
 
+TEST_F(sql_function_test, count_distinct_nan) {
+    // NaNs are treated as the same value as in grouping
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 'NaN')");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 'NaN')");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 1.0)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT COUNT(distinct C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(2, rec.get_value<std::int64_t>(0));
+}
+
+TEST_F(sql_function_test, count_distinct_nan_different_bit_patterns) {
+    // NaN stored in the table is normalized to quiet_NaN, while NaN calculated by expression (e.g. Infinity - Infinity)
+    // can have different bit pattern (e.g. sign bit set on x86). They should be treated as the same value.
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 'NaN')");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 'Infinity')");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT COUNT(distinct CASE WHEN C0 = 1 THEN C1 ELSE C1 - C1 END) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(1, rec.get_value<std::int64_t>(0));
+}
+
+TEST_F(sql_function_test, group_by_nan_different_bit_patterns) {
+    // same as count_distinct_nan_different_bit_patterns, but NaNs with different bit patterns are used as group key
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 'NaN')");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 'Infinity')");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT COUNT(*) FROM (SELECT CASE WHEN C0 = 1 THEN C1 ELSE C1 - C1 END AS K FROM T0) R GROUP BY K", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(2, result[0].get_value<std::int64_t>(0));
+}
+
 TEST_F(sql_function_test, count_rows) {
     execute_statement( "INSERT INTO T0 (C0) VALUES (1)");
     execute_statement( "INSERT INTO T0 (C0) VALUES (2)");

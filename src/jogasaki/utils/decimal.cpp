@@ -182,6 +182,24 @@ takatori::decimal::triple read_decimal(std::string_view data, std::size_t scale)
     };
 }
 
+takatori::decimal::triple reduce_triple(takatori::decimal::triple value) {
+    if (value.sign() == 0) {
+        return {};
+    }
+    auto coefficient = (static_cast<unsigned __int128>(value.coefficient_high()) << 64U) | value.coefficient_low();
+    auto exponent = value.exponent();
+    while (coefficient % 10U == 0) {
+        coefficient /= 10U;
+        ++exponent;
+    }
+    return {
+        value.sign(),
+        static_cast<std::uint64_t>(coefficient >> 64U),
+        static_cast<std::uint64_t>(coefficient),
+        exponent
+    };
+}
+
 void create_decimal(
     std::int8_t sign,
     std::uint64_t lo,

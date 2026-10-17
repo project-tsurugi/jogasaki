@@ -21,8 +21,21 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/const_record_ref.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/value_hash.h>
 
 namespace jogasaki::executor {
+
+namespace impl {
+
+template <meta::field_type_kind K>
+struct hash_calculator {
+    std::size_t operator()(accessor::const_record_ref a, std::size_t offset) {
+        using rtype = runtime_t<K>;
+        return value_hash<rtype>{}(a.get_value<rtype>(offset));
+    }
+};
+
+}  // namespace impl
 
 /**
  * @brief record hash
@@ -72,13 +85,7 @@ private:
     using kind = meta::field_type_kind;
 
     template <kind K>
-    struct hash_calculator {
-        hash_value operator()(accessor::const_record_ref a, std::size_t offset) {
-            using rtype = runtime_t<K>;
-            auto l = a.get_value<rtype>(offset);
-            return std::hash<rtype>{}(l);
-        }
-    };
+    using hash_calculator = impl::hash_calculator<K>;
 
     [[nodiscard]] hash_value hash_field(accessor::const_record_ref record, std::size_t field_index) const {
         if(meta_->nullable(field_index) && record.is_null(meta_->nullity_offset(field_index))) {

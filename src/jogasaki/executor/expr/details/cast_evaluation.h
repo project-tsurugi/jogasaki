@@ -263,7 +263,10 @@ any as_triple(
  * @param ctx the evaluator context
  * @param precision the precision of the target decimal
  * @param scale the scale of the target decimal
- * @return data::any with reduced (i.e. no trailing zeros in coefficient) triple that fits with the given precision and scale
+ * @return data::any with triple that fits with the given precision and scale. If `scale` is given, the exponent of
+ * the triple is `-scale`.
+ * If both `precision` and `scale` are nullopt (i.e. decimal(*,*)), the triple is reduced (i.e. no trailing zeros in
+ * coefficient).
  * @return data::any with error_kind::unsupported if the given `scale` is nullopt while `precision` is not
  * @note this is private functionality, accessible from outside just for testing
  *

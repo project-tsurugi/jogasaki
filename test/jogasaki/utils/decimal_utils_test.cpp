@@ -225,4 +225,27 @@ TEST_F(decimal_utils_test, negative_min_representable_by_triple_plus_one) {
     EXPECT_EQ(17, sz);
 }
 
+TEST_F(decimal_utils_test, reduce_removes_trailing_zeros) {
+    using triple = takatori::decimal::triple;
+    EXPECT_EQ((triple{1, 0, 1, 0}), utils::reduce_triple(triple{1, 0, 10, -1}));
+    EXPECT_EQ((triple{1, 0, 1, 0}), utils::reduce_triple(triple{1, 0, 100, -2}));
+    EXPECT_EQ((triple{-1, 0, 15, -1}), utils::reduce_triple(triple{-1, 0, 1500, -3}));
+    EXPECT_EQ((triple{1, 0, 1, 2}), utils::reduce_triple(triple{1, 0, 100, 0}));
+    EXPECT_EQ((triple{1, 0, 123, -2}), utils::reduce_triple(triple{1, 0, 123, -2}));
+}
+
+TEST_F(decimal_utils_test, reduce_zero) {
+    using triple = takatori::decimal::triple;
+    EXPECT_EQ((triple{}), utils::reduce_triple(triple{0, 0, 0, -5}));
+    EXPECT_EQ((triple{}), utils::reduce_triple(triple{0, 0, 0, 3}));
+}
+
+TEST_F(decimal_utils_test, reduce_large_coefficient) {
+    using triple = takatori::decimal::triple;
+    // 10^38 = 0x4B3B4CA85A86C47A098A224000000000
+    EXPECT_EQ((triple{1, 0, 1, 38}), utils::reduce_triple(triple{1, 0x4B3B4CA85A86C47AUL, 0x098A224000000000UL, 0}));
+    // 3 * 10^20 = 0x1043561A8829300000 whose coefficient spans both upper and lower 64-bits
+    EXPECT_EQ((triple{-1, 0, 3, 0}), utils::reduce_triple(triple{-1, 0x10UL, 0x43561A8829300000UL, -20}));
+}
+
 }  // namespace jogasaki::testing

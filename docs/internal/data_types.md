@@ -93,7 +93,8 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
   - 任意の `triple` は `decimal::Decimal` へ変換可能 
     - ただしこの変換は単射ではない
       - trailing zeroを加えて指数を調整した `triple` も同じ `Decimal` に変換される
-    - trailing zeroを除けば一意なので、演算や変換は可能な限りtrailing zeroを除去した形(reduced)で出力するようにする
+    - 互いに等しく比較される `triple` のうち、trailing zeroを除去した形(reduced)のものは一意に定まる
+    - 演算や変換の結果がreducedであることは保証しない(`DECIMAL(*,*)` へのキャストなど一部の処理のみreducedで戻す)
 
 ### 任意長のprecision/scale
 

@@ -47,6 +47,7 @@
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/equal_to.h>
 #include <jogasaki/executor/function/aggregate_function_info.h>
 #include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
@@ -54,6 +55,7 @@
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/value_hash.h>
 #include <jogasaki/memory/page_or_heap_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type.h>
@@ -239,9 +241,24 @@ namespace builtin {
 namespace details {
 
 template<class T>
+struct distinct_value_equal_to {
+    bool operator()(T const& x, T const& y) const noexcept {
+        return std::equal_to<T>{}(x, y);
+    }
+};
+
+template<>
+struct distinct_value_equal_to<runtime_t<kind::decimal>> {
+    bool operator()(runtime_t<kind::decimal> const& x, runtime_t<kind::decimal> const& y) const noexcept {
+        // compare numerically, not by the representation
+        return executor::equal_to(x, y);
+    }
+};
+
+template<class T>
 static std::int64_t count_distinct(data::value_store const& store) {
     using hash_table_allocator = boost::container::pmr::polymorphic_allocator<T>;
-    using hash_set = tsl::hopscotch_set<T, std::hash<T>, std::equal_to<>, hash_table_allocator>;
+    using hash_set = tsl::hopscotch_set<T, executor::value_hash<T>, distinct_value_equal_to<T>, hash_table_allocator>;
 
     // The bucket array is a single contiguous allocation of hopscotch buckets.
     // Its element type depends on the neighborhood size. We borrow the default used in tsl::hopscotch_set.

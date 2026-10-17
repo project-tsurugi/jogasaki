@@ -66,6 +66,17 @@ bool validate_decimal_coefficient(std::string_view buf);
  */
 takatori::decimal::triple read_decimal(std::string_view data, std::size_t scale);
 
+/**
+ * @brief reduce the decimal representation by removing trailing zeros in the coefficient
+ * @details numerically equal decimals can have different representations (e.g. 1.0 = (10, -1) and 1 = (1, 0)).
+ * This function converts such values into the identical representation so that they can be hashed or compared
+ * with representation-based equality. Zero is reduced to exponent 0. This is equivalent to `reduce` operation
+ * in mpdecimal (General Decimal Arithmetic Specification) except that the coefficient is not rounded.
+ * @param value the source decimal value
+ * @return the reduced decimal value
+ */
+takatori::decimal::triple reduce_triple(takatori::decimal::triple value);
+
 constexpr std::size_t max_decimal_length = sizeof(std::uint64_t) * 2 + 1;
 
 using decimal_buffer = std::array<std::uint8_t, max_decimal_length>;

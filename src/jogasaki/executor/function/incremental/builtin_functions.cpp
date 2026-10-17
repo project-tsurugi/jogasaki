@@ -53,6 +53,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/canonicalize_nan.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
 
@@ -662,7 +663,7 @@ namespace builtin {
 
 template <class T>
 static T plus(T a, T b) {
-    return a + b;
+    return utils::canonicalize_nan(a + b);
 }
 
 template <>
@@ -786,7 +787,7 @@ void count_rows_pre(
 
 template <class T>
 static T div_by_count(T a, runtime_t<kind::int8> b) {
-    return a / b;
+    return utils::canonicalize_nan(a / b);
 }
 
 template <>

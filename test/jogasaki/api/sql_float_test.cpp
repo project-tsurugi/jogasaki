@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
+#include <cstdint>
+#include <cstring>
 #include <initializer_list>
+#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -159,6 +162,78 @@ TEST_F(sql_float_test, order_float_values) {
         EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"Infinity"})), result[1]);
         EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"0"})), result[2]);
         EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"-Infinity"})), result[3]);
+    }
+}
+
+template <class T>
+static bool is_canonical_nan(T value) {
+    // NaN appearing in the calculation should be canonicalized to quiet_NaN (see docs/internal/data_types.md)
+    using bits_type = std::conditional_t<sizeof(T) == sizeof(std::uint32_t), std::uint32_t, std::uint64_t>;
+    T expected = std::numeric_limits<T>::quiet_NaN();
+    bits_type actual_bits{};
+    bits_type expected_bits{};
+    std::memcpy(&actual_bits, &value, sizeof(T));
+    std::memcpy(&expected_bits, &expected, sizeof(T));
+    return actual_bits == expected_bits;
+}
+
+TEST_F(sql_float_test, arithmetic_nan_canonicalized) {
+    // NaN calculated by arithmetic operations can have different bit pattern (e.g. sign bit set on x86)
+    execute_statement("create table t (pk int primary key, c0 DOUBLE, c1 REAL)");
+    execute_statement("insert into t values (0, CAST('Infinity' AS DOUBLE), CAST('Infinity' AS REAL))");
+    execute_statement("insert into t values (1, CAST('NaN' AS DOUBLE), CAST('NaN' AS REAL))");
+    for(auto&& expr : {
+        "c0 - c0 FROM t WHERE pk = 0",
+        "c0 + (-c0) FROM t WHERE pk = 0",
+        "c0 * 0e0 FROM t WHERE pk = 0",
+        "c0 / c0 FROM t WHERE pk = 0",
+        "-c0 FROM t WHERE pk = 1",
+    }) {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT "s + expr, result);
+        ASSERT_EQ(1, result.size());
+        auto v = result[0].get_value<double>(0);
+        EXPECT_TRUE(is_canonical_nan(v)) << expr;
+    }
+    for(auto&& expr : {
+        "c1 - c1 FROM t WHERE pk = 0",
+        "c1 * CAST(0 AS REAL) FROM t WHERE pk = 0",
+        "c1 / c1 FROM t WHERE pk = 0",
+        "-c1 FROM t WHERE pk = 1",
+    }) {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT "s + expr, result);
+        ASSERT_EQ(1, result.size());
+        auto v = result[0].get_value<float>(0);
+        EXPECT_TRUE(is_canonical_nan(v)) << expr;
+    }
+}
+
+TEST_F(sql_float_test, aggregate_nan_canonicalized) {
+    // NaN calculated in aggregate functions (e.g. Infinity + (-Infinity)) should be canonicalized too
+    execute_statement("create table t (pk int primary key, c0 DOUBLE, c1 REAL)");
+    execute_statement("insert into t values (0, CAST('Infinity' AS DOUBLE), CAST('Infinity' AS REAL))");
+    execute_statement("insert into t values (1, CAST('-Infinity' AS DOUBLE), CAST('-Infinity' AS REAL))");
+    for(auto&& expr : {
+        "sum(c0) FROM t",
+        "avg(c0) FROM t",
+        "max(c0 - c0) FROM t",
+    }) {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT "s + expr, result);
+        ASSERT_EQ(1, result.size());
+        auto v = result[0].get_value<double>(0);
+        EXPECT_TRUE(is_canonical_nan(v)) << expr;
+    }
+    for(auto&& expr : {
+        "sum(c1) FROM t",
+        "avg(c1) FROM t",
+    }) {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT "s + expr, result);
+        ASSERT_EQ(1, result.size());
+        auto v = result[0].get_value<float>(0);
+        EXPECT_TRUE(is_canonical_nan(v)) << expr;
     }
 }
 

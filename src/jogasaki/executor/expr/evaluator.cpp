@@ -65,6 +65,7 @@
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/assign_reference_tag.h>
+#include <jogasaki/utils/canonicalize_nan.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/utf8_utils.h>
 
@@ -99,7 +100,7 @@ engine::engine(
 template <class T>
 static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
 add(T const& l, T const& r) {
-    return any{std::in_place_type<T>, l+r};
+    return any{std::in_place_type<T>, utils::canonicalize_nan(l+r)};
 }
 
 namespace {
@@ -273,7 +274,7 @@ static std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
 template <class T>
 static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
 subtract(T const& l, T const& r) {
-    return any{std::in_place_type<T>, l-r};
+    return any{std::in_place_type<T>, utils::canonicalize_nan(l-r)};
 }
 
 static any subtract(
@@ -301,7 +302,7 @@ any engine::concat_any(any const& left, any const& right) {
 template <class T>
 static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
 multiply(T const& l, T const& r) {
-    return any{std::in_place_type<T>, l*r};
+    return any{std::in_place_type<T>, utils::canonicalize_nan(l*r)};
 }
 
 static any multiply(
@@ -326,7 +327,7 @@ divide(T const& l, T const& r, evaluator_context& ctx) {
         e.new_argument() << r;
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
-    return any{std::in_place_type<T>, l/r};
+    return any{std::in_place_type<T>, utils::canonicalize_nan(l/r)};
 }
 
 static any divide(
@@ -499,7 +500,7 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
 
 template <class T>
 static any sign_inversion(T const& l) {
-    return any{std::in_place_type<T>, -l};
+    return any{std::in_place_type<T>, utils::canonicalize_nan(-l)};
 }
 
 template <>

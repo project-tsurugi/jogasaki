@@ -473,6 +473,22 @@ TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_and_create_in_same_tx) {
     ASSERT_EQ(0, result.size());
 }
 
+TEST_F(exclusive_ddl_dml_test, resolve_statement_prepared_before_drop) {
+    // resolving the statement prepared before DROP TABLE used to throw an exception out of the api
+    // because the table referenced by the prepared statement was removed
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{{"p0", api::field_type_kind::int4}};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO t VALUES (:p0, :p0)", variables, prepared));
+    execute_statement("DROP TABLE t");
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::err_compiler_error, db_->resolve(prepared, std::shared_ptr{std::move(ps)}, stmt));
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+}
+
 TEST_F(exclusive_ddl_dml_test, dml_compile_fails_if_table_storage_entry_is_missing) {
     // DML compiled when the table definition exists but its storage entry is not found by name (e.g. DROP TABLE
     // removed the entry after the definition was read, or the metadata is inconsistent) used to have no storage

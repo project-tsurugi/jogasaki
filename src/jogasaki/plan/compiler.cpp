@@ -1343,6 +1343,26 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
 
 } // namespace impl
 
+static status handle_unexpected_compile_exception(
+    std::exception const& e,
+    std::string_view sql,
+    compiler_context &ctx
+) {
+    std::stringstream ss{};
+    if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
+        ss << *tr;
+    }
+    set_compile_error_with_stack(
+        ctx,
+        error_code::compile_exception,
+        string_builder{} << "unexpected compile error occurred:\"" <<
+            e.what() << "\" sql:\"" << sql << "\"" << string_builder::to_string,
+        status::err_compiler_error,
+        ss.str()
+    );
+    return status::err_compiler_error;
+}
+
 status prepare(std::string_view sql, compiler_context &ctx) {
     try {
         std::shared_ptr<prepared_statement> stmt{};
@@ -1355,19 +1375,7 @@ status prepare(std::string_view sql, compiler_context &ctx) {
         ctx.error_info(e.info());
         return e.info()->status();
     } catch (std::exception const& e) {
-        std::stringstream ss{};
-        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
-            ss << *tr;
-            set_compile_error_with_stack(
-                ctx,
-                error_code::compile_exception,
-                string_builder{} << "unexpected compile error occurred (likely unsupported SQL):\"" <<
-                    e.what() << "\" sql:\"" << sql << "\"" << string_builder::to_string,
-                status::err_compiler_error,
-                ss.str()
-            );
-        }
-        return status::err_compiler_error;
+        return handle_unexpected_compile_exception(e, sql, ctx);
     }
 }
 
@@ -1380,6 +1388,9 @@ status compile(
     } catch (plan_exception const& e) {
         ctx.error_info(e.info());
         return e.info()->status();
+    } catch (std::exception const& e) {
+        // e.g. the table definition referenced by the prepared statement is dropped or replaced by DDL
+        return handle_unexpected_compile_exception(e, ctx.sql_text(), ctx);
     }
 }
 
@@ -1396,6 +1407,8 @@ status compile(
     } catch (plan_exception const& e) {
         ctx.error_info(e.info());
         return e.info()->status();
+    } catch (std::exception const& e) {
+        return handle_unexpected_compile_exception(e, sql, ctx);
     }
 }
 

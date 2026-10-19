@@ -184,14 +184,14 @@ operation_status write_create::process_record(abstract::task_context* context) {
         contexts.reserve(core_->secondaries().size());
         for(auto&& s : core_->secondaries()) {
             contexts.emplace_back(
-                utils::get_storage_by_index_name(s.storage_name()),
+                utils::get_existing_storage_by_index_name(s.storage_name()),
                 ctx.req_context()
             );
         }
         p = ctx.make_context<write_create_context>(
             index(),
             block_index(),
-            utils::get_storage_by_index_name(storage_name()),
+            utils::get_existing_storage_by_index_name(storage_name()),
             ctx.transaction(),
             core_->primary().key_meta(),
             core_->primary().value_meta(),

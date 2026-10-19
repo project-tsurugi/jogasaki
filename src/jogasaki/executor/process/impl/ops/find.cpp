@@ -120,8 +120,8 @@ operation_status find::process_record(abstract::task_context* context) {
         p = ctx.make_context<class find_context>(
             index(),
             block_index(),
-            utils::get_storage_by_index_name(storage_name()),
-            use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name()) : nullptr,
+            utils::get_existing_storage_by_index_name(storage_name()),
+            use_secondary_ ? utils::get_existing_storage_by_index_name(secondary_storage_name()) : nullptr,
             ctx.transaction(),
             ctx.resource(),
             ctx.varlen_resource(),

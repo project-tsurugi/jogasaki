@@ -117,14 +117,13 @@ operation_status scan::process_record(abstract::task_context* context) {
     context_helper ctx{*context};
     ctx.acquire_strand_if_needed();
     auto* p = ctx.find_context<scan_context>(index());
-    auto stg = utils::get_storage_by_index_name(storage_name());
-    assert_with_exception(stg); //TODO handle error
+    auto stg = utils::get_existing_storage_by_index_name(storage_name());
     if (! p) {
         p = ctx.make_context<scan_context>(
             index(),
             block_index(),
             std::move(stg),
-            use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name()) : nullptr,
+            use_secondary_ ? utils::get_existing_storage_by_index_name(secondary_storage_name()) : nullptr,
             ctx.transaction(),
             unsafe_downcast<impl::scan_range const>(ctx.task_context()->range()),  //NOLINT
             ctx.resource(),

@@ -341,14 +341,14 @@ operation_status write_existing::process_record(abstract::task_context* context)
         contexts.reserve(secondaries_.size());
         for(auto&& s : secondaries_) {
             contexts.emplace_back(
-                utils::get_storage_by_index_name(s.storage_name()),
+                utils::get_existing_storage_by_index_name(s.storage_name()),
                 ctx.req_context()
             );
         }
         p = ctx.make_context<write_existing_context>(
             index(),
             block_index(),
-            utils::get_storage_by_index_name(storage_name()),
+            utils::get_existing_storage_by_index_name(storage_name()),
             ctx.transaction(),
             primary_.key_meta(),
             primary_.value_meta(),

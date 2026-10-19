@@ -20,10 +20,13 @@
 #include <string>
 #include <string_view>
 
+#include <takatori/util/string_builder.h>
+
 #include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
 
@@ -34,6 +37,17 @@ std::unique_ptr<kvs::storage> get_storage_by_index_name(std::string_view index_n
         return nullptr;
     }
     return global::db()->get_storage(*storage_key);
+}
+
+std::unique_ptr<kvs::storage> get_existing_storage_by_index_name(std::string_view index_name) {
+    using takatori::util::string_builder;
+    auto ret = get_storage_by_index_name(index_name);
+    if (! ret) {
+        fail_with_exception_msg(
+            string_builder{} << "storage for index \"" << index_name << "\" not found" << string_builder::to_string
+        );
+    }
+    return ret;
 }
 
 }  // namespace jogasaki::utils

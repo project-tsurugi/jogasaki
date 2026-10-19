@@ -132,25 +132,39 @@ message IndexDefinition {
 ### `storage_control` の状態遷移
 
 `storage_control` は以下の状態を持つ。
-削除予約状態が今回の変更により追加されるもの。
+削除予約状態が今回の変更により追加されるもの。置換済み状態は TRUNCATE TABLE の実装により追加されたもの。
 
 | 状態 | 説明 |
 |------|------|
 | Start/End | `storage_control` エントリが `storages_` に存在しない初期状態。DDL 実行前または `delete_storage` 完了後の最終状態。shirakami/sharksfin上のStorageが存在しない状態。|
-| 通常 | DDL によるテーブル/インデックス作成後、または再起動リカバリ後に復旧した状態。`storage_names_` や `database::tables_` に名前が登録されており、DML から参照可能。 |
-| 削除予約 | DROP DDL 実行後、`storage_names_` 及び `database::tables_` から名前が除外され `delete_reserved = true` が設定された状態。新規 DML からは参照不可だが `storages_` にはエントリが残っており、参照カウンタの管理対象となる。`storage_control::name_` は空になり、以前の名前は `storage_control::original_name_` に保持される(ログ表示用)。shirakami/sharksfin上のStorageは存在するが、新規にSQLからは参照不可。 |
+| 通常 | DDL によるテーブル/インデックス作成後、または再起動リカバリ後に復旧した状態。`storage_names_` や `database::tables_` に名前が登録されており、名前がこのエントリを指している。DML から参照可能。 |
+| 置換済み | TRUNCATE TABLE によって名前が新しいエントリに付け替えられ、まだ削除予約されていない状態。`storage_control::name_` は残っており `delete_reserved = false` だが、`storage_names_` のその名前は新しいエントリを指しているため、名前からは到達できない。 |
+| 削除予約 | DROP DDL または TRUNCATE TABLE の実行後、`delete_reserved = true` が設定された状態。名前からは到達できず新規 DML からは参照不可だが `storages_` にはエントリが残っており、参照カウンタの管理対象となる。`storage_control::name_` は空になり、以前の名前は `storage_control::original_name_` に保持される(ログ表示用)。shirakami/sharksfin上のStorageは存在するが、新規にSQLからは参照不可。 |
 
 ```mermaid
 stateDiagram-v2
-    Start --> 通常 : DDL によるテーブル/インデックス作成
+    Start --> 通常 : DDL によるテーブル/インデックス作成 (*1)
     通常 --> 通常 : DB再起動・リカバリ
-    通常 --> 削除予約 : DROP DDL 実行 (*1)
+    通常 --> 削除予約 : DROP DDL 実行 (*2)
+    通常 --> 置換済み : TRUNCATE TABLE 実行 (*3)
+    置換済み --> 削除予約 : TRUNCATE TABLE 実行 (*4)
+    置換済み --> 削除予約 : DB再起動・リカバリ (*5)
     削除予約 --> 削除予約 : DB再起動・リカバリ
-    削除予約 --> End : 削除条件確定 (*2)
+    削除予約 --> End : 削除条件確定 (*6)
 ```
 
-(*1) `storage_names_` から除外し、`delete_reserved = true` を設定
-(*2) プライマリストレージの参照カウンタが 0 となったら `delete_storage`を実行。完了後に `storages_` から `storage_control` を除外
+(*1) TRUNCATE TABLE で作成される新しいエントリを含む。名前を登録する前に、DDL を実行したトランザクションがエントリを排他ロックする
+(*2) `storage_names_` から除外し、`delete_reserved = true` を設定
+(*3) `storage_names_` の名前を旧エントリから新エントリへ直接付け替える(名前がどちらのエントリも指さない瞬間を作らない)。`database::tables_` のテーブル定義は除外されず、新しいエントリに対応するものに差し替えられる
+(*4) 新しいエントリの作成がすべて完了した後に `delete_reserved = true` を設定する。名前はすでに新エントリを指しているので `storage_names_` は変更しない
+(*5) TRUNCATE TABLE が (*3) と (*4) の間で失敗した場合は置換済み状態のまま残る。永続化されたストレージメタデータには (*3) より前に `delete_reserved = true` が設定されているため、再起動後は削除予約状態として復旧する
+(*6) プライマリストレージの参照カウンタが 0 となったら `delete_storage`を実行。完了後に `storages_` から `storage_control` を除外
+
+補足
+
+- 置換済み状態は、DDL を実行したトランザクションがエントリの排他ロックを保持している間に通過する一時的な状態である((*5) の失敗時を除く)
+- `storage_control::name_` が空であることと `delete_reserved = true` であることは常に一致する。置換済み状態は名前を持つが通常状態ではないため、エントリが通常状態であること(名前の対応先であること)は `delete_reserved` だけでは判定できず、`storage_names_` がそのエントリを指しているかも確認する必要がある( `storage_manager::is_current_entry()` )。ロックの取得時の検証はこれを使う
+- 削除予約への遷移時、ストレージキーを持たない pre-1.8 のエントリは、名前を空にする前にその名前をストレージキーとして `storage_control` に保持する。そのため、置換済みや削除予約の状態でも削除対象の shirakami/sharksfin 上の Storage を特定できる
 
 ## テスト
 

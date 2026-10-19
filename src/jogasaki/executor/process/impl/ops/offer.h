@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 #include <takatori/relation/step/offer.h>
@@ -33,7 +34,10 @@
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/interference_size.h>
 
+#include <jogasaki/value_operations/record_assignment.h>
+
 #include "offer_context.h"
+
 #include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -43,16 +47,8 @@ using takatori::util::sequence_view;
 namespace details {
 
 struct cache_align offer_field {
-    meta::field_type type_{};
-    meta::field_type source_ftype_{};
-    std::size_t source_offset_{};
-    std::size_t target_offset_{};
-    std::size_t source_nullity_offset_{};
-    std::size_t target_nullity_offset_{};
-    bool nullable_{};
-    takatori::type::data const* source_type_{};
-    takatori::type::data const* target_type_{};
-    bool requires_conversion_{};
+    // Preparation fills every entry in destination order before execution.
+    std::optional<value_operations::prepared_record_unification> unification_{};
     region_id source_region_id_{};
 };
 

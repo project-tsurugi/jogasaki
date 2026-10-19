@@ -109,6 +109,7 @@ file(GLOB SOURCES
         "jogasaki/scheduler/details/*.cpp"
         "jogasaki/serializer/*.cpp"
         "jogasaki/storage/*.cpp"
+        "jogasaki/value_operations/*.cpp"
         "jogasaki/utils/*.cpp"
         "jogasaki/dist/*.cpp"
         "jogasaki/udf/*.cpp"

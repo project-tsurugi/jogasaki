@@ -892,6 +892,114 @@ TEST_F(recovery_lazy_delete_test, truncate_table_with_secondary_lazy_delete_reco
     }
 }
 
+TEST_F(recovery_lazy_delete_test, pre18_truncate_table_with_secondary_lazy_delete_recovery) {
+    // Verify that TRUNCATE TABLE on a pre-1.8 table and secondary index (created without a storage_key, so their
+    // plain names are used as the KVS keys) replaces the entries correctly:
+    //  * The old entries keep the plain names as their storage keys after the names are re-pointed to the new
+    //    entries, so that maintenance_storage() can delete the old KVS storages.
+    //  * The new entries have surrogate storage keys, which don't conflict with the old ones.
+    //  * The table and its secondary index are usable across stop/start, and after the old storages are deleted.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    // Create table and index using pre-1.8 behaviour (no storage_key stored in metadata).
+    global::config_pool()->enable_storage_key(false);
+    execute_statement("CREATE TABLE t (c0 INT NOT NULL PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    global::config_pool()->enable_storage_key(true);
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+
+    auto& smgr = *global::storage_manager();
+    auto old_primary = smgr.find_by_name("t");
+    auto old_secondary = smgr.find_by_name("idx0");
+    ASSERT_TRUE(old_primary);
+    ASSERT_TRUE(old_secondary);
+
+    execute_statement("TRUNCATE TABLE t");
+
+    // Verify state immediately after TRUNCATE, before stop/start.
+    {
+        SCOPED_TRACE("before recovery");
+        auto primary_ctrl = smgr.find_entry(*old_primary);
+        ASSERT_TRUE(primary_ctrl);
+        EXPECT_TRUE(primary_ctrl->delete_reserved());
+        EXPECT_TRUE(! primary_ctrl->name().has_value());
+        ASSERT_TRUE(primary_ctrl->storage_key().has_value());
+        EXPECT_EQ("t", *primary_ctrl->storage_key());
+        EXPECT_EQ("t", primary_ctrl->derived_storage_key());
+
+        auto secondary_ctrl = smgr.find_entry(*old_secondary);
+        ASSERT_TRUE(secondary_ctrl);
+        EXPECT_TRUE(secondary_ctrl->delete_reserved());
+        EXPECT_TRUE(! secondary_ctrl->name().has_value());
+        EXPECT_EQ("idx0", secondary_ctrl->derived_storage_key());
+
+        // the names refer to the new entries with surrogate storage keys
+        auto new_primary = smgr.find_by_name("t");
+        auto new_secondary = smgr.find_by_name("idx0");
+        ASSERT_TRUE(new_primary);
+        ASSERT_TRUE(new_secondary);
+        EXPECT_NE(*old_primary, *new_primary);
+        EXPECT_NE(*old_secondary, *new_secondary);
+        auto primary_key = smgr.get_storage_key("t");
+        auto secondary_key = smgr.get_storage_key("idx0");
+        ASSERT_TRUE(primary_key);
+        ASSERT_TRUE(secondary_key);
+        EXPECT_NE("t", *primary_key);
+        EXPECT_NE("idx0", *secondary_key);
+        EXPECT_EQ("t", smgr.get_index_name(*primary_key));
+        EXPECT_EQ("idx0", smgr.get_index_name(*secondary_key));
+
+        // the old storage keys no longer resolve to names
+        EXPECT_TRUE(! smgr.get_index_name("t"));
+        EXPECT_TRUE(! smgr.get_index_name("idx0"));
+        EXPECT_TRUE(global::db()->get_storage("t"));
+        EXPECT_TRUE(global::db()->get_storage("idx0"));
+
+        execute_statement("INSERT INTO t VALUES (2, 20)");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 20)), result[0]);
+    }
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    // Verify state after recovery.
+    {
+        SCOPED_TRACE("after recovery");
+        auto& recovered_smgr = *global::storage_manager();
+        auto recovered_old_primary = find_delete_reserved_entry(recovered_smgr, "t", false);
+        auto recovered_old_secondary = find_delete_reserved_entry(recovered_smgr, "idx0", false);
+        auto primary_ctrl = recovered_smgr.find_entry(recovered_old_primary);
+        ASSERT_TRUE(primary_ctrl);
+        EXPECT_EQ("t", primary_ctrl->derived_storage_key());
+        auto secondary_ctrl = recovered_smgr.find_entry(recovered_old_secondary);
+        ASSERT_TRUE(secondary_ctrl);
+        EXPECT_EQ("idx0", secondary_ctrl->derived_storage_key());
+
+        // query using the secondary index
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t WHERE c1 = 20", result);
+        ASSERT_EQ(1, result.size());
+
+        // maintenance deletes the old KVS storages under the plain names, leaving new ones intact
+        auto deleted = storage::maintenance_storage();
+        std::sort(deleted.begin(), deleted.end());
+        ASSERT_EQ((std::vector<std::string>{"idx0", "t"}), deleted);
+        EXPECT_TRUE(! recovered_smgr.find_entry(recovered_old_primary));
+        EXPECT_TRUE(! recovered_smgr.find_entry(recovered_old_secondary));
+        EXPECT_TRUE(! global::db()->get_storage("t"));
+        EXPECT_TRUE(! global::db()->get_storage("idx0"));
+
+        execute_statement("INSERT INTO t VALUES (3, 30)");
+        result.clear();
+        execute_query("SELECT * FROM t WHERE c1 = 30", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
 // ─── Tests: TRUNCATE TABLE + sequences, recovery ─────────────────────────────
 
 TEST_F(recovery_lazy_delete_test, truncate_table_continue_identity_sequence_survives_recovery) {

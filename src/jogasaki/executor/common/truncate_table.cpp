@@ -266,17 +266,17 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
     }
 
     auto& smgr = *global::storage_manager();
-    // reserve old secondary index storage entries for lazy deletion
+    // remember old secondary index storage entries before their names are re-pointed to the new entries below
+    // (elements correspond to the ones in `secondaries`)
+    std::vector<std::optional<storage::storage_entry>> old_secondary_ids{};
+    old_secondary_ids.reserve(secondaries.size());
     for(auto&& entry : secondaries) {
         auto e = smgr.find_by_name(entry->simple_name());
         if(! e) {
             VLOG_LP(log_warning) << "failed to find storage entry name:" << entry->simple_name();
-            continue;
         }
-        smgr.reserve_delete_entry(e.value());
+        old_secondary_ids.emplace_back(e);
     }
-    // reserve old primary storage entry for lazy deletion
-    smgr.reserve_delete_entry(old_storage_id);
 
     // create new primary storage entry and shirakami storage,
     // inheriting authorized/public actions from the old entry
@@ -290,7 +290,7 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
     std::string serialized{};
     if(! create_primary_storage(
            context, *primary_idx, std::addressof(inherited_auth), std::addressof(inherited_pub), new_primary_id,
-           std::addressof(serialized)
+           std::addressof(serialized), old_storage_id
        )) {
         return false;
     }
@@ -302,14 +302,10 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
         return false;
     }
 
-    // hold the write lock on the new primary storage entry until the DDL transaction completes
-    if(! lock_storage_entry(context, new_primary_id, c.simple_name())) {
-        return false;
-    }
-
     // create new secondary index storages, and re-register each of them into the provider so
     // that they refer to the new table object registered above
-    for(auto&& entry : secondaries) {
+    for(std::size_t i = 0, n = secondaries.size(); i < n; ++i) {
+        auto& entry = secondaries[i];
         storage::storage_entry secondary_id{};
         std::string secondary_serialized{};
         if(! create_secondary_storage(
@@ -317,7 +313,8 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
             *entry,
             new_primary_id,
             secondary_id,
-            std::addressof(secondary_serialized))) {
+            std::addressof(secondary_serialized),
+            old_secondary_ids[i])) {
             return false;
         }
         if(auto err = recovery::deserialize_storage_option_into_provider(
@@ -329,6 +326,15 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
             return false;
         }
     }
+
+    // Reserve old storage entries for lazy deletion after the new entries took over their names, so that the names
+    // always refer to either the old or new entries, i.e. DML never finds the table without its storage entry.
+    for(auto&& e : old_secondary_ids) {
+        if(e) {
+            smgr.reserve_delete_entry(e.value());
+        }
+    }
+    smgr.reserve_delete_entry(old_storage_id);
 
     // tx to remember that it has used the existing storage in order to prevent maintenance thread from deleting the storage
     if (context.transaction()) {

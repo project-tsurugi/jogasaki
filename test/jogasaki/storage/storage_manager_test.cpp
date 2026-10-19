@@ -315,6 +315,122 @@ TEST_F(storage_manager_test, ddl_and_dml) {
     }
 }
 
+TEST_F(storage_manager_test, add_entry_with_lock) {
+    // verify the entry added with unique lock is locked before it becomes visible by name
+    storage_manager mgr{};
+    storage_list stg1{1};
+    {
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(mgr.add_entry(1, "T1", std::nullopt, true, std::nullopt, std::nullopt, ul.get()));
+        EXPECT_EQ(1, ul->storage().size());
+        EXPECT_TRUE(ul->storage().contains(1));
+        auto e = mgr.find_by_name("T1");
+        ASSERT_TRUE(e);
+        EXPECT_EQ(1, e.value());
+        {
+            auto sl = mgr.create_shared_lock(stg1);
+            ASSERT_TRUE(! sl);
+        }
+        {
+            // shared lock in the same transaction is allowed
+            auto sl = mgr.create_shared_lock(stg1, ul.get());
+            ASSERT_TRUE(sl);
+        }
+    }
+    {
+        auto sl = mgr.create_shared_lock(stg1);
+        ASSERT_TRUE(sl);
+    }
+}
+
+TEST_F(storage_manager_test, add_entry_with_lock_holding_other_entries) {
+    // verify the entry added with unique lock is merged into the existing lock
+    storage_manager mgr{};
+    mgr.add_entry(1, "T1");
+    storage_list stg1{1};
+    storage_list stg2{2};
+    {
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(mgr.add_locked_storages(stg1, *ul));
+        ASSERT_TRUE(mgr.add_entry(2, "T2", std::nullopt, true, std::nullopt, std::nullopt, ul.get()));
+        EXPECT_TRUE(ul->storage().contains(1));
+        EXPECT_TRUE(ul->storage().contains(2));
+        ASSERT_TRUE(! mgr.create_shared_lock(stg1));
+        ASSERT_TRUE(! mgr.create_shared_lock(stg2));
+    }
+    ASSERT_TRUE(mgr.create_shared_lock(stg1));
+    ASSERT_TRUE(mgr.create_shared_lock(stg2));
+}
+
+TEST_F(storage_manager_test, add_entry_keeps_existing_name) {
+    // verify add_entry() doesn't change the entry the name refers to if the name is already registered
+    storage_manager mgr{};
+    ASSERT_TRUE(mgr.add_entry(1, "T1"));
+    ASSERT_TRUE(mgr.add_entry(2, "T1"));
+    EXPECT_EQ(1, mgr.find_by_name("T1"));
+}
+
+TEST_F(storage_manager_test, replace_entry) {
+    // verify replace_entry() re-points the name from the replaced entry to the new one
+    storage_manager mgr{};
+    storage_list stg1{1};
+    ASSERT_TRUE(mgr.add_entry(1, "T1"));
+    ASSERT_TRUE(mgr.add_entry(2, "I1", std::nullopt, false, 1));  // secondary index of T1
+    auto ul = mgr.create_unique_lock();
+    ASSERT_TRUE(mgr.add_locked_storages(stg1, *ul));
+    ASSERT_TRUE(mgr.replace_entry(3, 1, "T1", std::nullopt, true, std::nullopt, *ul));
+    ASSERT_TRUE(mgr.replace_entry(4, 2, "I1", std::nullopt, false, 3, *ul));
+    EXPECT_EQ(3, mgr.find_by_name("T1"));
+    EXPECT_EQ(4, mgr.find_by_name("I1"));
+    // new primary entry is locked by the lock, but secondary is not
+    EXPECT_TRUE(ul->storage().contains(3));
+    EXPECT_FALSE(ul->storage().contains(4));
+    // the replaced entries are left as they are
+    EXPECT_TRUE(mgr.find_entry(1));
+    EXPECT_TRUE(mgr.find_entry(2));
+}
+
+TEST_F(storage_manager_test, replace_entry_preconditions) {
+    // verify replace_entry() fails without side effect if the preconditions are not satisfied
+    storage_manager mgr{};
+    storage_list stg1{1};
+    ASSERT_TRUE(mgr.add_entry(1, "T1"));
+    ASSERT_TRUE(mgr.add_entry(2, "I1", std::nullopt, false, 1));  // secondary index of T1
+    ASSERT_TRUE(mgr.add_entry(5, "T2"));
+    {
+        // replaced entry (or its primary) is not locked by the lock
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(! mgr.replace_entry(3, 1, "T1", std::nullopt, true, std::nullopt, *ul));
+        ASSERT_TRUE(! mgr.replace_entry(4, 2, "I1", std::nullopt, false, 3, *ul));
+    }
+    {
+        // the name doesn't refer to the replaced entry
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(mgr.add_locked_storages(stg1, *ul));
+        ASSERT_TRUE(! mgr.replace_entry(3, 1, "T2", std::nullopt, true, std::nullopt, *ul));
+        EXPECT_EQ(1, ul->storage().size());
+    }
+    EXPECT_EQ(1, mgr.find_by_name("T1"));
+    EXPECT_EQ(2, mgr.find_by_name("I1"));
+    EXPECT_EQ(5, mgr.find_by_name("T2"));
+    EXPECT_FALSE(mgr.find_entry(3));
+    EXPECT_FALSE(mgr.find_entry(4));
+}
+
+TEST_F(storage_manager_test, reserve_delete_entry_keeps_name_referring_to_other_entry) {
+    // verify reserve_delete_entry() doesn't erase the name if it has been re-pointed to another entry
+    storage_manager mgr{};
+    storage_list stg1{1};
+    ASSERT_TRUE(mgr.add_entry(1, "T1"));
+    auto ul = mgr.create_unique_lock();
+    ASSERT_TRUE(mgr.add_locked_storages(stg1, *ul));
+    ASSERT_TRUE(mgr.replace_entry(2, 1, "T1", std::nullopt, true, std::nullopt, *ul));
+    ASSERT_TRUE(mgr.reserve_delete_entry(1));
+    EXPECT_EQ(2, mgr.find_by_name("T1"));
+    ASSERT_TRUE(mgr.reserve_delete_entry(2));
+    EXPECT_FALSE(mgr.find_by_name("T1"));
+}
+
 TEST_F(storage_manager_test, err_try_to_lock_non_exiting_storage) {
     // erroneous case locking non-exiting storage
     storage_manager mgr{};

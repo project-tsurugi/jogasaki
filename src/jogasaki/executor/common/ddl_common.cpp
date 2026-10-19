@@ -130,19 +130,22 @@ bool reserve_delete_index_metadata(
     return false;
 }
 
+static storage::unique_lock& transaction_storage_lock(request_context& context) {
+    auto& tx = *context.transaction();
+    if(! tx.storage_lock()) {
+        tx.storage_lock(global::storage_manager()->create_unique_lock());
+    }
+    return *tx.storage_lock();
+}
+
 bool lock_storage_entry(
     request_context& context,
     storage::storage_entry tid,
     std::string_view table_name
 ) {
     auto& smgr = *global::storage_manager();
-    auto& tx = *context.transaction();
-    if(! tx.storage_lock()) {
-        tx.storage_lock(smgr.create_unique_lock());
-    }
     storage::storage_list stg{tid};
-    if(! smgr.add_locked_storages(stg, *tx.storage_lock())) {
-        // should not happen normally since this is a newly created entry
+    if(! smgr.add_locked_storages(stg, transaction_storage_lock(context))) {
         auto msg = string_builder{} << "DDL operation was blocked by other DML operation. table:\""
                                     << table_name << "\"" << string_builder::to_string;
         set_error_context(
@@ -163,14 +166,30 @@ bool create_primary_storage(
     auth::authorized_users_action_set const* authorized_actions,
     auth::action_set const* public_actions,
     storage::storage_entry& tid,
-    std::string* serialized
+    std::string* serialized,
+    std::optional<storage::storage_entry> replacing
 ) {
     auto& smgr = *global::storage_manager();
     auto entry_id = storage::index_id_src++;
     auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
     auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
 
-    if(! smgr.add_entry(entry_id, primary_idx.simple_name(), opt, true)) {
+    // the new entry is locked by the transaction before it becomes visible by name so that DML can't use it
+    // until the DDL transaction completes
+    auto& lock = transaction_storage_lock(context);
+    if(replacing) {
+        if(! smgr.replace_entry(entry_id, replacing.value(), primary_idx.simple_name(), opt, true, std::nullopt, lock)) {
+            // should not happen normally since the replaced entry is locked by the transaction
+            set_error_context(
+                context,
+                error_code::sql_execution_exception,
+                string_builder{} << "failed to replace storage entry for table \"" << primary_idx.simple_name() << "\""
+                                 << string_builder::to_string,
+                status::err_unknown
+            );
+            return false;
+        }
+    } else if(! smgr.add_entry(entry_id, primary_idx.simple_name(), opt, true, std::nullopt, std::nullopt, std::addressof(lock))) {
         set_error_context(
             context,
             error_code::target_already_exists_exception,
@@ -238,14 +257,30 @@ bool create_secondary_storage(
     yugawara::storage::index const& sec_idx,
     storage::storage_entry primary_entry,
     storage::storage_entry& tid,
-    std::string* serialized
+    std::string* serialized,
+    std::optional<storage::storage_entry> replacing
 ) {
     auto& smgr = *global::storage_manager();
     auto entry_id = storage::index_id_src++;
     auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
     auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
 
-    if(! smgr.add_entry(entry_id, sec_idx.simple_name(), opt, false, primary_entry)) {
+    if(replacing) {
+        if(! smgr.replace_entry(
+               entry_id, replacing.value(), sec_idx.simple_name(), opt, false, primary_entry,
+               transaction_storage_lock(context)
+           )) {
+            // should not happen normally since the primary entry of the replaced entry is locked by the transaction
+            set_error_context(
+                context,
+                error_code::sql_execution_exception,
+                string_builder{} << "failed to replace storage entry for index \"" << sec_idx.simple_name() << "\""
+                                 << string_builder::to_string,
+                status::err_unknown
+            );
+            return false;
+        }
+    } else if(! smgr.add_entry(entry_id, sec_idx.simple_name(), opt, false, primary_entry)) {
         set_error_context(
             context,
             error_code::target_already_exists_exception,

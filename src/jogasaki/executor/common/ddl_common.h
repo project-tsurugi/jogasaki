@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -66,7 +67,7 @@ bool reserve_delete_index_metadata(
 );
 
 /**
- * @brief Acquire a write lock on a newly created storage entry within the current DDL transaction.
+ * @brief Acquire an exclusive lock on the storage entry within the current DDL transaction.
  * @param context request context containing the transaction
  * @param tid storage entry to lock
  * @param table_name table name used in error messages
@@ -81,12 +82,16 @@ bool lock_storage_entry(
 /**
  * @brief Create a new primary index storage entry in the storage manager and the corresponding KVS storage.
  * Provider metadata is NOT updated — the caller is responsible for updating it if needed.
+ * The new entry is exclusively locked by the transaction before it becomes visible by name, and the lock is held
+ * until the transaction completes.
  * @param context request context
  * @param primary_idx primary index whose metadata is serialized into the new storage
  * @param authorized_actions if non-null, assigned to the new entry's authorized_actions
  * @param public_actions if non-null, assigned to the new entry's public_actions
  * @param [out] tid receives the new storage entry id on success
  * @param [out] serialized if non-null, receives a copy of the serialized storage option
+ * @param replacing the existing primary storage entry to be replaced by the new one (TRUNCATE TABLE). The table name
+ * is re-pointed from it to the new entry. It must be exclusively locked by the transaction.
  * @return true on success; false with context error set on failure
  */
 bool create_primary_storage(
@@ -95,7 +100,8 @@ bool create_primary_storage(
     auth::authorized_users_action_set const* authorized_actions,
     auth::action_set const* public_actions,
     storage::storage_entry& tid,
-    std::string* serialized = nullptr
+    std::string* serialized = nullptr,
+    std::optional<storage::storage_entry> replacing = std::nullopt
 );
 
 /**
@@ -106,6 +112,8 @@ bool create_primary_storage(
  * @param primary_entry storage entry of the owning primary index
  * @param [out] tid receives the new storage entry id on success
  * @param [out] serialized if non-null, receives a copy of the serialized storage option
+ * @param replacing the existing secondary storage entry to be replaced by the new one (TRUNCATE TABLE). The index
+ * name is re-pointed from it to the new entry. Its primary entry must be exclusively locked by the transaction.
  * @return true on success; false with context error set on failure
  */
 bool create_secondary_storage(
@@ -113,7 +121,8 @@ bool create_secondary_storage(
     yugawara::storage::index const& sec_idx,
     storage::storage_entry primary_entry,
     storage::storage_entry& tid,
-    std::string* serialized = nullptr
+    std::string* serialized = nullptr,
+    std::optional<storage::storage_entry> replacing = std::nullopt
 );
 
 /**

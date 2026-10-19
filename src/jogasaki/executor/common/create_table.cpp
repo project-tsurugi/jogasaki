@@ -150,9 +150,6 @@ bool create_table::operator()(request_context& context) const {
         set_error_info(context, err);
         return false;
     }
-    if(! lock_storage_entry(context, tid, c->simple_name())) {
-        return false;
-    }
 
     // tx to remember that it has used the storage
     // this is not mandatory for create (since created one is not accessible externally),

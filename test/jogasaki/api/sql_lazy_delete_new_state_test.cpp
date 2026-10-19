@@ -722,4 +722,159 @@ TEST_F(sql_lazy_delete_new_state_test, truncate_table_implicit_pk_restart_identi
     EXPECT_EQ((create_nullable_record<kind::int4>(10)), result[0]);
 }
 
+// TRUNCATE TABLE and DML on the table in the same transaction access the new storages, both via primary and
+// secondary indices, and only the old storages are deleted by maintenance after commit.
+TEST_F(sql_lazy_delete_new_state_test, truncate_insert_select_in_same_tx) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+    {
+        auto tx = utils::create_transaction(*db_, false, false);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        execute_statement("INSERT INTO t VALUES (2, 20)", *tx);
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM t", *tx, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 20)), result[0]);
+        }
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM t WHERE c1 = 20", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM t WHERE c1 = 10", *tx, result);
+            ASSERT_EQ(0, result.size());
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t WHERE c1 = 20", result);
+        ASSERT_EQ(1, result.size());
+    }
+    auto deleted = storage::maintenance_storage();
+    std::sort(deleted.begin(), deleted.end());
+    ASSERT_EQ((std::vector<std::string>{"idx0", "t"}), deleted);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t WHERE c1 = 20", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
+// The second TRUNCATE TABLE in the same transaction replaces the entries created by the first one, and the storages
+// of both generations are deleted by maintenance after commit.
+TEST_F(sql_lazy_delete_new_state_test, truncate_twice_in_same_tx) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+    {
+        auto tx = utils::create_transaction(*db_, false, false);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        execute_statement("INSERT INTO t VALUES (2, 20)", *tx);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        execute_statement("INSERT INTO t VALUES (3, 30)", *tx);
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM t", *tx, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(3, 30)), result[0]);
+        }
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM t WHERE c1 = 30", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t WHERE c1 = 30", result);
+        ASSERT_EQ(1, result.size());
+    }
+    auto deleted = storage::maintenance_storage();
+    std::sort(deleted.begin(), deleted.end());
+    ASSERT_EQ((std::vector<std::string>{"idx0", "idx0", "t", "t"}), deleted);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
+// TRUNCATE TABLE committed twice, and the storages of both generations are deleted by maintenance.
+TEST_F(sql_lazy_delete_new_state_test, truncate_twice_in_separate_tx) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+    execute_statement("TRUNCATE TABLE t");
+    execute_statement("INSERT INTO t VALUES (2, 20)");
+    execute_statement("TRUNCATE TABLE t");
+    execute_statement("INSERT INTO t VALUES (3, 30)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(3, 30)), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t WHERE c1 = 30", result);
+        ASSERT_EQ(1, result.size());
+    }
+    auto deleted = storage::maintenance_storage();
+    std::sort(deleted.begin(), deleted.end());
+    ASSERT_EQ((std::vector<std::string>{"idx0", "idx0", "t", "t"}), deleted);
+}
+
+// DROP TABLE after TRUNCATE TABLE in the same transaction removes the names, and the storages before and after
+// TRUNCATE are deleted by maintenance after commit. The table can be re-created with the same names.
+TEST_F(sql_lazy_delete_new_state_test, truncate_then_drop_table_in_same_tx) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+    {
+        auto tx = utils::create_transaction(*db_, false, false);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        execute_statement("INSERT INTO t VALUES (2, 20)", *tx);
+        execute_statement("DROP TABLE t", *tx);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    auto& smgr = *global::storage_manager();
+    EXPECT_TRUE(! smgr.find_by_name("t"));
+    EXPECT_TRUE(! smgr.find_by_name("idx0"));
+    EXPECT_TRUE(! db_impl()->tables()->find_table("t"));
+    EXPECT_TRUE(! db_impl()->tables()->find_index("idx0"));
+
+    auto deleted = storage::maintenance_storage();
+    std::sort(deleted.begin(), deleted.end());
+    ASSERT_EQ((std::vector<std::string>{"idx0", "idx0", "t", "t"}), deleted);
+
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("CREATE INDEX idx0 ON t (c1)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(0, result.size());
+}
+
+// DROP TABLE after TRUNCATE TABLE on a table without secondary indices, and the storages before and after
+// TRUNCATE are deleted by maintenance. The table can be re-created with the same name.
+TEST_F(sql_lazy_delete_new_state_test, truncate_then_drop_table_without_secondary) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    execute_statement("INSERT INTO t VALUES (1, 10)");
+    execute_statement("TRUNCATE TABLE t");
+    execute_statement("DROP TABLE t");
+
+    auto deleted = storage::maintenance_storage();
+    ASSERT_EQ((std::vector<std::string>{"t", "t"}), deleted);
+
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(0, result.size());
+}
+
 } // namespace jogasaki::testing

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <future>
 #include <memory>
 #include <string>
@@ -29,6 +30,7 @@
 #include <jogasaki/api/transaction_option.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
@@ -39,6 +41,8 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/finally.h>
+#include <jogasaki/utils/runner.h>
 
 #include "../api/api_test_base.h"
 
@@ -501,6 +505,91 @@ TEST_F(exclusive_ddl_dml_test, dml_compile_fails_if_table_storage_entry_is_missi
     ASSERT_TRUE(smgr.reserve_delete_entry(e.value()));
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::err_not_found, db_->create_executable("INSERT INTO t VALUES (1)", stmt));
+}
+
+TEST_F(exclusive_ddl_dml_test, truncate_while_dml_requests_are_compiled_concurrently) {
+    // regression test: DML compiled while TRUNCATE TABLE is replacing the storage entry used to lock the new entry
+    // before TRUNCATE locked it, and TRUNCATE failed leaving broken storage entries, which crashed subsequent DML.
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 bigint primary key, c1 bigint)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    auto& smgr = *global::storage_manager();
+    std::atomic_bool stop{false};
+    std::atomic_long seq{0};
+    std::atomic_size_t internal_errors{0};
+    auto worker = [&]() {
+        while(! stop) {
+            auto v = std::to_string(seq++);
+            // compile every time so that it may run concurrently with TRUNCATE
+            std::unique_ptr<api::executable_statement> stmt{};
+            if(db_->create_executable("INSERT INTO t VALUES (" + v + "," + v + ")", stmt) != status::ok) {
+                continue;
+            }
+            auto tx = utils::create_transaction(*db_);
+            if(auto res = tx->execute(*stmt); res != status::ok) {
+                // DML blocked by TRUNCATE is normal, but internal error means accessing missing storage
+                if(res == status::err_unknown) {
+                    ++internal_errors;
+                }
+                tx->abort();
+                continue;
+            }
+            (void) tx->commit();
+        }
+    };
+    std::vector<std::future<void>> workers{};
+    // stop workers even when assertion fails, otherwise destructor of the futures waits for them forever
+    utils::finally stop_workers{[&]() {
+        stop = true;
+    }};
+    for(std::size_t i = 0; i < 4; ++i) {
+        workers.emplace_back(std::async(std::launch::async, worker));
+    }
+    std::size_t succeeded = 0;
+    std::size_t blocked = 0;
+    for(std::size_t i = 0; i < 50; ++i) {
+        auto table_key = smgr.get_storage_key("t");
+        auto index_key = smgr.get_storage_key("i");
+        ASSERT_TRUE(table_key);
+        ASSERT_TRUE(index_key);
+
+        auto tx = utils::create_transaction(*db_);
+        status res{};
+        std::shared_ptr<error::error_info> err{};
+        (void) builder().text("TRUNCATE TABLE t").tx(*tx).st(res).error(err).expect_error(true).run();
+        if(res != status::ok) {
+            // the only acceptable failure is the one blocked by on-going DML on locking the table first,
+            // and the storages must be left untouched
+            ASSERT_EQ(status::err_illegal_operation, res);
+            ASSERT_TRUE(err);
+            ASSERT_EQ(error_code::sql_execution_exception, err->code());
+            ASSERT_EQ("DDL operation was blocked by other DML operation. table:\"t\"", err->message());
+            ASSERT_EQ(table_key, smgr.get_storage_key("t"));
+            ASSERT_EQ(index_key, smgr.get_storage_key("i"));
+            ++blocked;
+            continue;
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+        // verify both table and index storages are replaced with new ones
+        auto new_table_key = smgr.get_storage_key("t");
+        auto new_index_key = smgr.get_storage_key("i");
+        ASSERT_TRUE(new_table_key);
+        ASSERT_TRUE(new_index_key);
+        ASSERT_NE(table_key, new_table_key);
+        ASSERT_NE(index_key, new_index_key);
+        ++succeeded;
+    }
+    stop = true;
+    for(auto&& f : workers) {
+        f.get();
+    }
+    std::cerr << "truncate succeeded:" << succeeded << " blocked:" << blocked << std::endl;
+    ASSERT_LT(0, succeeded);
+    ASSERT_EQ(0, internal_errors);
+    execute_statement("INSERT INTO t VALUES (-1, -1)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE c1 = -1", result);
+    ASSERT_EQ(1, result.size());
 }
 
 TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {

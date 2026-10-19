@@ -389,6 +389,90 @@ TEST_F(exclusive_ddl_dml_test, starting_truncate_blocked_by_dml_req) {
     f.get();
 }
 
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_blocked_after_commit) {
+    // regression test: DML compiled before DROP TABLE and executed after the DROP committed used to lock
+    // the dropped storage entry successfully and crash by accessing missing storage
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1)", stmt));
+    execute_statement("DROP TABLE t");
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_truncate_blocked_after_commit) {
+    // regression test: DML compiled before TRUNCATE TABLE and executed after the TRUNCATE committed used to lock
+    // the old storage entry and access the new storage without locking it
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (0, 0)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    execute_statement("TRUNCATE TABLE t");
+    {
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+    }
+    // newly compiled statement runs successfully
+    execute_statement("INSERT INTO t VALUES (2, 2)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE c1 = 2", result);
+    ASSERT_EQ(1, result.size());
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_in_same_tx) {
+    // DML compiled before DROP TABLE in the same transaction used to run without storage and fail by internal error
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    auto tx = utils::create_transaction(*db_);
+    execute_statement("DROP TABLE t", *tx);
+    ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_truncate_in_same_tx) {
+    // DML compiled before TRUNCATE TABLE refers to the old storage entry, so it's blocked even in the same transaction
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    {
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+    }
+    {
+        // statement compiled after TRUNCATE runs successfully in the same transaction
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        execute_statement("INSERT INTO t VALUES (2, 2)", *tx);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[0]);
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_and_create_in_same_tx) {
+    // DML compiled before DROP TABLE and CREATE TABLE with the same name in the same transaction used to write
+    // records with the old table layout into the new table, which caused data corruption
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    {
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("DROP TABLE t", *tx);
+        execute_statement("CREATE TABLE t (c0 varchar(10) primary key)", *tx);
+        ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(0, result.size());
+}
+
 TEST_F(exclusive_ddl_dml_test, dml_compile_fails_if_table_storage_entry_is_missing) {
     // DML compiled when the table definition exists but its storage entry is not found by name (e.g. DROP TABLE
     // removed the entry after the definition was read, or the metadata is inconsistent) used to have no storage

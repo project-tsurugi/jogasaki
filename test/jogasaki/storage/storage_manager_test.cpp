@@ -362,6 +362,42 @@ TEST_F(storage_manager_test, add_entry_with_lock_holding_other_entries) {
     ASSERT_TRUE(mgr.create_shared_lock(stg2));
 }
 
+TEST_F(storage_manager_test, lock_delete_reserved_entry) {
+    // verify delete-reserved entry (e.g. dropped or truncated) cannot be locked even after DDL lock is released
+    storage_manager mgr{};
+    mgr.add_entry(1, "T1");
+    storage_list stg1{1};
+    {
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(mgr.add_locked_storages(stg1, *ul));
+        ASSERT_TRUE(mgr.reserve_delete_entry(1));
+    }
+    ASSERT_TRUE(mgr.find_entry(1));
+    ASSERT_TRUE(! mgr.create_shared_lock(stg1));
+    {
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(! mgr.add_locked_storages(stg1, *ul));
+    }
+    // failed attempts should not leave the entry locked
+    auto c = mgr.find_entry(1);
+    ASSERT_TRUE(c);
+    EXPECT_TRUE(c->can_lock());
+}
+
+TEST_F(storage_manager_test, lock_delete_reserved_entry_held_by_parent) {
+    // verify delete-reserved entry cannot be locked even if the parent lock (i.e. the same transaction) holds it
+    storage_manager mgr{};
+    mgr.add_entry(1, "T1");
+    storage_list stg1{1};
+    auto ul = mgr.create_unique_lock();
+    ASSERT_TRUE(mgr.add_locked_storages(stg1, *ul));
+    ASSERT_TRUE(mgr.create_shared_lock(stg1, ul.get()));
+    ASSERT_TRUE(mgr.reserve_delete_entry(1));
+    ASSERT_TRUE(! mgr.create_shared_lock(stg1, ul.get()));
+    ASSERT_TRUE(! mgr.add_locked_storages(stg1, *ul));
+    EXPECT_TRUE(ul->storage().contains(1));
+}
+
 TEST_F(storage_manager_test, add_entry_keeps_existing_name) {
     // verify add_entry() doesn't change the entry the name refers to if the name is already registered
     storage_manager mgr{};
@@ -429,6 +465,33 @@ TEST_F(storage_manager_test, reserve_delete_entry_keeps_name_referring_to_other_
     EXPECT_EQ(2, mgr.find_by_name("T1"));
     ASSERT_TRUE(mgr.reserve_delete_entry(2));
     EXPECT_FALSE(mgr.find_by_name("T1"));
+}
+
+TEST_F(storage_manager_test, lock_entry_whose_name_is_re_pointed) {
+    // verify the entry whose name has been re-pointed to another entry cannot be locked even if it's not
+    // delete-reserved (e.g. TRUNCATE TABLE failed after creating the new entry)
+    storage_manager mgr{};
+    storage_list stg1{1};
+    storage_list stg2{2};
+    {
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(mgr.add_entry(1, "T1", std::nullopt, true, std::nullopt, std::nullopt, ul.get()));
+        ASSERT_TRUE(mgr.replace_entry(2, 1, "T1", std::nullopt, true, std::nullopt, *ul));
+        // same transaction
+        ASSERT_TRUE(! mgr.create_shared_lock(stg1, ul.get()));
+        ASSERT_TRUE(mgr.create_shared_lock(stg2, ul.get()));
+    }
+    // other transaction after the lock is released
+    ASSERT_TRUE(! mgr.create_shared_lock(stg1));
+    ASSERT_TRUE(mgr.create_shared_lock(stg2));
+    {
+        auto ul = mgr.create_unique_lock();
+        ASSERT_TRUE(! mgr.add_locked_storages(stg1, *ul));
+    }
+    // failed attempts should not leave the entry locked
+    auto c = mgr.find_entry(1);
+    ASSERT_TRUE(c);
+    EXPECT_TRUE(c->can_lock());
 }
 
 TEST_F(storage_manager_test, err_try_to_lock_non_exiting_storage) {

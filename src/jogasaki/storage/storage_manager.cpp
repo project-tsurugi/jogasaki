@@ -246,6 +246,25 @@ struct lock_holder {
     bool shared_ = false;  //NOLINT
 };
 
+bool storage_manager::is_current_entry(storage_entry entry) const {
+    std::string name{};
+    {
+        // copy the name and release the accessor before looking up storage_names_ to avoid deadlock
+        decltype(storages_)::const_accessor acc{};
+        if (! storages_.find(acc, entry)) {
+            return false;
+        }
+        auto& ctrl = *acc->second;
+        auto n = ctrl.name();
+        if (ctrl.delete_reserved() || ! n) {
+            return false;
+        }
+        name = std::string{*n};
+    }
+    decltype(storage_names_)::const_accessor acc{};
+    return storage_names_.find(acc, name) && acc->second == entry;
+}
+
 std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storage_list_view storages, unique_lock* lock) {
     // holder holds in-flight locks until the end of this function.
     std::vector<storage_entry> locked_storages{};
@@ -253,7 +272,11 @@ std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storag
     auto max_held = storages.entity().size() + (lock ? lock->storage().entity().size() : 0);
     for(auto&& e : storages.entity()) {
         if(lock != nullptr && lock->storage().contains(e)) {
-            // lock already held by the given unique lock
+            // lock already held by the given unique lock, but the entry may have been dropped or replaced by DDL
+            // in the same transaction after the caller resolved it. Reject it for the same reason as below.
+            if(! is_current_entry(e)) {
+                return {false, {}};
+            }
             continue;
         }
         auto s = find_entry(e);
@@ -263,6 +286,14 @@ std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storag
         }
         holders.reserve(max_held);
         holders.emplace_back(std::move(s), shared);
+        if(! is_current_entry(e)) {
+            // The entry has been dropped or replaced (e.g. by TRUNCATE) after the caller resolved it by name.
+            // Its name may be gone or now refers to another entry, so locking this entry doesn't protect
+            // the storage the caller is going to access by name. DDL changes the entry the name refers to only while
+            // holding the exclusive lock on the entry, so checking after acquiring the lock is enough.
+            // In-flight lock will be released by holder.
+            return {false, {}};
+        }
         locked_storages.reserve(max_held);
         locked_storages.emplace_back(e);
     }

@@ -451,7 +451,8 @@ public:
      * @param parent optional unique lock to inherit from. If provided, shared locks are acquired for the
      * storage entries except ones included in the parent lock, assuming caller already own locks from parent.
      * @return shared_lock object that will release the locks
-     * @return nullptr if acquiring one of the storages failed
+     * @return nullptr if acquiring one of the storages failed (including the case the storage entry is no longer
+     * the one its name refers to, i.e. it was dropped or replaced by DDL after the caller resolved the entry)
      */
     std::unique_ptr<shared_lock> create_shared_lock(storage_list_view storages, unique_lock* parent = nullptr);
 
@@ -513,6 +514,9 @@ private:
 
     // return whether the name refers to `replaced`, and `replaced` (or its primary) is locked by `lock`
     [[nodiscard]] bool can_replace(std::string_view name, storage_entry replaced, unique_lock& lock) const;
+
+    // return whether the entry exists, is not delete-reserved, and its name refers to the entry
+    [[nodiscard]] bool is_current_entry(storage_entry entry) const;
 };
 
 };

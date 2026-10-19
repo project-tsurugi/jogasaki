@@ -203,7 +203,19 @@ static void add_table_to_storage_list(
         // new storage
         stgs.add(v.value());
         acts.emplace_back(actions);
+        return;
     }
+    // The table is found in the provider, but its storage entry is not found by name. This happens transiently
+    // if DROP TABLE removes the storage entry after the table definition is read, or persistently if the
+    // table metadata and the storage entries are inconsistent. Fail here because the statement would run without
+    // locking the table otherwise.
+    VLOG_LP(log_warning) << "storage entry not found for the table registered in the provider. table:\""
+                         << table.simple_name() << "\"";
+    throw_exception(plan_exception(create_error_info(
+        error_code::target_not_found_exception,
+        string_builder{} << "Table \"" << table.simple_name() << "\" not found." << string_builder::to_string,
+        status::err_not_found
+    )));
 }
 
 static auth::action_set from(takatori::relation::write_kind kind) {

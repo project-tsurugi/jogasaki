@@ -30,6 +30,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
@@ -386,6 +387,20 @@ TEST_F(exclusive_ddl_dml_test, starting_truncate_blocked_by_dml_req) {
         test_stmt_err("TRUNCATE TABLE t0", *tx, error_code::inactive_transaction_exception);
     }
     f.get();
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compile_fails_if_table_storage_entry_is_missing) {
+    // DML compiled when the table definition exists but its storage entry is not found by name (e.g. DROP TABLE
+    // removed the entry after the definition was read, or the metadata is inconsistent) used to have no storage
+    // to lock and run without locking the table. Now it fails as the table is not found.
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+    // emulate the situation by removing the name from the storage entry
+    ASSERT_TRUE(smgr.reserve_delete_entry(e.value()));
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::err_not_found, db_->create_executable("INSERT INTO t VALUES (1)", stmt));
 }
 
 TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {

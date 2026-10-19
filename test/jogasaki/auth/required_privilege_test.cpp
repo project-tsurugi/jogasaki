@@ -56,6 +56,13 @@ public:
         ASSERT_TRUE(static_cast<bool>(mgr));
         mgr->clear();
         (void) mgr->add_entry(1, table_name);
+        // other tables also need storage entries to compile the statements referencing them
+        jogasaki::storage::storage_entry next_entry = 2;
+        for(std::string_view n : {"t", "s", "u"}) {
+            if(n != table_name) {
+                (void) mgr->add_entry(next_entry++, n);
+            }
+        }
 
         jogasaki::plan::compiler_context ctx{};
         ctx.storage_provider(make_tables());

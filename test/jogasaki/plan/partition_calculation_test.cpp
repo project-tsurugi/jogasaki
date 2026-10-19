@@ -74,6 +74,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/utils/field_types.h>
 
@@ -104,6 +105,11 @@ class partition_calculation_test : public ::testing::Test {
     ::yugawara::binding::factory bindings{};
 
     std::shared_ptr<::yugawara::storage::configurable_provider> tables() {
+        // statements referencing the tables require storage entries
+        auto& smgr = *global::storage_manager();
+        smgr.clear();
+        (void) smgr.add_entry(1, "T0");
+        (void) smgr.add_entry(2, "T1");
 
         std::shared_ptr<::yugawara::storage::configurable_provider> storages =
             std::make_shared<::yugawara::storage::configurable_provider>();

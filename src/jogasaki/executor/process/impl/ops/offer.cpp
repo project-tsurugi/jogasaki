@@ -15,6 +15,7 @@
  */
 #include "offer.h"
 
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -135,6 +136,8 @@ std::vector<details::offer_field> offer::create_fields(
     fields.resize(meta->field_count());
     for(auto&& c : columns) {
         auto ind = order.index(c.destination());
+        assert_with_exception(ind < fields.size(), ind);
+        assert_with_exception(!fields[ind].unification_.has_value(), ind);
         auto& info = block_info().at(c.source());
         auto const& source_type = pinfo.compiled_info().type_of(c.source());
         auto const& target_type = pinfo.compiled_info().type_of(c.destination());
@@ -146,6 +149,8 @@ std::vector<details::offer_field> offer::create_fields(
             info.region()
         };
     }
+    assert_with_exception(std::all_of(fields.begin(), fields.end(),
+        [](auto const& field) { return field.unification_.has_value(); }), fields.size());
     return fields;
 }
 

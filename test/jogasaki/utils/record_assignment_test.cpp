@@ -39,7 +39,7 @@
 namespace jogasaki::value_operations {
 namespace {
 using kind = meta::field_type_kind;
-// A prepared plan cannot retain references to temporary declared types.
+// Direct prepare calls reject temporaries; reference-forwarding callers must ensure lifetime.
 template<class Source, class Target, class = void>
 struct can_prepare_assignment : std::false_type {};
 template<class Source, class Target>
@@ -165,6 +165,67 @@ TEST(record_assignment_test, prepared_plan_reuses_bound_positions_for_multiple_r
     ASSERT_EQ(status::ok, operation.apply(next.ref(), target.ref(), context, nullptr));
     EXPECT_EQ(55, target.get_value<std::int64_t>(0));
     EXPECT_EQ(99, target.get_value<std::int64_t>(1));
+}
+
+TEST(record_assignment_test, assignment_null_through_conversion_then_non_null) {
+    takatori::type::int4 from{};
+    takatori::type::int8 to{};
+    auto source = mock::create_nullable_record<kind::int4>(std::nullopt);
+    auto target = mock::create_nullable_record<kind::int8>(99);
+    auto operation = prepared_record_assignment::prepare(from, to, position(source), position(target), true);
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    request_context context{};
+    ASSERT_EQ(status::ok, operation.apply(source.ref(), target.ref(), context, &resource));
+    EXPECT_TRUE(target.is_null(0));
+    EXPECT_FALSE(context.error_info());
+    auto next = mock::create_nullable_record<kind::int4>(42);
+    ASSERT_EQ(status::ok, operation.apply(next.ref(), target.ref(), context, &resource));
+    EXPECT_FALSE(target.is_null(0));
+    EXPECT_EQ(42, target.get_value<std::int64_t>(0));
+}
+
+TEST(record_assignment_test, assignment_character_conversion_keeps_resource_owned_result) {
+    takatori::type::character from{takatori::type::varying, 128};
+    takatori::type::character to{256};
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    auto target = mock::create_nullable_record<kind::character>();
+    std::string bytes(128, 'x');
+    auto source = mock::create_nullable_record<kind::character>(accessor::text{std::string_view{bytes}});
+    auto operation = prepared_record_assignment::prepare(from, to, position(source), position(target), true);
+    request_context context{};
+    ASSERT_EQ(status::ok, operation.apply(source.ref(), target.ref(), context, &resource));
+    auto result_text = target.get_value<accessor::text>(0);
+    auto result = static_cast<std::string_view>(result_text);
+    EXPECT_EQ(bytes + std::string(128, ' '), result);
+    EXPECT_NE(bytes.data(), result.data());
+    // Replacing input bytes must not change the allocated conversion result.
+    bytes.assign(128, 'y');
+    EXPECT_EQ(std::string(128, 'x') + std::string(128, ' '), result);
+    auto next = mock::create_nullable_record<kind::character>(accessor::text{std::string_view{bytes}});
+    ASSERT_EQ(status::ok, operation.apply(next.ref(), target.ref(), context, &resource));
+    EXPECT_EQ(std::string(128, 'x') + std::string(128, ' '), result);
+    auto next_text = target.get_value<accessor::text>(0);
+    EXPECT_EQ(bytes + std::string(128, ' '), static_cast<std::string_view>(next_text));
+}
+
+TEST(record_assignment_test, unification_character_conversion_keeps_resource_owned_result) {
+    takatori::type::character from{takatori::type::varying, 128};
+    takatori::type::character to{256};
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    std::string bytes(128, 'x');
+    auto source = mock::create_nullable_record<kind::character>(accessor::text{std::string_view{bytes}});
+    auto target = mock::create_nullable_record<kind::character>();
+    auto operation = prepared_record_unification::prepare(from, to, position(source), destination(target));
+    ASSERT_EQ(status::ok, operation.apply(source.ref(), target.ref(), &resource));
+    auto result_text = target.get_value<accessor::text>(0);
+    auto result = static_cast<std::string_view>(result_text);
+    EXPECT_EQ(bytes + std::string(128, ' '), result);
+    EXPECT_NE(bytes.data(), result.data());
+    bytes.assign(128, 'y');
+    EXPECT_EQ(std::string(128, 'x') + std::string(128, ' '), result);
 }
 
 } // namespace jogasaki::value_operations

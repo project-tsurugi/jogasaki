@@ -38,7 +38,7 @@ struct record_position {
     std::size_t nullity_offset{};
 };
 
-/** @brief physical destination schema; it need not be a projection of its declared type */
+/** @brief physical destination schema; exchange storage types come from the exchange schema, not type_for */
 struct record_destination {
     meta::field_type storage_type;
     record_position position;
@@ -74,6 +74,8 @@ class record_transfer {
 /**
  * @brief prepared SQL assignment from a nullable source field to a destination field
  * @details Preparation binds types, positions, conversion need and the NULL policy once.
+ * SQL assignment derives the physical destination type with type_for(target_type),
+ * while unification preserves the physical type supplied by the exchange schema.
  * Declared types are borrowed and must outlive this operation and its copies. No clone is performed.
  */
 class prepared_record_assignment {
@@ -82,7 +84,8 @@ public:
         takatori::type::data const& source_type, takatori::type::data const& target_type,
         record_position source, record_position target, bool target_nullable);
 
-    // Preparation borrows types; temporaries must not escape into a prepared plan.
+    // Reject direct temporary arguments; forwarding through const references still requires
+    // the caller to keep the declared types alive for the operation and its copies.
     static prepared_record_assignment prepare(takatori::type::data const&&, takatori::type::data const&,
         record_position, record_position, bool) = delete;
     static prepared_record_assignment prepare(takatori::type::data const&, takatori::type::data const&&,
@@ -90,13 +93,13 @@ public:
 
     /**
      * @brief check source NULL, apply assignment conversion if needed, and store the result
-     * @note output variable-length data may reference source data or conversion storage without
+     * @note output variable-length data may reference source data or conversion varlen_resource without
      * owning it. Referenced data must remain valid until the output is consumed/copied.
-     * This operation does not extend data lifetimes or rewind storage.
+     * This operation does not extend data lifetimes or rewind varlen_resource.
      * SQL conversion and constraint errors retain the existing request_context contract.
      */
     [[nodiscard]] status apply(accessor::const_record_ref source, accessor::record_ref target,
-        request_context& context, memory::lifo_paged_memory_resource* storage) const;
+        request_context& context, memory::lifo_paged_memory_resource* varlen_resource) const;
 
 private:
     prepared_record_assignment(details::record_transfer transfer, bool target_nullable);
@@ -123,12 +126,12 @@ public:
 
     /**
      * @brief apply the prepared unifying conversion and store the result
-     * @note output variable-length data may reference source data or conversion storage without
+     * @note output variable-length data may reference source data or conversion varlen_resource without
      * owning it. Referenced data must remain valid until the output is consumed/copied.
-     * This operation does not extend data lifetimes or rewind storage.
+     * This operation does not extend data lifetimes or rewind varlen_resource.
      */
     [[nodiscard]] status apply(accessor::const_record_ref source, accessor::record_ref target,
-        memory::lifo_paged_memory_resource* storage) const;
+        memory::lifo_paged_memory_resource* varlen_resource) const;
 
 private:
     explicit prepared_record_unification(details::record_transfer transfer);

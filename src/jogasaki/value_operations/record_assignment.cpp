@@ -77,7 +77,7 @@ prepared_record_assignment prepared_record_assignment::prepare(
 
 status prepared_record_assignment::apply(
     accessor::const_record_ref source, accessor::record_ref target, request_context& context,
-    memory::lifo_paged_memory_resource* storage) const {
+    memory::lifo_paged_memory_resource* varlen_resource) const {
     if (source.is_null(transfer_.source_.nullity_offset) && !target_nullable_) {
         set_error_context(context, error_code::not_null_constraint_violation_exception,
             "Null assigned for non-nullable field.", status::err_integrity_constraint_violation);
@@ -86,7 +86,7 @@ status prepared_record_assignment::apply(
     return transfer_.apply(source, target,
         [&](takatori::type::data const& from, takatori::type::data const& to,
             data::any const& value, data::any& result) {
-            return executor::conv::conduct_assignment_conversion(from, to, value, result, context, storage);
+            return executor::conv::conduct_assignment_conversion(from, to, value, result, context, varlen_resource);
         });
 }
 
@@ -102,11 +102,11 @@ prepared_record_unification prepared_record_unification::prepare(
 }
 
 status prepared_record_unification::apply(
-    accessor::const_record_ref source, accessor::record_ref target, memory::lifo_paged_memory_resource* storage) const {
+    accessor::const_record_ref source, accessor::record_ref target, memory::lifo_paged_memory_resource* varlen_resource) const {
     return transfer_.apply(source, target,
         [&](takatori::type::data const& from, takatori::type::data const& to,
             data::any const& value, data::any& result) {
-            return executor::conv::conduct_unifying_conversion(from, to, value, result, storage);
+            return executor::conv::conduct_unifying_conversion(from, to, value, result, varlen_resource);
         });
 }
 

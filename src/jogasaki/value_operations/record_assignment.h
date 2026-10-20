@@ -60,7 +60,7 @@ class record_transfer {
         meta::field_type source_storage, record_position source, record_destination target);
 
     template<class Convert>
-    status apply_borrowed(accessor::const_record_ref source, accessor::record_ref target, Convert const& convert) const;
+    status apply(accessor::const_record_ref source, accessor::record_ref target, Convert const& convert) const;
 
     takatori::type::data const* source_type_;
     takatori::type::data const* target_type_;
@@ -74,7 +74,7 @@ class record_transfer {
 /**
  * @brief prepared SQL assignment from a nullable source field to a destination field
  * @details Preparation binds types, positions, conversion need and the NULL policy once.
- * Declared types are borrowed and must outlive this plan and its copies. No clone is performed.
+ * Declared types are borrowed and must outlive this operation and its copies. No clone is performed.
  */
 class prepared_record_assignment {
 public:
@@ -90,11 +90,12 @@ public:
 
     /**
      * @brief check source NULL, apply assignment conversion if needed, and store the result
-     * @note output variable-length data borrows source or conversion storage. Both must remain
-     * alive until the output is consumed/copied. This operation does not rewind storage.
+     * @note output variable-length data may reference source data or conversion storage without
+     * owning it. Referenced data must remain valid until the output is consumed/copied.
+     * This operation does not extend data lifetimes or rewind storage.
      * SQL conversion and constraint errors retain the existing request_context contract.
      */
-    [[nodiscard]] status apply_borrowed(accessor::const_record_ref source, accessor::record_ref target,
+    [[nodiscard]] status apply(accessor::const_record_ref source, accessor::record_ref target,
         request_context& context, memory::lifo_paged_memory_resource* storage) const;
 
 private:
@@ -105,7 +106,7 @@ private:
 
 /**
  * @brief prepared unifying conversion for exchange output; NULL is propagated
- * @details Declared types are borrowed and must outlive this plan and its copies.
+ * @details Declared types are borrowed and must outlive this operation and its copies.
  * The physical destination type is supplied from the exchange schema, never recomputed.
  * Caller-specific error remapping remains outside this operation.
  */
@@ -120,8 +121,13 @@ public:
     static prepared_record_unification prepare(takatori::type::data const&, takatori::type::data const&&,
         record_position, record_destination) = delete;
 
-    /** @brief convert and store, with the same borrowed-output lifetime as SQL assignment */
-    [[nodiscard]] status apply_borrowed(accessor::const_record_ref source, accessor::record_ref target,
+    /**
+     * @brief apply the prepared unifying conversion and store the result
+     * @note output variable-length data may reference source data or conversion storage without
+     * owning it. Referenced data must remain valid until the output is consumed/copied.
+     * This operation does not extend data lifetimes or rewind storage.
+     */
+    [[nodiscard]] status apply(accessor::const_record_ref source, accessor::record_ref target,
         memory::lifo_paged_memory_resource* storage) const;
 
 private:

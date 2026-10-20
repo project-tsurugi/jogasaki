@@ -72,7 +72,7 @@ TEST(record_assignment_test, assignment_same_type_fast_path) {
     auto target = mock::create_nullable_record<kind::int8>(99);
     auto operation = prepared_record_assignment::prepare(type, type, position(source), position(target), false);
     request_context context{};
-    EXPECT_EQ(status::ok, operation.apply_borrowed(source.ref(), target.ref(), context, nullptr));
+    EXPECT_EQ(status::ok, operation.apply(source.ref(), target.ref(), context, nullptr));
     EXPECT_EQ(42, target.get_value<std::int64_t>(0));
 }
 
@@ -85,7 +85,7 @@ TEST(record_assignment_test, assignment_widens_integer) {
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource storage{&pool};
     request_context context{};
-    EXPECT_EQ(status::ok, operation.apply_borrowed(source.ref(), target.ref(), context, &storage));
+    EXPECT_EQ(status::ok, operation.apply(source.ref(), target.ref(), context, &storage));
     EXPECT_EQ(42, target.get_value<std::int64_t>(0));
 }
 
@@ -97,7 +97,7 @@ TEST(record_assignment_test, rejects_null_before_modifying_destination) {
     auto operation = prepared_record_assignment::prepare(from, to, position(source), position(target), false);
     request_context context{};
     EXPECT_EQ(status::err_integrity_constraint_violation,
-        operation.apply_borrowed(source.ref(), target.ref(), context, nullptr));
+        operation.apply(source.ref(), target.ref(), context, nullptr));
     ASSERT_TRUE(context.error_info());
     EXPECT_EQ(error_code::not_null_constraint_violation_exception, context.error_info()->code());
     EXPECT_EQ("Null assigned for non-nullable field.", context.error_info()->message());
@@ -113,7 +113,7 @@ TEST(record_assignment_test, unification_propagates_null) {
     auto operation = prepared_record_unification::prepare(from, to, position(source), destination(target));
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource storage{&pool};
-    EXPECT_EQ(status::ok, operation.apply_borrowed(source.ref(), target.ref(), &storage));
+    EXPECT_EQ(status::ok, operation.apply(source.ref(), target.ref(), &storage));
     EXPECT_TRUE(target.is_null(0));
 }
 
@@ -123,7 +123,7 @@ TEST(record_assignment_test, no_conversion_borrows_long_character_data) {
     auto source = mock::create_nullable_record<kind::character>(accessor::text{std::string_view{bytes}});
     auto target = mock::create_nullable_record<kind::character>();
     auto operation = prepared_record_unification::prepare(type, type, position(source), destination(target));
-    EXPECT_EQ(status::ok, operation.apply_borrowed(source.ref(), target.ref(), nullptr));
+    EXPECT_EQ(status::ok, operation.apply(source.ref(), target.ref(), nullptr));
     auto text = target.get_value<accessor::text>(0);
     EXPECT_EQ(bytes, static_cast<std::string_view>(text));
     EXPECT_EQ(bytes.data(), static_cast<std::string_view>(text).data());
@@ -136,7 +136,7 @@ TEST(record_assignment_test, assignment_preserves_conversion_error_status) {
     auto target = mock::create_nullable_record<kind::date>(takatori::datetime::date{2020, 1, 1});
     auto operation = prepared_record_assignment::prepare(from, to, position(source), position(target), true);
     request_context context{};
-    EXPECT_EQ(status::err_unsupported, operation.apply_borrowed(source.ref(), target.ref(), context, nullptr));
+    EXPECT_EQ(status::err_unsupported, operation.apply(source.ref(), target.ref(), context, nullptr));
     ASSERT_TRUE(context.error_info());
     EXPECT_EQ(error_code::unsupported_runtime_feature_exception, context.error_info()->code());
     EXPECT_EQ((takatori::datetime::date{2020, 1, 1}), target.get_value<takatori::datetime::date>(0));
@@ -149,7 +149,7 @@ TEST(record_assignment_test, unification_leaves_error_remapping_to_caller) {
     auto target = mock::create_nullable_record<kind::date>(takatori::datetime::date{2020, 1, 1});
     auto operation = prepared_record_unification::prepare(from, to, position(source), destination(target));
     EXPECT_EQ(status::err_expression_evaluation_failure,
-        operation.apply_borrowed(source.ref(), target.ref(), nullptr));
+        operation.apply(source.ref(), target.ref(), nullptr));
     EXPECT_EQ((takatori::datetime::date{2020, 1, 1}), target.get_value<takatori::datetime::date>(0));
 }
 
@@ -159,10 +159,10 @@ TEST(record_assignment_test, prepared_plan_reuses_bound_positions_for_multiple_r
     auto target = mock::create_nullable_record<kind::int8, kind::int8>(77, 99);
     auto operation = prepared_record_assignment::prepare(type, type, position(source, 1), position(target, 0), true);
     request_context context{};
-    ASSERT_EQ(status::ok, operation.apply_borrowed(source.ref(), target.ref(), context, nullptr));
+    ASSERT_EQ(status::ok, operation.apply(source.ref(), target.ref(), context, nullptr));
     EXPECT_EQ(42, target.get_value<std::int64_t>(0));
     auto next = mock::create_nullable_record<kind::int8, kind::int8>(33, 55);
-    ASSERT_EQ(status::ok, operation.apply_borrowed(next.ref(), target.ref(), context, nullptr));
+    ASSERT_EQ(status::ok, operation.apply(next.ref(), target.ref(), context, nullptr));
     EXPECT_EQ(55, target.get_value<std::int64_t>(0));
     EXPECT_EQ(99, target.get_value<std::int64_t>(1));
 }

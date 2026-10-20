@@ -78,7 +78,7 @@ operation_status offer::operator()(offer_context& ctx) {
     utils::checkpoint_holder h{ctx.varlen_resource()};
     for(auto &f : fields_) {
         auto source = ctx.variables().ref(f.source_region_id_);
-        if (auto res = f.unification_->apply_borrowed(source, target, ctx.varlen_resource());
+        if (auto res = f.unification_->apply(source, target, ctx.varlen_resource());
             res != status::ok) {
             // normaly unifying conversion does not fail
             set_error_context(

@@ -43,7 +43,7 @@ record_transfer::record_transfer(
       requires_conversion_(executor::conv::to_require_conversion(source_type, target_type)) {}
 
 template<class Convert>
-status record_transfer::apply_borrowed(
+status record_transfer::apply(
     accessor::const_record_ref source, accessor::record_ref target, Convert const& convert) const {
     if (!requires_conversion_) {
         utils::copy_nullable_field(target_.storage_type, target, target_.position.value_offset,
@@ -75,7 +75,7 @@ prepared_record_assignment prepared_record_assignment::prepare(
         std::move(source_storage), source, record_destination{std::move(target_storage), target}}, target_nullable};
 }
 
-status prepared_record_assignment::apply_borrowed(
+status prepared_record_assignment::apply(
     accessor::const_record_ref source, accessor::record_ref target, request_context& context,
     memory::lifo_paged_memory_resource* storage) const {
     if (source.is_null(transfer_.source_.nullity_offset) && !target_nullable_) {
@@ -83,7 +83,7 @@ status prepared_record_assignment::apply_borrowed(
             "Null assigned for non-nullable field.", status::err_integrity_constraint_violation);
         return status::err_integrity_constraint_violation;
     }
-    return transfer_.apply_borrowed(source, target,
+    return transfer_.apply(source, target,
         [&](takatori::type::data const& from, takatori::type::data const& to,
             data::any const& value, data::any& result) {
             return executor::conv::conduct_assignment_conversion(from, to, value, result, context, storage);
@@ -101,9 +101,9 @@ prepared_record_unification prepared_record_unification::prepare(
         source_type, target_type, std::move(source_storage), source, std::move(target)}};
 }
 
-status prepared_record_unification::apply_borrowed(
+status prepared_record_unification::apply(
     accessor::const_record_ref source, accessor::record_ref target, memory::lifo_paged_memory_resource* storage) const {
-    return transfer_.apply_borrowed(source, target,
+    return transfer_.apply(source, target,
         [&](takatori::type::data const& from, takatori::type::data const& to,
             data::any const& value, data::any& result) {
             return executor::conv::conduct_unifying_conversion(from, to, value, result, storage);

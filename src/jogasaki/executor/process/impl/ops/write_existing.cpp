@@ -122,7 +122,7 @@ status update_record(
             ? host_variables
             : input_variables.ref(f.source_region_id_);
         auto target = f.key_ ? extracted_key_record : extracted_value_record;
-        if (auto st = f.assignment_.apply_borrowed(source, target, ctx, resource); st != status::ok) {
+        if (auto st = f.assignment_.apply(source, target, ctx, resource); st != status::ok) {
             return st;
         }
     }

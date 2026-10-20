@@ -71,6 +71,16 @@ model::statement_kind create_index::kind() const noexcept {
 // return false if table is not empty, or error with kvs
 bool create_index::validate_empty_table(request_context& context, std::string_view table_name) const {
     auto stg = utils::get_storage_by_index_name(table_name);
+    if(! stg) {
+        // should not happen normally since the table is locked
+        set_error_context(
+            context,
+            error_code::target_not_found_exception,
+            string_builder{} << "Table \"" << table_name << "\" not found." << string_builder::to_string,
+            status::err_not_found
+        );
+        return false;
+    }
     std::unique_ptr<kvs::iterator> it{};
     if(auto res =
            stg->content_scan(*context.transaction()->object(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);
@@ -124,9 +134,6 @@ bool create_index::operator()(request_context& context) const {
         );
         return false;
     }
-    if(! validate_empty_table(context, i->table().simple_name())) {
-        return false;
-    }
     if(! utils::validate_index_key_type(context, *i)) {
         return false;
     }
@@ -136,6 +143,10 @@ bool create_index::operator()(request_context& context) const {
         return false;
     }
     if(! validate_alter_table_auth(context, storage_id)) {
+        return false;
+    }
+    // check the table is empty after locking the table, otherwise records can be added before locking
+    if(! validate_empty_table(context, i->table().simple_name())) {
         return false;
     }
 

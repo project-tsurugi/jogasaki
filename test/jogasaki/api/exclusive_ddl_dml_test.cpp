@@ -592,6 +592,19 @@ TEST_F(exclusive_ddl_dml_test, truncate_while_dml_requests_are_compiled_concurre
     ASSERT_EQ(1, result.size());
 }
 
+TEST_F(exclusive_ddl_dml_test, create_index_fails_if_table_storage_entry_is_missing) {
+    // CREATE INDEX used to check the table is empty before locking the table, and crashed when the table name was
+    // missing (e.g. DROP TABLE removed the storage entry concurrently)
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+    // emulate the situation by removing the name from the storage entry
+    ASSERT_TRUE(smgr.reserve_delete_entry(e.value()));
+    test_stmt_err("CREATE INDEX i ON t (c1)", error_code::target_not_found_exception);
+}
+
 TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {
     // two dml operations before/after grant in the same dml tx whicle ddl tx instantly completes
     // TODO currently there is no error on this case, but DDL must have changed the metadata, so DML touching the updated table should fail

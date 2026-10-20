@@ -54,7 +54,7 @@ executor::function::function_registry& function_registry(
     std::shared_ptr<executor::function::function_registry> const& owner) {
     static std::weak_ptr<executor::function::function_registry> active{};
     static std::mutex active_mutex{};
-    std::lock_guard<std::mutex> guard{active_mutex};
+    std::scoped_lock guard{active_mutex};
     if (owner) { active = owner; }
     auto registry = active.lock();
     if (!registry) { fail_with_exception(); }

@@ -68,13 +68,17 @@ struct plugin_object_owner {
     std::unique_ptr<T> object{};
 };
 
+} // namespace
+
 template<class T>
-std::shared_ptr<T> retain_plugin_library(std::shared_ptr<void> const& library, std::unique_ptr<T> object) {
+static std::shared_ptr<T> retain_plugin_library(std::shared_ptr<void> const& library, std::unique_ptr<T> object) {
     auto owner = std::make_shared<plugin_object_owner<T>>();
     owner->library = library;
     owner->object = std::move(object);
     return {owner, owner->object.get()};
 }
+
+namespace {
 
 [[nodiscard]] bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
     if (!fs::exists(path)) {

@@ -392,8 +392,8 @@ status database::shutdown() {
     statement_stores_.clear();
     transactions_.clear();
     transaction_stores_.clear();
-    // Execution objects are gone before releasing declarations, implementations, and plugins.
-    functions_->clear();
+    // Release registrations after execution stops; database-owned plugins remain available for restart.
+    functions_->clear_registrations();
     // The borrowed handle remains available to its owner and for another start attempt.
     if (kvs_db_ && !kvs_db_->handle_borrowed()) {
         bool const closed = kvs_db_->close();

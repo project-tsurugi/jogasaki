@@ -35,6 +35,7 @@
 #include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/udf/data/udf_any_sequence_stream.h>
 #include <jogasaki/udf/descriptor_impl.h>
@@ -250,6 +251,50 @@ TEST_F(database_function_lifecycle_test, stop_releases_registration_and_resource
     EXPECT_EQ(nullptr, global::scalar_function_repository().find(udf_id));
     EXPECT_EQ(nullptr, global::table_valued_function_repository().find(udf_id));
 
+}
+
+TEST_F(database_function_lifecycle_test, stop_start_restores_builtin_functions_and_recovered_rows) {
+    execute_statement("CREATE TABLE lifecycle_restart (id INT PRIMARY KEY, v INT)");
+    execute_statement("INSERT INTO lifecycle_restart VALUES (1, -10), (2, -20)");
+    for (std::size_t i = 0; i < 2; ++i) {
+        ASSERT_EQ(status::ok, db_->stop());
+        EXPECT_EQ(0U, db_impl()->functions().scalar_functions().size());
+        EXPECT_EQ(0U, db_impl()->functions().incremental_functions().size());
+        ASSERT_EQ(status::ok, db_->start());
+        EXPECT_GT(db_impl()->functions().scalar_functions().size(), 0U);
+        EXPECT_GT(db_impl()->functions().incremental_functions().size(), 0U);
+        std::vector<mock::basic_record> rows{};
+        execute_query("SELECT ABS(SUM(v)), COUNT(*) FROM lifecycle_restart", rows);
+        ASSERT_EQ(1U, rows.size());
+        EXPECT_EQ(30, rows[0].get_value<std::int32_t>(0));
+        EXPECT_EQ(2, rows[0].get_value<std::int64_t>(1));
+    }
+}
+
+TEST(function_registry_lifecycle_test, stop_start_retains_plugins_until_registry_release) {
+    test::temporary_folder temporary{};
+    temporary.prepare();
+    utils::finally cleanup{[&temporary] { temporary.clean(); }};
+    auto directory = std::filesystem::path{temporary.path()};
+    std::filesystem::create_directories(directory / "deps");
+    std::filesystem::create_symlink(UDF_LIFECYCLE_PLUGIN_PATH, directory / "lifecycle.so");
+    std::ofstream{directory / "lifecycle.ini"} << "[udf]\nenabled=true\nendpoint=dns:///127.0.0.1:50051\nsecure=false\ntransport=stream\n";
+    configuration cfg{};
+    cfg.plugin_directory(directory.string());
+    global::config_pool(std::make_shared<configuration>());
+    function_registry functions{};
+    functions.initialize(cfg);
+    ASSERT_TRUE(library_loaded());
+    for (std::size_t i = 0; i < 2; ++i) {
+        functions.clear_registrations();
+        EXPECT_EQ(0U, functions.scalar_functions().size());
+        EXPECT_TRUE(library_loaded());
+        functions.initialize(cfg);
+        EXPECT_TRUE(library_loaded());
+        EXPECT_GT(functions.scalar_functions().size(), 0U);
+    }
+    functions.clear();
+    EXPECT_FALSE(library_loaded());
 }
 
 }

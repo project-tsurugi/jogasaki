@@ -42,7 +42,9 @@ public:
     function_registry& operator=(function_registry&&) = delete;
 
     void initialize(configuration const& cfg);
-    /** @brief release all function registrations after execution has stopped */
+    /** @brief release declarations and implementations after execution stops, retaining plugins for restart */
+    void clear_registrations();
+    /** @brief release registrations and plugins; live callables/streams still retain their owners */
     void clear();
 
     [[nodiscard]] scalar_function_repository& scalar_functions() noexcept { return scalar_functions_; }

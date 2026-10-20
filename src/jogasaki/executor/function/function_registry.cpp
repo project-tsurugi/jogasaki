@@ -33,35 +33,38 @@
 namespace jogasaki::executor::function {
 
 void function_registry::initialize(configuration const& cfg) {
-    clear();
+    clear_registrations();
     add_builtin_scalar_functions(
         *regular_provider_,
         scalar_functions_
     );
-    loader_ = std::make_unique<plugin::udf::udf_loader>();
-    auto results = loader_->load(std::string(cfg.plugin_directory()));
-    for (auto const& result : results) {
-        auto const status = result.status();
-        auto const outcome = plugin::udf::classify(status);
+    // Reuse plugin objects across database stop/start; avoid reloading generated descriptors.
+    if (!loader_) {
+        loader_ = std::make_unique<plugin::udf::udf_loader>();
+        auto results = loader_->load(std::string(cfg.plugin_directory()));
+        for (auto const& result : results) {
+            auto const status = result.status();
+            auto const outcome = plugin::udf::classify(status);
 
-        std::ostringstream oss;
+            std::ostringstream oss;
 
-        oss << jogasaki::udf::log::prefix << plugin::udf::to_string_view(outcome)
-            << " status=" << plugin::udf::to_string_view(status) << " file=" << result.file()
-            << " detail=" << result.detail();
+            oss << jogasaki::udf::log::prefix << plugin::udf::to_string_view(outcome)
+                << " status=" << plugin::udf::to_string_view(status) << " file=" << result.file()
+                << " detail=" << result.detail();
 
-        auto const message = oss.str();
+            auto const message = oss.str();
 
-        switch (outcome) {
-            case plugin::udf::load_outcome::ok: LOG_LP(INFO) << message; break;
-            case plugin::udf::load_outcome::skipped: LOG_LP(WARNING) << message; break;
-            case plugin::udf::load_outcome::fail: LOG_LP(ERROR) << message; break;
-            default: LOG_LP(ERROR) << message; break;
+            switch (outcome) {
+                case plugin::udf::load_outcome::ok: LOG_LP(INFO) << message; break;
+                case plugin::udf::load_outcome::skipped: LOG_LP(WARNING) << message; break;
+                case plugin::udf::load_outcome::fail: LOG_LP(ERROR) << message; break;
+                default: LOG_LP(ERROR) << message; break;
+            }
         }
-    }
-    for (auto& plugin : loader_->get_plugins()) {
-        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
-            std::move(std::get<2>(plugin)));
+        for (auto& plugin : loader_->get_plugins()) {
+            plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
+                std::move(std::get<2>(plugin)));
+        }
     }
     add_udf_functions(*regular_provider_, scalar_functions_,
         table_functions_, plugins_);
@@ -75,7 +78,7 @@ void function_registry::initialize(configuration const& cfg) {
     );
 }
 
-void function_registry::clear() {
+void function_registry::clear_registrations() {
     auto regular = std::make_shared<yugawara::function::configurable_provider>();
     auto aggregate = std::make_shared<yugawara::aggregate::configurable_provider>();
     scalar_functions_.clear();
@@ -84,6 +87,10 @@ void function_registry::clear() {
     incremental_functions_.clear();
     regular_provider_ = std::move(regular);
     aggregate_provider_ = std::move(aggregate);
+}
+
+void function_registry::clear() {
+    clear_registrations();
     plugins_.clear();
     loader_.reset();
 }

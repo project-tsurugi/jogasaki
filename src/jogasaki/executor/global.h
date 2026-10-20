@@ -97,36 +97,40 @@ enum class pool_operation : std::int32_t {
 
 /**
  * @brief non-owning compatibility access to the active owner's function registry
- * @details Active registry lookup and binding are synchronized.
- * @attention The owner must outlive all accesses. Initialize or clear registry contents only under quiescence.
+ * @details Only publication of the non-owning pointer is atomic; it does not protect the object lifetime.
+ * @attention The owner must outlive all accesses. Binding, destruction and registry mutations
+ * require quiescence of query execution; switching databases during execution is unsupported.
  */
 [[nodiscard]] executor::function::function_registry& function_registry(
     std::shared_ptr<executor::function::function_registry> const& owner = {});
 
+/** @brief clear the active binding only if it refers to the registry being destroyed */
+void unbind_function_registry(executor::function::function_registry* registry) noexcept;
+
 /**
  * @brief compatibility accessor to the active incremental aggregate function repository
- * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
+ * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository();
 
 /**
  * @brief compatibility accessor to the active function repository
- * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
+ * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
 
 /**
  * @brief compatibility accessor to the active function repository
- * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
+ * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::scalar_function_repository& scalar_function_repository();
 
 /**
  * @brief compatibility accessor to the active table-valued function repository
- * @details Lookup is synchronized; the owner must outlive use and repository mutations require quiescence.
+ * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::table_valued_function_repository& table_valued_function_repository();

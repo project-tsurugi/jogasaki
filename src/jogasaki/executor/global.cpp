@@ -15,8 +15,8 @@
  */
 #include "global.h"
 
+#include <atomic>
 #include <memory>
-#include <mutex>
 #include <utility>
 
 #include <yugawara/function/configurable_provider.h>
@@ -38,6 +38,12 @@ namespace jogasaki::global {
 
 using takatori::util::maybe_shared_ptr;
 
+// Non-owning publication; lifetime and repository mutations require quiescence.
+static std::atomic<executor::function::function_registry*>& active_function_registry() noexcept {
+    static std::atomic<executor::function::function_registry*> active{nullptr};
+    return active;
+}
+
 memory::page_pool& page_pool(pool_operation op) {
     static std::unique_ptr<memory::page_pool> pool = std::make_unique<memory::page_pool>();
     switch(op) {
@@ -52,13 +58,19 @@ memory::page_pool& page_pool(pool_operation op) {
 
 executor::function::function_registry& function_registry(
     std::shared_ptr<executor::function::function_registry> const& owner) {
-    static std::weak_ptr<executor::function::function_registry> active{};
-    static std::mutex active_mutex{};
-    std::scoped_lock guard{active_mutex};
-    if (owner) { active = owner; }
-    auto registry = active.lock();
+    if (owner) {
+        active_function_registry().store(owner.get(), std::memory_order_release);
+        return *owner;
+    }
+    auto* registry = active_function_registry().load(std::memory_order_acquire);
     if (!registry) { fail_with_exception(); }
     return *registry;
+}
+
+void unbind_function_registry(executor::function::function_registry* registry) noexcept {
+    auto* expected = registry;
+    // Destroying an old or unbound registry must not clear a newer binding.
+    active_function_registry().compare_exchange_strong(expected, nullptr);
 }
 
 executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository() {

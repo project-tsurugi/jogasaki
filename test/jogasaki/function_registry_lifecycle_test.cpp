@@ -215,6 +215,7 @@ TEST_F(database_function_lifecycle_test, global_access_does_not_keep_the_registr
     EXPECT_ANY_THROW((void) global::scalar_function_repository());
 }
 
+// Both owners remain alive: this checks pointer publication, not query-time database switching.
 TEST_F(database_function_lifecycle_test, concurrent_registry_binding_and_lookup) {
     auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
     utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
@@ -295,6 +296,32 @@ TEST(function_registry_lifecycle_test, stop_start_retains_plugins_until_registry
     }
     functions.clear();
     EXPECT_FALSE(library_loaded());
+}
+
+TEST_F(database_function_lifecycle_test, destroying_old_owner_preserves_new_binding) {
+    auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
+    utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
+    auto first = std::make_shared<function_registry>();
+    auto second = std::make_shared<function_registry>();
+    (void) global::function_registry(first);
+    (void) global::function_registry(second);
+    first.reset();
+    EXPECT_EQ(second.get(), &global::function_registry());
+    {
+        function_registry unrelated{};
+    }
+    EXPECT_EQ(second.get(), &global::function_registry());
+}
+
+TEST_F(database_function_lifecycle_test, binding_recovers_after_active_owner_destruction) {
+    auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
+    utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
+    auto temporary = std::make_shared<function_registry>();
+    (void) global::function_registry(temporary);
+    temporary.reset();
+    EXPECT_ANY_THROW((void) global::function_registry());
+    EXPECT_EQ(database_owner.get(), &global::function_registry(database_owner));
+    EXPECT_EQ(database_owner.get(), &global::function_registry());
 }
 
 }

@@ -39,7 +39,7 @@ namespace jogasaki::executor::function {
 class function_registry {
 public:
     function_registry() = default;
-    ~function_registry() = default;
+    ~function_registry() noexcept;
     function_registry(function_registry const&) = delete;
     function_registry& operator=(function_registry const&) = delete;
     function_registry(function_registry&&) = delete;

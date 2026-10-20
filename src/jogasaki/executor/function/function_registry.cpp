@@ -84,14 +84,12 @@ void function_registry::initialize(configuration const& cfg) {
 }
 
 void function_registry::clear_registrations() {
-    auto regular = std::make_shared<yugawara::function::configurable_provider>();
-    auto aggregate = std::make_shared<yugawara::aggregate::configurable_provider>();
     scalar_functions_.clear();
     table_functions_.clear();
     aggregate_functions_.clear();
     incremental_functions_.clear();
-    regular_provider_ = std::move(regular);
-    aggregate_provider_ = std::move(aggregate);
+    regular_provider_ = std::make_shared<yugawara::function::configurable_provider>();
+    aggregate_provider_ = std::make_shared<yugawara::aggregate::configurable_provider>();
 }
 
 void function_registry::clear() {

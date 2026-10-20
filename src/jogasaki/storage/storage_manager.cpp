@@ -377,11 +377,16 @@ void storage_manager::init_next_surrogate_id(std::uint64_t value) {
 }
 
 std::optional<std::string> storage_manager::get_storage_key(std::string_view name) const {
-    decltype(storage_names_)::const_accessor acc{};
-    if (! storage_names_.find(acc, std::string{name})) {
-        return std::nullopt;
+    storage_entry entry{};
+    {
+        // release the accessor before accessing storages_. DDL erases the name while holding the accessor of
+        // storages_, so holding both in the reverse order causes deadlock.
+        decltype(storage_names_)::const_accessor acc{};
+        if (! storage_names_.find(acc, std::string{name})) {
+            return std::nullopt;
+        }
+        entry = acc->second;
     }
-    auto entry = acc->second;
 
     decltype(storages_)::const_accessor storages_acc{};
     if (! storages_.find(storages_acc, entry)) {
@@ -391,11 +396,15 @@ std::optional<std::string> storage_manager::get_storage_key(std::string_view nam
 }
 
 std::optional<std::string> storage_manager::get_index_name(std::string_view storage_key) const {
-    decltype(storage_keys_)::const_accessor acc{};
-    if (! storage_keys_.find(acc, std::string{storage_key})) {
-        return std::nullopt;
+    storage_entry entry{};
+    {
+        // release the accessor before accessing storages_ for the same reason as get_storage_key()
+        decltype(storage_keys_)::const_accessor acc{};
+        if (! storage_keys_.find(acc, std::string{storage_key})) {
+            return std::nullopt;
+        }
+        entry = acc->second;
     }
-    auto entry = acc->second;
 
     decltype(storages_)::const_accessor storages_acc{};
     if (! storages_.find(storages_acc, entry)) {

@@ -493,6 +493,11 @@ public:
     [[nodiscard]] std::optional<std::string> get_index_name(std::string_view storage_key) const;
 
 private:
+    // Lock order of the accessors of the maps below: the accessor of storages_ may be held while acquiring
+    // the accessor of storage_names_ or storage_keys_ (e.g. removing the name of the entry), but not the reverse.
+    // Erasing an element waits for the accessors to the element to be released, so lookups by name or storage key
+    // must release the accessor of storage_names_ or storage_keys_ before accessing storages_. Otherwise they
+    // deadlock with the removal. Accessors of storage_names_ and storage_keys_ must not be held at the same time.
     tbb::concurrent_hash_map<storage_entry, std::shared_ptr<impl::storage_control>> storages_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_names_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_keys_{};

@@ -13,6 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
+#include <functional>
+#include <future>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <gtest/gtest.h>
@@ -396,6 +402,58 @@ TEST_F(storage_manager_test, lock_delete_reserved_entry_held_by_parent) {
     ASSERT_TRUE(! mgr.create_shared_lock(stg1, ul.get()));
     ASSERT_TRUE(! mgr.add_locked_storages(stg1, *ul));
     EXPECT_TRUE(ul->storage().contains(1));
+}
+
+// run writer and reader concurrently, and abort if they don't finish (deadlocked threads can't be joined)
+static void run_concurrently_or_abort(std::function<void()> writer, std::function<void()> reader) {
+    std::atomic_bool stop{false};
+    auto w = std::async(std::launch::async, [&]() {
+        writer();
+        stop = true;
+    });
+    auto r = std::async(std::launch::async, [&]() {
+        while(! stop) {
+            reader();
+        }
+    });
+    for(auto* f : {&w, &r}) {
+        if(f->wait_for(std::chrono::seconds{30}) != std::future_status::ready) {
+            std::cerr << "deadlock detected" << std::endl;
+            std::abort();
+        }
+    }
+}
+
+TEST_F(storage_manager_test, reserve_delete_entry_while_getting_storage_key) {
+    // regression test: reserve_delete_entry() and get_storage_key() for the same name used to deadlock
+    storage_manager mgr{};
+    run_concurrently_or_abort(
+        [&]() {
+            for(storage_entry e = 1; e <= 1000; ++e) {
+                ASSERT_TRUE(mgr.add_entry(e, "T1"));
+                ASSERT_TRUE(mgr.reserve_delete_entry(e));
+            }
+        },
+        [&]() {
+            (void) mgr.get_storage_key("T1");
+        }
+    );
+}
+
+TEST_F(storage_manager_test, remove_entry_while_getting_index_name) {
+    // regression test: remove_entry() and get_index_name() for the same storage key used to deadlock
+    storage_manager mgr{};
+    run_concurrently_or_abort(
+        [&]() {
+            for(storage_entry e = 1; e <= 1000; ++e) {
+                ASSERT_TRUE(mgr.add_entry(e, "T1", "key"));
+                ASSERT_TRUE(mgr.remove_entry(e));
+            }
+        },
+        [&]() {
+            (void) mgr.get_index_name("key");
+        }
+    );
 }
 
 TEST_F(storage_manager_test, add_entry_keeps_existing_name) {

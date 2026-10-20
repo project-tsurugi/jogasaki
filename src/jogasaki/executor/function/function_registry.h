@@ -31,7 +31,11 @@ namespace jogasaki { class configuration; }
 
 namespace jogasaki::executor::function {
 
-/** @brief database-owned declarations, implementations, and plugin resources */
+/**
+ * @brief database-owned declarations, implementations, and UDF plugin resources
+ * @details Only plugins providing UDF implementations belong here; unrelated plugins
+ * must have ownership defined by their own use and lifetime requirements.
+ */
 class function_registry {
 public:
     function_registry() = default;
@@ -42,9 +46,9 @@ public:
     function_registry& operator=(function_registry&&) = delete;
 
     void initialize(configuration const& cfg);
-    /** @brief release declarations and implementations after execution stops, retaining plugins for restart */
+    /** @brief release declarations and implementations after execution stops, retaining UDF plugins for restart */
     void clear_registrations();
-    /** @brief release registrations and plugins; live callables/streams still retain their owners */
+    /** @brief release registrations and UDF plugins; live callables/streams still retain their owners */
     void clear();
 
     [[nodiscard]] scalar_function_repository& scalar_functions() noexcept { return scalar_functions_; }
@@ -56,9 +60,9 @@ public:
     void regular_provider(std::shared_ptr<yugawara::function::configurable_provider> value);
 
 private:
-    // Registrations are destroyed before plugin resources (reverse member order).
-    std::unique_ptr<plugin::udf::plugin_loader> loader_{};
-    std::vector<plugin::udf::plugin_entry> plugins_{};
+    // Registrations are destroyed before UDF plugin resources (reverse member order).
+    std::unique_ptr<plugin::udf::plugin_loader> udf_loader_{};
+    std::vector<plugin::udf::plugin_entry> udf_plugins_{};
     std::shared_ptr<yugawara::function::configurable_provider> regular_provider_{
         std::make_shared<yugawara::function::configurable_provider>()};
     std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_provider_{

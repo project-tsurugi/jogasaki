@@ -38,10 +38,10 @@ void function_registry::initialize(configuration const& cfg) {
         *regular_provider_,
         scalar_functions_
     );
-    // Reuse plugin objects across database stop/start; avoid reloading generated descriptors.
-    if (!loader_) {
-        loader_ = std::make_unique<plugin::udf::udf_loader>();
-        auto results = loader_->load(std::string(cfg.plugin_directory()));
+    // Reuse UDF plugin objects across database stop/start; avoid reloading generated descriptors.
+    if (!udf_loader_) {
+        udf_loader_ = std::make_unique<plugin::udf::udf_loader>();
+        auto results = udf_loader_->load(std::string(cfg.plugin_directory()));
         for (auto const& result : results) {
             auto const status = result.status();
             auto const outcome = plugin::udf::classify(status);
@@ -61,13 +61,13 @@ void function_registry::initialize(configuration const& cfg) {
                 default: LOG_LP(ERROR) << message; break;
             }
         }
-        for (auto& plugin : loader_->get_plugins()) {
-            plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
+        for (auto& plugin : udf_loader_->get_plugins()) {
+            udf_plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)),
                 std::move(std::get<2>(plugin)));
         }
     }
     add_udf_functions(*regular_provider_, scalar_functions_,
-        table_functions_, plugins_);
+        table_functions_, udf_plugins_);
     incremental::add_builtin_aggregate_functions(
         *aggregate_provider_,
         incremental_functions_
@@ -91,8 +91,8 @@ void function_registry::clear_registrations() {
 
 void function_registry::clear() {
     clear_registrations();
-    plugins_.clear();
-    loader_.reset();
+    udf_plugins_.clear();
+    udf_loader_.reset();
 }
 
 void function_registry::regular_provider(std::shared_ptr<yugawara::function::configurable_provider> value) {

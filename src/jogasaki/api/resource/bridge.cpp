@@ -124,10 +124,8 @@ bool bridge::start(framework::environment& env) {
         remote_service_adapter_ = adapter;
         catalog_handler_ = std::make_shared<dist::local_catalog_handler>(*db_);
         adapter->set_remote_catalog_handler(catalog_handler_);
-#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
         remote_process_handler_ = std::make_shared<dist::remote_process_handler>(*db_);
         adapter->set_remote_process_handler(remote_process_handler_);
-#endif
     }
     return ret;
 }

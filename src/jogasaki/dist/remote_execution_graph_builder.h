@@ -37,8 +37,8 @@ namespace jogasaki::dist {
 
 /**
  * @brief resolve portable storage and external-output identities while restoring an execution graph.
- * @note External outputs currently use a forward adapter when external_relation_info is unavailable.
- * @todo Bind formal external_relation_info descriptors without changing the portable output identities.
+ * @note External outputs use native external_relation_info descriptors. Their exchange
+ * columns must retain their identities when connected to the runtime output sink.
  */
 class remote_execution_graph_resolver {
 public:

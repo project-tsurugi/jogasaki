@@ -15,6 +15,7 @@
  */
 #include "remote_execution_block.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <memory>
 #include <sstream>
@@ -34,6 +35,7 @@
 #include <takatori/scalar/immediate.h>
 #include <takatori/scalar/unary.h>
 #include <takatori/scalar/variable_reference.h>
+#include <yugawara/binding/external_relation_info.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/compiled_info.h>
 #include <yugawara/storage/column.h>
@@ -260,7 +262,11 @@ public:
     }
 
     [[nodiscard]] bool create_offer_payload(relation::step::offer const& offer, remote_operator& op) {
-        constexpr std::uint64_t external_relation_id = 0;
+        auto external = yugawara::binding::extract_if<yugawara::binding::external_relation_info>(offer.destination());
+        auto external_relation_id = external ? static_cast<std::uint64_t>(external->relation_id()) : 0;
+        if (external && external->columns().size() != offer.columns().size()) {
+            return false;
+        }
         op.offer = remote_offer{external_relation_id, {}};
         block_->external_relations.emplace_back(external_relation_id);
         block_->result_schema.resize(offer.columns().size());
@@ -270,6 +276,15 @@ public:
         }
         for (auto const& mapping : offer.columns()) {
             auto column_id = result_order_ ? result_order_->index(mapping.destination()) : op.offer->columns.size();
+            if (external) {
+                // Native external columns define the output layout, independent of offer order.
+                auto const& columns = external->columns();
+                auto it = std::find(columns.begin(), columns.end(), mapping.destination());
+                if (it == columns.end()) return false;
+                auto position = static_cast<std::size_t>(it - columns.begin());
+                if (result_order_ && column_id != position) return false;
+                column_id = position;
+            }
             if (column_id >= assigned.size() || assigned[column_id]) {
                 return false;
             }

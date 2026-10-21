@@ -16,9 +16,11 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <grpcpp/grpcpp.h>
@@ -30,6 +32,11 @@
 #include <tateyama/proto/distributed_query/remote_catalog.grpc.pb.h>
 
 #include <jogasaki/api/resource/bridge.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/dist/remote_execution_block_proto.h>
+#include <jogasaki/dist/remote_record_codec.h>
+#include <jogasaki/dist/remote_record_stream.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/dist/remote_catalog_decoder.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 #include <jogasaki/utils/runner.h>
@@ -107,6 +114,49 @@ TEST_F(remote_catalog_bridge_test, framework_exposes_sql_catalog_on_registered_r
     ASSERT_TRUE(server_->shutdown());
     stopped_ = true;
     // SQL handler removal precedes database stop and the gRPC listener's shutdown.
+}
+TEST_F(remote_catalog_bridge_test, framework_executes_native_external_output_without_fixtures) {
+    namespace wire = tateyama::grpc::proto;
+    ASSERT_EQ("", utils::runner{}.db(*bridge_->database()).text("INSERT INTO T VALUES(42)").run().report());
+    auto stub = wire::DistributedQueryService::NewStub(grpc::CreateChannel(endpoint_, grpc::InsecureChannelCredentials()));
+    wire::RemoteProcessRequest request{};
+    auto* metadata = request.mutable_metadata();
+    metadata->mutable_protocol_version()->set_major(1);
+    metadata->set_coordinator_job_id("native-external-test");
+    metadata->set_remote_execution_id("worker");
+    metadata->set_attempt_number(1);
+    dist::remote_execution_block block{};
+    block.values = {0}; block.stream_variables = {0}; block.external_relations = {73};
+    block.result_schema = {{19, "int8()", false}};
+    dist::remote_operator scan{};
+    scan.kind = dist::remote_operator_kind::scan; scan.operator_id = 0; scan.output_value_id = 0;
+    scan.source = dist::remote_source{};
+    scan.source->table_name = "T"; scan.source->index_name = "T"; scan.source->columns = {{"C0", 0}};
+    dist::remote_operator offer{};
+    offer.kind = dist::remote_operator_kind::offer; offer.operator_id = 1; offer.input_value_id = 0;
+    offer.offer = dist::remote_offer{73, {{0, 19}}};
+    block.operators = {scan, offer};
+    ASSERT_TRUE(request.mutable_execution_block()->ParseFromString(dist::serialize_remote_execution_block_proto(block)));
+    grpc::ClientContext context{};
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(10));
+    auto reader = stub->ExecuteRemoteProcess(&context, request);
+    auto meta = std::make_shared<meta::record_meta>(std::vector<meta::field_type>{
+        meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>}}, boost::dynamic_bitset<std::uint64_t>(1));
+    dist::remote_record_stream_reader stream{*meta};
+    wire::RemoteProcessResult response{};
+    std::vector<std::int64_t> values{};
+    while (reader->Read(&response)) {
+        EXPECT_EQ(status::ok, stream.accept(response.SerializeAsString(), [&](auto bytes) {
+            data::small_record_store record{meta};
+            std::string error{};
+            if (!dist::decode_remote_record(bytes, *meta, record.ref(), error)) return status::err_invalid_argument;
+            values.push_back(record.ref().get_value<std::int64_t>(meta->value_offset(0)));
+            return status::ok;
+        }));
+    }
+    auto rpc_status = reader->Finish();
+    EXPECT_TRUE(rpc_status.ok()) << rpc_status.error_message();
+    EXPECT_EQ((std::vector<std::int64_t>{42}), values);
 }
 } // namespace
 } // namespace jogasaki::testing

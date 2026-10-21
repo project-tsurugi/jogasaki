@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,7 +58,6 @@
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info.h>
-#include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/kvs/database.h>
@@ -117,6 +116,7 @@ public:
      * Its life-cycle management functions such as open, close, and dispose will *NOT* be called from this object.
      */
     database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db);
+
 
     [[nodiscard]] status start() override;
 
@@ -346,12 +346,6 @@ private:
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{
         std::make_shared<yugawara::storage::configurable_provider>()
     };
-    std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{
-        std::make_shared<yugawara::aggregate::configurable_provider>()
-    };
-    std::shared_ptr<yugawara::function::configurable_provider> regular_functions_{
-        global::regular_function_provider()
-    };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
@@ -398,8 +392,6 @@ private:
     [[nodiscard]] bool validate_configuration() const noexcept;
     [[nodiscard]] status init_kvs_db() noexcept;
     status validate_option(transaction_option const& option);
-    std::unique_ptr<plugin::udf::plugin_loader> loader_{};
-    std::vector<plugin::udf::plugin_entry> plugins_;
 };
 
 inline api::impl::database& get_impl(api::database& db) {

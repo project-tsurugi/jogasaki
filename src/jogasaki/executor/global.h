@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ class aggregate_function_repository;
 }
 
 namespace jogasaki::executor::function {
+class function_registry;
 class scalar_function_repository;
 }
 
@@ -95,29 +96,40 @@ enum class pool_operation : std::int32_t {
 [[nodiscard]] memory::page_pool& page_pool(pool_operation op = pool_operation::get);
 
 /**
- * @brief thread-safe accessor to the global repository for incremental aggregate functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @brief process-wide declarations, implementations, and UDF plugin resources
+ * @details Function lookups throughout the execution engine use these global accessors,
+ * so the registry is owned here rather than by individual database objects.
+ * Concurrently running database instances are not supported by this design.
+ * The registry is constructed on first access. database start/stop creates/releases
+ * registrations while execution is quiescent; UDF plugins remain loaded for restart.
+ * Supporting independent databases requires revisiting both ownership and lookup paths.
+ */
+[[nodiscard]] executor::function::function_registry& function_registry();
+
+/**
+ * @brief accessor to the process-wide incremental aggregate function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository();
 
 /**
- * @brief thread-safe accessor to the global repository for aggregate functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @brief accessor to the process-wide function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
 
 /**
- * @brief thread-safe accessor to the global repository for aggregate functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @brief accessor to the process-wide function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::scalar_function_repository& scalar_function_repository();
 
 /**
- * @brief thread-safe accessor to the global repository for table-valued functions
- * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @brief accessor to the process-wide table-valued function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::table_valued_function_repository& table_valued_function_repository();
@@ -131,13 +143,12 @@ enum class pool_operation : std::int32_t {
 takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::util::maybe_shared_ptr<configuration> arg = nullptr);
 
 /**
- * @brief thread-safe accessor to the global function provider that manages regular functions (scalar and table-valued)
- * @details the provider will be initialized on the first call and can be shared by multiple threads
- * @param arg updated provider. Pass nullptr just to refer current value.
+ * @brief accessor to the process-wide regular function provider (scalar and table-valued)
+ * @details Registrations are managed by database start/stop while query execution is quiescent.
  * @return reference to the function provider
  */
 std::shared_ptr<yugawara::function::configurable_provider> const&
-regular_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg = nullptr);
+regular_function_provider();
 
 /**
  * @brief thread-safe accessor to the kvs database

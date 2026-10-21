@@ -27,7 +27,9 @@
 #include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/udf/plugin_loader.h>
 
-namespace jogasaki { class configuration; }
+namespace jogasaki {
+class configuration;
+}
 
 namespace jogasaki::executor::function {
 

@@ -83,7 +83,7 @@ dist::remote_execution_block scan_block() {
     return block;
 }
 // Projects a 1 MiB literal per scanned row so that the stream sink is called during the scan.
-[[maybe_unused]] dist::remote_execution_block large_row_block() {
+dist::remote_execution_block large_row_block() {
     auto block = scan_block();
     block.values = {0, 1};
     block.stream_variables = {0, 1};
@@ -124,7 +124,6 @@ public:
     }
     void TearDown() override { if (db_) db_teardown(); }
 };
-#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
 TEST_F(remote_process_handler_test, stream_emits_schema_for_empty_result) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     dist::remote_process_handler handler{*db_};
@@ -466,6 +465,20 @@ TEST_F(remote_process_handler_test, rejects_duplicate_and_missing_output_columns
         EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
     }
 }
+TEST_F(remote_process_handler_test, declared_output_type_does_not_override_inferred_source_type) {
+    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES(42)");
+    auto block = scan_block();
+    // A valid but wrong schema must not coerce BIGINT to INTEGER via type hints.
+    block.result_schema[0].type = "int4()";
+    block.result_schema[0].type_payload = dist::encode_remote_type(takatori::type::int4{});
+    dist::remote_process_handler handler{*db_};
+    auto response = handler(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_FALSE(response.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+    EXPECT_EQ("remote result schema type mismatch", response.error);
+}
+
 TEST_F(remote_process_handler_test, reads_worker_table_in_independent_rtx) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10), (20)");
@@ -854,12 +867,5 @@ TEST_F(remote_process_handler_test, cancels_before_execution) {
     EXPECT_FALSE(response.success);
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, response.error_kind);
 }
-#else
-TEST_F(remote_process_handler_test, development_adapter_is_disabled_by_default) {
-    dist::remote_process_handler handler{*db_};
-    auto response = handler(dist::serialize_remote_execution_block_proto(scan_block()));
-    EXPECT_FALSE(response.success);
-    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::unsupported, response.error_kind);
-}
-#endif
+
 } // namespace jogasaki::testing

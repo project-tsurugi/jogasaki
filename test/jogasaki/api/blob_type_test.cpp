@@ -927,8 +927,7 @@ TEST_F(blob_type_test, insert_provided_multiple_times) {
     EXPECT_EQ(status::ok, tx->commit());
 }
 
-//TODO enable the testcase when handling temporary blob is implemented (see issue #1114)
-TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true) {
+TEST_F(blob_type_test, insert_provided_multiple_times_is_temporary_true) {
     // same as insert_provided_multiple_times except the passed blob is temporary
 
     // global::config_pool()->mock_datastore(true);
@@ -992,6 +991,138 @@ TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true
         )),
         result[1]
     );
+    EXPECT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(blob_type_test, insert_same_placeholder_twice_is_temporary_true) {
+    // the same temporary blob/clob placeholder is bound to two columns in a single INSERT
+    // using production datastore so that temporary file is moved by register_file
+    execute_statement("create table t (c0 int primary key, b1 blob, b2 blob, c1 clob, c2 clob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"b", api::field_type_kind::blob},
+            {"c", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    create_file(path1, "\x00\x01\x02"sv);
+    create_file(path2, "ABC");
+
+    auto ps = api::create_parameter_set();
+    ps->set_blob("b", lob::blob_locator{path1, true}); // is_temporary = true
+    ps->set_clob("c", lob::clob_locator{path2, true}); // is_temporary = true
+    execute_statement("INSERT INTO t VALUES (1, :b, :b, :c, :c)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, b1, b2, c1, c2 FROM t ORDER BY c0", *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto b1 = result[0].get_value<lob::blob_reference>(1);
+    auto b2 = result[0].get_value<lob::blob_reference>(2);
+    auto c1 = result[0].get_value<lob::clob_reference>(3);
+    auto c2 = result[0].get_value<lob::clob_reference>(4);
+    EXPECT_NE(b1.object_id(), b2.object_id());
+    EXPECT_NE(c1.object_id(), c2.object_id());
+
+    auto* ds = datastore::get_datastore();
+    for (auto id : {b1.object_id(), b2.object_id()}) {
+        auto ret = ds->get_blob_file(id);
+        ASSERT_TRUE(ret);
+        EXPECT_EQ("\x00\x01\x02"sv, read_file(ret.path().string())) << ret.path().string();
+    }
+    for (auto id : {c1.object_id(), c2.object_id()}) {
+        auto ret = ds->get_blob_file(id);
+        ASSERT_TRUE(ret);
+        EXPECT_EQ("ABC", read_file(ret.path().string())) << ret.path().string();
+    }
+    EXPECT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(blob_type_test, update_same_placeholder_twice_is_temporary_true) {
+    // the same temporary blob/clob placeholder is assigned to two columns in a single UPDATE
+    execute_statement("create table t (c0 int primary key, b1 blob, b2 blob, c1 clob, c2 clob)");
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"b", api::field_type_kind::blob},
+            {"c", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    create_file(path1, "\x00\x01\x02"sv);
+    create_file(path2, "ABC");
+
+    auto ps = api::create_parameter_set();
+    ps->set_blob("b", lob::blob_locator{path1, true}); // is_temporary = true
+    ps->set_clob("c", lob::clob_locator{path2, true}); // is_temporary = true
+    execute_statement("UPDATE t SET b1 = :b, b2 = :b, c1 = :c, c2 = :c", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, b1, b2, c1, c2 FROM t ORDER BY c0", *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto b1 = result[0].get_value<lob::blob_reference>(1);
+    auto b2 = result[0].get_value<lob::blob_reference>(2);
+    auto c1 = result[0].get_value<lob::clob_reference>(3);
+    auto c2 = result[0].get_value<lob::clob_reference>(4);
+    EXPECT_NE(b1.object_id(), b2.object_id());
+    EXPECT_NE(c1.object_id(), c2.object_id());
+
+    auto* ds = datastore::get_datastore();
+    for (auto id : {b1.object_id(), b2.object_id()}) {
+        auto ret = ds->get_blob_file(id);
+        ASSERT_TRUE(ret);
+        EXPECT_EQ("\x00\x01\x02"sv, read_file(ret.path().string())) << ret.path().string();
+    }
+    for (auto id : {c1.object_id(), c2.object_id()}) {
+        auto ret = ds->get_blob_file(id);
+        ASSERT_TRUE(ret);
+        EXPECT_EQ("ABC", read_file(ret.path().string())) << ret.path().string();
+    }
+    EXPECT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(blob_type_test, update_same_placeholder_twice_is_temporary_true_find_by_pk) {
+    // same as update_same_placeholder_twice_is_temporary_true except the target row is found by primary key
+    execute_statement("create table t (c0 int primary key, b1 blob, b2 blob, c1 clob, c2 clob)");
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"b", api::field_type_kind::blob},
+            {"c", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    create_file(path1, "\x00\x01\x02"sv);
+    create_file(path2, "ABC");
+
+    auto ps = api::create_parameter_set();
+    ps->set_blob("b", lob::blob_locator{path1, true}); // is_temporary = true
+    ps->set_clob("c", lob::clob_locator{path2, true}); // is_temporary = true
+    execute_statement("UPDATE t SET b1 = :b, b2 = :b, c1 = :c, c2 = :c WHERE c0 = 1", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, b1, b2, c1, c2 FROM t ORDER BY c0", *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto b1 = result[0].get_value<lob::blob_reference>(1);
+    auto b2 = result[0].get_value<lob::blob_reference>(2);
+    auto c1 = result[0].get_value<lob::clob_reference>(3);
+    auto c2 = result[0].get_value<lob::clob_reference>(4);
+    EXPECT_NE(b1.object_id(), b2.object_id());
+    EXPECT_NE(c1.object_id(), c2.object_id());
+
+    auto* ds = datastore::get_datastore();
+    for (auto id : {b1.object_id(), b2.object_id()}) {
+        auto ret = ds->get_blob_file(id);
+        ASSERT_TRUE(ret);
+        EXPECT_EQ("\x00\x01\x02"sv, read_file(ret.path().string())) << ret.path().string();
+    }
+    for (auto id : {c1.object_id(), c2.object_id()}) {
+        auto ret = ds->get_blob_file(id);
+        ASSERT_TRUE(ret);
+        EXPECT_EQ("ABC", read_file(ret.path().string())) << ret.path().string();
+    }
     EXPECT_EQ(status::ok, tx->commit());
 }
 
@@ -1078,6 +1209,24 @@ TEST_F(blob_type_test, insert_file_io_error) {
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
     ps->set_blob("p1", lob::blob_locator{path1, false});
+    test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::lob_file_io_error);
+}
+
+TEST_F(blob_type_test, insert_temporary_file_io_error) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+    // same as insert_file_io_error except the file is temporary, which is registered before execution starts
+    execute_statement("create table t (c0 int primary key, c1 blob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+        };
+
+    auto path1 = path()+"/dummy_file.dat";
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1, true});
     test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::lob_file_io_error);
 }
 

@@ -742,6 +742,17 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
         if (rctx->transaction()) {
             rctx->transaction()->add_storages_ref(e->mirrors()->storage_operation().storage());
         }
+
+        // register temporary lob parameters before tasks start evaluating them concurrently
+        if (rctx->transaction() && e->host_variables()) {
+            std::shared_ptr<error::error_info> error{};
+            if (auto res = e->host_variables()->register_temporary_lobs(rctx->transaction().get(), error);
+                res != status::ok) {
+                abort_transaction(rctx->transaction(), req_info);
+                on_completion(res, error, nullptr);
+                return true; // false is for unrecoverable abnormal error. This case is normal error.
+            }
+        }
     }
 
     if (e->is_execute()) {

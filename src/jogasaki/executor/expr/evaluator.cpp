@@ -43,7 +43,6 @@
 #include <jogasaki/api.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/datastore/assign_lob_id.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/conv/parameter_apply.h>
@@ -449,16 +448,24 @@ create_any(accessor::const_record_ref ref, executor::process::impl::value_info c
 
 template <typename T, typename E = T>
 static std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
-create_any(accessor::const_record_ref ref, executor::process::impl::value_info const& info, evaluator_context& ctx) {
+create_any(
+    accessor::const_record_ref ref,
+    executor::process::impl::value_info const& info,
+    evaluator_context& ctx,
+    executor::process::impl::variable_table const* host_variables
+) {
     // evaluating lob value resolves `provided` reference by registering to datastore
 
     auto& var = ref.get_reference<E>(info.value_offset());
     if (var.kind() != lob::lob_reference_kind::provided) {
         return {std::in_place_type<T>, var};
     }
+    // `provided` reference comes only from host variables
+    assert_with_exception(host_variables != nullptr, var);
     lob::lob_id_type id{};
     std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto st = datastore::assign_lob_id(var, ctx.transaction(), id, error); st != status::ok) {
+    // host variables keep track of the registered lobs so that the same parameter is not registered twice
+    if (auto st = host_variables->assign_lob_id(var, ctx.transaction(), id, error); st != status::ok) {
         ctx.set_error_info(std::move(error));
         return any{std::in_place_type<class error>, error_kind::error_info_provided};
     }
@@ -492,8 +499,8 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
         case t::date: return create_any<runtime_t<meta::field_type_kind::date>>(ref, info);
         case t::time_of_day: return create_any<runtime_t<meta::field_type_kind::time_of_day>>(ref, info);
         case t::time_point: return create_any<runtime_t<meta::field_type_kind::time_point>>(ref, info);
-        case t::blob: return create_any<runtime_t<meta::field_type_kind::blob>>(ref, info, ctx_);
-        case t::clob: return create_any<runtime_t<meta::field_type_kind::clob>>(ref, info, ctx_);
+        case t::blob: return create_any<runtime_t<meta::field_type_kind::blob>>(ref, info, ctx_, b ? nullptr : host_variables_);
+        case t::clob: return create_any<runtime_t<meta::field_type_kind::clob>>(ref, info, ctx_, b ? nullptr : host_variables_);
         default: return return_unsupported();
     }
 }

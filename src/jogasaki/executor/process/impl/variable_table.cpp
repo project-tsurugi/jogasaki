@@ -20,10 +20,13 @@
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/datastore/assign_lob_id.h>
+#include <jogasaki/datastore/register_lob.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/record_meta.h>
 
@@ -50,6 +53,46 @@ variable_table_info const& variable_table::info() const noexcept {
 
 variable_table::operator bool() const noexcept {
     return info_ != nullptr;
+}
+
+status variable_table::register_temporary_lobs(
+    transaction_context* tx,
+    std::shared_ptr<error::error_info>& error
+) {
+    for (auto&& e : lob_entries_) {
+        if (e.registered_) {
+            continue;
+        }
+        auto const& loc = std::visit([](auto const& l) -> lob::lob_locator const& { return l; }, e.locator_);
+        if (! loc.is_temporary()) {
+            continue;
+        }
+        if (auto res = datastore::register_lob(loc.path(), true, tx, e.id_, error); res != status::ok) {
+            return res;
+        }
+        e.registered_ = true;
+    }
+    return status::ok;
+}
+
+status variable_table::assign_lob_id(
+    lob::lob_reference const& ref,
+    transaction_context* tx,
+    lob::lob_id_type& id,
+    std::shared_ptr<error::error_info>& error
+) const {
+    auto it = lob_entries_index_.find(ref.locator());
+    if (it == lob_entries_index_.end() || ! it->second->registered_) {
+        // not temporary - register (copy) the file each time
+        return datastore::assign_lob_id(ref, tx, id, error);
+    }
+    auto const& e = *it->second;
+    if (! e.taken_.exchange(true)) {
+        id = e.id_;
+        return status::ok;
+    }
+    // the registered lob is already taken - duplicate it because the source file has been moved
+    return datastore::duplicate_lob(e.id_, tx, id, error);
 }
 
 static void print(

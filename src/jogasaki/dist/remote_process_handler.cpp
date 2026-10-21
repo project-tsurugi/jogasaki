@@ -37,6 +37,7 @@
 #include <takatori/type/primitive.h>
 #include <takatori/util/downcast.h>
 #include <takatori/value/primitive.h>
+#include <yugawara/binding/external_relation_info.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/column.h>
 #include <yugawara/storage/index.h>
@@ -81,8 +82,6 @@ namespace type = takatori::type;
 namespace value = takatori::value;
 namespace dq = tateyama::grpc::distributed_query;
 using remote_error = dq::remote_process_error_kind;
-
-#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
 
 class transaction_abort_guard {
 public:
@@ -328,6 +327,9 @@ public:
             columns.emplace_back(bindings_.exchange_column("remote_result_" + std::to_string(column.column_id)));
             column_positions_.emplace(column.column_id, columns.size() - 1);
         }
+        // Both descriptors share the same exchange-column identities. The external
+        // descriptor belongs to the restored graph; forward defines the runtime sink.
+        external_output_ = std::make_shared<yugawara::binding::external_relation_info>(relation_id_, columns);
         output_ = std::make_unique<takatori::plan::forward>(std::move(columns));
     }
 
@@ -373,22 +375,22 @@ public:
     }
 
     std::optional<takatori::descriptor::relation> resolve_external_relation(std::uint64_t relation_id) const override {
-        if (relation_id != relation_id_ || !output_) {
+        if (relation_id != relation_id_ || !external_output_) {
             return {};
         }
-        return bindings_.exchange(*output_);
+        return bindings_.external_relation(external_output_);
     }
 
     std::optional<takatori::descriptor::variable> resolve_external_column(std::uint64_t relation_id,
                                                                           std::uint64_t column_id) const override {
-        if (relation_id != relation_id_ || !output_) {
+        if (relation_id != relation_id_ || !external_output_) {
             return {};
         }
         auto position = column_positions_.find(column_id);
         if (position == column_positions_.end()) {
             return {};
         }
-        return output_->columns()[position->second];
+        return external_output_->columns()[position->second];
     }
 
     std::unique_ptr<scalar::expression> resolve_immediate(remote_scalar_expression const& expression) const override {
@@ -436,9 +438,9 @@ private:
 
     api::database* database_;
     mutable yugawara::binding::factory bindings_{};
-    // Development adapter for Yugawara versions without external_relation_info.
-    // The surrogate is worker-local and never serialized into Portable IR.
-    // Replace this exchange binding with the native descriptor when available.
+    // Keep inferred source types authoritative. Untrusted result-schema types are
+    // checked after compilation, not installed as destination type hints.
+    std::shared_ptr<yugawara::binding::external_relation_info> external_output_{};
     std::unique_ptr<takatori::plan::forward> output_{};
     std::uint64_t relation_id_{};
     std::unordered_map<std::uint64_t, std::size_t> column_positions_{};
@@ -613,12 +615,6 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
     return {true, std::move(encoded), {}};
 }
 
-namespace {
-
-#endif
-
-} // namespace
-
 remote_process_handler::remote_process_handler(api::database& database) noexcept
     : database_(std::addressof(database)) {}
 
@@ -648,16 +644,6 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
                                                                cancellation_check const& is_cancelled,
                                                                result_sink const& sink,
                                                                record_sink const& records) {
-#ifndef ENABLE_DISTRIBUTED_QUERY_FIXTURES
-    (void)payload;
-    (void)is_cancelled;
-    (void)sink;
-    (void)records;
-    return {false,
-            {},
-            "remote execution with the external relation development adapter is disabled",
-            remote_error::unsupported};
-#else
     if (is_cancelled && is_cancelled()) {
         return {false, {}, "remote execution was cancelled before decoding", remote_error::cancelled};
     }
@@ -707,7 +693,6 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
     }
     return execute_remote_graph(api::impl::get_impl(*database_), *decoded.block, *graph.graph, compiled,
                                 std::move(forward), is_cancelled, sink, records);
-#endif
 }
 
 } // namespace jogasaki::dist

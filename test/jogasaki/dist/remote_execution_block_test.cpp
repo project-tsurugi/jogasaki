@@ -36,6 +36,8 @@
 #include <takatori/type/primitive.h>
 #include <takatori/util/rvalue_reference_wrapper.h>
 #include <takatori/value/primitive.h>
+#include <yugawara/binding/external_relation_info.h>
+#include <yugawara/binding/extract.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index.h>
@@ -511,21 +513,36 @@ TEST(remote_execution_block_test, rebuilds_takatori_graph) {
 
     auto source_block = dist::create_remote_execution_block(source_graph);
     ASSERT_TRUE(source_block);
-    test_graph_resolver resolver{
-        bindings(*index),
-        bindings(table->columns()[0]),
-        bindings.exchange(forward),
-        forward.columns()[0],
-    };
-
-    auto rebuilt = dist::build_remote_execution_graph(*source_block, resolver);
+    source_block->external_relations = {42};
+    source_block->operators.back().offer->external_relation_id = 42;
+    // The restored descriptor must own its relation even after the resolver is gone.
+    auto rebuilt = [&] {
+        test_graph_resolver resolver{
+            bindings(*index),
+            bindings(table->columns()[0]),
+            bindings.external_relation(yugawara::binding::external_relation_info{42, forward.columns()}),
+            forward.columns()[0],
+        };
+        return dist::build_remote_execution_graph(*source_block, resolver);
+    }();
 
     ASSERT_TRUE(rebuilt) << rebuilt.error;
     ASSERT_EQ(3, rebuilt.graph->size());
+    for (auto const& expression : *rebuilt.graph) {
+        if (expression.kind() != relation::expression_kind::offer) continue;
+        auto const& restored = dynamic_cast<relation::step::offer const&>(expression);
+        auto const& external = yugawara::binding::extract<yugawara::binding::external_relation_info>(restored.destination());
+        EXPECT_EQ(42, external.relation_id());
+        ASSERT_EQ(1, external.columns().size());
+        EXPECT_EQ(forward.columns()[0], external.columns()[0]);
+        EXPECT_EQ(external.columns()[0], restored.columns()[0].destination());
+    }
     EXPECT_TRUE(dist::is_remote_process_execution_block_shape(*rebuilt.graph));
     auto round_trip = dist::create_remote_execution_block(*rebuilt.graph);
     ASSERT_TRUE(round_trip);
     ASSERT_EQ(3, round_trip->operators.size());
+    EXPECT_EQ((std::vector<std::uint64_t>{42}), round_trip->external_relations);
+    EXPECT_EQ(42, round_trip->operators.back().offer->external_relation_id);
     EXPECT_EQ(dist::remote_operator_kind::scan, round_trip->operators[0].kind);
     EXPECT_EQ(dist::remote_operator_kind::filter, round_trip->operators[1].kind);
     EXPECT_EQ(dist::remote_operator_kind::offer, round_trip->operators[2].kind);
@@ -536,6 +553,40 @@ TEST(remote_execution_block_test, rebuilds_takatori_graph) {
     auto compiled = dist::compile_remote_execution_graph(*rebuilt.graph);
     ASSERT_TRUE(compiled) << compiled.error;
     EXPECT_TRUE(compiled.processor_info->details().has_scan_operator());
+}
+
+TEST(remote_execution_block_test, native_external_layout_preserves_order_and_rejects_invalid_bindings) {
+    for (int invalid = 0; invalid != 4; ++invalid) {
+        SCOPED_TRACE(invalid);
+        yugawara::binding::factory bindings{};
+        yugawara::storage::configurable_provider storages{};
+        auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
+        auto index = storages.add_index({table, "I0"});
+        auto source = bindings.stream_variable("source");
+        auto first = bindings.exchange_column("first");
+        auto second = bindings.exchange_column("second");
+        std::vector<takatori::descriptor::variable> columns{first, second};
+        if (invalid == 3) columns.pop_back();
+        auto destination = bindings.external_relation(yugawara::binding::external_relation_info{73, columns});
+        relation::graph_type graph{};
+        auto& scan = graph.insert(relation::scan{
+            bindings(*index), {{bindings(table->columns()[0]), source}}, {}, {}, {},
+        });
+        auto other = first;
+        if (invalid == 1) other = second;
+        if (invalid == 2) other = bindings.exchange_column("unknown");
+        auto& offer = graph.insert(relation::step::offer{destination, {{source, second}, {source, other}}});
+        scan.output() >> offer.input();
+        auto block = dist::create_remote_execution_block(graph);
+        if (invalid) {
+            EXPECT_FALSE(block);
+            continue;
+        }
+        ASSERT_TRUE(block);
+        EXPECT_EQ((std::vector<std::uint64_t>{73}), block->external_relations);
+        EXPECT_EQ(1, block->operators.back().offer->columns[0].destination_column_id);
+        EXPECT_EQ(0, block->operators.back().offer->columns[1].destination_column_id);
+    }
 }
 
 TEST(remote_execution_block_test, rejects_non_graph) {

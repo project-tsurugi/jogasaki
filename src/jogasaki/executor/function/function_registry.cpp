@@ -25,17 +25,12 @@
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/udf_functions.h>
-#include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/udf/udf_loader.h>
 
 namespace jogasaki::executor::function {
-
-function_registry::~function_registry() noexcept {
-    global::unbind_function_registry(this);
-}
 
 void function_registry::initialize(configuration const& cfg) {
     clear_registrations();
@@ -98,7 +93,4 @@ void function_registry::clear() {
     udf_loader_.reset();
 }
 
-void function_registry::regular_provider(std::shared_ptr<yugawara::function::configurable_provider> value) {
-    regular_provider_ = std::move(value);
-}
 }

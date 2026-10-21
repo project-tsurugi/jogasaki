@@ -16,6 +16,7 @@
 #include <memory>
 #include <vector>
 
+#include <jogasaki/udf/descriptor_impl.h>
 #include <jogasaki/udf/generic_client_factory.h>
 #include <jogasaki/udf/plugin_api.h>
 
@@ -25,11 +26,17 @@ class lifecycle_api : public plugin_api {
 public:
     std::vector<package_descriptor*> const& packages() const noexcept override { return packages_; }
 private:
-    std::vector<package_descriptor*> packages_{};
+    column_descriptor_impl column_{0, "value", type_kind::int8};
+    record_descriptor_impl input_{"Input", {}};
+    record_descriptor_impl output_{"Output", {&column_}};
+    function_descriptor_impl function_{0, "lifecycle_value", function_kind::unary, &input_, &output_};
+    service_descriptor_impl service_{0, "Service", {&function_}};
+    package_descriptor_impl package_{"lifecycle", "lifecycle.proto", {0, 5, 0}, {&service_}};
+    std::vector<package_descriptor*> packages_{&package_};
 };
 class lifecycle_client : public generic_client {
 public:
-    void call(generic_client_context&, function_index_type, generic_record&, generic_record&) const override {}
+    void call(generic_client_context&, function_index_type, generic_record&, generic_record& response) const override { response.add_int8(42); }
     std::unique_ptr<generic_record_stream> call_server_streaming_async(
         std::unique_ptr<generic_client_context>, function_index_type, generic_record&) const override { return {}; }
 };

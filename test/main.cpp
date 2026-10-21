@@ -13,13 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <memory>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 #include <jogasaki/check_cxx_std.h>
-#include <jogasaki/executor/function/function_registry.h>
-#include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/environment.h>
 #include <jogasaki/logging.h>
 
@@ -30,7 +27,5 @@ int main(int argc, char** argv) {
     FLAGS_v = FLAGS_v < jogasaki::log_info ? jogasaki::log_info : FLAGS_v;
     jogasaki::kvs::environment env{};
     env.initialize();
-    auto functions = std::make_shared<jogasaki::executor::function::function_registry>();
-    (void) jogasaki::global::function_registry(functions);
     return RUN_ALL_TESTS();
 }

@@ -96,41 +96,40 @@ enum class pool_operation : std::int32_t {
 [[nodiscard]] memory::page_pool& page_pool(pool_operation op = pool_operation::get);
 
 /**
- * @brief non-owning compatibility access to the active owner's function registry
- * @details Only publication of the non-owning pointer is atomic; it does not protect the object lifetime.
- * @attention The owner must outlive all accesses. Binding, destruction and registry mutations
- * require quiescence of query execution; switching databases during execution is unsupported.
+ * @brief process-wide declarations, implementations, and UDF plugin resources
+ * @details Function lookups throughout the execution engine use these global accessors,
+ * so the registry is owned here rather than by individual database objects.
+ * Concurrently running database instances are not supported by this design.
+ * The registry is constructed on first access. database start/stop creates/releases
+ * registrations while execution is quiescent; UDF plugins remain loaded for restart.
+ * Supporting independent databases requires revisiting both ownership and lookup paths.
  */
-[[nodiscard]] executor::function::function_registry& function_registry(
-    std::shared_ptr<executor::function::function_registry> const& owner = {});
-
-/** @brief clear the active binding only if it refers to the registry being destroyed */
-void unbind_function_registry(executor::function::function_registry* registry) noexcept;
+[[nodiscard]] executor::function::function_registry& function_registry();
 
 /**
- * @brief compatibility accessor to the active incremental aggregate function repository
- * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
+ * @brief accessor to the process-wide incremental aggregate function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository();
 
 /**
- * @brief compatibility accessor to the active function repository
- * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
+ * @brief accessor to the process-wide function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
 
 /**
- * @brief compatibility accessor to the active function repository
- * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
+ * @brief accessor to the process-wide function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::scalar_function_repository& scalar_function_repository();
 
 /**
- * @brief compatibility accessor to the active table-valued function repository
- * @details The active pointer is read atomically; the owner must outlive use and mutations require quiescence.
+ * @brief accessor to the process-wide table-valued function repository
+ * @details The registry owns the repository; mutations require quiescence of query execution.
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::table_valued_function_repository& table_valued_function_repository();
@@ -144,13 +143,12 @@ void unbind_function_registry(executor::function::function_registry* registry) n
 takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::util::maybe_shared_ptr<configuration> arg = nullptr);
 
 /**
- * @brief compatibility accessor to the active regular function provider (scalar and table-valued)
- * @details The owner must outlive use; provider replacement requires quiescence.
- * @param arg updated provider. Pass nullptr just to refer current value.
+ * @brief accessor to the process-wide regular function provider (scalar and table-valued)
+ * @details Registrations are managed by database start/stop while query execution is quiescent.
  * @return reference to the function provider
  */
 std::shared_ptr<yugawara::function::configurable_provider> const&
-regular_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg = nullptr);
+regular_function_provider();
 
 /**
  * @brief thread-safe accessor to the kvs database

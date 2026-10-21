@@ -32,19 +32,25 @@ namespace jogasaki { class configuration; }
 namespace jogasaki::executor::function {
 
 /**
- * @brief database-owned declarations, implementations, and UDF plugin resources
+ * @brief declarations, implementations, and UDF plugin resources managed as one unit
  * @details Only plugins providing UDF implementations belong here; unrelated plugins
  * must have ownership defined by their own use and lifetime requirements.
  */
 class function_registry {
 public:
     function_registry() = default;
-    ~function_registry() noexcept;
+    ~function_registry() = default;
     function_registry(function_registry const&) = delete;
     function_registry& operator=(function_registry const&) = delete;
     function_registry(function_registry&&) = delete;
     function_registry& operator=(function_registry&&) = delete;
 
+    /**
+     * @brief rebuild function registrations, loading UDF plugins only on the first call
+     * @details Subsequent calls reuse the loaded libraries, plugin APIs and clients.
+     * Changes to plugin_directory or plugin configuration require a process restart,
+     * including when a new database object is created in the same process.
+     */
     void initialize(configuration const& cfg);
     /** @brief release declarations and implementations after execution stops, retaining UDF plugins for restart */
     void clear_registrations();
@@ -57,7 +63,6 @@ public:
     [[nodiscard]] incremental::aggregate_function_repository& incremental_functions() noexcept { return incremental_functions_; }
     [[nodiscard]] std::shared_ptr<yugawara::function::configurable_provider> const& regular_provider() const noexcept { return regular_provider_; }
     [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const& aggregate_provider() const noexcept { return aggregate_provider_; }
-    void regular_provider(std::shared_ptr<yugawara::function::configurable_provider> value);
 
 private:
     // Registrations are destroyed before UDF plugin resources (reverse member order).

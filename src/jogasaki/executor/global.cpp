@@ -15,7 +15,6 @@
  */
 #include "global.h"
 
-#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -32,17 +31,10 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/storage/storage_manager.h>
-#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::global {
 
 using takatori::util::maybe_shared_ptr;
-
-// Non-owning publication; lifetime and repository mutations require quiescence.
-static std::atomic<executor::function::function_registry*>& active_function_registry() noexcept {
-    static std::atomic<executor::function::function_registry*> active{nullptr};
-    return active;
-}
 
 memory::page_pool& page_pool(pool_operation op) {
     static std::unique_ptr<memory::page_pool> pool = std::make_unique<memory::page_pool>();
@@ -56,21 +48,9 @@ memory::page_pool& page_pool(pool_operation op) {
     return *pool;
 }
 
-executor::function::function_registry& function_registry(
-    std::shared_ptr<executor::function::function_registry> const& owner) {
-    if (owner) {
-        active_function_registry().store(owner.get(), std::memory_order_release);
-        return *owner;
-    }
-    auto* registry = active_function_registry().load(std::memory_order_acquire);
-    if (!registry) { fail_with_exception(); }
-    return *registry;
-}
-
-void unbind_function_registry(executor::function::function_registry* registry) noexcept {
-    auto* expected = registry;
-    // Destroying an old or unbound registry must not clear a newer binding.
-    active_function_registry().compare_exchange_strong(expected, nullptr);
+executor::function::function_registry& function_registry() {
+    static executor::function::function_registry registry{};
+    return registry;
 }
 
 executor::function::incremental::aggregate_function_repository& incremental_aggregate_function_repository() {
@@ -90,10 +70,8 @@ executor::function::table_valued_function_repository& table_valued_function_repo
 }
 
 std::shared_ptr<yugawara::function::configurable_provider> const&
-regular_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg) {
-    auto& registry = function_registry();
-    if (arg) { registry.regular_provider(std::move(arg)); }
-    return registry.regular_provider();
+regular_function_provider() {
+    return function_registry().regular_provider();
 }
 
 maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuration> arg) {

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -22,7 +21,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -106,7 +104,7 @@ TEST(function_registry_lifecycle_test, loader_release_keeps_live_plugin_objects_
     std::weak_ptr<plugin::udf::generic_client> client_observer = client;
     loader.unload_all();
     EXPECT_TRUE(library_loaded());
-    EXPECT_TRUE(api->packages().empty());
+    EXPECT_EQ(1U, api->packages().size());
     api.reset();
     EXPECT_TRUE(library_loaded());
     plugin::udf::generic_client_context context{};
@@ -118,6 +116,20 @@ TEST(function_registry_lifecycle_test, loader_release_keeps_live_plugin_objects_
     EXPECT_TRUE(client_observer.expired());
     // Weak observers remain alive: they must not keep plugin code mapped.
     EXPECT_FALSE(library_loaded());
+}
+
+TEST(function_registry_lifecycle_test, global_registry_is_available_without_a_database_owner) {
+    auto* registry = &global::function_registry();
+    {
+        api::impl::database unstarted{};
+        EXPECT_EQ(registry, &global::function_registry());
+    }
+    EXPECT_EQ(registry, &global::function_registry());
+    EXPECT_EQ(&registry->scalar_functions(), &global::scalar_function_repository());
+    EXPECT_EQ(&registry->table_functions(), &global::table_valued_function_repository());
+    EXPECT_EQ(&registry->aggregate_functions(), &global::aggregate_function_repository());
+    EXPECT_EQ(&registry->incremental_functions(), &global::incremental_aggregate_function_repository());
+    EXPECT_EQ(registry->regular_provider(), global::regular_function_provider());
 }
 
 TEST(function_registry_lifecycle_test, registry_releases_all_function_kinds) {
@@ -135,23 +147,6 @@ TEST(function_registry_lifecycle_test, registry_releases_all_function_kinds) {
     EXPECT_EQ(0U, functions.aggregate_functions().size());
     EXPECT_EQ(0U, functions.incremental_functions().size());
 
-}
-
-TEST(function_registry_lifecycle_test, database_owns_independent_function_registries) {
-    auto first = std::make_unique<api::impl::database>();
-    api::impl::database second{};
-    auto resource = std::make_shared<int>(1);
-    std::weak_ptr<int> observer = resource;
-    first->functions().scalar_functions().add(udf_id,
-        std::make_shared<scalar_function_info>(scalar_function_kind::user_defined,
-            [resource](auto&, auto) { return data::any{std::in_place_type<std::int32_t>, *resource}; }, 0));
-    resource.reset();
-    EXPECT_NE(nullptr, first->functions().scalar_functions().find(udf_id));
-    EXPECT_EQ(nullptr, second.functions().scalar_functions().find(udf_id));
-    second.functions().clear();
-    EXPECT_FALSE(observer.expired());
-    first.reset();
-    EXPECT_TRUE(observer.expired());
 }
 
 TEST(function_registry_lifecycle_test, callable_retains_descriptors_after_plugin_collection_release) {
@@ -204,37 +199,15 @@ protected:
     }
 };
 
-TEST_F(database_function_lifecycle_test, global_access_does_not_keep_the_registry_alive) {
-    auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
-    utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
-    auto temporary = std::make_shared<function_registry>();
-    std::weak_ptr<function_registry> observer = temporary;
-    (void) global::function_registry(temporary);
-    temporary.reset();
-    EXPECT_TRUE(observer.expired());
-    EXPECT_ANY_THROW((void) global::scalar_function_repository());
-}
-
-// Both owners remain alive: this checks pointer publication, not query-time database switching.
-TEST_F(database_function_lifecycle_test, concurrent_registry_binding_and_lookup) {
-    auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
-    utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
-    auto first = std::make_shared<function_registry>();
-    auto second = std::make_shared<function_registry>();
-    (void) global::function_registry(first);
-    std::atomic<bool> ready{false};
-    std::thread writer{[&] {
-        ready.store(true);
-        for (std::size_t i = 0; i < 10000; ++i) {
-            (void) global::function_registry(i % 2 == 0 ? first : second);
-        }
-    }};
-    while (!ready.load()) { std::this_thread::yield(); }
-    for (std::size_t i = 0; i < 10000; ++i) {
-        auto* registry = &global::function_registry();
-        EXPECT_TRUE(registry == first.get() || registry == second.get());
+TEST_F(database_function_lifecycle_test, unstarted_database_destruction_preserves_active_registrations) {
+    auto& functions = global::function_registry();
+    auto scalar_count = functions.scalar_functions().size();
+    ASSERT_GT(scalar_count, 0U);
+    {
+        api::impl::database unstarted{};
     }
-    writer.join();
+    EXPECT_EQ(scalar_count, functions.scalar_functions().size());
+    EXPECT_EQ(db_impl()->aggregate_functions(), functions.aggregate_provider());
 }
 
 TEST_F(database_function_lifecycle_test, stop_releases_registration_and_resources) {
@@ -243,12 +216,17 @@ TEST_F(database_function_lifecycle_test, stop_releases_registration_and_resource
     register_udf(owner);
     owner.reset();
     EXPECT_FALSE(old.expired());
+    auto* registry = &global::function_registry();
+    EXPECT_EQ(db_impl()->aggregate_functions(), registry->aggregate_provider());
+    std::weak_ptr<yugawara::function::configurable_provider> previous_provider = registry->regular_provider();
     ASSERT_EQ(status::ok, db_->stop());
+    EXPECT_TRUE(previous_provider.expired());
+    EXPECT_EQ(registry, &global::function_registry());
     EXPECT_TRUE(old.expired());
-    EXPECT_EQ(0U, db_impl()->functions().scalar_functions().size());
-    EXPECT_EQ(0U, db_impl()->functions().table_functions().size());
-    EXPECT_EQ(0U, db_impl()->functions().aggregate_functions().size());
-    EXPECT_EQ(0U, db_impl()->functions().incremental_functions().size());
+    EXPECT_EQ(0U, global::function_registry().scalar_functions().size());
+    EXPECT_EQ(0U, global::function_registry().table_functions().size());
+    EXPECT_EQ(0U, global::function_registry().aggregate_functions().size());
+    EXPECT_EQ(0U, global::function_registry().incremental_functions().size());
     EXPECT_EQ(nullptr, global::scalar_function_repository().find(udf_id));
     EXPECT_EQ(nullptr, global::table_valued_function_repository().find(udf_id));
 
@@ -257,13 +235,16 @@ TEST_F(database_function_lifecycle_test, stop_releases_registration_and_resource
 TEST_F(database_function_lifecycle_test, stop_start_restores_builtin_functions_and_recovered_rows) {
     execute_statement("CREATE TABLE lifecycle_restart (id INT PRIMARY KEY, v INT)");
     execute_statement("INSERT INTO lifecycle_restart VALUES (1, -10), (2, -20)");
+    auto* registry = &global::function_registry();
     for (std::size_t i = 0; i < 2; ++i) {
         ASSERT_EQ(status::ok, db_->stop());
-        EXPECT_EQ(0U, db_impl()->functions().scalar_functions().size());
-        EXPECT_EQ(0U, db_impl()->functions().incremental_functions().size());
+        EXPECT_EQ(registry, &global::function_registry());
+        EXPECT_EQ(0U, global::function_registry().scalar_functions().size());
+        EXPECT_EQ(0U, global::function_registry().incremental_functions().size());
         ASSERT_EQ(status::ok, db_->start());
-        EXPECT_GT(db_impl()->functions().scalar_functions().size(), 0U);
-        EXPECT_GT(db_impl()->functions().incremental_functions().size(), 0U);
+        EXPECT_EQ(registry, &global::function_registry());
+        EXPECT_GT(global::function_registry().scalar_functions().size(), 0U);
+        EXPECT_GT(global::function_registry().incremental_functions().size(), 0U);
         std::vector<mock::basic_record> rows{};
         execute_query("SELECT ABS(SUM(v)), COUNT(*) FROM lifecycle_restart", rows);
         ASSERT_EQ(1U, rows.size());
@@ -272,56 +253,48 @@ TEST_F(database_function_lifecycle_test, stop_start_restores_builtin_functions_a
     }
 }
 
-TEST(function_registry_lifecycle_test, stop_start_retains_plugins_until_registry_release) {
+TEST_F(database_function_lifecycle_test, restart_reuses_process_wide_plugins_despite_directory_change) {
     test::temporary_folder temporary{};
     temporary.prepare();
     utils::finally cleanup{[&temporary] { temporary.clean(); }};
     auto directory = std::filesystem::path{temporary.path()};
     std::filesystem::create_directories(directory / "deps");
+    std::filesystem::create_directories(directory / "empty");
     std::filesystem::create_symlink(UDF_LIFECYCLE_PLUGIN_PATH, directory / "lifecycle.so");
     std::ofstream{directory / "lifecycle.ini"} << "[udf]\nenabled=true\nendpoint=dns:///127.0.0.1:50051\nsecure=false\ntransport=stream\n";
-    configuration cfg{};
-    cfg.plugin_directory(directory.string());
-    global::config_pool(std::make_shared<configuration>());
-    function_registry functions{};
-    functions.initialize(cfg);
+    ASSERT_EQ(status::ok, db_->stop());
+    auto& functions = global::function_registry();
+    // Reset the singleton only for test isolation, after database execution has stopped.
+    functions.clear();
+    utils::finally reset_registry{[this, &functions] {
+        if (db_->stop() == status::ok) { functions.clear(); }
+    }};
+    auto cfg = db_impl()->configuration();
+    cfg->plugin_directory(directory.string());
+    ASSERT_EQ(status::ok, db_->start());
     ASSERT_TRUE(library_loaded());
+    auto expect_udf_value = [this] {
+        std::vector<mock::basic_record> rows{};
+        execute_query("SELECT lifecycle_value()", rows);
+        ASSERT_EQ(1U, rows.size());
+        EXPECT_EQ(42, rows[0].get_value<std::int64_t>(0));
+    };
+    expect_udf_value();
+    cfg->plugin_directory((directory / "empty").string());
     for (std::size_t i = 0; i < 2; ++i) {
-        functions.clear_registrations();
+        ASSERT_EQ(status::ok, db_->stop());
         EXPECT_EQ(0U, functions.scalar_functions().size());
         EXPECT_TRUE(library_loaded());
-        functions.initialize(cfg);
+        ASSERT_EQ(status::ok, db_->start());
+        EXPECT_EQ(&functions, &global::function_registry());
         EXPECT_TRUE(library_loaded());
         EXPECT_GT(functions.scalar_functions().size(), 0U);
+        expect_udf_value();
     }
+    ASSERT_EQ(status::ok, db_->stop());
+    EXPECT_TRUE(library_loaded());
     functions.clear();
     EXPECT_FALSE(library_loaded());
-}
-
-TEST_F(database_function_lifecycle_test, destroying_old_owner_preserves_new_binding) {
-    auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
-    utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
-    auto first = std::make_shared<function_registry>();
-    auto second = std::make_shared<function_registry>();
-    (void) global::function_registry(first);
-    (void) global::function_registry(second);
-    first.reset();
-    EXPECT_EQ(second.get(), &global::function_registry());
-    {
-        function_registry unrelated{};
-    }
-    EXPECT_EQ(second.get(), &global::function_registry());
-}
-
-TEST_F(database_function_lifecycle_test, binding_recovers_after_active_owner_destruction) {
-    auto database_owner = std::shared_ptr<function_registry>{global::database_impl(), &db_impl()->functions()};
-    utils::finally restore{[database_owner] { (void) global::function_registry(database_owner); }};
-    auto temporary = std::make_shared<function_registry>();
-    (void) global::function_registry(temporary);
-    temporary.reset();
-    EXPECT_ANY_THROW((void) global::function_registry());
-    EXPECT_EQ(database_owner.get(), &global::function_registry(database_owner));
-    EXPECT_EQ(database_owner.get(), &global::function_registry());
 }
 
 }

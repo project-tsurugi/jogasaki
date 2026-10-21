@@ -58,7 +58,6 @@
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info.h>
-#include <jogasaki/executor/function/function_registry.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/kvs/database.h>
@@ -118,7 +117,6 @@ public:
      */
     database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db);
 
-    [[nodiscard]] executor::function::function_registry& functions() noexcept { return *functions_; }
 
     [[nodiscard]] status start() override;
 
@@ -347,9 +345,6 @@ private:
     std::shared_ptr<class configuration> cfg_{};
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{
         std::make_shared<yugawara::storage::configurable_provider>()
-    };
-    std::shared_ptr<executor::function::function_registry> functions_{
-        std::make_shared<executor::function::function_registry>()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;

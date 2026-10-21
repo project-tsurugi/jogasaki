@@ -86,6 +86,7 @@
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/function/function_registry.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
@@ -167,7 +168,7 @@ std::shared_ptr<yugawara::storage::configurable_provider> const& database::table
 }
 
 std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::aggregate_functions() const noexcept {
-    return functions_->aggregate_provider();
+    return global::function_registry().aggregate_provider();
 }
 
 #define LOGCFG (LOG(INFO) << lp << std::boolalpha)
@@ -392,8 +393,8 @@ status database::shutdown() {
     statement_stores_.clear();
     transactions_.clear();
     transaction_stores_.clear();
-    // Release registrations after execution stops; database-owned plugins remain available for restart.
-    functions_->clear_registrations();
+    // Release registrations after execution stops; process-wide plugins remain available for restart.
+    global::function_registry().clear_registrations();
     // The borrowed handle remains available to its owner and for another start attempt.
     if (kvs_db_ && !kvs_db_->handle_borrowed()) {
         bool const closed = kvs_db_->close();
@@ -444,8 +445,7 @@ bool database::init() {
         return true;
     }
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
-    (void) global::function_registry(functions_);
-    functions_->initialize(*cfg_);
+    global::function_registry().initialize(*cfg_);
     initialized_ = true;
     return true;
 }
@@ -503,8 +503,8 @@ status database::prepare_common(
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
-    ctx->aggregate_provider(functions_->aggregate_provider());
-    ctx->function_provider(functions_->regular_provider());
+    ctx->aggregate_provider(global::function_registry().aggregate_provider());
+    ctx->function_provider(global::function_registry().regular_provider());
     ctx->variable_provider(std::move(provider));
     ctx->option(option);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
@@ -822,8 +822,8 @@ status database::resolve_common(
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
-    ctx->aggregate_provider(functions_->aggregate_provider());
-    ctx->function_provider(functions_->regular_provider());
+    ctx->aggregate_provider(global::function_registry().aggregate_provider());
+    ctx->function_provider(global::function_registry().regular_provider());
     auto& ps = stmt.body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);

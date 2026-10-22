@@ -387,12 +387,15 @@ std::optional<std::string> storage_manager::get_storage_key(std::string_view nam
         }
         entry = acc->second;
     }
+    return get_storage_key(entry);
+}
 
-    decltype(storages_)::const_accessor storages_acc{};
-    if (! storages_.find(storages_acc, entry)) {
+std::optional<std::string> storage_manager::get_storage_key(storage_entry entry) const {
+    decltype(storages_)::const_accessor acc{};
+    if (! storages_.find(acc, entry)) {
         return std::nullopt;
     }
-    return std::string{storages_acc->second->derived_storage_key()};
+    return std::string{acc->second->derived_storage_key()};
 }
 
 std::optional<std::string> storage_manager::get_index_name(std::string_view storage_key) const {

@@ -30,12 +30,12 @@ class transaction_option final {
 public:
 
     /**
-     * @brief entity type for write preserves for the long transaction
+     * @brief entity type for write preserves for the long transaction (list of the storage keys)
      */
     using write_preserves_type = std::vector<std::string>;
 
     /**
-     * @brief entity type for read areas for the long transaction
+     * @brief entity type for read areas for the long transaction (list of the storage keys)
      */
     using read_areas_type = std::vector<std::string>;
 

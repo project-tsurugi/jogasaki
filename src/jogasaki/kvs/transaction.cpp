@@ -31,7 +31,6 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/fail.h>
-#include <jogasaki/utils/get_storage_by_index_name.h>
 
 namespace jogasaki::kvs {
 
@@ -144,14 +143,13 @@ template <class T, class E>
 static bool extract_storages(
     kvs::database* database,
     std::vector<std::unique_ptr<kvs::storage>>& stgs,
-    E const& names,
+    E const& storage_keys,
     T& table_areas
 ) {
-    (void) database;
-    for(auto&& wp : names) {
-        auto s = utils::get_storage_by_index_name(wp);
+    for(auto&& key : storage_keys) {
+        auto s = database->get_storage(key);
         if(! s) {
-            VLOG_LP(log_error) << "Specified storage '" << wp << "' is not found.";
+            VLOG_LP(log_error) << "Specified storage (storage key:'" << key << "') is not found.";
             return false;
         }
         table_areas.emplace_back(s->handle());

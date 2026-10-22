@@ -17,11 +17,13 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <iomanip>
 #include <optional>
 #include <sstream>
 #include <type_traits>
 #include <utility>
+#include <vector>
 #include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
@@ -82,6 +84,7 @@
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/storage/reference_scope.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_error.h>
@@ -148,7 +151,14 @@ static bool execute_internal(
     );
 }
 
-static std::shared_ptr<kvs::transaction_option const> from(api::transaction_option const& option) {
+// storage keys of the write preserves and read areas passed to the kvs transaction
+struct table_area_keys {
+    kvs::transaction_option::write_preserves_type write_preserves_{};  //NOLINT
+    kvs::transaction_option::read_areas_type read_areas_inclusive_{};  //NOLINT
+    kvs::transaction_option::read_areas_type read_areas_exclusive_{};  //NOLINT
+};
+
+static std::shared_ptr<kvs::transaction_option const> from(api::transaction_option const& option, table_area_keys keys) {
     auto type = kvs::transaction_option::transaction_type::occ;
     if(option.readonly()) {
         type = kvs::transaction_option::transaction_type::read_only;
@@ -157,25 +167,85 @@ static std::shared_ptr<kvs::transaction_option const> from(api::transaction_opti
     }
     return std::make_shared<kvs::transaction_option>(
         type,
-        option.write_preserves(),
-        option.read_areas_inclusive(),
-        option.read_areas_exclusive()
+        std::move(keys.write_preserves_),
+        std::move(keys.read_areas_inclusive_),
+        std::move(keys.read_areas_exclusive_)
     );
 }
+
+// Add transaction references to the (primary) storage entries of the write preserves and read areas, so that
+// the storages are not deleted by the maintenance thread while the transaction uses them even if the tables are
+// dropped or truncated (the transaction doesn't hold storage locks for them).
+// The storage keys of the referenced entries are returned, and they must be passed to the kvs transaction instead of
+// the names. The names may be re-pointed to other entries by DDL (e.g. TRUNCATE) after the references are added, and
+// resolving the names again lets the kvs transaction use the storages that have no reference.
+static status reference_table_areas(
+    api::transaction_option const& options,
+    storage::reference_scope& refs,
+    std::vector<storage::storage_entry>& out,
+    table_area_keys& keys
+) {
+    auto& smgr = *global::storage_manager();
+    std::pair<std::vector<std::string> const*, std::vector<std::string>*> const areas[] = {  //NOLINT
+        {&options.write_preserves(), &keys.write_preserves_},
+        {&options.read_areas_inclusive(), &keys.read_areas_inclusive_},
+        {&options.read_areas_exclusive(), &keys.read_areas_exclusive_},
+    };
+    for(auto&& [names, area_keys] : areas) {
+        for(auto&& name : *names) {
+            auto e = smgr.find_by_name(name);
+            auto ctrl = e ? smgr.find_entry(e.value()) : nullptr;
+            if(! ctrl) {
+                VLOG_LP(log_error) << "Specified storage '" << name << "' is not found.";
+                return status::err_invalid_argument;
+            }
+            // the primary entry can be unknown for the secondary index created without DDL (e.g. by api for testing)
+            if(auto primary = ctrl->is_primary() ? e : ctrl->primary_entry()) {
+                refs.add_storage(primary.value());
+                out.emplace_back(primary.value());
+            }
+            // The entry may have been dropped or replaced before the reference was added, and the storage may have
+            // been deleted then. Once the reference is added, the maintenance thread doesn't delete it (the storages
+            // of secondary indices are protected by the reference to their primary), so checking after adding the
+            // reference is enough.
+            auto key = smgr.is_current_entry(e.value()) ? smgr.get_storage_key(e.value()) : std::nullopt;
+            if(! key) {
+                VLOG_LP(log_error) << "Specified storage '" << name << "' is not found.";
+                return status::err_invalid_argument;
+            }
+            area_keys->emplace_back(std::move(key.value()));
+        }
+    }
+    return status::ok;
+}
+
+static std::function<void()> create_transaction_hook{};  //NOLINT
 
 static status init(
     api::impl::database& database,
     std::shared_ptr<api::transaction_option const> options,
     std::shared_ptr<transaction_context>& out
 ) {
+    // keep references until they are taken over by the transaction context
+    storage::reference_scope refs{*global::storage_manager()};
+    std::vector<storage::storage_entry> referenced{};
+    table_area_keys keys{};
+    if(auto res = reference_table_areas(*options, refs, referenced, keys); res != status::ok) {
+        return res;
+    }
+    if(create_transaction_hook) {
+        create_transaction_hook();
+    }
     std::unique_ptr<kvs::transaction> kvs_tx{};
-    auto opt = from(*options);
+    auto opt = from(*options, std::move(keys));
     if(auto res = kvs::transaction::create_transaction(*database.kvs_db(), kvs_tx, *opt); res != status::ok) {
         return res;
     }
     out = wrap(std::move(kvs_tx), std::move(options));
     out->state(transaction_state_kind::init);
-
+    for(auto&& e : referenced) {
+        out->add_storage_ref(e);
+    }
     return status::ok;
 }
 
@@ -1119,6 +1189,10 @@ status create_transaction(
     out = std::move(ret);
     out->profile()->enabled(global::config_pool()->profile_commits());
     return status::ok;
+}
+
+void create_transaction_hook_for_testing(std::function<void()> hook) {
+    details::create_transaction_hook = std::move(hook);
 }
 
 }  // namespace jogasaki::executor

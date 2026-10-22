@@ -32,6 +32,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/kvs/id.h>
@@ -39,6 +40,7 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/maintenance_storage.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/finally.h>
@@ -603,6 +605,147 @@ TEST_F(exclusive_ddl_dml_test, create_index_fails_if_table_storage_entry_is_miss
     // emulate the situation by removing the name from the storage entry
     ASSERT_TRUE(smgr.reserve_delete_entry(e.value()));
     test_stmt_err("CREATE INDEX i ON t (c1)", error_code::target_not_found_exception);
+}
+
+static void test_table_area_keeps_storage(
+    api_test_base& t,
+    std::string_view ddl,
+    std::vector<std::string> const& write_preserves,
+    std::vector<std::string> const& read_areas
+) {
+    // the storage of a table specified as write preserve or read area of LTX used to be deleted by the
+    // maintenance thread when the table was dropped/truncated, and the cc engine accessed the deleted storage
+    // on the end of the LTX
+    t.execute_statement("CREATE TABLE t (c0 int primary key)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+    auto tx = utils::create_transaction(*t.db_, false, true, write_preserves, read_areas);
+    ASSERT_TRUE(tx);
+    t.execute_statement(ddl);  // by other transaction
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_TRUE(smgr.find_entry(e.value()));  // still referenced by the LTX
+    ASSERT_EQ(status::ok, tx->abort());
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_FALSE(smgr.find_entry(e.value()));
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_write_preserve_keeps_storage_of_dropped_table) {
+    test_table_area_keeps_storage(*this, "DROP TABLE t", {"t"}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_write_preserve_keeps_storage_of_truncated_table) {
+    test_table_area_keeps_storage(*this, "TRUNCATE TABLE t", {"t"}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_read_area_keeps_storage_of_dropped_table) {
+    test_table_area_keeps_storage(*this, "DROP TABLE t", {}, {"t"});
+}
+
+static void test_ddl_while_creating_transaction(
+    api_test_base& t,
+    std::vector<std::string> const& ddls,
+    std::vector<std::string> const& write_preserves,
+    std::vector<std::string> const& read_areas_inclusive,
+    std::vector<std::string> const& read_areas_exclusive
+) {
+    // The kvs transaction used to resolve the names of the write preserves and read areas again after the storage
+    // references were added. If DDL re-pointed the name in between (e.g. TRUNCATE replacing the entry A with B),
+    // the kvs transaction used the storage of B that had no reference, and it could be deleted by the maintenance
+    // thread while the transaction used it. Now the kvs transaction uses the storage of the referenced entry A.
+    t.execute_statement("CREATE TABLE t (c0 int primary key)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+
+    // block the first transaction creation in the hook and run DDL meanwhile
+    std::atomic_bool armed{true};
+    std::promise<void> reached{};
+    std::promise<void> resume{};
+    auto resume_future = resume.get_future().share();
+    executor::create_transaction_hook_for_testing([&, resume_future]() {
+        if(! armed.exchange(false)) {
+            // transactions used by DDL below
+            return;
+        }
+        reached.set_value();
+        resume_future.wait();
+    });
+    auto hook_cleanup = utils::finally([]() {
+        executor::create_transaction_hook_for_testing({});
+    });
+    auto creating = std::async(std::launch::async, [&]() {
+        api::transaction_option opt{
+            transaction_type_kind::ltx, write_preserves, {}, read_areas_inclusive, read_areas_exclusive
+        };
+        return utils::create_transaction(*t.db_, std::move(opt));
+    });
+    reached.get_future().wait();
+    std::optional<storage::storage_entry> replaced{};
+    for(auto&& ddl : ddls) {
+        t.execute_statement(ddl);  // by other transaction
+        if(auto cur = smgr.find_by_name("t"); cur && cur != e) {
+            replaced = cur;
+        }
+    }
+    // the storage of the entry the name refers to now (if any) is deleted since nobody refers to it
+    (void) storage::maintenance_storage(nullptr);
+    resume.set_value();
+    auto tx = creating.get();
+    ASSERT_TRUE(tx);
+
+    // the storage of the referenced entry is kept while the transaction is alive
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_TRUE(smgr.find_entry(e.value()));
+    auto ctrl = smgr.find_entry(e.value());
+    ASSERT_TRUE(ctrl);
+    EXPECT_EQ(1, ctrl->ref_transaction_count());
+    ASSERT_EQ(status::ok, tx->abort());
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_FALSE(smgr.find_entry(e.value()));
+    if(replaced && ! smgr.find_by_name("t")) {
+        // the replacing entry is dropped too
+        EXPECT_FALSE(smgr.find_entry(replaced.value()));
+    }
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_write_preserve) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t"}, {"t"}, {}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_and_dropped_write_preserve) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t", "DROP TABLE t"}, {"t"}, {}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_and_dropped_read_area_inclusive) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t", "DROP TABLE t"}, {}, {"t"}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_and_dropped_read_area_exclusive) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t", "DROP TABLE t"}, {}, {}, {"t"});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_recreated_write_preserve) {
+    test_ddl_while_creating_transaction(*this, {"DROP TABLE t", "CREATE TABLE t (c0 int primary key)"}, {"t"}, {}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_write_preserve_keeps_storage_of_dropped_index) {
+    // the storage of a secondary index of a table specified as write preserve of LTX used to be deleted by the
+    // maintenance thread when the index was dropped, and the cc engine accessed the deleted storage on the end of
+    // the LTX
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("i");
+    ASSERT_TRUE(e);
+    auto tx = utils::create_transaction(*db_, false, true, {"t"});
+    ASSERT_TRUE(tx);
+    execute_statement("DROP INDEX i");  // by other transaction
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_TRUE(smgr.find_entry(e.value()));  // still referenced by the LTX through the primary entry
+    ASSERT_EQ(status::ok, tx->abort());
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_FALSE(smgr.find_entry(e.value()));
 }
 
 TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {

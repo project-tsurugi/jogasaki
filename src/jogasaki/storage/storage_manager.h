@@ -485,12 +485,28 @@ public:
     [[nodiscard]] std::optional<std::string> get_storage_key(std::string_view name) const;
 
     /**
+     * @brief get the storage key for the given storage entry
+     * @param entry the storage entry
+     * @return the storage key if found
+     * @return nullopt if the entry is not found
+     */
+    [[nodiscard]] std::optional<std::string> get_storage_key(storage_entry entry) const;
+
+    /**
      * @brief get the index name for the given storage key
      * @param storage_key the storage key
      * @return the index name if found
      * @return nullopt if the entry is not found
      */
     [[nodiscard]] std::optional<std::string> get_index_name(std::string_view storage_key) const;
+
+    /**
+     * @brief return whether the entry is the current one for its name
+     * @param entry the storage entry to check
+     * @return true if the entry exists, is not delete-reserved, and its name refers to the entry
+     * @return false otherwise, e.g. the entry has been dropped or replaced by DDL
+     */
+    [[nodiscard]] bool is_current_entry(storage_entry entry) const;
 
 private:
     // Lock order of the accessors of the maps below: the accessor of storages_ may be held while acquiring
@@ -519,9 +535,6 @@ private:
 
     // return whether the name refers to `replaced`, and `replaced` (or its primary) is locked by `lock`
     [[nodiscard]] bool can_replace(std::string_view name, storage_entry replaced, unique_lock& lock) const;
-
-    // return whether the entry exists, is not delete-reserved, and its name refers to the entry
-    [[nodiscard]] bool is_current_entry(storage_entry entry) const;
 };
 
 };

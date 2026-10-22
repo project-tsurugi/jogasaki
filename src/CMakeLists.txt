@@ -21,6 +21,10 @@ set(KvsserviceProtoFiles
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/transaction.proto
         )
 
+set(TsurugidbProtoFiles
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/udf/tsurugi_types.proto
+        )
+
 # By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.
 # Work-around this with PROTOBUF_GENERATE_CPP_APPEND_PATH
 set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
@@ -28,12 +32,13 @@ set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
 PROTOBUF_GENERATE_CPP(SqlProtobufSources SqlProtobufHeaders ${SqlProtoFiles})
 PROTOBUF_GENERATE_CPP(MetadataProtobufSources MetadataProtobufHeaders ${MetadataProtoFiles})
 PROTOBUF_GENERATE_CPP(KvsserviceProtobufSources KvsserviceProtobufHeaders ${KvsserviceProtoFiles})
+PROTOBUF_GENERATE_CPP(TsurugidbProtobufSources TsurugidbProtobufHeaders ${TsurugidbProtoFiles})
 
 set(GENERATED_SQL_PROTO_SRCS ${SqlProtobufSources})
 set(GENERATED_METADATA_PROTO_SRCS ${MetadataProtobufSources})
 
 set(GENERATED_KVSSERVICE_PROTO_SRCS ${KvsserviceProtobufSources})
-
+set(GENERATED_TSURUGIDB_PROTO_SRCS ${TsurugidbProtobufSources})
 add_custom_target(build_protos
         DEPENDS
         ${SqlProtobufSources}
@@ -42,6 +47,8 @@ add_custom_target(build_protos
         ${SqlProtoFiles}
         ${KvsserviceProtoFiles}
         ${KvsserviceProtobufSources}
+        ${TsurugidbProtoFiles}
+        ${TsurugidbProtobufSources}
         )
 
 install(DIRECTORY
@@ -56,6 +63,12 @@ install(DIRECTORY
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tateyama
         FILES_MATCHING
         PATTERN "proto/kvs/*.pb.h"
+        )
+install(DIRECTORY
+        ${CMAKE_BINARY_DIR}/src/jogasaki
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/jogasaki
+        FILES_MATCHING
+        PATTERN "proto/udf/*.pb.h"
         )
 
 file(GLOB SOURCES

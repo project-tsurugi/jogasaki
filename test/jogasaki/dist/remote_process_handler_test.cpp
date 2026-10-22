@@ -489,6 +489,19 @@ TEST_F(remote_process_handler_test, rejects_unknown_external_binding_before_exec
     EXPECT_FALSE(response.success);
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
 }
+TEST_F(remote_process_handler_test, rejects_unknown_output_column_before_execution) {
+    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    auto block = scan_block();
+    block.external_relations = {42};
+    block.result_schema[0].column_id = 1055;
+    // The destination column is absent from result_schema, although the relation is valid.
+    block.operators.back().offer = dist::remote_offer{42, {{0, 1055}, {0, 1900}}};
+    auto response = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_FALSE(response.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+    EXPECT_NE(std::string::npos, response.error.find("result column"));
+    EXPECT_NE(std::string::npos, response.error.find("1900"));
+}
 TEST_F(remote_process_handler_test, rejects_duplicate_and_missing_output_columns) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     for (bool duplicate : {false, true}) {

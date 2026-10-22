@@ -427,15 +427,50 @@ TEST_F(remote_process_handler_test, sink_exception_is_internal_failure_not_clien
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, response.error_kind);
 }
 
+TEST_F(remote_process_handler_test, resolves_sales_output_in_schema_column_order) {
+    execute_statement("CREATE TABLE sales(sale_number BIGINT PRIMARY KEY, amount BIGINT)");
+    execute_statement("INSERT INTO sales VALUES (308, 20000), (101, 12000), (205, 18000)");
+    auto block = scan_block();
+    // Stream variable IDs are separate from output column IDs and column positions.
+    block.stream_variables = {123, 987};
+    block.external_relations = {42};
+    block.operators[0].source->table_name = "sales";
+    block.operators[0].source->index_name = "sales";
+    block.operators[0].source->columns = {{"sale_number", 123}, {"amount", 987}};
+    block.operators.back().offer = dist::remote_offer{42, {{123, 1055}, {987, 1900}}};
+    // Both the normal and reversed schemas must resolve sparse IDs, not use IDs as positions.
+    for (bool reversed : {false, true}) {
+        block.result_schema = reversed
+            ? std::vector<dist::remote_result_column>{{1900, "int8()", true}, {1055, "int8()", false}}
+            : std::vector<dist::remote_result_column>{{1055, "int8()", false}, {1900, "int8()", true}};
+        auto response = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+        ASSERT_TRUE(response.success) << response.error;
+        std::string error{};
+        auto result = dist::deserialize_remote_execution_result(response.payload, error);
+        ASSERT_TRUE(result) << error;
+        ASSERT_EQ(3, result->rows.size());
+        auto number_position = reversed ? 1 : 0;
+        auto amount_position = reversed ? 0 : 1;
+        EXPECT_EQ(101, result->rows[0][number_position]);
+        EXPECT_EQ(12000, result->rows[0][amount_position]);
+        EXPECT_EQ(205, result->rows[1][number_position]);
+        EXPECT_EQ(18000, result->rows[1][amount_position]);
+        EXPECT_EQ(308, result->rows[2][number_position]);
+        EXPECT_EQ(20000, result->rows[2][amount_position]);
+    }
+}
 TEST_F(remote_process_handler_test, resolves_sparse_external_ids_and_schema_column_order) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY, C1 BIGINT)");
-    execute_statement("INSERT INTO T VALUES (10, 99), (20, NULL)");
+    execute_statement("CREATE TABLE sales(sale_number BIGINT PRIMARY KEY, amount BIGINT)");
+    execute_statement("INSERT INTO sales VALUES (101, 12000), (205, NULL)");
     auto block = scan_block();
     block.stream_variables = {123, 987};
     block.external_relations = {42};
-    block.operators[0].source->columns = {{"C0", 123}, {"C1", 987}};
-    block.result_schema = {{900, "int8()", true}, {55, "int8()", false}};
-    block.operators.back().offer = dist::remote_offer{42, {{123, 55}, {987, 900}}};
+    block.operators[0].source->table_name = "sales";
+    block.operators[0].source->index_name = "sales";
+    block.operators[0].source->columns = {{"sale_number", 123}, {"amount", 987}};
+    // Reverse the output order while retaining the documentation's sparse column IDs.
+    block.result_schema = {{1900, "int8()", true}, {1055, "int8()", false}};
+    block.operators.back().offer = dist::remote_offer{42, {{123, 1055}, {987, 1900}}};
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     ASSERT_TRUE(response.success) << response.error;
@@ -443,8 +478,8 @@ TEST_F(remote_process_handler_test, resolves_sparse_external_ids_and_schema_colu
     auto result = dist::deserialize_remote_execution_result(response.payload, error);
     ASSERT_TRUE(result) << error;
     ASSERT_EQ(2, result->rows.size());
-    EXPECT_EQ(99, result->rows[0][0]); EXPECT_EQ(10, result->rows[0][1]);
-    EXPECT_FALSE(result->rows[1][0]); EXPECT_EQ(20, result->rows[1][1]);
+    EXPECT_EQ(12000, result->rows[0][0]); EXPECT_EQ(101, result->rows[0][1]);
+    EXPECT_FALSE(result->rows[1][0]); EXPECT_EQ(205, result->rows[1][1]);
 }
 TEST_F(remote_process_handler_test, rejects_unknown_external_binding_before_execution) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");

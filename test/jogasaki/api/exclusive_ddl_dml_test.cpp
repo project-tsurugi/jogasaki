@@ -748,6 +748,33 @@ TEST_F(exclusive_ddl_dml_test, ltx_write_preserve_keeps_storage_of_dropped_index
     EXPECT_FALSE(smgr.find_entry(e.value()));
 }
 
+TEST_F(exclusive_ddl_dml_test, create_table_with_name_of_existing_index) {
+    // regression test: CREATE TABLE with the name of an existing secondary index used to succeed, and the name
+    // conflicted with the index - the index definition was overwritten by the primary index of the new table, and
+    // DML on the new table accessed the storage of the index
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 7)", stmt));
+    test_stmt_err(
+        "CREATE TABLE i (c0 int primary key)",
+        error_code::target_already_exists_exception,
+        "Index \"i\" already exists. Table name must be different from the existing index names."
+    );
+    // IF NOT EXISTS doesn't help because the table doesn't exist
+    test_stmt_err("CREATE TABLE IF NOT EXISTS i (c0 int primary key)", error_code::target_already_exists_exception);
+    {
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::ok, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE c1 = 7", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 7)), result[0]);
+}
+
 TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {
     // two dml operations before/after grant in the same dml tx whicle ddl tx instantly completes
     // TODO currently there is no error on this case, but DDL must have changed the metadata, so DML touching the updated table should fail

@@ -515,44 +515,52 @@ TEST(remote_execution_block_test, rebuilds_takatori_graph) {
     ASSERT_TRUE(source_block);
     source_block->external_relations = {42};
     source_block->operators.back().offer->external_relation_id = 42;
-    // The restored descriptor must own its relation even after the resolver is gone.
-    auto rebuilt = [&] {
-        test_graph_resolver resolver{
-            bindings(*index),
-            bindings(table->columns()[0]),
-            bindings.external_relation(yugawara::binding::external_relation_info{42, forward.columns()}),
-            forward.columns()[0],
-        };
-        return dist::build_remote_execution_graph(*source_block, resolver);
-    }();
+    std::weak_ptr<yugawara::binding::external_relation_info> external_owner{};
+    {
+        // The restored graph retains the external information after the resolver is gone.
+        auto rebuilt = [&] {
+            auto external = std::make_shared<yugawara::binding::external_relation_info>(42, forward.columns());
+            external_owner = external;
+            test_graph_resolver resolver{
+                bindings(*index),
+                bindings(table->columns()[0]),
+                bindings.external_relation(external),
+                forward.columns()[0],
+            };
+            return dist::build_remote_execution_graph(*source_block, resolver);
+        }();
 
-    ASSERT_TRUE(rebuilt) << rebuilt.error;
-    ASSERT_EQ(3, rebuilt.graph->size());
-    for (auto const& expression : *rebuilt.graph) {
-        if (expression.kind() != relation::expression_kind::offer) continue;
-        auto const& restored = dynamic_cast<relation::step::offer const&>(expression);
-        auto const& external = yugawara::binding::extract<yugawara::binding::external_relation_info>(restored.destination());
-        EXPECT_EQ(42, external.relation_id());
-        ASSERT_EQ(1, external.columns().size());
-        EXPECT_EQ(forward.columns()[0], external.columns()[0]);
-        EXPECT_EQ(external.columns()[0], restored.columns()[0].destination());
+        ASSERT_TRUE(rebuilt) << rebuilt.error;
+        EXPECT_FALSE(external_owner.expired());
+        ASSERT_EQ(3, rebuilt.graph->size());
+        for (auto const& expression : *rebuilt.graph) {
+            if (expression.kind() != relation::expression_kind::offer) continue;
+            auto const& restored = dynamic_cast<relation::step::offer const&>(expression);
+            auto const& external = yugawara::binding::extract<yugawara::binding::external_relation_info>(restored.destination());
+            EXPECT_EQ(42, external.relation_id());
+            ASSERT_EQ(1, external.columns().size());
+            EXPECT_EQ(forward.columns()[0], external.columns()[0]);
+            EXPECT_EQ(external.columns()[0], restored.columns()[0].destination());
+        }
+        EXPECT_TRUE(dist::is_remote_process_execution_block_shape(*rebuilt.graph));
+        auto round_trip = dist::create_remote_execution_block(*rebuilt.graph);
+        ASSERT_TRUE(round_trip);
+        ASSERT_EQ(3, round_trip->operators.size());
+        EXPECT_EQ((std::vector<std::uint64_t>{42}), round_trip->external_relations);
+        EXPECT_EQ(42, round_trip->operators.back().offer->external_relation_id);
+        EXPECT_EQ(dist::remote_operator_kind::scan, round_trip->operators[0].kind);
+        EXPECT_EQ(dist::remote_operator_kind::filter, round_trip->operators[1].kind);
+        EXPECT_EQ(dist::remote_operator_kind::offer, round_trip->operators[2].kind);
+        ASSERT_EQ(3, round_trip->scalar_expressions.size());
+        EXPECT_EQ(dist::remote_scalar_expression_kind::compare,
+            round_trip->scalar_expressions.back().kind);
+
+        auto compiled = dist::compile_remote_execution_graph(*rebuilt.graph);
+        ASSERT_TRUE(compiled) << compiled.error;
+        EXPECT_TRUE(compiled.processor_info->details().has_scan_operator());
     }
-    EXPECT_TRUE(dist::is_remote_process_execution_block_shape(*rebuilt.graph));
-    auto round_trip = dist::create_remote_execution_block(*rebuilt.graph);
-    ASSERT_TRUE(round_trip);
-    ASSERT_EQ(3, round_trip->operators.size());
-    EXPECT_EQ((std::vector<std::uint64_t>{42}), round_trip->external_relations);
-    EXPECT_EQ(42, round_trip->operators.back().offer->external_relation_id);
-    EXPECT_EQ(dist::remote_operator_kind::scan, round_trip->operators[0].kind);
-    EXPECT_EQ(dist::remote_operator_kind::filter, round_trip->operators[1].kind);
-    EXPECT_EQ(dist::remote_operator_kind::offer, round_trip->operators[2].kind);
-    ASSERT_EQ(3, round_trip->scalar_expressions.size());
-    EXPECT_EQ(dist::remote_scalar_expression_kind::compare,
-        round_trip->scalar_expressions.back().kind);
-
-    auto compiled = dist::compile_remote_execution_graph(*rebuilt.graph);
-    ASSERT_TRUE(compiled) << compiled.error;
-    EXPECT_TRUE(compiled.processor_info->details().has_scan_operator());
+    // No resolver or graph remains: the external information must be released.
+    EXPECT_TRUE(external_owner.expired());
 }
 
 TEST(remote_execution_block_test, native_external_layout_preserves_order_and_rejects_invalid_bindings) {

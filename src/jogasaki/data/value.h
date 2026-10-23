@@ -24,6 +24,7 @@ namespace jogasaki::data {
 class value {
 public:
     value() = default;
+    ~value() = default;
     value(value const&) = default;
     value& operator=(value const&) = default;
     value(value&& other) noexcept
@@ -40,9 +41,9 @@ public:
     [[nodiscard]] static value from_blob(lob::blob_locator locator);
     [[nodiscard]] static value from_clob(lob::clob_locator locator);
     [[nodiscard]] any view() const & noexcept { return value_; }
-    any view() const && = delete;
+    [[nodiscard]] any view() const && = delete;
     [[nodiscard]] std::string_view bytes() const &;
-    std::string_view bytes() const && = delete;
+    [[nodiscard]] std::string_view bytes() const && = delete;
     [[nodiscard]] bool empty() const noexcept { return value_.empty(); }
     [[nodiscard]] explicit operator bool() const noexcept { return static_cast<bool>(value_); }
 private:

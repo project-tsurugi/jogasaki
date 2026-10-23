@@ -22,12 +22,12 @@
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::conv {
-namespace {
-status reject_null(request_context* context) {
-    if (context) set_error_context(*context, error_code::not_null_constraint_violation_exception,
-        "Null assigned for non-nullable field.", status::err_integrity_constraint_violation);
+static status reject_null(request_context* context) {
+    if (context) {
+        set_error_context(*context, error_code::not_null_constraint_violation_exception,
+            "Null assigned for non-nullable field.", status::err_integrity_constraint_violation);
+    }
     return status::err_integrity_constraint_violation;
-}
 }
 record_assignment::record_assignment(takatori::type::data const& source, takatori::type::data const& target,
     data::field_operations destination, field_position position, bool nullable, conversion_kind conversion)
@@ -49,8 +49,10 @@ record_assignment record_assignment::prepare_record(takatori::type::data const& 
 status record_assignment::apply(data::any source, accessor::record_ref target,
     request_context* context, memory::lifo_paged_memory_resource* resource) const {
     if (source.error()) {
-        if (context) set_error_context(*context, error_code::value_evaluation_exception,
-            "Cannot assign an evaluation error.", status::err_expression_evaluation_failure);
+        if (context) {
+            set_error_context(*context, error_code::value_evaluation_exception,
+                "Cannot assign an evaluation error.", status::err_expression_evaluation_failure);
+        }
         return status::err_expression_evaluation_failure;
     }
     auto converted = source;
@@ -58,34 +60,52 @@ status record_assignment::apply(data::any source, accessor::record_ref target,
         auto result = status::ok;
         switch (conversion_) {
             case conversion_kind::assignment:
-                if (!context) return status::err_invalid_state;
+                if (!context) {
+                    return status::err_invalid_state;
+                }
                 result = conduct_assignment_conversion(*source_type_, *target_type_, source, converted, *context, resource);
                 break;
             case conversion_kind::unify:
                 result = conduct_unifying_conversion(*source_type_, *target_type_, source, converted, resource);
                 break;
             case conversion_kind::none:
-                if (context) set_error_context(*context, error_code::value_evaluation_exception,
-                    "type conversion not expected but source and target types differ", status::err_expression_evaluation_failure);
+                if (context) {
+                    set_error_context(*context, error_code::value_evaluation_exception,
+                        "type conversion not expected but source and target types differ", status::err_expression_evaluation_failure);
+                }
                 return status::err_expression_evaluation_failure;
         }
-        if (result != status::ok) return result;
+        if (result != status::ok) {
+            return result;
+        }
     }
-    if (converted.empty() && !nullable_) return reject_null(context);
-    if (nullable_) destination_.copy_nullable(target, position_.value, position_.nullity, converted);
-    else destination_.copy(target, position_.value, converted);
+    if (converted.empty() && !nullable_) {
+        return reject_null(context);
+    }
+    if (nullable_) {
+        destination_.copy_nullable(target, position_.value, position_.nullity, converted);
+    } else {
+        destination_.copy(target, position_.value, converted);
+    }
     return status::ok;
 }
 status record_assignment::apply(accessor::const_record_ref source, accessor::record_ref target,
     request_context* context, memory::lifo_paged_memory_resource* resource) const {
-    if (!source_) fail_with_exception();
+    if (!source_) {
+        fail_with_exception();
+    }
     auto const& origin = *source_;
     auto is_null = source.is_null(origin.position.nullity);
-    if (is_null && !nullable_) return reject_null(context);
+    if (is_null && !nullable_) {
+        return reject_null(context);
+    }
     if (!requires_conversion_) {
-        if (nullable_) destination_.copy_nullable(target, position_.value, position_.nullity,
-            source, origin.position.value, origin.position.nullity);
-        else destination_.copy(target, position_.value, source, origin.position.value);
+        if (nullable_) {
+            destination_.copy_nullable(target, position_.value, position_.nullity,
+                source, origin.position.value, origin.position.nullity);
+        } else {
+            destination_.copy(target, position_.value, source, origin.position.value);
+        }
         return status::ok;
     }
     data::any input;

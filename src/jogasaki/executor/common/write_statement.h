@@ -72,6 +72,7 @@ public:
      * @brief create empty object
      */
     write_statement() = default;
+    ~write_statement() override = default;
     // Cached evaluators refer to info_; the statement must remain at the same address.
     write_statement(write_statement const&) = delete;
     write_statement& operator=(write_statement const&) = delete;

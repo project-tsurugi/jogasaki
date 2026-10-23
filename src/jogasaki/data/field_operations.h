@@ -41,6 +41,8 @@ public:
     void read_nullable(accessor::const_record_ref source, std::size_t source_offset, std::size_t source_nullity,
         any& result, memory::paged_memory_resource* resource = nullptr) const;
 private:
+    template<class T>
+    [[nodiscard]] static field_operations for_value_type();
     using copy_function = void (*)(accessor::record_ref, std::size_t, accessor::const_record_ref, std::size_t, memory::paged_memory_resource*);
     using write_function = void (*)(accessor::record_ref, std::size_t, any const&, memory::paged_memory_resource*);
     using read_function = any (*)(accessor::const_record_ref, std::size_t, memory::paged_memory_resource*);

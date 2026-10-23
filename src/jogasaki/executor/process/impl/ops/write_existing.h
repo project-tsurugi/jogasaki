@@ -92,10 +92,10 @@ struct cache_align update_field {
             utils::type_for(target_type), {target_offset, target_nullity_offset}, nullable,
             conv::conversion_kind::assignment))
     {}
-    bool source_external_;
-    bool key_;
-    region_id source_region_id_;
-    conv::record_assignment assignment_;
+    bool source_external_; // NOLINT(misc-non-private-member-variables-in-classes)
+    bool key_; // NOLINT(misc-non-private-member-variables-in-classes)
+    region_id source_region_id_; // NOLINT(misc-non-private-member-variables-in-classes)
+    conv::record_assignment assignment_; // NOLINT(misc-non-private-member-variables-in-classes)
 };
 
 }  // namespace details

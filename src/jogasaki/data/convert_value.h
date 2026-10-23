@@ -24,8 +24,8 @@ public:
     [[nodiscard]] static value_conversion prepare(meta::field_type const& target);
     enum class ordering { exact, rounded_down, rounded_up, below_minimum, above_maximum, unsupported };
     struct result {
-        ordering order;
-        any value;
+        ordering order{ordering::exact};
+        any value{};
     };
     [[nodiscard]] result apply(any const& source) const;
 private:

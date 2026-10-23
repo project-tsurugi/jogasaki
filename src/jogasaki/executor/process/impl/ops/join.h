@@ -55,7 +55,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/iterator_incrementer.h>
 #include <jogasaki/utils/iterator_pair.h>
 
@@ -146,8 +146,7 @@ public:
                 }
                 auto it = cur[i].first;
                 auto src = f.is_key_ ? g.key() : *it;
-                utils::copy_nullable_field(
-                    f.type_,
+                f.operations_.copy_nullable(
                     target,
                     f.target_offset_,
                     f.target_nullity_offset_,

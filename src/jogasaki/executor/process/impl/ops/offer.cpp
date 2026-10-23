@@ -32,7 +32,7 @@
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/validation.h>
 
 #include "context_helper.h"
@@ -81,51 +81,13 @@ operation_status offer::operator()(offer_context& ctx) {
     utils::checkpoint_holder h{ctx.varlen_resource()};
     for(auto &f : fields_) {
         auto source = ctx.variables().ref(f.source_region_id_);
-        if(! f.requires_conversion_) {
-            utils::copy_nullable_field(
-                f.type_,
-                target,
-                f.target_offset_,
-                f.target_nullity_offset_,
-                source,
-                f.source_offset_,
-                f.source_nullity_offset_
-            );
-            continue;
-        }
-        data::any src{};
-        // varlen fields data is already on `resource`, so no need to copy
-        auto nocopy = nullptr;
-        utils::copy_nullable_field_as_any(
-            f.source_ftype_,
-            source,
-            f.source_offset_,
-            f.source_nullity_offset_,
-            src,
-            nocopy
-        );
-
-        // rewinding varlen_resource is done by the checkpoint_holder above
-        data::any converted{};
-        if(auto res = conv::conduct_unifying_conversion(
-               *f.source_type_,
-               *f.target_type_,
-               src,
-               converted,
-               ctx.varlen_resource()
-           );
-           res != status::ok) {
-            // normaly unifying conversion does not fail
-            set_error_context(
-                *ctx.req_context(),
-                error_code::sql_execution_exception,
-                "unexpected error in type conversion",
-                status::err_io_error
-            );
+        if (auto result = f.assignment_.apply(source, target, ctx.req_context(), ctx.varlen_resource());
+            result != status::ok) {
+            if (ctx.req_context()) set_error_context(*ctx.req_context(), error_code::sql_execution_exception,
+                "unexpected error in type conversion", status::err_io_error);
             ctx.abort();
             return operation_status_kind::aborted;
         }
-        utils::copy_nullable_field(f.type_, target, f.target_offset_, f.target_nullity_offset_, converted, nocopy);
     }
 
     if (! ctx.writer_) {
@@ -167,27 +129,24 @@ std::vector<details::offer_field> offer::create_fields(
     sequence_view<const column> columns,
     processor_info const& pinfo
 ) {
-    std::vector<details::offer_field> fields{};
-    fields.resize(meta->field_count());
-    for(auto&& c : columns) {
-        auto ind = order.index(c.destination());
-        auto& info = block_info().at(c.source());
+    std::vector<std::optional<details::offer_field>> prepared(meta->field_count());
+    for (auto const& c : columns) {
+        auto index = order.index(c.destination());
+        auto& location = block_info().at(c.source());
         auto const& source_type = pinfo.compiled_info().type_of(c.source());
-        auto source_ftype = utils::type_for(source_type);
         auto const& target_type = pinfo.compiled_info().type_of(c.destination());
-        fields[ind] = details::offer_field{
-            meta->at(ind),
-            source_ftype,
-            info.value_offset(),
-            meta->value_offset(ind),
-            info.nullity_offset(),
-            meta->nullity_offset(ind),
-            meta->nullable(ind),
-            std::addressof(source_type),
-            std::addressof(target_type),
-            conv::to_require_conversion(source_type, target_type),
-            info.region()
-        };
+        assert_with_exception(!prepared.at(index).has_value(), index);
+        prepared[index].emplace(details::offer_field{
+            conv::record_assignment::prepare_record(source_type, target_type, utils::type_for(source_type),
+                {location.value_offset(), location.nullity_offset()}, meta->at(index),
+                {meta->value_offset(index), meta->nullity_offset(index)}, meta->nullable(index),
+                conv::conversion_kind::unify), location.region()});
+    }
+    std::vector<details::offer_field> fields;
+    fields.reserve(prepared.size());
+    for (auto& field : prepared) {
+        assert_with_exception(field.has_value());
+        fields.emplace_back(std::move(*field));
     }
     return fields;
 }

@@ -23,7 +23,6 @@
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 
-#include <jogasaki/data/binary_string_value.h>
 #include <jogasaki/data/value.h>
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
@@ -41,7 +40,7 @@ void parameter_set::set_boolean(std::string_view name, parameter_t<kind::boolean
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::boolean>},
-            data::value{std::in_place_type<parameter_t<kind::boolean>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::boolean>>, value})
         }
     );
 }
@@ -50,7 +49,7 @@ void parameter_set::set_int4(std::string_view name, parameter_t<kind::int4> valu
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::int4>},
-            data::value{std::in_place_type<parameter_t<kind::int4>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::int4>>, value})
         }
     );
 }
@@ -59,7 +58,7 @@ void parameter_set::set_int8(std::string_view name, parameter_t<kind::int8> valu
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::int8>},
-            data::value{std::in_place_type<parameter_t<kind::int8>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::int8>>, value})
         }
     );
 }
@@ -68,7 +67,7 @@ void parameter_set::set_float4(std::string_view name, parameter_t<kind::float4> 
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::float4>},
-            data::value{std::in_place_type<parameter_t<kind::float4>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::float4>>, value})
         }
     );
 }
@@ -77,7 +76,7 @@ void parameter_set::set_float8(std::string_view name, parameter_t<kind::float8> 
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::float8>},
-            data::value{std::in_place_type<parameter_t<kind::float8>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::float8>>, value})
         }
     );
 }
@@ -86,8 +85,8 @@ void parameter_set::set_character(std::string_view name, parameter_t<kind::chara
     add(std::string(name),
         {
             meta::field_type{std::make_shared<meta::character_field_option>()},
-            data::value{std::in_place_type<std::string>, static_cast<std::string_view>(value)}
-            // use std::string so that the content is copied from accessor::text
+            data::value::copy(data::any{std::in_place_type<accessor::text>, value})
+
         }
     );
 }
@@ -96,8 +95,8 @@ void parameter_set::set_octet(std::string_view name, parameter_t<kind::octet> va
     add(std::string(name),
         {
             meta::field_type{std::make_shared<meta::octet_field_option>()},
-            data::value{std::in_place_type<data::binary_string_value>, static_cast<std::string_view>(value)}
-            // use binary_string_value so that the content is copied from accessor::binary
+            data::value::copy(data::any{std::in_place_type<accessor::binary>, value})
+
         }
     );
 }
@@ -105,7 +104,7 @@ void parameter_set::set_decimal(std::string_view name, parameter_t<kind::decimal
     add(std::string(name),
         {
             meta::field_type{std::make_shared<meta::decimal_field_option>()},
-            data::value{std::in_place_type<parameter_t<kind::decimal>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::decimal>>, value})
         }
     );
 }
@@ -114,7 +113,7 @@ void parameter_set::set_date(std::string_view name, parameter_t<kind::date> valu
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::date>},
-            data::value{std::in_place_type<parameter_t<kind::date>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::date>>, value})
         }
     );
 }
@@ -123,7 +122,7 @@ void parameter_set::set_time_of_day(std::string_view name, parameter_t<kind::tim
     add(std::string(name),
         {
             meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
-            data::value{std::in_place_type<parameter_t<kind::time_of_day>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::time_of_day>>, value})
         }
     );
 }
@@ -132,7 +131,7 @@ void parameter_set::set_time_point(std::string_view name, parameter_t<kind::time
     add(std::string(name),
         {
             meta::field_type{std::make_shared<meta::time_point_field_option>()},
-            data::value{std::in_place_type<parameter_t<kind::time_point>>, value}
+            data::value::copy(data::any{std::in_place_type<parameter_t<kind::time_point>>, value})
         }
     );
 }
@@ -141,7 +140,7 @@ void parameter_set::set_blob(std::string_view name, parameter_t<kind::blob> valu
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::blob>},
-            data::value{std::in_place_type<parameter_t<kind::blob>>, std::move(value)}
+            data::value::from_blob(std::move(value))
         }
     );
 }
@@ -150,7 +149,7 @@ void parameter_set::set_clob(std::string_view name, parameter_t<kind::clob> valu
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::clob>},
-            data::value{std::in_place_type<parameter_t<kind::clob>>, std::move(value)}
+            data::value::from_clob(std::move(value))
         }
     );
 }
@@ -159,7 +158,7 @@ void parameter_set::set_reference_column(std::string_view name, std::size_t posi
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::reference_column_position>},
-            data::value{std::in_place_type<std::size_t>, position}
+            data::value::copy(data::any{std::in_place_type<std::size_t>, position})
         }
     );
 }
@@ -168,7 +167,7 @@ void parameter_set::set_reference_column(std::string_view name, std::string_view
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::reference_column_name>},
-            data::value{std::in_place_type<std::string>, column_name}
+            data::value::copy(data::any{std::in_place_type<accessor::text>, accessor::text{column_name}})
         }
     );
 }

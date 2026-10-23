@@ -14,111 +14,40 @@
  * limitations under the License.
  */
 #pragma once
-
-#include <cstddef>
-#include <cstdint>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <variant>
-
+#include <memory>
 #include <jogasaki/data/any.h>
-#include <jogasaki/data/binary_string_value.h>
 #include <jogasaki/lob/blob_locator.h>
 #include <jogasaki/lob/clob_locator.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/meta/field_type_traits.h>
-#include <jogasaki/utils/fail.h>
-#include <jogasaki/utils/variant.h>
 
 namespace jogasaki::data {
-
-using jogasaki::data::any;
-
-/**
- * @brief value store with ownership
- * @details value store similar to any class, but this own the value with heap storage (e.g. std::string)
- * and not always trivially copyable.
- */
+/** Immutable value plus its lifetime. All execution paths consume the same any representation. */
 class value {
 public:
-    using base_type = std::variant<
-        std::monostate,
-        std::int8_t,
-        std::int16_t,
-        std::int32_t,
-        std::int64_t,
-        float,
-        double,
-        std::string,  // character
-        binary_string_value,  // octet
-        runtime_t<meta::field_type_kind::decimal>,
-        runtime_t<meta::field_type_kind::date>,
-        runtime_t<meta::field_type_kind::time_of_day>,
-        runtime_t<meta::field_type_kind::time_point>,
-        lob::blob_locator,
-        lob::clob_locator,
-        std::size_t  // for reference column position
-    >;
-
-    /**
-     * @brief construct empty instance
-     */
     value() = default;
-
-    /**
-     * @brief construct new instance
-     */
-    template<typename T, typename E = T>
-    value(std::in_place_type_t<T>, E arg) : body_(std::in_place_type<T>, arg) {}
-
-    /**
-     * @brief accessor of the content value in given type
-     * @warning for bool, the reference to std::int8_t is returned as proxy.
-     */
-    template<typename T>
-    [[nodiscard]]
-    std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>
-    const& ref() const {
-        using A = std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>;
-        if(auto* p = std::get_if<A>(&body_); p != nullptr) {
-            return *p;
+    value(value const&) = default;
+    value& operator=(value const&) = default;
+    value(value&& other) noexcept
+        : value_(std::exchange(other.value_, {})), owner_(std::move(other.owner_)) {}
+    value& operator=(value&& other) noexcept {
+        if (this != &other) {
+            value_ = std::exchange(other.value_, {});
+            owner_ = std::move(other.owner_);
         }
-        fail_with_exception();
+        return *this;
     }
-
-    /**
-     * @brief return whether value is assigned to this object
-     */
-    [[nodiscard]] explicit operator bool() const noexcept;
-
-    /**
-     * @brief return whether the value has the content or not
-     */
-    [[nodiscard]] bool empty() const noexcept;
-
-    /**
-     * @brief return the type index
-     */
-    [[nodiscard]] std::size_t type_index() const noexcept;
-
-    // variant index in value - treat bool as std::int8_t
-    template <class T>
-    static constexpr std::size_t index =
-        alternative_index<std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>, value::base_type>();
-
-    [[nodiscard]] base_type const& body() const noexcept {
-        return body_;
-    }
+    /** Copy variable-length bytes; scalar values need no allocation. */
+    [[nodiscard]] static value copy(any source);
+    [[nodiscard]] static value from_blob(lob::blob_locator locator);
+    [[nodiscard]] static value from_clob(lob::clob_locator locator);
+    [[nodiscard]] any view() const & noexcept { return value_; }
+    any view() const && = delete;
+    [[nodiscard]] std::string_view bytes() const &;
+    std::string_view bytes() const && = delete;
+    [[nodiscard]] bool empty() const noexcept { return value_.empty(); }
+    [[nodiscard]] explicit operator bool() const noexcept { return static_cast<bool>(value_); }
 private:
-    base_type body_{};
+    value(any value, std::shared_ptr<void const> owner) : value_(value), owner_(std::move(owner)) {}
+    any value_{};
+    std::shared_ptr<void const> owner_{};
 };
-
-// bool is the syntax sugar for std::int8_t
-template<>
-inline value::value(std::in_place_type_t<bool>, bool arg) : body_(std::in_place_type<std::int8_t>, arg ? 1 : 0) {}
-
-template<>
-inline value::value(std::in_place_type_t<bool>, std::int8_t arg) : body_(std::in_place_type<std::int8_t>, arg != 0 ? 1 : 0) {}
-
 }

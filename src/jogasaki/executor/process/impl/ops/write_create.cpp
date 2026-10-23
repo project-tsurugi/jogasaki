@@ -62,7 +62,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
@@ -160,7 +160,7 @@ operation_status write_create::operator()(write_create_context& ctx) {
         return error_abort(ctx, res);
     }
 
-    if(auto res = update_record(update_fields_, *ctx.req_context(), ctx.varlen_resource(),
+    if(auto res = update_record(update_fields_, ctx.req_context(), ctx.varlen_resource(),
            wctx.key_store_.ref(), wctx.value_store_.ref(), ctx.variables(), {}
     ); res != status::ok) {
         details::abort_transaction(*ctx.transaction());

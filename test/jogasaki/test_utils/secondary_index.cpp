@@ -50,7 +50,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/binary_printer.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/fail.h>
 
@@ -128,10 +128,10 @@ void copy_record(
             continue;
         }
         if(src_meta.nullable(i)) {
-            utils::copy_nullable_field(src_field, dest, dest_meta.value_offset(i), dest_meta.nullity_offset(i),
+            ::jogasaki::data::field_operations::for_type(src_field).copy_nullable( dest, dest_meta.value_offset(i), dest_meta.nullity_offset(i),
                                        src, src_meta.value_offset(i), src_meta.nullity_offset(i), resource);
         } else {
-            utils::copy_field(src_field, dest, dest_meta.value_offset(i), src, src_meta.value_offset(i), resource);
+            ::jogasaki::data::field_operations::for_type(src_field).copy( dest, dest_meta.value_offset(i), src, src_meta.value_offset(i), resource);
         }
     }
 }

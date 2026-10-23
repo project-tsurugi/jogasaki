@@ -48,7 +48,7 @@ public:
     storage_list_view storage();
 
     /**
-     * @brief release the write lock for a single storage entry and remove it from this lock object
+     * @brief release the exclusive lock on a single storage entry and remove it from this lock object
      * @param entry the storage entry to release
      * @details if the entry is not in this lock, this is a no-op.
      */

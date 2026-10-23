@@ -81,7 +81,7 @@ transaction_context::operator bool() const noexcept {
 status transaction_context::commit(bool async) {
     auto ret = transaction_->commit(async);
     storage_ref_scope_.reset(); // release storage refs so maintenance thread can clean up
-    storage_lock_.reset();      // release write lock so DML can proceed after DDL commit
+    storage_lock_.reset();      // release exclusive lock so DML can proceed after DDL commit
     return ret;
 }
 

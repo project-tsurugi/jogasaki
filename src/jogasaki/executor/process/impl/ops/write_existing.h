@@ -27,7 +27,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/conv/assignment.h>
-#include <jogasaki/executor/conv/require_conversion.h>
+#include <jogasaki/executor/conv/record_assignment.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
@@ -86,33 +86,16 @@ struct cache_align update_field {
         bool key,
         region_id source_region_id
     ) :
-        source_type_(std::addressof(source_type)),
-        target_type_(std::addressof(target_type)),
-        source_offset_(source_offset),
-        source_nullity_offset_(source_nullity_offset),
-        target_offset_(target_offset),
-        target_nullity_offset_(target_nullity_offset),
-        nullable_(nullable),
-        source_external_(source_external),
-        key_(key),
-        source_region_id_(source_region_id),
-        source_ftype_(utils::type_for(source_type)),
-        target_ftype_(utils::type_for(target_type)),
-        requires_conversion_(conv::to_require_conversion(source_type, target_type))
+        source_external_(source_external), key_(key), source_region_id_(source_region_id),
+        assignment_(conv::record_assignment::prepare_record(source_type, target_type,
+            utils::type_for(source_type), {source_offset, source_nullity_offset},
+            utils::type_for(target_type), {target_offset, target_nullity_offset}, nullable,
+            conv::conversion_kind::assignment))
     {}
-    takatori::type::data const* source_type_{};  //NOLINT
-    takatori::type::data const* target_type_{};  //NOLINT
-    std::size_t source_offset_{};  //NOLINT
-    std::size_t source_nullity_offset_{};  //NOLINT
-    std::size_t target_offset_{};  //NOLINT
-    std::size_t target_nullity_offset_{};  //NOLINT
-    bool nullable_{};  //NOLINT
-    bool source_external_{};  //NOLINT
-    bool key_{}; //NOLINT
-    region_id source_region_id_{}; //NOLINT
-    meta::field_type source_ftype_{};  //NOLINT
-    meta::field_type target_ftype_{};  //NOLINT
-    bool requires_conversion_{};  //NOLINT
+    bool source_external_;
+    bool key_;
+    region_id source_region_id_;
+    conv::record_assignment assignment_;
 };
 
 }  // namespace details
@@ -242,7 +225,7 @@ private:
 
     status update_record(
         std::vector<details::update_field>& fields,
-        request_context & ctx,
+        request_context* ctx,
         memory::lifo_paged_memory_resource* resource,
         accessor::record_ref extracted_key_record,
         accessor::record_ref extracted_value_record,

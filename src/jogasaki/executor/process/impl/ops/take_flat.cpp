@@ -39,7 +39,7 @@
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/lazy_checkpoint_holder.h>
 #include <jogasaki/utils/validation.h>
 
@@ -113,8 +113,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
             {
                 auto source = ctx.reader_->get_record();
                 for(auto &f : fields_) {
-                    utils::copy_nullable_field(
-                        f.type_,
+                    f.operations_.copy_nullable(
                         target,
                         f.target_offset_,
                         f.target_nullity_offset_,
@@ -184,7 +183,7 @@ std::vector<details::take_flat_field> take_flat::create_fields(
         auto ind = order.index(c.source());
         auto& info = block_info().at(c.destination());
         fields[ind] = details::take_flat_field{
-            meta->at(ind),
+            data::field_operations::for_type(meta->at(ind)),
             meta->value_offset(ind),
             info.value_offset(),
             meta->nullity_offset(ind),

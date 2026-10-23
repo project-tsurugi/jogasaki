@@ -54,7 +54,7 @@
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/validate_any_type.h>
@@ -121,8 +121,7 @@ static status assign_value_to_field(
     }
     out.ref().set_null(f.nullity_offset_, is_null);
     if (f.nullable_) {
-        utils::copy_nullable_field(
-            f.type_,
+        f.operations_.copy_nullable(
             out.ref(),
             f.offset_,
             f.nullity_offset_,
@@ -130,7 +129,7 @@ static status assign_value_to_field(
             std::addressof(resource)
         );
     } else {
-        utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
+        f.operations_.copy( out.ref(), f.offset_, src, std::addressof(resource));
     }
     return status::ok;
 }

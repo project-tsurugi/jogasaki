@@ -32,6 +32,24 @@ bool any::error() const noexcept {
 std::size_t any::type_index() const noexcept {
     return body_.index();
 }
+
+bool operator==(any const& a, any const& b) noexcept { return a.body_ == b.body_; }
+
+std::ostream& operator<<(std::ostream& out, any const& value) {
+    out << "any(index:" << value.type_index() << ", ";
+    value.visit([&](auto const& item) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(item)>, std::monostate>) out << "[empty]";
+        else out << item;
+    });
+    return out << ")";
+}
+
+std::string_view type_name(any const& value) {
+    constexpr std::string_view names[]{"empty", "error", "int1", "int2", "int4", "int8", "float4", "float8",
+        "character", "octet", "decimal", "date", "time_of_day", "time_point", "blob", "clob", "column_position"};
+    static_assert(std::size(names) == std::variant_size_v<any::base_type>);
+    return names[value.type_index()];
+}
 }
 
 

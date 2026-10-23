@@ -51,7 +51,7 @@ project::project(
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
-    fields_(create_fields(columns, info)),
+    assignments_(create_assignments(columns, info)),
     downstream_(std::move(downstream))
 {
     evaluators_.reserve(columns.size());
@@ -85,12 +85,10 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         // fill scope variables
         auto target = vars.ref();
         context_helper helper{ctx.task_context()};
-        for(std::size_t i=0, n = fields_.size(); i < n; ++i) {
+        for(std::size_t i=0, n = assignments_.size(); i < n; ++i) {
             if (auto st = wrt::fill_evaluated_value(
                     evaluators_[i],
-                    *fields_[i].target_type_,
-                    wrt::value_input_conversion_kind::none,
-                    fields_[i],
+                    assignments_[i],
                     *ctx.req_context(),
                     helper.blob_session_container(),
                     vars,
@@ -135,22 +133,18 @@ void project::finish(abstract::task_context* context) {
     }
 }
 
-std::vector<details::project_field> project::create_fields(
+std::vector<conv::record_assignment> project::create_assignments(
     takatori::tree::tree_fragment_vector<takatori::relation::project::column> const& columns,
     processor_info const& pinfo
 ) {
-    std::vector<details::project_field> fields{};
+    std::vector<conv::record_assignment> fields{};
     fields.reserve(columns.size());
     for (auto&& c : columns) {
         auto const& target_type = pinfo.compiled_info().type_of(c.variable());
         auto const& vinfo = block_info().at(c.variable());
-        fields.emplace_back(details::project_field{
-            utils::type_for(target_type),
-            true,  // always nullable, so project op. does not cause not-null violation
-            vinfo.value_offset(),
-            vinfo.nullity_offset(),
-            std::addressof(target_type)
-        });
+        fields.emplace_back(conv::record_assignment::prepare_value(pinfo.compiled_info().type_of(c.value()),
+            target_type, utils::type_for(target_type), {vinfo.value_offset(), vinfo.nullity_offset()},
+            true, conv::conversion_kind::none));
     }
     return fields;
 }

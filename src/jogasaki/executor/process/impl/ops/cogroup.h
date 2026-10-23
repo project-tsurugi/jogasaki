@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/data/field_operations.h>
 
 #include <takatori/relation/expression.h>
 #include <takatori/util/sequence_view.h>
@@ -36,7 +37,7 @@ struct cache_align group_field {
         bool nullable,
         bool is_key
     ) :
-        type_(std::move(type)),
+        operations_(data::field_operations::for_type(type)),
         source_offset_(source_offset),
         target_offset_(target_offset),
         source_nullity_offset_(source_nullity_offset),
@@ -45,7 +46,7 @@ struct cache_align group_field {
         is_key_(is_key)
     {}
 
-    meta::field_type type_{};  //NOLINT
+    data::field_operations operations_{};  //NOLINT
     std::size_t source_offset_{};  //NOLINT
     std::size_t target_offset_{};  //NOLINT
     std::size_t source_nullity_offset_{};  //NOLINT

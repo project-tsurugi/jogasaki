@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <future>
 #include <memory>
 #include <string>
@@ -29,15 +30,21 @@
 #include <jogasaki/api/transaction_option.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/maintenance_storage.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/finally.h>
+#include <jogasaki/utils/runner.h>
 
 #include "../api/api_test_base.h"
 
@@ -386,6 +393,386 @@ TEST_F(exclusive_ddl_dml_test, starting_truncate_blocked_by_dml_req) {
         test_stmt_err("TRUNCATE TABLE t0", *tx, error_code::inactive_transaction_exception);
     }
     f.get();
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_blocked_after_commit) {
+    // regression test: DML compiled before DROP TABLE and executed after the DROP committed used to lock
+    // the dropped storage entry successfully and crash by accessing missing storage
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1)", stmt));
+    execute_statement("DROP TABLE t");
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_truncate_blocked_after_commit) {
+    // regression test: DML compiled before TRUNCATE TABLE and executed after the TRUNCATE committed used to lock
+    // the old storage entry and access the new storage without locking it
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    execute_statement("INSERT INTO t VALUES (0, 0)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    execute_statement("TRUNCATE TABLE t");
+    {
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+    }
+    // newly compiled statement runs successfully
+    execute_statement("INSERT INTO t VALUES (2, 2)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE c1 = 2", result);
+    ASSERT_EQ(1, result.size());
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_in_same_tx) {
+    // DML compiled before DROP TABLE in the same transaction used to run without storage and fail by internal error
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    auto tx = utils::create_transaction(*db_);
+    execute_statement("DROP TABLE t", *tx);
+    ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_truncate_in_same_tx) {
+    // DML compiled before TRUNCATE TABLE refers to the old storage entry, so it's blocked even in the same transaction
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    {
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+    }
+    {
+        // statement compiled after TRUNCATE runs successfully in the same transaction
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("TRUNCATE TABLE t", *tx);
+        execute_statement("INSERT INTO t VALUES (2, 2)", *tx);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[0]);
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_and_create_in_same_tx) {
+    // DML compiled before DROP TABLE and CREATE TABLE with the same name in the same transaction used to write
+    // records with the old table layout into the new table, which caused data corruption
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 1)", stmt));
+    {
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("DROP TABLE t", *tx);
+        execute_statement("CREATE TABLE t (c0 varchar(10) primary key)", *tx);
+        ASSERT_EQ(status::err_illegal_operation, tx->execute(*stmt));
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(exclusive_ddl_dml_test, resolve_statement_prepared_before_drop) {
+    // resolving the statement prepared before DROP TABLE used to throw an exception out of the api
+    // because the table referenced by the prepared statement was removed
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{{"p0", api::field_type_kind::int4}};
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO t VALUES (:p0, :p0)", variables, prepared));
+    execute_statement("DROP TABLE t");
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::err_compiler_error, db_->resolve(prepared, std::shared_ptr{std::move(ps)}, stmt));
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_compile_fails_if_table_storage_entry_is_missing) {
+    // DML compiled when the table definition exists but its storage entry is not found by name (e.g. DROP TABLE
+    // removed the entry after the definition was read, or the metadata is inconsistent) used to have no storage
+    // to lock and run without locking the table. Now it fails as the table is not found.
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+    // emulate the situation by removing the name from the storage entry
+    ASSERT_TRUE(smgr.reserve_delete_entry(e.value()));
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::err_not_found, db_->create_executable("INSERT INTO t VALUES (1)", stmt));
+}
+
+TEST_F(exclusive_ddl_dml_test, truncate_while_dml_requests_are_compiled_concurrently) {
+    // regression test: DML compiled while TRUNCATE TABLE is replacing the storage entry used to lock the new entry
+    // before TRUNCATE locked it, and TRUNCATE failed leaving broken storage entries, which crashed subsequent DML.
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 bigint primary key, c1 bigint)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    auto& smgr = *global::storage_manager();
+    std::atomic_bool stop{false};
+    std::atomic_long seq{0};
+    std::atomic_size_t internal_errors{0};
+    auto worker = [&]() {
+        while(! stop) {
+            auto v = std::to_string(seq++);
+            // compile every time so that it may run concurrently with TRUNCATE
+            std::unique_ptr<api::executable_statement> stmt{};
+            if(db_->create_executable("INSERT INTO t VALUES (" + v + "," + v + ")", stmt) != status::ok) {
+                continue;
+            }
+            auto tx = utils::create_transaction(*db_);
+            if(auto res = tx->execute(*stmt); res != status::ok) {
+                // DML blocked by TRUNCATE is normal, but internal error means accessing missing storage
+                if(res == status::err_unknown) {
+                    ++internal_errors;
+                }
+                tx->abort();
+                continue;
+            }
+            (void) tx->commit();
+        }
+    };
+    std::vector<std::future<void>> workers{};
+    // stop workers even when assertion fails, otherwise destructor of the futures waits for them forever
+    utils::finally stop_workers{[&]() {
+        stop = true;
+    }};
+    for(std::size_t i = 0; i < 4; ++i) {
+        workers.emplace_back(std::async(std::launch::async, worker));
+    }
+    std::size_t succeeded = 0;
+    std::size_t blocked = 0;
+    for(std::size_t i = 0; i < 50; ++i) {
+        auto table_key = smgr.get_storage_key("t");
+        auto index_key = smgr.get_storage_key("i");
+        ASSERT_TRUE(table_key);
+        ASSERT_TRUE(index_key);
+
+        auto tx = utils::create_transaction(*db_);
+        status res{};
+        std::shared_ptr<error::error_info> err{};
+        (void) builder().text("TRUNCATE TABLE t").tx(*tx).st(res).error(err).expect_error(true).run();
+        if(res != status::ok) {
+            // the only acceptable failure is the one blocked by on-going DML on locking the table first,
+            // and the storages must be left untouched
+            ASSERT_EQ(status::err_illegal_operation, res);
+            ASSERT_TRUE(err);
+            ASSERT_EQ(error_code::sql_execution_exception, err->code());
+            ASSERT_EQ("DDL operation was blocked by other DML operation. table:\"t\"", err->message());
+            ASSERT_EQ(table_key, smgr.get_storage_key("t"));
+            ASSERT_EQ(index_key, smgr.get_storage_key("i"));
+            ++blocked;
+            continue;
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+        // verify both table and index storages are replaced with new ones
+        auto new_table_key = smgr.get_storage_key("t");
+        auto new_index_key = smgr.get_storage_key("i");
+        ASSERT_TRUE(new_table_key);
+        ASSERT_TRUE(new_index_key);
+        ASSERT_NE(table_key, new_table_key);
+        ASSERT_NE(index_key, new_index_key);
+        ++succeeded;
+    }
+    stop = true;
+    for(auto&& f : workers) {
+        f.get();
+    }
+    std::cerr << "truncate succeeded:" << succeeded << " blocked:" << blocked << std::endl;
+    ASSERT_LT(0, succeeded);
+    ASSERT_EQ(0, internal_errors);
+    execute_statement("INSERT INTO t VALUES (-1, -1)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE c1 = -1", result);
+    ASSERT_EQ(1, result.size());
+}
+
+TEST_F(exclusive_ddl_dml_test, create_index_fails_if_table_storage_entry_is_missing) {
+    // CREATE INDEX used to check the table is empty before locking the table, and crashed when the table name was
+    // missing (e.g. DROP TABLE removed the storage entry concurrently)
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+    // emulate the situation by removing the name from the storage entry
+    ASSERT_TRUE(smgr.reserve_delete_entry(e.value()));
+    test_stmt_err("CREATE INDEX i ON t (c1)", error_code::target_not_found_exception);
+}
+
+static void test_table_area_keeps_storage(
+    api_test_base& t,
+    std::string_view ddl,
+    std::vector<std::string> const& write_preserves,
+    std::vector<std::string> const& read_areas
+) {
+    // the storage of a table specified as write preserve or read area of LTX used to be deleted by the
+    // maintenance thread when the table was dropped/truncated, and the cc engine accessed the deleted storage
+    // on the end of the LTX
+    t.execute_statement("CREATE TABLE t (c0 int primary key)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+    auto tx = utils::create_transaction(*t.db_, false, true, write_preserves, read_areas);
+    ASSERT_TRUE(tx);
+    t.execute_statement(ddl);  // by other transaction
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_TRUE(smgr.find_entry(e.value()));  // still referenced by the LTX
+    ASSERT_EQ(status::ok, tx->abort());
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_FALSE(smgr.find_entry(e.value()));
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_write_preserve_keeps_storage_of_dropped_table) {
+    test_table_area_keeps_storage(*this, "DROP TABLE t", {"t"}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_write_preserve_keeps_storage_of_truncated_table) {
+    test_table_area_keeps_storage(*this, "TRUNCATE TABLE t", {"t"}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_read_area_keeps_storage_of_dropped_table) {
+    test_table_area_keeps_storage(*this, "DROP TABLE t", {}, {"t"});
+}
+
+static void test_ddl_while_creating_transaction(
+    api_test_base& t,
+    std::vector<std::string> const& ddls,
+    std::vector<std::string> const& write_preserves,
+    std::vector<std::string> const& read_areas_inclusive,
+    std::vector<std::string> const& read_areas_exclusive
+) {
+    // The kvs transaction used to resolve the names of the write preserves and read areas again after the storage
+    // references were added. If DDL re-pointed the name in between (e.g. TRUNCATE replacing the entry A with B),
+    // the kvs transaction used the storage of B that had no reference, and it could be deleted by the maintenance
+    // thread while the transaction used it. Now the kvs transaction uses the storage of the referenced entry A.
+    t.execute_statement("CREATE TABLE t (c0 int primary key)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("t");
+    ASSERT_TRUE(e);
+
+    // block the first transaction creation in the hook and run DDL meanwhile
+    std::atomic_bool armed{true};
+    std::promise<void> reached{};
+    std::promise<void> resume{};
+    auto resume_future = resume.get_future().share();
+    executor::create_transaction_hook_for_testing([&, resume_future]() {
+        if(! armed.exchange(false)) {
+            // transactions used by DDL below
+            return;
+        }
+        reached.set_value();
+        resume_future.wait();
+    });
+    auto hook_cleanup = utils::finally([]() {
+        executor::create_transaction_hook_for_testing({});
+    });
+    auto creating = std::async(std::launch::async, [&]() {
+        api::transaction_option opt{
+            transaction_type_kind::ltx, write_preserves, {}, read_areas_inclusive, read_areas_exclusive
+        };
+        return utils::create_transaction(*t.db_, std::move(opt));
+    });
+    reached.get_future().wait();
+    std::optional<storage::storage_entry> replaced{};
+    for(auto&& ddl : ddls) {
+        t.execute_statement(ddl);  // by other transaction
+        if(auto cur = smgr.find_by_name("t"); cur && cur != e) {
+            replaced = cur;
+        }
+    }
+    // the storage of the entry the name refers to now (if any) is deleted since nobody refers to it
+    (void) storage::maintenance_storage(nullptr);
+    resume.set_value();
+    auto tx = creating.get();
+    ASSERT_TRUE(tx);
+
+    // the storage of the referenced entry is kept while the transaction is alive
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_TRUE(smgr.find_entry(e.value()));
+    auto ctrl = smgr.find_entry(e.value());
+    ASSERT_TRUE(ctrl);
+    EXPECT_EQ(1, ctrl->ref_transaction_count());
+    ASSERT_EQ(status::ok, tx->abort());
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_FALSE(smgr.find_entry(e.value()));
+    if(replaced && ! smgr.find_by_name("t")) {
+        // the replacing entry is dropped too
+        EXPECT_FALSE(smgr.find_entry(replaced.value()));
+    }
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_write_preserve) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t"}, {"t"}, {}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_and_dropped_write_preserve) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t", "DROP TABLE t"}, {"t"}, {}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_and_dropped_read_area_inclusive) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t", "DROP TABLE t"}, {}, {"t"}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_truncated_and_dropped_read_area_exclusive) {
+    test_ddl_while_creating_transaction(*this, {"TRUNCATE TABLE t", "DROP TABLE t"}, {}, {}, {"t"});
+}
+
+TEST_F(exclusive_ddl_dml_test, create_transaction_uses_referenced_storage_of_recreated_write_preserve) {
+    test_ddl_while_creating_transaction(*this, {"DROP TABLE t", "CREATE TABLE t (c0 int primary key)"}, {"t"}, {}, {});
+}
+
+TEST_F(exclusive_ddl_dml_test, ltx_write_preserve_keeps_storage_of_dropped_index) {
+    // the storage of a secondary index of a table specified as write preserve of LTX used to be deleted by the
+    // maintenance thread when the index was dropped, and the cc engine accessed the deleted storage on the end of
+    // the LTX
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("i");
+    ASSERT_TRUE(e);
+    auto tx = utils::create_transaction(*db_, false, true, {"t"});
+    ASSERT_TRUE(tx);
+    execute_statement("DROP INDEX i");  // by other transaction
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_TRUE(smgr.find_entry(e.value()));  // still referenced by the LTX through the primary entry
+    ASSERT_EQ(status::ok, tx->abort());
+    (void) storage::maintenance_storage(nullptr);
+    EXPECT_FALSE(smgr.find_entry(e.value()));
+}
+
+TEST_F(exclusive_ddl_dml_test, create_table_with_name_of_existing_index) {
+    // regression test: CREATE TABLE with the name of an existing secondary index used to succeed, and the name
+    // conflicted with the index - the index definition was overwritten by the primary index of the new table, and
+    // DML on the new table accessed the storage of the index
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO t VALUES (1, 7)", stmt));
+    test_stmt_err(
+        "CREATE TABLE i (c0 int primary key)",
+        error_code::target_already_exists_exception,
+        "Index \"i\" already exists. Table name must be different from the existing index names."
+    );
+    // IF NOT EXISTS doesn't help because the table doesn't exist
+    test_stmt_err("CREATE TABLE IF NOT EXISTS i (c0 int primary key)", error_code::target_already_exists_exception);
+    {
+        auto tx = utils::create_transaction(*db_);
+        ASSERT_EQ(status::ok, tx->execute(*stmt));
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE c1 = 7", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 7)), result[0]);
 }
 
 TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {

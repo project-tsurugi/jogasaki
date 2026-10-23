@@ -40,34 +40,98 @@ std::size_t storage_manager::size() const noexcept {
 
 bool storage_manager::add_entry(
     storage_entry entry, std::optional<std::string_view> name, std::optional<std::string_view> storage_key,
-    bool is_primary, std::optional<storage_entry> primary_entry, std::optional<std::string_view> original_name
+    bool is_primary, std::optional<storage_entry> primary_entry, std::optional<std::string_view> original_name,
+    unique_lock* lock
 ) {
-    bool ret = false;
+    return add_entry_internal(entry, name, storage_key, is_primary, primary_entry, original_name, lock, std::nullopt);
+}
+
+bool storage_manager::replace_entry(
+    storage_entry entry, storage_entry replaced, std::string_view name, std::optional<std::string_view> storage_key,
+    bool is_primary, std::optional<storage_entry> primary_entry, unique_lock& lock
+) {
+    if (! can_replace(name, replaced, lock)) {
+        return false;
+    }
+    // secondary index entries are not locked by themselves, but protected by the lock on their primary entry
+    return add_entry_internal(
+        entry, name, storage_key, is_primary, primary_entry, std::nullopt, is_primary ? std::addressof(lock) : nullptr,
+        replaced
+    );
+}
+
+bool storage_manager::can_replace(std::string_view name, storage_entry replaced, unique_lock& lock) const {
+    {
+        decltype(storage_names_)::const_accessor acc{};
+        if (! storage_names_.find(acc, std::string{name}) || acc->second != replaced) {
+            return false;
+        }
+    }
+    // the entry to be replaced must be locked by `lock` (for secondary index, the lock is held by its primary entry)
+    std::optional<storage_entry> protector{};
+    {
+        decltype(storages_)::const_accessor acc{};
+        if (! storages_.find(acc, replaced)) {
+            return false;
+        }
+        protector = acc->second->is_primary() ? std::optional<storage_entry>{replaced} : acc->second->primary_entry();
+    }
+    return protector && lock.storage().contains(*protector);
+}
+
+bool storage_manager::add_entry_internal(
+    storage_entry entry, std::optional<std::string_view> name, std::optional<std::string_view> storage_key,
+    bool is_primary, std::optional<storage_entry> primary_entry, std::optional<std::string_view> original_name,
+    unique_lock* lock, std::optional<storage_entry> replaced
+) {
     std::shared_ptr<impl::storage_control> control{};
     {
         decltype(storages_)::accessor acc;
-        if (storages_.insert(acc, entry)) {
-            std::optional<std::string> name_str = name ? std::optional<std::string>{std::string{*name}} : std::nullopt;
-            std::optional<std::string> original_name_str = original_name ? std::optional<std::string>{std::string{*original_name}} : std::nullopt;
-            acc->second = std::make_shared<impl::storage_control>(std::move(name_str), is_primary, primary_entry, std::move(original_name_str));
-            control = acc->second;
-            control->storage_key(storage_key);
-            if (! name) {
-                control->delete_reserved(true);
-            }
-            ret = true;
+        if (! storages_.insert(acc, entry)) {
+            return false;
+        }
+        std::optional<std::string> name_str = name ? std::optional<std::string>{std::string{*name}} : std::nullopt;
+        std::optional<std::string> original_name_str = original_name ? std::optional<std::string>{std::string{*original_name}} : std::nullopt;
+        acc->second = std::make_shared<impl::storage_control>(std::move(name_str), is_primary, primary_entry, std::move(original_name_str));
+        control = acc->second;
+        control->storage_key(storage_key);
+        if (! name) {
+            control->delete_reserved(true);
         }
     }
-    if (ret) {
-        candidate_entries_.push(entry);
-        if (name) {
-            // add name after storages_ is updated successfully
+    if (lock != nullptr) {
+        // lock the entry before the name is registered below, otherwise other operation can find the entry by name
+        // and lock it first. The new entry is not visible to others yet, so locking should always succeed.
+        auto locked = control->lock();
+        assert_with_exception(locked, entry);
+        std::vector<storage_entry> list{lock->storage().entity().begin(), lock->storage().entity().end()};
+        list.emplace_back(entry);
+        lock->set_storage_list(storage_list{std::move(list)});
+    }
+    if (name) {
+        // add name after storages_ is updated successfully
+        if (! replaced) {
             storage_names_.emplace(std::string{*name}, entry);
+        } else {
+            // let the name refer to this entry directly so that the name always refers to either the replaced or
+            // this entry
+            decltype(storage_names_)::accessor name_acc;
+            if (! storage_names_.insert(name_acc, std::string{*name}) && name_acc->second != *replaced) {
+                // the name has been changed by other operation after it was checked - undo adding the entry
+                name_acc.release();
+                if (lock != nullptr) {
+                    lock->release_storage(entry);
+                }
+                storages_.erase(entry);
+                return false;
+            }
+            name_acc->second = entry;
         }
-        // add storage key mapping
-        storage_keys_.emplace(std::string{control->derived_storage_key()}, entry);
     }
-    return ret;
+    candidate_entries_.push(entry);
+    // add storage key mapping
+    storage_keys_.emplace(std::string{control->derived_storage_key()}, entry);
+    return true;
 }
 
 bool storage_manager::remove_entry(storage_entry entry) {
@@ -101,8 +165,15 @@ bool storage_manager::reserve_delete_entry(storage_entry entry) {
         return false;
     }
     auto& ctrl = *acc->second;
-    // name() is still valid here - erase from name map before clearing
-    storage_names_.erase(std::string{*ctrl.name()});
+    // name() is still valid here - erase from name map before clearing.
+    // Only erase it if it still refers to this entry. It may have been re-pointed to a new entry by replace_entry()
+    // (e.g. TRUNCATE TABLE replacing the entry).
+    if (auto name_opt = ctrl.name()) {
+        decltype(storage_names_)::const_accessor name_acc;
+        if (storage_names_.find(name_acc, std::string{*name_opt}) && name_acc->second == entry) {
+            storage_names_.erase(name_acc);
+        }
+    }
     // for pre-1.8 indices (no storage_key), promote name to storage_key before clearing name
     // so that derived_storage_key() remains usable by the maintenance thread
     if (! ctrl.storage_key()) {
@@ -175,6 +246,25 @@ struct lock_holder {
     bool shared_ = false;  //NOLINT
 };
 
+bool storage_manager::is_current_entry(storage_entry entry) const {
+    std::string name{};
+    {
+        // copy the name and release the accessor before looking up storage_names_ to avoid deadlock
+        decltype(storages_)::const_accessor acc{};
+        if (! storages_.find(acc, entry)) {
+            return false;
+        }
+        auto& ctrl = *acc->second;
+        auto n = ctrl.name();
+        if (ctrl.delete_reserved() || ! n) {
+            return false;
+        }
+        name = std::string{*n};
+    }
+    decltype(storage_names_)::const_accessor acc{};
+    return storage_names_.find(acc, name) && acc->second == entry;
+}
+
 std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storage_list_view storages, unique_lock* lock) {
     // holder holds in-flight locks until the end of this function.
     std::vector<storage_entry> locked_storages{};
@@ -182,7 +272,11 @@ std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storag
     auto max_held = storages.entity().size() + (lock ? lock->storage().entity().size() : 0);
     for(auto&& e : storages.entity()) {
         if(lock != nullptr && lock->storage().contains(e)) {
-            // lock already held by the given unique lock
+            // lock already held by the given unique lock, but the entry may have been dropped or replaced by DDL
+            // in the same transaction after the caller resolved it. Reject it for the same reason as below.
+            if(! is_current_entry(e)) {
+                return {false, {}};
+            }
             continue;
         }
         auto s = find_entry(e);
@@ -192,6 +286,14 @@ std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storag
         }
         holders.reserve(max_held);
         holders.emplace_back(std::move(s), shared);
+        if(! is_current_entry(e)) {
+            // The entry has been dropped or replaced (e.g. by TRUNCATE) after the caller resolved it by name.
+            // Its name may be gone or now refers to another entry, so locking this entry doesn't protect
+            // the storage the caller is going to access by name. DDL changes the entry the name refers to only while
+            // holding the exclusive lock on the entry, so checking after acquiring the lock is enough.
+            // In-flight lock will be released by holder.
+            return {false, {}};
+        }
         locked_storages.reserve(max_held);
         locked_storages.emplace_back(e);
     }
@@ -275,25 +377,37 @@ void storage_manager::init_next_surrogate_id(std::uint64_t value) {
 }
 
 std::optional<std::string> storage_manager::get_storage_key(std::string_view name) const {
-    decltype(storage_names_)::const_accessor acc{};
-    if (! storage_names_.find(acc, std::string{name})) {
-        return std::nullopt;
+    storage_entry entry{};
+    {
+        // release the accessor before accessing storages_. DDL erases the name while holding the accessor of
+        // storages_, so holding both in the reverse order causes deadlock.
+        decltype(storage_names_)::const_accessor acc{};
+        if (! storage_names_.find(acc, std::string{name})) {
+            return std::nullopt;
+        }
+        entry = acc->second;
     }
-    auto entry = acc->second;
+    return get_storage_key(entry);
+}
 
-    decltype(storages_)::const_accessor storages_acc{};
-    if (! storages_.find(storages_acc, entry)) {
+std::optional<std::string> storage_manager::get_storage_key(storage_entry entry) const {
+    decltype(storages_)::const_accessor acc{};
+    if (! storages_.find(acc, entry)) {
         return std::nullopt;
     }
-    return std::string{storages_acc->second->derived_storage_key()};
+    return std::string{acc->second->derived_storage_key()};
 }
 
 std::optional<std::string> storage_manager::get_index_name(std::string_view storage_key) const {
-    decltype(storage_keys_)::const_accessor acc{};
-    if (! storage_keys_.find(acc, std::string{storage_key})) {
-        return std::nullopt;
+    storage_entry entry{};
+    {
+        // release the accessor before accessing storages_ for the same reason as get_storage_key()
+        decltype(storage_keys_)::const_accessor acc{};
+        if (! storage_keys_.find(acc, std::string{storage_key})) {
+            return std::nullopt;
+        }
+        entry = acc->second;
     }
-    auto entry = acc->second;
 
     decltype(storages_)::const_accessor storages_acc{};
     if (! storages_.find(storages_acc, entry)) {

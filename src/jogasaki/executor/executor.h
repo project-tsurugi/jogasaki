@@ -336,4 +336,13 @@ bool execute_load(
     std::shared_ptr<api::transaction_option const> options
 );
 
+/**
+ * @brief set the hook function called while creating transaction (for testing)
+ * @details the hook is called after adding the storage references for the write preserves and read areas, and
+ * before creating the kvs transaction. This is used to emulate DDL running concurrently in between.
+ * The hook must be set or cleared while no transaction is being created.
+ * @param hook the hook function. Pass empty function to clear the hook.
+ */
+void create_transaction_hook_for_testing(std::function<void()> hook);
+
 }  // namespace jogasaki::executor

@@ -30,4 +30,15 @@ namespace jogasaki::utils {
  */
 std::unique_ptr<kvs::storage> get_storage_by_index_name(std::string_view index_name);
 
+/**
+ * @brief get storage by index name, throwing an exception if it is not found
+ * @details This is used by DML execution where the storage must exist because the table is locked.
+ * The failure is logged with the stack trace, and the exception is caught by the task scheduler and reported as
+ * an internal error, instead of crashing the server by dereferencing nullptr.
+ * @param index_name the name of the index (table or secondary index)
+ * @return storage object for the given index name (never nullptr)
+ * @throws std::logic_error if the storage key is not found or storage does not exist
+ */
+std::unique_ptr<kvs::storage> get_existing_storage_by_index_name(std::string_view index_name);
+
 }  // namespace jogasaki::utils

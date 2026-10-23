@@ -326,17 +326,56 @@ public:
     /**
      * @brief add new storage entry with name
      * @param entry new storage entry to add
-     * @param name name of the storage (must be unique if provided). Pass std::nullopt to add an entry that is already
+     * @param name name of the storage. Pass std::nullopt to add an entry that is already
      * marked for deletion (delete-reserved), in which case the entry is not registered in the name lookup map.
+     * If the name is already registered for another entry, the name is not registered for the new entry. Use
+     * replace_entry() to replace the existing entry.
      * @param storage_key optional storage key for the index. if not provided, the name is used as the storage key
      * @param is_primary whether this is a primary index (table) or secondary index. default is true
      * @param primary_entry the storage entry of the primary index owning this secondary index. std::nullopt for primary indices.
      * @param original_name the original name of the storage before deletion. Used only when name is std::nullopt.
      * If both name and original_name are std::nullopt, original_name in storage_control will be empty.
+     * @param lock optional unique lock to hold the new entry. If provided, the exclusive lock on the new entry is
+     * acquired and added to `lock` before the entry becomes visible by name, so that no other operation can lock the
+     * entry found by the name before `lock` is released.
      * @return true if the entry was added successfully
      * @return false is the entry already exists
      */
-    bool add_entry(storage_entry entry, std::optional<std::string_view> name, std::optional<std::string_view> storage_key = std::nullopt, bool is_primary = true, std::optional<storage_entry> primary_entry = std::nullopt, std::optional<std::string_view> original_name = std::nullopt);
+    bool add_entry(
+        storage_entry entry,
+        std::optional<std::string_view> name,
+        std::optional<std::string_view> storage_key = std::nullopt,
+        bool is_primary = true,
+        std::optional<storage_entry> primary_entry = std::nullopt,
+        std::optional<std::string_view> original_name = std::nullopt,
+        unique_lock* lock = nullptr
+    );
+
+    /**
+     * @brief add new storage entry replacing the existing one with the same name (TRUNCATE TABLE)
+     * @details the name is re-pointed directly from the replaced entry to the new entry, so that the name always
+     * refers to either of them. The replaced entry is left as it is, so the caller should reserve its deletion.
+     * If the new entry is primary, it's exclusively locked by `lock` before its name is registered.
+     * @param entry new storage entry to add
+     * @param replaced the existing storage entry to be replaced. The name must refer to it, and it (or its primary
+     * entry if it's a secondary index) must be exclusively locked by `lock`.
+     * @param name name of the storage
+     * @param storage_key optional storage key for the index. if not provided, the name is used as the storage key
+     * @param is_primary whether this is a primary index (table) or secondary index
+     * @param primary_entry the storage entry of the primary index owning this secondary index. std::nullopt for primary indices.
+     * @param lock the unique lock of the transaction replacing the entry
+     * @return true if the entry was added successfully
+     * @return false if the entry already exists, or the preconditions for `replaced` are not satisfied
+     */
+    bool replace_entry(
+        storage_entry entry,
+        storage_entry replaced,
+        std::string_view name,
+        std::optional<std::string_view> storage_key,
+        bool is_primary,
+        std::optional<storage_entry> primary_entry,
+        unique_lock& lock
+    );
 
     /**
      * @brief remove storage entry
@@ -349,8 +388,8 @@ public:
     /**
      * @brief reserve deletion of a storage entry
      * @param entry the storage entry to reserve for deletion
-     * @details removes the entry from the name and key lookup maps, sets delete_reserved flag,
-     * but keeps the entry in storages_ for the maintenance thread to complete the deletion.
+     * @details removes the entry from the name lookup map (only if the name still refers to this entry), sets
+     * delete_reserved flag, but keeps the entry in storages_ for the maintenance thread to complete the deletion.
      * @return true if the entry was found and reserved
      * @return false if the entry was not found
      */
@@ -412,7 +451,8 @@ public:
      * @param parent optional unique lock to inherit from. If provided, shared locks are acquired for the
      * storage entries except ones included in the parent lock, assuming caller already own locks from parent.
      * @return shared_lock object that will release the locks
-     * @return nullptr if acquiring one of the storages failed
+     * @return nullptr if acquiring one of the storages failed (including the case the storage entry is no longer
+     * the one its name refers to, i.e. it was dropped or replaced by DDL after the caller resolved the entry)
      */
     std::unique_ptr<shared_lock> create_shared_lock(storage_list_view storages, unique_lock* parent = nullptr);
 
@@ -445,6 +485,14 @@ public:
     [[nodiscard]] std::optional<std::string> get_storage_key(std::string_view name) const;
 
     /**
+     * @brief get the storage key for the given storage entry
+     * @param entry the storage entry
+     * @return the storage key if found
+     * @return nullopt if the entry is not found
+     */
+    [[nodiscard]] std::optional<std::string> get_storage_key(storage_entry entry) const;
+
+    /**
      * @brief get the index name for the given storage key
      * @param storage_key the storage key
      * @return the index name if found
@@ -452,7 +500,20 @@ public:
      */
     [[nodiscard]] std::optional<std::string> get_index_name(std::string_view storage_key) const;
 
+    /**
+     * @brief return whether the entry is the current one for its name
+     * @param entry the storage entry to check
+     * @return true if the entry exists, is not delete-reserved, and its name refers to the entry
+     * @return false otherwise, e.g. the entry has been dropped or replaced by DDL
+     */
+    [[nodiscard]] bool is_current_entry(storage_entry entry) const;
+
 private:
+    // Lock order of the accessors of the maps below: the accessor of storages_ may be held while acquiring
+    // the accessor of storage_names_ or storage_keys_ (e.g. removing the name of the entry), but not the reverse.
+    // Erasing an element waits for the accessors to the element to be released, so lookups by name or storage key
+    // must release the accessor of storage_names_ or storage_keys_ before accessing storages_. Otherwise they
+    // deadlock with the removal. Accessors of storage_names_ and storage_keys_ must not be held at the same time.
     tbb::concurrent_hash_map<storage_entry, std::shared_ptr<impl::storage_control>> storages_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_names_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_keys_{};
@@ -460,6 +521,20 @@ private:
     std::atomic<std::uint64_t> next_surrogate_id_{1000};
 
     std::pair<bool, storage_list> lock_internal(bool shared, storage_list_view storages, unique_lock* lock);
+
+    bool add_entry_internal(
+        storage_entry entry,
+        std::optional<std::string_view> name,
+        std::optional<std::string_view> storage_key,
+        bool is_primary,
+        std::optional<storage_entry> primary_entry,
+        std::optional<std::string_view> original_name,
+        unique_lock* lock,
+        std::optional<storage_entry> replaced
+    );
+
+    // return whether the name refers to `replaced`, and `replaced` (or its primary) is locked by `lock`
+    [[nodiscard]] bool can_replace(std::string_view name, storage_entry replaced, unique_lock& lock) const;
 };
 
 };

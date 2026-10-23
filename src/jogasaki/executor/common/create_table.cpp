@@ -91,6 +91,18 @@ bool create_table::operator()(request_context& context) const {
         );
         return false;
     }
+    // The primary index of the table shares the name with the table, and table names and index names share the
+    // namespace of indices. So the table name must not conflict with the existing (secondary) index names.
+    if(provider.find_index(c->simple_name())) {
+        set_error_context(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Index \"" << c->simple_name() << "\" already exists. Table name must be different "
+                             << "from the existing index names." << string_builder::to_string,
+            status::err_already_exists
+        );
+        return false;
+    }
 
     // currently no schema is supported, so only admin can create table
     if (auto& s = context.req_info().request_source()) {
@@ -148,9 +160,6 @@ bool create_table::operator()(request_context& context) const {
     }
     if(auto err = recovery::deserialize_storage_option_into_provider(serialized, provider, provider, true)) {
         set_error_info(context, err);
-        return false;
-    }
-    if(! lock_storage_entry(context, tid, c->simple_name())) {
         return false;
     }
 

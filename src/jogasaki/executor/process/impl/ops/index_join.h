@@ -295,8 +295,8 @@ public:
             p = ctx.make_context<index_join_context<MatchInfo>>(
                 index(),
                 block_index(),
-                utils::get_storage_by_index_name(primary_storage_name_),
-                use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name_) : nullptr,
+                utils::get_existing_storage_by_index_name(primary_storage_name_),
+                use_secondary_ ? utils::get_existing_storage_by_index_name(secondary_storage_name_) : nullptr,
                 ctx.transaction(),
                 std::make_unique<details::matcher<MatchInfo>>(use_secondary_, match_info_, key_columns_, value_columns_),
                 ctx.resource(),

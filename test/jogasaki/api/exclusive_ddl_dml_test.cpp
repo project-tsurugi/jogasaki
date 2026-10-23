@@ -16,7 +16,9 @@
 
 #include <atomic>
 #include <future>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -592,6 +594,119 @@ TEST_F(exclusive_ddl_dml_test, truncate_while_dml_requests_are_compiled_concurre
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM t WHERE c1 = -1", result);
     ASSERT_EQ(1, result.size());
+}
+
+TEST_F(exclusive_ddl_dml_test, truncate_while_dml_compiled_concurrently_sees_consistent_definitions) {
+    // regression test for tsurugi-issues #1587: TRUNCATE TABLE used to re-register the table and index definitions
+    // into the provider one by one, and DML compiled concurrently (without locks) saw the intermediate state, e.g.
+    // the new table object with the old index objects. The compilation failed with primary_index_not_found or
+    // an unexpected compile error, or could produce a plan that misses writing the secondary index.
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t (c0 bigint primary key, c1 bigint)");
+    execute_statement("CREATE INDEX i ON t (c1)");
+    auto index_query = [](std::string_view c1) {
+        return "SELECT c0 FROM t WHERE c1 = " + std::string{c1};
+    };
+    {
+        std::string plan{};
+        explain_statement(index_query("0"), plan);
+        ASSERT_NE(std::string::npos, plan.find("\"i\"")) << plan;  // verify the query reads the secondary index
+    }
+    std::atomic_bool stop{false};
+    std::atomic_long seq{0};
+    std::atomic_size_t inserted{0};
+    std::atomic_size_t blocked_dml{0};
+    std::mutex mtx{};
+    std::map<std::string, std::size_t> compile_errors{};  // error code and message -> count
+    std::map<status, std::size_t> exec_errors{};  // unexpected execution errors
+    auto worker = [&]() {
+        while(! stop) {
+            auto v = std::to_string(seq++);
+            // compile every time without placeholders so that it may run concurrently with TRUNCATE
+            std::unique_ptr<api::executable_statement> stmt{};
+            std::shared_ptr<error::error_info> err{};
+            if(auto rc = db_impl()->create_executable("INSERT INTO t VALUES (" + v + "," + v + ")", stmt, err);
+               rc != status::ok) {
+                // aggregate by the message without the sql text
+                std::string msg = err ? std::string{err->message()} : std::string{to_string_view(rc)};
+                msg = msg.substr(0, msg.find(" sql:"));
+                std::lock_guard lk{mtx};
+                ++compile_errors[std::string{to_string_view(err ? err->code() : error_code::none)} + " " + msg];
+                continue;
+            }
+            auto tx = utils::create_transaction(*db_);
+            if(auto res = tx->execute(*stmt); res != status::ok) {
+                if(res == status::err_illegal_operation) {
+                    // DML blocked by TRUNCATE is normal
+                    ++blocked_dml;
+                } else {
+                    std::lock_guard lk{mtx};
+                    ++exec_errors[res];
+                }
+                tx->abort();
+                continue;
+            }
+            if(tx->commit() == status::ok) {
+                ++inserted;
+            }
+        }
+    };
+    std::vector<std::future<void>> workers{};
+    // stop workers even when assertion fails, otherwise destructor of the futures waits for them forever
+    utils::finally stop_workers{[&]() {
+        stop = true;
+    }};
+    for(std::size_t i = 0; i < 4; ++i) {
+        workers.emplace_back(std::async(std::launch::async, worker));
+    }
+    std::size_t truncated = 0;
+    std::size_t inconsistent = 0;
+    for(std::size_t i = 0; i < 20; ++i) {
+        {
+            // verify every row in the primary index is found via the secondary index, reading them in the same
+            // snapshot (c0 = c1 for all rows)
+            auto rtx = utils::create_transaction(*db_, true, false);
+            std::vector<mock::basic_record> primary{};
+            (void) builder().text("SELECT c0 FROM t").tx(*rtx).output_records(primary).run();
+            for(auto&& r : primary) {
+                auto v = std::to_string(r.get_value<std::int64_t>(0));
+                std::vector<mock::basic_record> secondary{};
+                (void) builder().text(index_query(v)).tx(*rtx).output_records(secondary).run();
+                if(secondary.size() != 1) {
+                    ++inconsistent;
+                    std::cerr << "row c0=" << v << " is not found via the secondary index" << std::endl;
+                }
+            }
+            ASSERT_EQ(status::ok, rtx->commit());
+        }
+        auto tx = utils::create_transaction(*db_);
+        status res{};
+        std::shared_ptr<error::error_info> err{};
+        (void) builder().text("TRUNCATE TABLE t").tx(*tx).st(res).error(err).expect_error(true).run();
+        if(res != status::ok) {
+            // blocked by on-going DML on locking the table first
+            ASSERT_EQ(status::err_illegal_operation, res);
+            continue;
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+        ++truncated;
+    }
+    stop = true;
+    for(auto&& f : workers) {
+        f.get();
+    }
+    std::cerr << "truncated:" << truncated << " inserted:" << inserted << " blocked dml:" << blocked_dml << std::endl;
+    for(auto&& [msg, cnt] : compile_errors) {
+        std::cerr << "compile error x" << cnt << ": " << msg << std::endl;
+    }
+    for(auto&& [st, cnt] : exec_errors) {
+        std::cerr << "execution error x" << cnt << ": " << st << std::endl;
+    }
+    EXPECT_LT(0, truncated);
+    EXPECT_LT(0, inserted);
+    EXPECT_TRUE(compile_errors.empty());
+    EXPECT_TRUE(exec_errors.empty());
+    EXPECT_EQ(0, inconsistent);
 }
 
 TEST_F(exclusive_ddl_dml_test, create_index_fails_if_table_storage_entry_is_missing) {

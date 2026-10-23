@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -22,6 +23,7 @@
 
 #include <yugawara/storage/basic_configurable_provider.h>
 #include <yugawara/storage/index.h>
+#include <yugawara/storage/sequence.h>
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/api/impl/database.h>
@@ -268,6 +270,75 @@ TEST_F(truncate_secondary_index_link_test, drop_table_after_truncate_and_restart
     execute_statement("CREATE TABLE t0 (c0 INT PRIMARY KEY, c1 INT)");
     execute_statement("CREATE INDEX i0 ON t0 (c1)");
     execute_statement("DROP TABLE t0");
+}
+
+TEST_F(truncate_secondary_index_link_test, definitions_kept_after_truncate) {
+    // TRUNCATE TABLE doesn't change the definitions, so the definition objects in the provider are kept as they are.
+    // Replacing them lets concurrent SQL compilation, which reads the provider without locks, see the inconsistent
+    // intermediate state, e.g. the new table object with the old index objects (tsurugi-issues #1587).
+    execute_statement("CREATE TABLE t0 (c0 INT PRIMARY KEY, c1 INT, c2 INT GENERATED ALWAYS AS IDENTITY)");
+    execute_statement("CREATE INDEX i0 ON t0 (c1)");
+    execute_statement("INSERT INTO t0 (c0, c1) VALUES (1, 100)");
+    auto& provider = *db_impl()->tables();
+    auto sequences = [&]() {
+        std::map<std::string, std::shared_ptr<yugawara::storage::sequence const>> ret{};
+        provider.each_sequence([&](std::string_view id, std::shared_ptr<yugawara::storage::sequence const> const& seq) {
+            ret.emplace(std::string{id}, seq);
+        });
+        return ret;
+    };
+    auto t = provider.find_table("t0");
+    auto p = provider.find_index("t0");
+    auto i = provider.find_index("i0");
+    auto seqs = sequences();
+    ASSERT_TRUE(t);
+    ASSERT_TRUE(p);
+    ASSERT_TRUE(i);
+    ASSERT_FALSE(seqs.empty());
+
+    execute_statement("TRUNCATE TABLE t0 RESTART IDENTITY");
+
+    EXPECT_EQ(t, provider.find_table("t0"));
+    EXPECT_EQ(p, provider.find_index("t0"));
+    EXPECT_EQ(i, provider.find_index("i0"));
+    EXPECT_EQ(seqs, sequences());
+    EXPECT_EQ(2, table_index_count("t0"));
+}
+
+TEST_F(truncate_secondary_index_link_test, restart_identity_and_restart) {
+    // the definitions are not re-registered into the provider on TRUNCATE, but the persisted metadata is updated,
+    // so the table, index and identity column are recovered correctly
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE t0 (c0 INT PRIMARY KEY, c1 INT, c2 INT GENERATED ALWAYS AS IDENTITY)");
+    execute_statement("CREATE INDEX i0 ON t0 (c1)");
+    execute_statement("INSERT INTO t0 (c0, c1) VALUES (1, 100)");
+    execute_statement("INSERT INTO t0 (c0, c1) VALUES (2, 200)");
+
+    execute_statement("TRUNCATE TABLE t0 RESTART IDENTITY");
+    execute_statement("INSERT INTO t0 (c0, c1) VALUES (3, 300)");
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    EXPECT_EQ(2, table_index_count("t0"));
+    execute_statement("INSERT INTO t0 (c0, c1) VALUES (4, 400)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0, c2 FROM t0 ORDER BY c0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(3, 1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(4, 2)), result[1]);
+    }
+    {
+        std::string query = "SELECT c0 FROM t0 WHERE c1 = 400";
+        EXPECT_TRUE(uses_secondary(query, "i0"));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(4)), result[0]);
+    }
 }
 
 } // namespace jogasaki::testing

@@ -52,7 +52,6 @@
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
@@ -286,43 +285,28 @@ bool truncate_table::operator()(request_context& context) const {  //NOLINT(read
         inherited_auth = old_se->authorized_actions();
         inherited_pub = old_se->public_actions();
     }
+    // The table and index definitions in the provider are kept as they are, since TRUNCATE doesn't change them
+    // (the storage key, the only difference, is not part of them). Re-registering them would replace the
+    // definition objects one by one, and concurrent SQL compilation, which reads the provider without locks,
+    // could see the inconsistent intermediate state (e.g. the new table object with the old index objects).
     storage::storage_entry new_primary_id{};
-    std::string serialized{};
     if(! create_primary_storage(
            context, *primary_idx, std::addressof(inherited_auth), std::addressof(inherited_pub), new_primary_id,
-           std::addressof(serialized), old_storage_id
+           nullptr, old_storage_id
        )) {
         return false;
     }
 
-    // Sync deserialized stoprage option to provider.
-    // Truncate basically re-uses the existing definition and only the difference is the storage key.
-    if(auto err = recovery::deserialize_storage_option_into_provider(serialized, provider, provider, true)) {
-        set_error_info(context, err);
-        return false;
-    }
-
-    // create new secondary index storages, and re-register each of them into the provider so
-    // that they refer to the new table object registered above
+    // create new secondary index storages
     for(std::size_t i = 0, n = secondaries.size(); i < n; ++i) {
-        auto& entry = secondaries[i];
         storage::storage_entry secondary_id{};
-        std::string secondary_serialized{};
         if(! create_secondary_storage(
             context,
-            *entry,
+            *secondaries[i],
             new_primary_id,
             secondary_id,
-            std::addressof(secondary_serialized),
+            nullptr,
             old_secondary_ids[i])) {
-            return false;
-        }
-        if(auto err = recovery::deserialize_storage_option_into_provider(
-            secondary_serialized,
-            provider,
-            provider,
-            true)) {
-            set_error_info(context, err);
             return false;
         }
     }

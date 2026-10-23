@@ -83,8 +83,10 @@ operation_status offer::operator()(offer_context& ctx) {
         auto source = ctx.variables().ref(f.source_region_id_);
         if (auto result = f.assignment_.apply(source, target, ctx.req_context(), ctx.varlen_resource());
             result != status::ok) {
-            if (ctx.req_context()) set_error_context(*ctx.req_context(), error_code::sql_execution_exception,
-                "unexpected error in type conversion", status::err_io_error);
+            if (ctx.req_context()) {
+                set_error_context(*ctx.req_context(), error_code::sql_execution_exception,
+                    "unexpected error in type conversion", status::err_io_error);
+            }
             ctx.abort();
             return operation_status_kind::aborted;
         }
@@ -146,7 +148,7 @@ std::vector<details::offer_field> offer::create_fields(
     fields.reserve(prepared.size());
     for (auto& field : prepared) {
         assert_with_exception(field.has_value());
-        fields.emplace_back(std::move(*field));
+        fields.emplace_back(*field);
     }
     return fields;
 }

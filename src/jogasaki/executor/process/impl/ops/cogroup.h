@@ -29,7 +29,7 @@ using takatori::util::sequence_view;
 struct cache_align group_field {
     group_field() = default;
     group_field(
-        meta::field_type type,
+        meta::field_type const& type,
         std::size_t source_offset,
         std::size_t target_offset,
         std::size_t source_nullity_offset,

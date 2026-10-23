@@ -43,16 +43,18 @@
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-namespace {
-enum class comparison_bound { equality, lower, upper };
-
-kvs::end_point_kind with_inclusivity(kvs::end_point_kind kind, bool inclusive) {
+static kvs::end_point_kind with_inclusivity(kvs::end_point_kind kind, bool inclusive) {
     using k = kvs::end_point_kind;
     if (kind == k::prefixed_inclusive || kind == k::prefixed_exclusive) {
         return inclusive ? k::prefixed_inclusive : k::prefixed_exclusive;
     }
     return inclusive ? k::inclusive : k::exclusive;
 }
+
+namespace {
+enum class comparison_bound { equality, lower, upper };
+}  // namespace
+
 
 /**
  * @brief encode one side (begin or end) of the secondary index scan key into a buffer
@@ -72,7 +74,7 @@ kvs::end_point_kind with_inclusivity(kvs::end_point_kind kind, bool inclusive) {
  * @return status::err_type_mismatch if the type of the evaluated value does not match the expected type
  * `context` (if available) is filled with error info. when this erorr is returned.
  */
-status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
+static status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
     expr::evaluator_context& ectx,
     request_context* context,
     std::vector<search_key_field_info> const& fields,
@@ -157,8 +159,6 @@ status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
     }
     return status::ok;
 }
-
-}  // namespace
 
 status encode_key(
     expr::evaluator_context& ectx,

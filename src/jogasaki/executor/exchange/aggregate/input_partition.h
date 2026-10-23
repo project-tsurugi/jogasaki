@@ -38,7 +38,6 @@
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/round.h>
 

@@ -55,7 +55,9 @@ std::string_view value::bytes() const & {
         using T = std::decay_t<decltype(item)>;
         if constexpr (std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>) {
             return static_cast<std::string_view>(item);
-        } else fail_with_exception();
+        } else {
+            fail_with_exception();
+        }
     });
 }
 value value::from_blob(lob::blob_locator locator) {

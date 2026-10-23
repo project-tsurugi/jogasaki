@@ -180,4 +180,59 @@ TEST(field_operations_test, real_overflow_is_unsupported_without_mutation) {
     }
 }
 
+TEST(field_operations_test, floating_integer_conversion_preserves_boundary_and_rounding) {
+    using order = value_conversion::ordering;
+    auto int4 = value_conversion::prepare(meta::field_type{meta::field_enum_tag<k::int4>});
+    auto int8 = value_conversion::prepare(meta::field_type{meta::field_enum_tag<k::int8>});
+    auto lower = int4.apply(any{std::in_place_type<float>, -2147483648.0F});
+    EXPECT_EQ(lower.order, order::exact);
+    EXPECT_EQ(lower.value.to<std::int32_t>(), std::numeric_limits<std::int32_t>::min());
+    auto upper = int4.apply(any{std::in_place_type<double>, 2147483647.5});
+    EXPECT_EQ(upper.order, order::rounded_down);
+    EXPECT_EQ(upper.value.to<std::int32_t>(), std::numeric_limits<std::int32_t>::max());
+    auto fractional = int8.apply(any{std::in_place_type<double>, 3.75});
+    EXPECT_EQ(fractional.order, order::rounded_down);
+    EXPECT_EQ(fractional.value.to<std::int64_t>(), 3);
+    auto minimum = -std::ldexp(1.0, 63);
+    auto min_result = int8.apply(any{std::in_place_type<double>, minimum});
+    EXPECT_EQ(min_result.order, order::exact);
+    EXPECT_EQ(min_result.value.to<std::int64_t>(), std::numeric_limits<std::int64_t>::min());
+    auto last = std::nextafter(-minimum, 0.0);
+    auto last_result = int8.apply(any{std::in_place_type<double>, last});
+    EXPECT_EQ(last_result.order, order::exact);
+    EXPECT_EQ(last_result.value.to<std::int64_t>(), static_cast<std::int64_t>(last));
+    auto below = std::nextafter(minimum, -std::numeric_limits<double>::infinity());
+    auto below_result = int8.apply(any{std::in_place_type<double>, below});
+    EXPECT_EQ(below_result.order, order::unsupported);
+    EXPECT_EQ(below_result.value.to<double>(), below);
+    auto float_overflow = any{std::in_place_type<float>, 2147483648.0F};
+    auto rejected = int4.apply(float_overflow);
+    EXPECT_EQ(rejected.order, order::unsupported);
+    EXPECT_EQ(rejected.value.to<float>(), 2147483648.0F);
+    EXPECT_EQ(float_overflow.to<float>(), 2147483648.0F);
+    EXPECT_EQ(int4.apply(any{std::in_place_type<double>, 2147483648.0}).order, order::unsupported);
+    auto nan = any{std::in_place_type<float>, std::numeric_limits<float>::quiet_NaN()};
+    auto nan_result = int4.apply(nan);
+    EXPECT_EQ(nan_result.order, order::unsupported);
+    EXPECT_TRUE(std::isnan(nan_result.value.to<float>()));
+    EXPECT_TRUE(std::isnan(nan.to<float>()));
+}
+
+TEST(field_operations_test, real_conversion_preserves_non_finite_values) {
+    using order = value_conversion::ordering;
+    auto conversion = value_conversion::prepare(meta::field_type{meta::field_enum_tag<k::float4>});
+    for (double input : {std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()}) {
+        auto source = any{std::in_place_type<double>, input};
+        auto result = conversion.apply(source);
+        EXPECT_EQ(result.order, order::exact);
+        EXPECT_EQ(static_cast<double>(result.value.to<float>()), input);
+        EXPECT_EQ(source.to<double>(), input);
+    }
+    auto source = any{std::in_place_type<double>, std::numeric_limits<double>::quiet_NaN()};
+    auto result = conversion.apply(source);
+    EXPECT_EQ(result.order, order::exact);
+    EXPECT_TRUE(std::isnan(result.value.to<float>()));
+    EXPECT_TRUE(std::isnan(source.to<double>()));
+}
+
 }

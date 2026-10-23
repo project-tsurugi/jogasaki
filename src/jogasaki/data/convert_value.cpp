@@ -23,42 +23,69 @@ namespace jogasaki::data {
 namespace {
 using ordering = value_conversion::ordering;
 using result = value_conversion::result;
-template<class Target> result numeric_cast(any const& source) {
+}
+template<class Source, class Target>
+static ordering rounding_order(Source value, Target converted) {
+    if (static_cast<Source>(converted) < value) {
+        return ordering::rounded_down;
+    }
+    if (static_cast<Source>(converted) > value) {
+        return ordering::rounded_up;
+    }
+    return ordering::exact;
+}
+
+template<class Target, class Source>
+static result integral_target(Source value, any const& source) {
+    if constexpr (std::is_floating_point_v<Source>) {
+        // Exclusive upper bound avoids rounding INT64_MAX to the unrepresentable 2^63.
+        auto limit = std::ldexp(1.0L, std::numeric_limits<Target>::digits);
+        auto truncated = std::trunc(static_cast<long double>(value));
+        if (!std::isfinite(value) || truncated < -limit || truncated >= limit) {
+            return {ordering::unsupported, source};
+        }
+    } else if constexpr (sizeof(Target) < sizeof(Source)) {
+        if (value < std::numeric_limits<Target>::min()) {
+            return {ordering::below_minimum, any{std::in_place_type<Target>, std::numeric_limits<Target>::min()}};
+        }
+        if (value > std::numeric_limits<Target>::max()) {
+            return {ordering::above_maximum, any{std::in_place_type<Target>, std::numeric_limits<Target>::max()}};
+        }
+    }
+    auto converted = static_cast<Target>(value);
+    auto order = ordering::exact;
+    if constexpr (std::is_floating_point_v<Source>) {
+        order = rounding_order(value, converted);
+    }
+    return {order, any{std::in_place_type<Target>, converted}};
+}
+
+template<class Target, class Source>
+static result approximate_target(Source value, any const& source) {
+    if constexpr (std::is_same_v<Target, float> && std::is_same_v<Source, double>) {
+        if (std::isfinite(value) && std::fabs(value) > std::numeric_limits<float>::max()) {
+            return {ordering::unsupported, source};
+        }
+        auto converted = static_cast<Target>(value);
+        return {rounding_order(value, converted), any{std::in_place_type<Target>, converted}};
+    }
+    return {ordering::exact, any{std::in_place_type<Target>, static_cast<Target>(value)}};
+}
+
+template<class Target> static result numeric_cast(any const& source) {
     return source.visit([&](auto const& value) -> result {
         using Source = std::decay_t<decltype(value)>;
         if constexpr (std::is_same_v<Source, std::int32_t> || std::is_same_v<Source, std::int64_t>
                    || std::is_same_v<Source, float> || std::is_same_v<Source, double>) {
             if constexpr (std::is_integral_v<Target>) {
-                if constexpr (std::is_floating_point_v<Source>) {
-                    // Exclusive upper bound avoids rounding INT64_MAX to the unrepresentable 2^63.
-                    auto limit = std::ldexp(1.0L, std::numeric_limits<Target>::digits);
-                    auto truncated = std::trunc(static_cast<long double>(value));
-                    if (!std::isfinite(value) || truncated < -limit || truncated >= limit) return {ordering::unsupported, source};
-                } else if constexpr (sizeof(Target) < sizeof(Source)) {
-                    if (value < std::numeric_limits<Target>::min()) {
-                        return {ordering::below_minimum, any{std::in_place_type<Target>, std::numeric_limits<Target>::min()}};
-                    }
-                    if (value > std::numeric_limits<Target>::max()) {
-                        return {ordering::above_maximum, any{std::in_place_type<Target>, std::numeric_limits<Target>::max()}};
-                    }
-                }
-            } else if constexpr (std::is_same_v<Target, float> && std::is_same_v<Source, double>) {
-                if (std::isfinite(value) && std::fabs(value) > std::numeric_limits<float>::max()) return {ordering::unsupported, source};
+                return integral_target<Target>(value, source);
+            } else {
+                return approximate_target<Target>(value, source);
             }
-            auto converted = static_cast<Target>(value);
-            auto order = ordering::exact;
-            if constexpr (std::is_integral_v<Target> && std::is_floating_point_v<Source>) {
-                if (static_cast<Source>(converted) < value) order = ordering::rounded_down;
-                if (static_cast<Source>(converted) > value) order = ordering::rounded_up;
-            }
-            if constexpr (std::is_same_v<Target, float> && std::is_same_v<Source, double>) {
-                if (static_cast<double>(converted) < value) order = ordering::rounded_down;
-                if (static_cast<double>(converted) > value) order = ordering::rounded_up;
-            }
-            return {order, any{std::in_place_type<Target>, converted}};
-        } else return {ordering::unsupported, source};
+        } else {
+            return {ordering::unsupported, source};
+        }
     });
-}
 }
 value_conversion value_conversion::prepare(meta::field_type const& target) {
     using k = meta::field_type_kind;
@@ -74,9 +101,15 @@ value_conversion value_conversion::prepare(meta::field_type const& target) {
     }
 }
 value_conversion::result value_conversion::apply(any const& source) const {
-    if (source.error()) return {ordering::unsupported, source};
-    if (source.empty()) return {ordering::exact, source};
-    if (convert_) return convert_(source);
+    if (source.error()) {
+        return {ordering::unsupported, source};
+    }
+    if (source.empty()) {
+        return {ordering::exact, source};
+    }
+    if (convert_) {
+        return convert_(source);
+    }
     return {operations_.accepts(source) ? ordering::exact : ordering::unsupported, source};
 }
 }

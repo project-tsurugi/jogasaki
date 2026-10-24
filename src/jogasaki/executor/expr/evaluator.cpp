@@ -177,8 +177,9 @@ static any add(
 }
 
 triple triple_from_int(std::int64_t arg) {
-    decimal::Decimal dec{arg};
-    return triple{dec};
+    auto magnitude = static_cast<std::uint64_t>(arg);
+    if (arg < 0) magnitude = std::uint64_t{0} - magnitude;
+    return triple{arg < 0 ? -1 : 1, 0, magnitude, 0};
 }
 
 double triple_to_double(triple arg) {

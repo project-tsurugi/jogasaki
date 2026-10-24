@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/data/convert_value.h>
 
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/index.h>
@@ -47,12 +48,14 @@ struct cache_align search_key_field_info {
         expr::evaluator evaluator
     ) :
         type_(std::move(type)),
+        conversion_(data::value_conversion::prepare(type_)),
         nullable_(nullable),
         spec_(spec),
         evaluator_(evaluator)
     {}
 
     meta::field_type type_{}; //NOLINT
+    data::value_conversion conversion_; //NOLINT
     bool nullable_{}; //NOLINT
     kvs::coding_spec spec_{}; //NOLINT
     expr::evaluator evaluator_{}; //NOLINT

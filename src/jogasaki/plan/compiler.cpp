@@ -145,9 +145,8 @@
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/field_types.h>
-#include <jogasaki/utils/value_to_any.h>
 
 #define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, "") //NOLINT
 #define set_compile_error_with_stack(ctx, code, msg, st, stack) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, stack) //NOLINT
@@ -1038,19 +1037,8 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
         }
         auto os = info->at(name);
 
-        data::any a{};
-        if (e.value().type_index() == data::value::index<lob::blob_locator>) {
-            auto& loc = vars->add_lob_locator(e.value().ref<lob::blob_locator>());
-            a = data::any{std::in_place_type<lob::blob_reference>, lob::blob_reference{loc}};
-        } else if (e.value().type_index() == data::value::index<lob::clob_locator>) {
-            auto& loc = vars->add_lob_locator(e.value().ref<lob::clob_locator>());
-            a = data::any{std::in_place_type<lob::clob_reference>, lob::clob_reference{loc}};
-        } else {
-            // value_to_any does not support blob or clob
-            utils::value_to_any(e.value(), a);
-        }
-        utils::copy_nullable_field(
-            e.type(),
+        auto a = vars->retain(e.value());
+        ::jogasaki::data::field_operations::for_type(e.type()).copy_nullable(
             target,
             os.value_offset(),
             os.nullity_offset(),

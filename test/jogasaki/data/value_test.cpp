@@ -13,136 +13,76 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <string_view>
 #include <gtest/gtest.h>
-
-#include <takatori/relation/buffer.h>
-#include <takatori/relation/graph.h>
-#include <takatori/relation/sort_direction.h>
-#include <takatori/relation/step/offer.h>
-#include <takatori/relation/step/take_flat.h>
-#include <takatori/scalar/binary.h>
-#include <takatori/scalar/binary_operator.h>
-#include <takatori/scalar/compare.h>
-#include <takatori/scalar/comparison_operator.h>
-#include <takatori/scalar/expression_kind.h>
-#include <takatori/scalar/immediate.h>
-#include <takatori/scalar/unary.h>
-#include <takatori/scalar/unary_operator.h>
-#include <takatori/statement/statement_kind.h>
-#include <takatori/type/type_kind.h>
-#include <takatori/value/value_kind.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/compiled_info.h>
-
-#include <jogasaki/accessor/text.h>
-#include <jogasaki/data/any.h>
 #include <jogasaki/data/value.h>
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
-#include <jogasaki/utils/value_to_any.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 
-namespace jogasaki::executor::expr {
-
-using namespace std::string_literals;
-using namespace std::string_view_literals;
-using namespace meta;
-using namespace takatori::util;
-using namespace yugawara::binding;
-
-using namespace testing;
-
-namespace type = ::takatori::type;
-namespace value = ::takatori::value;
-namespace scalar = ::takatori::scalar;
-namespace relation = ::takatori::relation;
-namespace statement = ::takatori::statement;
-
-
-using take = relation::step::take_flat;
-using offer = relation::step::offer;
-using buffer = relation::buffer;
-
-using rgraph = ::takatori::relation::graph_type;
-
-class value_test : public test_root {
-public:
-};
-
-using binary = takatori::scalar::binary;
-using binary_operator = takatori::scalar::binary_operator;
-using compare = takatori::scalar::compare;
-using comparison_operator = takatori::scalar::comparison_operator;
-using unary = takatori::scalar::unary;
-using unary_operator = takatori::scalar::unary_operator;
-using immediate = takatori::scalar::immediate;
-using compiled_info = yugawara::compiled_info;
-
-TEST_F(value_test, simple) {
-    data::value v{};
-    ASSERT_FALSE(v);
-    ASSERT_TRUE(v.empty());
-    v = data::value{std::in_place_type<std::int32_t>, 1};
-    ASSERT_TRUE(v);
-    ASSERT_FALSE(v.empty());
-    ASSERT_EQ(1, v.ref<std::int32_t>());
+namespace jogasaki::data {
+TEST(value_test, simple) {
+    value v;
+    EXPECT_FALSE(v); EXPECT_TRUE(v.empty());
+    v = value::copy(any{std::in_place_type<std::int32_t>, 1});
+    EXPECT_TRUE(v); EXPECT_FALSE(v.empty()); EXPECT_EQ(v.view().to<std::int32_t>(), 1);
 }
-
-TEST_F(value_test, fail_on_type_mismatch) {
-    data::value v{};
-    ASSERT_THROW({ (void)v.ref<std::int32_t>(); }, std::logic_error);
-
-    v = data::value{std::in_place_type<std::int64_t>, 1};
-    ASSERT_THROW({ (void)v.ref<std::int32_t>(); }, std::logic_error);
+TEST(value_test, fail_on_type_mismatch) {
+    value v;
+    EXPECT_THROW((void)v.view().to<std::int32_t>(), std::logic_error);
+    v = value::copy(any{std::in_place_type<std::int64_t>, 1});
+    EXPECT_THROW((void)v.view().to<std::int32_t>(), std::logic_error);
 }
-
-TEST_F(value_test, bool) {
-    // bool and std::int8_t can be used synonymously
-    {
-        auto v = data::value{std::in_place_type<std::int8_t>, 1};
-        ASSERT_TRUE(v);
-        ASSERT_FALSE(v.empty());
-        ASSERT_EQ(1, v.ref<std::int8_t>());
-        ASSERT_TRUE(v.ref<bool>());
-    }
-    {
-        auto v = data::value{std::in_place_type<std::int8_t>, 0};
-        ASSERT_TRUE(v);
-        ASSERT_FALSE(v.empty());
-        ASSERT_EQ(0, v.ref<std::int8_t>());
-        ASSERT_FALSE(v.ref<bool>());
-    }
-    {
-        auto v = data::value{std::in_place_type<bool>, true};
-        ASSERT_TRUE(v);
-        ASSERT_FALSE(v.empty());
-        ASSERT_EQ(1, v.ref<std::int8_t>());
-        ASSERT_TRUE(v.ref<bool>());
-    }
-    {
-        auto v = data::value{std::in_place_type<bool>, false};
-        ASSERT_TRUE(v);
-        ASSERT_FALSE(v.empty());
-        ASSERT_EQ(0, v.ref<std::int8_t>());
-        ASSERT_FALSE(v.ref<bool>());
+TEST(value_test, bool) {
+    for (bool input : {false, true}) {
+        auto v = value::copy(any{std::in_place_type<bool>, input});
+        EXPECT_TRUE(v); EXPECT_FALSE(v.empty());
+        EXPECT_EQ(v.view().to<bool>(), input);
+        EXPECT_EQ(v.view().to<std::int8_t>(), input ? 1 : 0);
     }
 }
-
-TEST_F(value_test, string) {
-    data::value v{};
-    ASSERT_FALSE(v);
-    ASSERT_TRUE(v.empty());
-    v = data::value{std::in_place_type<std::string>, "ABC"};
-    ASSERT_TRUE(v);
-    ASSERT_FALSE(v.empty());
-    ASSERT_EQ("ABC", v.ref<std::string>());
-
-    data::any a{};
-    ASSERT_TRUE(utils::value_to_any(v, a));
-    auto t = a.to<accessor::text>();
-    // static_cast to sv requires accessor::text lvalue as sv can reference SSO'ed data in accessor::text.
-    auto sv = static_cast<std::string_view>(t);
-    ASSERT_EQ("ABC", sv);
+TEST(value_test, string) {
+    for (auto length : {0U, 3U, 4096U}) {
+        std::string input(length, 'a');
+        auto v = value::copy(any{std::in_place_type<accessor::text>, accessor::text{std::string_view{input}}});
+        input.assign(length, 'x');
+        auto copy = v;
+        v = {};
+        auto t = copy.view().to<accessor::text>();
+        EXPECT_EQ(std::string_view(t), std::string(length, 'a'));
+    }
+}
+TEST(value_test, binary) {
+    std::string input(4096, '\0');
+    auto v = value::copy(any{std::in_place_type<accessor::binary>, accessor::binary{std::string_view{input}}});
+    input.assign(4096, 'x');
+    auto moved = std::move(v);
+    EXPECT_TRUE(v.empty());
+    auto bytes = moved.view().to<accessor::binary>();
+    EXPECT_EQ(std::string_view(bytes), std::string(4096, '\0'));
+    moved = std::move(moved);
+    EXPECT_FALSE(moved.empty());
+}
+TEST(value_test, execution_variables_retain_parameter_ownership) {
+    executor::process::impl::variable_table table;
+    auto owned = value::copy(any{std::in_place_type<accessor::text>, accessor::text{std::string(4096, 'a')}});
+    auto borrowed = table.retain(owned);
+    owned = {};
+    for (int i = 0; i < 100; ++i) (void)table.retain(value::copy(any{std::in_place_type<std::int64_t>, i}));
+    auto text = borrowed.to<accessor::text>();
+    EXPECT_EQ(std::string_view(text), std::string(4096, 'a'));
+}
+TEST(value_test, native_decimal_preserves_exponent) {
+    auto original = takatori::decimal::triple{1, 0, 123, 9};
+    auto v = value::copy(any{std::in_place_type<takatori::decimal::triple>, original});
+    EXPECT_EQ(v.view().to<takatori::decimal::triple>(), original);
+}
+TEST(value_test, lob_locator_lifetime_is_shared_with_execution) {
+    executor::process::impl::variable_table table;
+    auto owner = value::from_blob(lob::blob_locator{});
+    auto borrowed = table.retain(owner);
+    auto locator = borrowed.to<lob::blob_reference>().locator();
+    ASSERT_NE(locator, nullptr);
+    owner = {};
+    auto copied = value::copy(borrowed);
+    EXPECT_NE(copied.view().to<lob::blob_reference>().locator(), locator);
+    EXPECT_EQ(copied.view().to<lob::blob_reference>().kind(), lob::lob_reference_kind::provided);
 }
 }
-

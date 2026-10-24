@@ -31,7 +31,7 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::mock {
@@ -114,8 +114,7 @@ public:
             auto rec = key_store_->ref();
             auto& m = external_meta_->key();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
-                utils::copy_nullable_field(
-                    m.at(i),
+                ::jogasaki::data::field_operations::for_type(m.at(i)).copy_nullable(
                     rec,
                     m.value_offset(i),
                     m.nullity_offset(i),
@@ -145,8 +144,7 @@ public:
             auto rec = value_store_->ref();
             auto& m = external_meta_->value();
             for(std::size_t i = 0; i < m.field_count(); ++i) {
-                utils::copy_nullable_field(
-                    m.at(i),
+                ::jogasaki::data::field_operations::for_type(m.at(i)).copy_nullable(
                     rec,
                     m.value_offset(i),
                     m.nullity_offset(i),

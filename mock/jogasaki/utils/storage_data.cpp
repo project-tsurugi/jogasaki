@@ -50,7 +50,6 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/transaction_handle.h>
-#include <jogasaki/data/binary_string_value.h>
 #include <jogasaki/data/value.h>
 #include <jogasaki/error.h>
 #include <jogasaki/kvs/coder.h>
@@ -69,7 +68,6 @@
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/random.h>
-#include <jogasaki/utils/value_to_any.h>
 
 namespace jogasaki::utils {
 
@@ -97,7 +95,7 @@ value create_value(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::value{std::in_place_type<T>, val};
+    return data::value::copy(data::any{std::in_place_type<T>, val});
 }
 
 template <>
@@ -110,9 +108,9 @@ value create_value<runtime_t<meta::field_type_kind::character>>(
     char c = 'A' + val % 26;
     std::string d(len, c);
     if (nullable && record_count % 5 == 0) {
-        return data::value{std::in_place_type<std::string>, {}};
+        return data::value::copy(data::any{std::in_place_type<accessor::text>, accessor::text{}});
     }
-    return data::value{std::in_place_type<std::string>, d};
+    return data::value::copy(data::any{std::in_place_type<accessor::text>, accessor::text{std::string_view{d}}});
 }
 
 template <>
@@ -125,9 +123,9 @@ value create_value<runtime_t<meta::field_type_kind::octet>>(
     char c = '0' + val % 26;
     std::string d(len, c);
     if (nullable && record_count % 5 == 0) {
-        return data::value{std::in_place_type<data::binary_string_value>, {}};
+        return data::value::copy(data::any{std::in_place_type<accessor::binary>, accessor::binary{}});
     }
-    return data::value{std::in_place_type<data::binary_string_value>, d};
+    return data::value::copy(data::any{std::in_place_type<accessor::binary>, accessor::binary{std::string_view{d}}});
 }
 
 template <>
@@ -141,7 +139,7 @@ value create_value<runtime_t<meta::field_type_kind::date>>(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::value{std::in_place_type<runtime_t<meta::field_type_kind::date>>, val};
+    return data::value::copy(data::any{std::in_place_type<runtime_t<meta::field_type_kind::date>>, val});
 }
 
 template <>
@@ -155,7 +153,7 @@ value create_value<runtime_t<meta::field_type_kind::time_of_day>>(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::value{std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, std::chrono::nanoseconds{val}};
+    return data::value::copy(data::any{std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, std::chrono::nanoseconds{val}});
 }
 
 template <>
@@ -169,7 +167,7 @@ value create_value<runtime_t<meta::field_type_kind::time_point>>(
     if (nullable && record_count % 5 == 0) {
         return {};
     }
-    return data::value{std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, std::chrono::seconds{val}};
+    return data::value::copy(data::any{std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, std::chrono::seconds{val}});
 }
 
 template <class T>
@@ -187,8 +185,7 @@ inline void encode_field(
     kvs::writable_stream& target
 ) {
     kvs::coding_context ctx{};
-    data::any a{};
-    utils::value_to_any(v, a);
+    auto a = v.view();
     if (nullable) {
         kvs::encode_nullable(a, f, spec, ctx, target);
         return;
@@ -278,16 +275,16 @@ std::string any_to_string(value const& value, meta::field_type type) {
         return "NULL";
     }
     switch(type.kind()) {
-        case kind::int4: return std::to_string(value.ref<std::int32_t>());
-        case kind::int8: return std::to_string(value.ref<std::int64_t>());
-        case kind::float4: return std::to_string(value.ref<float>());
-        case kind::float8: return std::to_string(value.ref<double>());
-        case kind::decimal: return to_string(value.ref<runtime_t<meta::field_type_kind::decimal>>());
-        case kind::character: return std::string(1, '\'') + value.ref<std::string>() + std::string(1, '\'');
-        case kind::octet: return std::string(1, '\'') + value.ref<data::binary_string_value>().str() + std::string(1, '\'');
-        case kind::date: return to_string(value.ref<runtime_t<meta::field_type_kind::date>>());
-        case kind::time_of_day: return to_string(value.ref<runtime_t<meta::field_type_kind::time_of_day>>());
-        case kind::time_point: return to_string(value.ref<runtime_t<meta::field_type_kind::time_point>>());
+        case kind::int4: return std::to_string(value.view().to<std::int32_t>());
+        case kind::int8: return std::to_string(value.view().to<std::int64_t>());
+        case kind::float4: return std::to_string(value.view().to<float>());
+        case kind::float8: return std::to_string(value.view().to<double>());
+        case kind::decimal: return to_string(value.view().to<runtime_t<meta::field_type_kind::decimal>>());
+        case kind::character: return std::string(1, '\'') + std::string(value.bytes()) + std::string(1, '\'');
+        case kind::octet: return std::string(1, '\'') + std::string(value.bytes()) + std::string(1, '\'');
+        case kind::date: return to_string(value.view().to<runtime_t<meta::field_type_kind::date>>());
+        case kind::time_of_day: return to_string(value.view().to<runtime_t<meta::field_type_kind::time_of_day>>());
+        case kind::time_point: return to_string(value.view().to<runtime_t<meta::field_type_kind::time_point>>());
         default: break;
     }
     fail();

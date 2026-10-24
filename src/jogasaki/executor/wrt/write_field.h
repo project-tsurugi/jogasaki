@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/data/field_operations.h>
 
 #include <cstddef>
 #include <string_view>
@@ -60,6 +61,7 @@ struct write_field : process::impl::ops::default_value_property {
     ) :
         index_(index),
         type_(utils::type_for(target_type)),
+        operations_(data::field_operations::for_type(type_)),
         spec_(spec),
         nullable_(nullable),
         offset_(offset),
@@ -87,6 +89,7 @@ struct write_field : process::impl::ops::default_value_property {
         ),
         index_(index),
         type_(utils::type_for(target_type)),
+        operations_(data::field_operations::for_type(type_)),
         spec_(spec),
         nullable_(nullable),
         offset_(offset),
@@ -98,6 +101,7 @@ struct write_field : process::impl::ops::default_value_property {
     std::size_t index_{};  //NOLINT
     //@brief field type
     meta::field_type type_{};  //NOLINT
+    data::field_operations operations_{};  //NOLINT
     //@brief coding spec
     kvs::coding_spec spec_{};  //NOLINT
     //@brief if the field is nullable

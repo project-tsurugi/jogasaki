@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/data/field_operations.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -37,7 +38,6 @@
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/round.h>
 
@@ -197,6 +197,7 @@ private:
     std::size_t initial_hash_table_size_{};
     std::size_t max_pointers_{};
     data::small_record_store key_buf_;
+    std::vector<data::field_operations> key_operations_{};
 
     void initialize_lazy();
 };

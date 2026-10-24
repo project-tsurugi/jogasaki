@@ -92,13 +92,10 @@ static file::reader_field_locator create_locator(std::string_view name, std::sha
     for(auto&& [n, e] : *pset) {
         if(name != n) continue;
         if(e.type().kind() == meta::field_type_kind::reference_column_position) {
-            auto& idx = e.value().ref<std::size_t>();
-            return {"", idx};
+            return {"", e.value().view().to<std::size_t>()};
         }
         if(e.type().kind() == meta::field_type_kind::reference_column_name) {
-            auto& t = e.value().ref<std::string>();
-            auto referenced = static_cast<std::string_view>(t);
-            return {referenced, file::npos};
+            return {e.value().bytes(), file::npos};
         }
     }
     return {};

@@ -15,6 +15,7 @@
  */
 #include "offer.h"
 
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -24,15 +25,12 @@
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/conv/require_conversion.h>
-#include <jogasaki/executor/conv/unify.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
 
 #include "context_helper.h"
@@ -81,40 +79,8 @@ operation_status offer::operator()(offer_context& ctx) {
     utils::checkpoint_holder h{ctx.varlen_resource()};
     for(auto &f : fields_) {
         auto source = ctx.variables().ref(f.source_region_id_);
-        if(! f.requires_conversion_) {
-            utils::copy_nullable_field(
-                f.type_,
-                target,
-                f.target_offset_,
-                f.target_nullity_offset_,
-                source,
-                f.source_offset_,
-                f.source_nullity_offset_
-            );
-            continue;
-        }
-        data::any src{};
-        // varlen fields data is already on `resource`, so no need to copy
-        auto nocopy = nullptr;
-        utils::copy_nullable_field_as_any(
-            f.source_ftype_,
-            source,
-            f.source_offset_,
-            f.source_nullity_offset_,
-            src,
-            nocopy
-        );
-
-        // rewinding varlen_resource is done by the checkpoint_holder above
-        data::any converted{};
-        if(auto res = conv::conduct_unifying_conversion(
-               *f.source_type_,
-               *f.target_type_,
-               src,
-               converted,
-               ctx.varlen_resource()
-           );
-           res != status::ok) {
+        if (auto res = f.unification_->apply(source, target, ctx.varlen_resource());
+            res != status::ok) {
             // normaly unifying conversion does not fail
             set_error_context(
                 *ctx.req_context(),
@@ -125,7 +91,6 @@ operation_status offer::operator()(offer_context& ctx) {
             ctx.abort();
             return operation_status_kind::aborted;
         }
-        utils::copy_nullable_field(f.type_, target, f.target_offset_, f.target_nullity_offset_, converted, nocopy);
     }
 
     if (! ctx.writer_) {
@@ -171,24 +136,21 @@ std::vector<details::offer_field> offer::create_fields(
     fields.resize(meta->field_count());
     for(auto&& c : columns) {
         auto ind = order.index(c.destination());
+        assert_with_exception(ind < fields.size(), ind);
+        assert_with_exception(!fields[ind].unification_.has_value(), ind);
         auto& info = block_info().at(c.source());
         auto const& source_type = pinfo.compiled_info().type_of(c.source());
-        auto source_ftype = utils::type_for(source_type);
         auto const& target_type = pinfo.compiled_info().type_of(c.destination());
         fields[ind] = details::offer_field{
-            meta->at(ind),
-            source_ftype,
-            info.value_offset(),
-            meta->value_offset(ind),
-            info.nullity_offset(),
-            meta->nullity_offset(ind),
-            meta->nullable(ind),
-            std::addressof(source_type),
-            std::addressof(target_type),
-            conv::to_require_conversion(source_type, target_type),
+            value_operations::prepared_record_unification::prepare(
+                source_type, target_type,
+                {info.value_offset(), info.nullity_offset()},
+                value_operations::record_destination::from_record(*meta, ind)),
             info.region()
         };
     }
+    assert_with_exception(std::all_of(fields.begin(), fields.end(),
+        [](auto const& field) { return field.unification_.has_value(); }), fields.size());
     return fields;
 }
 

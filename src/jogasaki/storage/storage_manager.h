@@ -285,6 +285,26 @@ public:
         delete_reserved_.store(value);
     }
 
+    /**
+     * @brief return whether this entry is the current one for its name, i.e. the name refers to this entry
+     * @details the flag is changed only while this entry (or its primary entry if this is a secondary index) is
+     * exclusively locked, or before this entry becomes visible by name. So it's stable while the caller holds
+     * the shared lock on the entry. See storage_manager for the details.
+     */
+    [[nodiscard]] bool current() const noexcept {
+        return current_.load();
+    }
+
+    /**
+     * @brief set whether this entry is the current one for its name
+     * @details this is called only by storage_manager, which is responsible for keeping the flag consistent with
+     * its name map. See storage_manager for when the flag may be changed.
+     * @param value true if the name refers to this entry
+     */
+    void current(bool value) noexcept {
+        current_.store(value);
+    }
+
 private:
     std::atomic<lock_state> state_{};
     std::optional<std::string> name_{};
@@ -296,10 +316,26 @@ private:
     auth::action_set public_actions_{};
     std::atomic_size_t ref_transaction_count_{};
     std::atomic_bool delete_reserved_{false};
+    std::atomic_bool current_{false};
 };
 
 } // namespace impl
 
+/**
+ * @brief storage manager to manage storage entries, their names, storage keys and locks
+ * @details the storage manager is responsible for the `current` flag of each entry (impl::storage_control::current()),
+ * which tells whether the name of the entry refers to the entry. The flag is changed only by the storage manager
+ * together with the name map (storage_names_) as follows so that it matches the name map.
+ * - set to true when the name is registered to refer to the entry (add_entry(), replace_entry()), before the name
+ *   becomes visible
+ * - set to false when the name stops referring to the entry, i.e. the name is re-pointed to another entry
+ *   (replace_entry()), or the entry is delete-reserved (reserve_delete_entry()) or removed (remove_entry())
+ *
+ * The flag may be changed only while the entry (or its primary entry if the entry is a secondary index) is
+ * exclusively locked by the caller (e.g. the DDL transaction), or before the entry becomes reachable by name.
+ * Then the flag is stable while the shared lock on the entry is held, so lock acquisition can check the flag to
+ * verify that the locked entry is still the one the caller resolved by name (see is_current_entry()).
+ */
 class storage_manager {
 public:
     /**
@@ -338,6 +374,8 @@ public:
      * @param lock optional unique lock to hold the new entry. If provided, the exclusive lock on the new entry is
      * acquired and added to `lock` before the entry becomes visible by name, so that no other operation can lock the
      * entry found by the name before `lock` is released.
+     * @details the `current` flag of the new entry is set before the name becomes visible, so this function
+     * requires no lock for the flag.
      * @return true if the entry was added successfully
      * @return false is the entry already exists
      */
@@ -356,9 +394,10 @@ public:
      * @details the name is re-pointed directly from the replaced entry to the new entry, so that the name always
      * refers to either of them. The replaced entry is left as it is, so the caller should reserve its deletion.
      * If the new entry is primary, it's exclusively locked by `lock` before its name is registered.
+     * @pre `replaced` (or its primary entry if it's a secondary index) is exclusively locked by `lock`, since this
+     * function changes the `current` flag of `replaced` to false
      * @param entry new storage entry to add
-     * @param replaced the existing storage entry to be replaced. The name must refer to it, and it (or its primary
-     * entry if it's a secondary index) must be exclusively locked by `lock`.
+     * @param replaced the existing storage entry to be replaced. The name must refer to it.
      * @param name name of the storage
      * @param storage_key optional storage key for the index. if not provided, the name is used as the storage key
      * @param is_primary whether this is a primary index (table) or secondary index
@@ -379,6 +418,9 @@ public:
 
     /**
      * @brief remove storage entry
+     * @pre the entry is delete-reserved (so its `current` flag is already false), or the entry (or its primary entry
+     * if it's a secondary index) is exclusively locked by the caller, or no other operation accesses the entry
+     * concurrently
      * @param entry storage entry to remove
      * @return true if the entry was removed successfully
      * @return false is the entry doesn't exist
@@ -387,6 +429,9 @@ public:
 
     /**
      * @brief reserve deletion of a storage entry
+     * @pre the entry (or its primary entry if it's a secondary index) is exclusively locked by the caller (e.g. the
+     * DDL transaction), or no other operation accesses the entry concurrently, since this function changes the
+     * `current` flag of the entry to false
      * @param entry the storage entry to reserve for deletion
      * @details removes the entry from the name lookup map (only if the name still refers to this entry), sets
      * delete_reserved flag, but keeps the entry in storages_ for the maintenance thread to complete the deletion.

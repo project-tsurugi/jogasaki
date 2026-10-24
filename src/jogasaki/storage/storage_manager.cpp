@@ -111,10 +111,15 @@ bool storage_manager::add_entry_internal(
     if (name) {
         // add name after storages_ is updated successfully
         if (! replaced) {
-            storage_names_.emplace(std::string{*name}, entry);
+            // mark current before the name becomes visible, and revert if the name is used by another entry
+            control->current(true);
+            if (! storage_names_.emplace(std::string{*name}, entry)) {
+                control->current(false);
+            }
         } else {
             // let the name refer to this entry directly so that the name always refers to either the replaced or
             // this entry
+            control->current(true);
             decltype(storage_names_)::accessor name_acc;
             if (! storage_names_.insert(name_acc, std::string{*name}) && name_acc->second != *replaced) {
                 // the name has been changed by other operation after it was checked - undo adding the entry
@@ -126,6 +131,11 @@ bool storage_manager::add_entry_internal(
                 return false;
             }
             name_acc->second = entry;
+            name_acc.release();
+            // the replaced entry is exclusively locked by the caller (by its primary if it's a secondary index)
+            if (auto r = find_entry(*replaced)) {
+                r->current(false);
+            }
         }
     }
     candidate_entries_.push(entry);
@@ -137,6 +147,7 @@ bool storage_manager::add_entry_internal(
 bool storage_manager::remove_entry(storage_entry entry) {
     decltype(storages_)::accessor acc;
     if (storages_.find(acc, entry)) {
+        acc->second->current(false);
         auto name_opt = acc->second->name();
         // Only erase name/key maps if they still point to THIS entry.
         // They may have been remapped by a new add_entry() after reserve_delete_entry().
@@ -165,6 +176,7 @@ bool storage_manager::reserve_delete_entry(storage_entry entry) {
         return false;
     }
     auto& ctrl = *acc->second;
+    ctrl.current(false);
     // name() is still valid here - erase from name map before clearing.
     // Only erase it if it still refers to this entry. It may have been re-pointed to a new entry by replace_entry()
     // (e.g. TRUNCATE TABLE replacing the entry).
@@ -247,22 +259,8 @@ struct lock_holder {
 };
 
 bool storage_manager::is_current_entry(storage_entry entry) const {
-    std::string name{};
-    {
-        // copy the name and release the accessor before looking up storage_names_ to avoid deadlock
-        decltype(storages_)::const_accessor acc{};
-        if (! storages_.find(acc, entry)) {
-            return false;
-        }
-        auto& ctrl = *acc->second;
-        auto n = ctrl.name();
-        if (ctrl.delete_reserved() || ! n) {
-            return false;
-        }
-        name = std::string{*n};
-    }
-    decltype(storage_names_)::const_accessor acc{};
-    return storage_names_.find(acc, name) && acc->second == entry;
+    decltype(storages_)::const_accessor acc{};
+    return storages_.find(acc, entry) && acc->second->current();
 }
 
 std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storage_list_view storages, unique_lock* lock) {
@@ -285,8 +283,9 @@ std::pair<bool, storage_list> storage_manager::lock_internal(bool shared, storag
             return {false, {}};
         }
         holders.reserve(max_held);
+        auto current = s->current();
         holders.emplace_back(std::move(s), shared);
-        if(! is_current_entry(e)) {
+        if(! current) {
             // The entry has been dropped or replaced (e.g. by TRUNCATE) after the caller resolved it by name.
             // Its name may be gone or now refers to another entry, so locking this entry doesn't protect
             // the storage the caller is going to access by name. DDL changes the entry the name refers to only while

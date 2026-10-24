@@ -130,9 +130,11 @@ TEST_F(storage_manager_test, remove) {
     ASSERT_TRUE(mgr.find_entry(1));
     ASSERT_TRUE(mgr.find_entry(10));
     EXPECT_EQ(3, mgr.size());
+    EXPECT_TRUE(mgr.is_current_entry(1));
     ASSERT_TRUE(mgr.remove_entry(1));
     EXPECT_EQ(2, mgr.size());
     ASSERT_TRUE(! mgr.find_entry(1));
+    EXPECT_FALSE(mgr.is_current_entry(1));
     ASSERT_TRUE(! mgr.get_storage_key("T1"));
     ASSERT_TRUE(! mgr.get_index_name("T1"));
     ASSERT_TRUE(! mgr.remove_entry(3));
@@ -376,7 +378,9 @@ TEST_F(storage_manager_test, lock_delete_reserved_entry) {
     {
         auto ul = mgr.create_unique_lock();
         ASSERT_TRUE(mgr.add_locked_storages(stg1, *ul));
+        EXPECT_TRUE(mgr.is_current_entry(1));
         ASSERT_TRUE(mgr.reserve_delete_entry(1));
+        EXPECT_FALSE(mgr.is_current_entry(1));
     }
     ASSERT_TRUE(mgr.find_entry(1));
     ASSERT_TRUE(! mgr.create_shared_lock(stg1));
@@ -462,6 +466,22 @@ TEST_F(storage_manager_test, add_entry_keeps_existing_name) {
     ASSERT_TRUE(mgr.add_entry(1, "T1"));
     ASSERT_TRUE(mgr.add_entry(2, "T1"));
     EXPECT_EQ(1, mgr.find_by_name("T1"));
+    // the entry whose name is not registered is not current, and cannot be locked
+    EXPECT_TRUE(mgr.is_current_entry(1));
+    EXPECT_FALSE(mgr.is_current_entry(2));
+    storage_list stg1{1};
+    storage_list stg2{2};
+    EXPECT_TRUE(mgr.create_shared_lock(stg1));
+    EXPECT_FALSE(mgr.create_shared_lock(stg2));
+}
+
+TEST_F(storage_manager_test, add_entry_without_name) {
+    // verify the entry added without name (delete-reserved, e.g. on recovery) is not current, and cannot be locked
+    storage_manager mgr{};
+    ASSERT_TRUE(mgr.add_entry(1, std::nullopt, std::nullopt, true, std::nullopt, "T1"));
+    EXPECT_FALSE(mgr.is_current_entry(1));
+    storage_list stg1{1};
+    EXPECT_FALSE(mgr.create_shared_lock(stg1));
 }
 
 TEST_F(storage_manager_test, replace_entry) {
@@ -479,9 +499,13 @@ TEST_F(storage_manager_test, replace_entry) {
     // new primary entry is locked by the lock, but secondary is not
     EXPECT_TRUE(ul->storage().contains(3));
     EXPECT_FALSE(ul->storage().contains(4));
-    // the replaced entries are left as they are
+    // the replaced entries are left as they are, but no longer current
     EXPECT_TRUE(mgr.find_entry(1));
     EXPECT_TRUE(mgr.find_entry(2));
+    EXPECT_FALSE(mgr.is_current_entry(1));
+    EXPECT_FALSE(mgr.is_current_entry(2));
+    EXPECT_TRUE(mgr.is_current_entry(3));
+    EXPECT_TRUE(mgr.is_current_entry(4));
 }
 
 TEST_F(storage_manager_test, replace_entry_preconditions) {
@@ -509,6 +533,9 @@ TEST_F(storage_manager_test, replace_entry_preconditions) {
     EXPECT_EQ(5, mgr.find_by_name("T2"));
     EXPECT_FALSE(mgr.find_entry(3));
     EXPECT_FALSE(mgr.find_entry(4));
+    EXPECT_TRUE(mgr.is_current_entry(1));
+    EXPECT_TRUE(mgr.is_current_entry(2));
+    EXPECT_TRUE(mgr.is_current_entry(5));
 }
 
 TEST_F(storage_manager_test, reserve_delete_entry_keeps_name_referring_to_other_entry) {
@@ -521,8 +548,11 @@ TEST_F(storage_manager_test, reserve_delete_entry_keeps_name_referring_to_other_
     ASSERT_TRUE(mgr.replace_entry(2, 1, "T1", std::nullopt, true, std::nullopt, *ul));
     ASSERT_TRUE(mgr.reserve_delete_entry(1));
     EXPECT_EQ(2, mgr.find_by_name("T1"));
+    EXPECT_FALSE(mgr.is_current_entry(1));
+    EXPECT_TRUE(mgr.is_current_entry(2));
     ASSERT_TRUE(mgr.reserve_delete_entry(2));
     EXPECT_FALSE(mgr.find_by_name("T1"));
+    EXPECT_FALSE(mgr.is_current_entry(2));
 }
 
 TEST_F(storage_manager_test, lock_entry_whose_name_is_re_pointed) {

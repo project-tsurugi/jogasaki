@@ -15,6 +15,9 @@
  */
 
 #include <chrono>
+#include <atomic>
+#include <future>
+#include <functional>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -36,18 +39,21 @@
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/finally.h>
 
 namespace jogasaki::testing {
 namespace {
 
 class ddl_catalog_fetcher final : public dist::remote_catalog_fetcher {
 public:
-    std::size_t calls{};
+    std::atomic_size_t calls{};
+    std::function<void()> before_fetch{};
     status result{status::ok};
     status fetch(dist::remote_catalog_reference const&, std::shared_ptr<grpc::Channel> const&,
         std::chrono::system_clock::time_point, dist::remote_catalog_information& out,
         std::string& diagnostic) override {
         ++calls;
+        if (before_fetch) before_fetch();
         if (result != status::ok) {
             diagnostic = "catalog fetch failed";
             return result;
@@ -195,5 +201,41 @@ TEST_F(foreign_catalog_statement_test, statement_owns_command_after_caller_chang
     EXPECT_FALSE(catalogs_->find_catalog("changed"));
 }
 
+TEST_F(foreign_catalog_statement_test, unpublished_name_reservation_reports_cc_exception) {
+    std::promise<void> entered{}, resume{};
+    auto entered_future = entered.get_future();
+    auto proceed = resume.get_future().share();
+    fetcher_->before_fetch = [&] { entered.set_value(); proceed.wait(); };
+    auto request = context();
+    executor::common::create_foreign_catalog statement{{{"remote", "worker"}, true, false}};
+    std::future<status> first{};
+    std::future<bool> duplicate{};
+    bool released{};
+    auto release = [&] { if (!released) { resume.set_value(); released = true; } };
+    utils::finally release_waiter{release};
+    first = std::async(std::launch::async, [&] { return catalogs_->create({"remote", "worker"}, channels_); });
+    ASSERT_EQ(std::future_status::ready, entered_future.wait_for(std::chrono::seconds(5)));
+    duplicate = std::async(std::launch::async, [&] {
+        scheduler_.schedule(statement, *request);
+        return !catalogs_->find_catalog("remote");
+    });
+    auto duplicate_ready = duplicate.wait_for(std::chrono::seconds(5));
+    release();
+    auto still_unpublished = duplicate.get();
+    auto result = first.get();
+    fetcher_->before_fetch = {};
+    EXPECT_EQ(std::future_status::ready, duplicate_ready);
+    EXPECT_TRUE(still_unpublished);
+    EXPECT_EQ(status::err_serialization_failure, request->status_code());
+    ASSERT_TRUE(request->error_info());
+    EXPECT_EQ(error_code::cc_exception, request->error_info()->code());
+    EXPECT_EQ(status::ok, result);
+    EXPECT_TRUE(catalogs_->find_catalog("remote"));
+    EXPECT_EQ(1U, fetcher_->calls.load());
+}
+
 } // namespace
+
+
+
 } // namespace jogasaki::testing

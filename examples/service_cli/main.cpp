@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
-#include <cxxabi.h>
 #include <decimal.hh>
 #include <errno.h>
 #include <exception>
-#include <functional>
+#include <fstream>
 #include <future>
 #include <iostream>
 #include <iterator>
@@ -30,68 +28,48 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <unistd.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <takatori/datetime/conversion.h>
+#include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
-#include <takatori/util/downcast.h>
-#include <takatori/util/maybe_shared_ptr.h>
-#include <tateyama/api/configuration.h>
 #include <tateyama/api/server/mock/request_response.h>
-#include <tateyama/proto/diagnostics.pb.h>
 
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/impl/service.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
-#include <jogasaki/error_code.h>
-#include <jogasaki/executor/tables.h>
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/proto/sql/common.pb.h>
+#include <jogasaki/proto/sql/error.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/command_utils.h>
 #include <jogasaki/utils/msgbuf_utils.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/utils/tables.h>
 
-#include "../common/temporary_folder.h"
-#include "../common/utils.h"
+#include "service_client.h"
+#include "service_setup.h"
 
-DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
-DEFINE_int32(thread_count, 1, "Number of threads");  //NOLINT
-DEFINE_bool(core_affinity, false, "Whether threads are assigned to cores");  //NOLINT
-DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
-DEFINE_bool(explain, false, "explain the execution plan");  //NOLINT
-DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
-DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
-DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement.");  //NOLINT
-DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
+DEFINE_bool(auto_commit, true, "Whether to commit when finishing each statement executed outside explicitly started transaction.");  //NOLINT
 DEFINE_bool(verify_record, true, "Whether to deserialize the query result records");  //NOLINT
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
-DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
-DEFINE_string(history_file, ".service_cli_history", "specify the command history file name");  //NOLINT
-DEFINE_int32(exit_on_idle, 180, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit.");  //NOLINT
+DEFINE_string(history_file, "", "specify the command history file name. Defaults to $HOME/.service_cli_history");  //NOLINT
+DEFINE_int32(exit_on_idle, -1, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit.");  //NOLINT
 DEFINE_string(input_file, "", "specify the input commands file to read and execute");  //NOLINT
-DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
-DECLARE_int32(dump_batch_size);  //NOLINT
-DECLARE_int32(load_batch_size);  //NOLINT
 
 namespace tateyama::service_cli {
 
@@ -99,9 +77,9 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
 
-using takatori::util::unsafe_downcast;
-
 namespace sql = jogasaki::proto::sql;
+using jogasaki::common_cli::call_result;
+using jogasaki::common_cli::service_client;
 
 struct stmt_info {
     stmt_info() = default;
@@ -113,9 +91,27 @@ struct stmt_info {
     std::unordered_map<std::string, sql::common::AtomType> host_variables_{};
 };
 
+// the session id used by this cli. Zero is avoided since it's regarded as no session.
+constexpr std::size_t session_id = 1;
+
+void print_error(call_result const& res) {
+    auto& diag = res.diag();
+    std::cerr << "command returned " << sql::error::Code_Name(diag.code_) << ": " << diag.message_ << std::endl;
+    if (! diag.supplemental_text_.empty()) {
+        std::cerr << "  supplemental text: " << diag.supplemental_text_ << std::endl;
+    }
+}
+
+std::string default_history_file() {
+    if (auto* home = std::getenv("HOME"); home != nullptr) {
+        return (boost::filesystem::path{home} / ".service_cli_history").string();
+    }
+    return ".service_cli_history";
+}
+
 class cli {
-    takatori::util::maybe_shared_ptr<jogasaki::api::database> db_{};
-    std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
+    jogasaki::common_cli::service_environment env_{};
+    service_client client_{};
     jogasaki::api::transaction_handle tx_handle_{};  //NOLINT
     bool tx_processing_{};  //NOLINT
     bool debug_{}; //NOLINT
@@ -124,70 +120,26 @@ class cli {
     std::mutex write_buffer_mutex_{};
     std::stringstream write_buffer_{};
     std::vector<std::pair<std::uint64_t, stmt_info>> stmt_handles_{};
-    std::vector<std::future<bool>> on_going_statements_{};
-    jogasaki::meta::record_meta query_meta_{};
-    jogasaki::common_cli::temporary_folder temporary_{};
     std::map<std::string, sql::common::AtomType> host_variables_{};
     std::int32_t exit_on_idle_{-1};
     std::ifstream input_file_stream_{};
+    std::string history_file_{};
 
     using Clock = std::chrono::system_clock;
     std::atomic<Clock::time_point> last_interacted_{Clock::now()};
     std::atomic_bool to_exit_{false};
-    std::string load_from_{};
 
 public:
 
-    void prepare_data(jogasaki::api::database& db, std::size_t rows) {
-        auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(db);
-        static constexpr std::size_t mod = 100;
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T0", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T1", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T2", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "WAREHOUSE", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "DISTRICT", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "CUSTOMER", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "NEW_ORDER", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ORDERS", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ORDER_LINE", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ITEM", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "STOCK", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "HISTORY", rows, true, mod);
-    }
-
-    bool fill_from_flags(
-        jogasaki::configuration& cfg,
-        std::string const& str = {}
-    ) {
-        gflags::FlagSaver saver{};
-        if (! str.empty()) {
-            if(! gflags::ReadFlagsFromString(str, "", false)) {
-                std::cerr << "parsing options failed" << std::endl;
-            }
-        }
-        cfg.single_thread(FLAGS_single_thread);
-        cfg.thread_pool_size(FLAGS_thread_count);
-
-        cfg.core_affinity(FLAGS_core_affinity);
-        cfg.initial_core(FLAGS_initial_core);
-        cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
-        cfg.default_partitions(FLAGS_partitions);
-        cfg.stealing_enabled(FLAGS_steal);
-
+    bool fill_from_flags(jogasaki::configuration& cfg) {
         if (FLAGS_test_build) {
-            cfg.thread_pool_size(1);
-            cfg.initial_core(1);
-            cfg.core_affinity(false);
-            cfg.default_partitions(1);
+            jogasaki::common_cli::set_flag_defaults({
+                {"thread_count", "1"},
+                {"initial_core", "1"},
+                {"partitions", "1"},
+            });
         }
-
-        if (FLAGS_location == "TMP") {
-            temporary_.prepare();
-            cfg.db_location(temporary_.path());
-        } else {
-            cfg.db_location(std::string(FLAGS_location));
-        }
-        return true;
+        return jogasaki::common_cli::fill_configuration(cfg);
     }
 
     void update_timestamp() {
@@ -195,28 +147,20 @@ public:
     }
 
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
-        cfg->skip_smv_check(true);  // skip strict version check for internal use
-        db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};
-        auto c = std::make_shared<tateyama::api::configuration::whole>("");
-        service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
-        db_->start();
-        auto& impl = jogasaki::api::impl::get_impl(*db_);
-        jogasaki::utils::add_benchmark_tables(*impl.tables());
-        jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
+        if (! env_.start(std::move(cfg))) {
+            return -1;
+        }
+        if (! jogasaki::common_cli::setup_builtin_tables(env_.database())) {
+            env_.stop();
+            return -1;
+        }
+        client_ = service_client{env_.service(), session_id, {jogasaki::common_cli::wait_kind::sleep, {}}};
 
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify_record;
         auto_commit_ = FLAGS_auto_commit;
         exit_on_idle_ = FLAGS_exit_on_idle;
-        load_from_ = FLAGS_load_from;
-
-        jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
-        if (! load_from_.empty()) {
-            jogasaki::common_cli::load(*db_, load_from_);
-        }
-        if (FLAGS_prepare_data > 0) {
-            prepare_data(*db_, FLAGS_prepare_data);
-        }
+        history_file_ = FLAGS_history_file.empty() ? default_history_file() : FLAGS_history_file;
 
         if (FLAGS_test_build) {
             to_exit_ = true;
@@ -236,7 +180,7 @@ public:
             }
         });
 
-        linenoiseHistoryLoad(FLAGS_history_file.c_str());
+        linenoiseHistoryLoad(history_file_.c_str());
         if (! FLAGS_input_file.empty()) {
             boost::filesystem::path path{FLAGS_input_file};
             if(! boost::filesystem::exists(path)) {
@@ -245,12 +189,23 @@ public:
                 input_file_stream_.open(path.c_str());
             }
         }
+        bool interactive = ::isatty(STDIN_FILENO) != 0;
         std::string input{};
         while(! to_exit_) {
             if (input_file_stream_.is_open()) {
-                std::getline(input_file_stream_, input);
-                if (input.empty()) {
+                if (! std::getline(input_file_stream_, input)) {
                     input_file_stream_.close();
+                    continue;
+                }
+                if (input.empty()) {
+                    continue;
+                }
+                std::cout << "> " << input << std::endl;
+            } else if (! interactive) {
+                if (! std::getline(std::cin, input)) {
+                    break;
+                }
+                if (input.empty()) {
                     continue;
                 }
                 std::cout << "> " << input << std::endl;
@@ -258,9 +213,12 @@ public:
                 update_timestamp();
                 auto* l = linenoise("> ");
                 update_timestamp();
-                if (! l) continue;
+                if (! l) {
+                    // EOF (Ctrl-D)
+                    break;
+                }
                 linenoiseHistoryAdd(l);
-                linenoiseHistorySave(FLAGS_history_file.c_str());
+                linenoiseHistorySave(history_file_.c_str());
                 input = l;
                 free(l);  //NOLINT
             }
@@ -313,12 +271,32 @@ public:
                     break;
             }
         }
-
-        db_->stop();
+        to_exit_ = true;
+        cleanup();
+        env_.stop();
         return 0;
     }
 
 private:
+    // rollback the transaction and dispose statements left on exit
+    void cleanup() {
+        if (tx_processing_) {
+            if (auto res = client_.rollback(tx_handle_); ! res) {
+                print_error(res);
+            }
+            tx_processing_ = false;
+        }
+        for(auto&& [handle, info] : stmt_handles_) {
+            if (handle == jogasaki::utils::handle_undefined) {
+                continue;
+            }
+            if (auto res = client_.dispose_statement(handle); ! res) {
+                print_error(res);
+            }
+        }
+        stmt_handles_.clear();
+    }
+
     std::vector<std::string_view> split(std::string_view in, char delim = ' ', char quote='"') {
         std::vector<std::string_view> ret{};
         auto it = in.begin();
@@ -433,108 +411,49 @@ private:
             std::cout << "command was ignored. transaction already started: " << tx_handle_ << std::endl;
             return false;
         }
-        auto s = jogasaki::utils::encode_begin(false);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        if(! wait_response(*res)) {
-            LOG(ERROR) << "response timed out";
+        jogasaki::api::transaction_handle tx{};
+        if (auto res = client_.begin({}, tx); ! res) {
+            print_error(res);
             return false;
         }
-        bool error{false};
-        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            std::cerr << "error executing command" << std::endl;
-            error = true;
-        }
-        auto [h, id] = jogasaki::utils::decode_begin(res->body_);
-        tx_handle_ = h;
-        (void) id;
-        if(error) return false;
+        tx_handle_ = tx;
         if(! for_autocommit) {  // suppress msg if auto commit
             std::cout << "transaction begin: " << tx_handle_ << std::endl;
         }
         tx_processing_ = true;
         return true;
     }
-    bool handle_result_only(std::string_view body, bool suppress_msg = false) {
-        auto [success, error] = jogasaki::utils::decode_result_only(body);
-        if (success) {
-            if (! suppress_msg) {
-                std::cout << "command completed successfully." << std::endl;
-            }
-            return true;
-        }
-        std::cerr << "command returned " << error.code_ << ": " << error.message_ << std::endl;
-        return false;
-    }
-
-    // block wait for async query execution
-    void wait_for_statements() {
-        for(auto&& f : on_going_statements_) {
-            (void)f.get();
-        }
-        on_going_statements_.clear();
-    }
     bool commit_tx(bool for_autocommit = false) {
         if (! tx_processing_) {
             std::cout << "command was ignored. no transaction started yet" << std::endl;
             return false;
         }
-        if(for_autocommit) {
-            wait_for_statements(); // just for cleanup
-        }
-        auto s = jogasaki::utils::encode_commit(tx_handle_, true);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        if(! wait_response(*res)) {
-            LOG(ERROR) << "response timed out";
+        auto res = client_.commit(tx_handle_);
+        tx_processing_ = false; // tx is finished and destroyed even on failure
+        tx_handle_ = {};
+        if (! res) {
+            print_error(res);
             return false;
         }
-        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            std::cerr << "error executing command" << std::endl;
+        if (! for_autocommit) {
+            std::cout << "command completed successfully." << std::endl;
         }
-        auto ret = handle_result_only(res->body_, for_autocommit);
-        tx_processing_ = false; // tx is finished and destroyed even on failure
-        if (ret) {
-            tx_handle_ = jogasaki::api::transaction_handle{1};
-        }
-        wait_for_statements(); // just for cleanup
-        return ret;
-    }
-    bool wait_response(tateyama::api::server::mock::test_response& res) {
-        std::size_t cnt = 0;
-        constexpr std::size_t max_wait = 100;
-        while(! res.completed() && cnt < max_wait) {
-            std::this_thread::sleep_for(1ms);
-            ++cnt;
-        }
-        return cnt < max_wait;
+        return true;
     }
     bool abort_tx() {
         if (! tx_processing_) {
             std::cout << "command was ignored. no transaction started yet" << std::endl;
             return false;
         }
-        wait_for_statements();
-        auto s = jogasaki::utils::encode_rollback(tx_handle_);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        if(! wait_response(*res)) {
-            LOG(ERROR) << "response timed out";
+        auto res = client_.rollback(tx_handle_);
+        tx_processing_ = false; // tx is finished and destroyed even on failure
+        tx_handle_ = {};
+        if (! res) {
+            print_error(res);
             return false;
         }
-        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            std::cerr << "error executing command" << std::endl;
-        }
-        auto ret = handle_result_only(res->body_);
-        tx_processing_ = false; // tx is finished and destroyed even on failure
-        if (ret) {
-            tx_handle_ = jogasaki::api::transaction_handle{1};
-        }
-        wait_for_statements(); // just for cleanup
-        return ret;
+        std::cout << "command completed successfully." << std::endl;
+        return true;
     }
     sql::common::AtomType from(std::string_view str) {
         static const std::unordered_map<std::string, sql::common::AtomType> map{
@@ -581,10 +500,7 @@ private:
             }
             ++pos;
             prev = pos;
-            while(true) {
-                if(! is_alphanumeric(*(sql.data()+pos))) {  //NOLINT
-                    break;
-                }
+            while(pos < sql.size() && is_alphanumeric(sql[pos])) {
                 ++pos;
             }
             if(prev != pos) {
@@ -671,6 +587,10 @@ private:
         return true;
     }
     bool prepare(std::vector<std::string_view> const& args) {
+        if (args.empty()) {
+            std::cout << "command was ignored. missing command args" << std::endl;
+            return false;
+        }
         if (args.size() > 1) {
             std::cout << "command was ignored. too many command args" << std::endl;
             return false;
@@ -683,21 +603,11 @@ private:
                 types[std::string{v}] = host_variables_.at(std::string{v});
             }
         }
-        auto s = jogasaki::utils::encode_prepare_vars(sql, types);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        bool error{false};
-        if(! wait_response(*res)) {
-            LOG(ERROR) << "response timed out";
+        std::uint64_t stmt_handle{};
+        if (auto res = client_.prepare(sql, types, stmt_handle); ! res) {
+            print_error(res);
             return false;
         }
-        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            std::cerr << "error executing command" << std::endl;
-            error = true;
-        }
-        auto stmt_handle = jogasaki::utils::decode_prepare(res->body_);
-        if (error) return false;
         std::cout << "statement #" << stmt_handles_.size() << " prepared: " << stmt_handle << std::endl;
         stmt_handles_.emplace_back(stmt_handle, stmt_info{sql, std::move(types)});
         return true;
@@ -715,22 +625,69 @@ private:
         return true;
     }
 
-    template<class T>
-    T to_value(std::string_view val) {
+    template <class T>
+    bool to_value(std::string_view val, T& out) {
         if constexpr (std::is_same_v<T, std::int32_t> || std::is_same_v<T, std::int64_t>) {  //NOLINT
-            return std::strtol(val.data(), nullptr, 10);
+            out = static_cast<T>(std::strtoll(std::string{val}.c_str(), nullptr, 10));
         } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {  //NOLINT
-            return std::strtod(val.data(), nullptr);
+            out = static_cast<T>(std::strtod(std::string{val}.c_str(), nullptr));
         } else if constexpr (std::is_same_v<T, std::string>) {  //NOLINT
-            return std::string{val};
+            out = std::string{val};
         } else if constexpr (std::is_same_v<T, takatori::decimal::triple>) {  //NOLINT
             decimal::Decimal d{std::string{val}};
-            return takatori::decimal::triple{d.as_uint128_triple()};
+            out = takatori::decimal::triple{d.as_uint128_triple()};
+        } else if constexpr (std::is_same_v<T, takatori::datetime::date>) {  //NOLINT
+            auto res = takatori::datetime::parse_date(val);
+            if (res.is_error()) {
+                std::cerr << "invalid date '" << val << "' : " << res.error() << std::endl;
+                return false;
+            }
+            auto& v = res.value();
+            out = takatori::datetime::date{static_cast<std::int32_t>(v.year), v.month, v.day};
+        } else if constexpr (std::is_same_v<T, takatori::datetime::time_of_day>) {  //NOLINT
+            auto res = takatori::datetime::parse_time(val);
+            if (res.is_error()) {
+                std::cerr << "invalid time of day '" << val << "' : " << res.error() << std::endl;
+                return false;
+            }
+            auto& v = res.value();
+            out = takatori::datetime::time_of_day{v.hour, v.minute, v.second, v.subsecond};
+        } else if constexpr (std::is_same_v<T, takatori::datetime::time_point>) {  //NOLINT
+            auto res = takatori::datetime::parse_datetime(val);
+            if (res.is_error()) {
+                std::cerr << "invalid time point '" << val << "' : " << res.error() << std::endl;
+                return false;
+            }
+            auto& v = res.value();
+            if (v.offset.has_value()) {
+                std::cerr << "time zone offset is not supported for time point : " << val << std::endl;
+                return false;
+            }
+            out = takatori::datetime::time_point{
+                takatori::datetime::date{static_cast<std::int32_t>(v.date.year), v.date.month, v.date.day},
+                takatori::datetime::time_of_day{v.time.hour, v.time.minute, v.time.second, v.time.subsecond}
+            };
         } else {
-            std::abort();
+            static_assert(! std::is_same_v<T, T>, "unsupported type");
         }
-        return {};
+        return true;
     }
+
+    template <class T>
+    bool add_parameter(
+        std::vector<jogasaki::utils::parameter>& parameters,
+        std::string const& name,
+        sql::request::Parameter::ValueCase type,
+        std::string_view val
+    ) {
+        T v{};
+        if (! to_value(val, v)) {
+            return false;
+        }
+        parameters.emplace_back(name, type, v);
+        return true;
+    }
+
     bool parse_parameters(
         std::int32_t stmt_idx,
         std::string_view sql,
@@ -763,20 +720,24 @@ private:
                 continue;
             }
             auto type = types.at(name);
+            bool success{};
+            using ValueCase = sql::request::Parameter::ValueCase;
             switch (type) {
-                using ValueCase = sql::request::Parameter::ValueCase;
-                case sql::common::AtomType::INT4: parameters.emplace_back(name, ValueCase::kInt4Value, to_value<std::int32_t>(val)); break;
-                case sql::common::AtomType::INT8: parameters.emplace_back(name, ValueCase::kInt8Value, to_value<std::int64_t>(val)); break;
-                case sql::common::AtomType::FLOAT4: parameters.emplace_back(name, ValueCase::kFloat4Value, to_value<float>(val)); break;
-                case sql::common::AtomType::FLOAT8: parameters.emplace_back(name, ValueCase::kFloat8Value, to_value<double>(val)); break;
-                case sql::common::AtomType::CHARACTER: parameters.emplace_back(name, ValueCase::kCharacterValue, to_value<std::string>(val)); break;
-                case sql::common::AtomType::DATE: parameters.emplace_back(name, ValueCase::kDateValue, to_value<takatori::datetime::time_of_day>(val)); break;
-                case sql::common::AtomType::TIME_OF_DAY: parameters.emplace_back(name, ValueCase::kTimeOfDayValue, to_value<takatori::datetime::time_of_day>(val)); break;
-                case sql::common::AtomType::TIME_POINT: parameters.emplace_back(name, ValueCase::kTimePointValue, to_value<takatori::datetime::time_point>(val)); break;
-                case sql::common::AtomType::DECIMAL: parameters.emplace_back(name, ValueCase::kDecimalValue, to_value<takatori::decimal::triple>(val)); break;
+                case sql::common::AtomType::INT4: success = add_parameter<std::int32_t>(parameters, name, ValueCase::kInt4Value, val); break;
+                case sql::common::AtomType::INT8: success = add_parameter<std::int64_t>(parameters, name, ValueCase::kInt8Value, val); break;
+                case sql::common::AtomType::FLOAT4: success = add_parameter<float>(parameters, name, ValueCase::kFloat4Value, val); break;
+                case sql::common::AtomType::FLOAT8: success = add_parameter<double>(parameters, name, ValueCase::kFloat8Value, val); break;
+                case sql::common::AtomType::CHARACTER: success = add_parameter<std::string>(parameters, name, ValueCase::kCharacterValue, val); break;
+                case sql::common::AtomType::DATE: success = add_parameter<takatori::datetime::date>(parameters, name, ValueCase::kDateValue, val); break;
+                case sql::common::AtomType::TIME_OF_DAY: success = add_parameter<takatori::datetime::time_of_day>(parameters, name, ValueCase::kTimeOfDayValue, val); break;
+                case sql::common::AtomType::TIME_POINT: success = add_parameter<takatori::datetime::time_point>(parameters, name, ValueCase::kTimePointValue, val); break;
+                case sql::common::AtomType::DECIMAL: success = add_parameter<takatori::decimal::triple>(parameters, name, ValueCase::kDecimalValue, val); break;
                 default:
                     std::cerr << "invalid type" << std::endl;
                     return false;
+            }
+            if (! success) {
+                return false;
             }
         }
         if (used < types.size()) {
@@ -788,17 +749,17 @@ private:
 
     // return true if numeric index is extracted, otherwise text is filled
     bool fill_text_or_index(std::string_view arg, std::string& text, std::int32_t& idx) {
-        auto b = arg.data();
+        std::string str{arg};
         char* e{};
         text.clear();
-        idx = std::strtol(b, &e, 10);
-        bool ret = true;
-        if (b == e || errno == ERANGE) {
-            ret = false;
-            text = arg;
+        errno = 0;
+        idx = static_cast<std::int32_t>(std::strtol(str.c_str(), &e, 10));
+        if (e == str.c_str() || *e != '\0' || errno == ERANGE) {
+            text = str;
             idx = -1;
+            return false;
         }
-        return ret;
+        return true;
     }
 
     void reset_write_buffer() {
@@ -806,24 +767,36 @@ private:
         write_buffer_.clear();
     }
 
+    void show_query_result(jogasaki::common_cli::query_info const& info) {
+        std::cout << "query name : " << info.name_ << std::endl;
+        auto meta = jogasaki::utils::create_record_meta(info.columns_);
+        std::size_t ind{};
+        for(auto&& f : meta) {
+            std::cout << "column " << ind << ": " << f << " (\"" << info.columns_[ind].name_ << "\")" << std::endl;
+            ++ind;
+        }
+        if (verify_query_records_) {
+            auto recs = jogasaki::utils::deserialize_msg(
+                tateyama::api::server::mock::view_of(write_buffer_),
+                meta
+            );
+            for(auto&& r : recs) {
+                std::cout << "record : " << r << std::endl;
+            }
+        }
+    }
+
     bool issue_common(
         bool query,
-        std::vector<std::string_view>& args,
-        std::function<void(std::string_view)> on_write
+        std::vector<std::string_view>& args
     ) {
         if (args.empty()) {
             std::cout << "command was ignored. missing command args" << std::endl;
             return false;
         }
-        if (! tx_processing_) {
-            if (! auto_commit_) {
-                std::cout << "command was ignored. no transaction started yet" << std::endl;
-                return false;
-            }
-            if (! begin_tx(true)) {
-                std::cout << "auto commit begin failed." << std::endl;
-                return false;
-            }
+        if (! tx_processing_ && ! auto_commit_) {
+            std::cout << "command was ignored. no transaction started yet" << std::endl;
+            return false;
         }
         std::string sql{};
         std::int32_t idx{};
@@ -838,56 +811,49 @@ private:
         if(! parse_parameters(idx, sql, args, parameters)) {
             return false;
         }
-        std::string s{};
-        if (! sql.empty()) {
-            s = query ?
-                jogasaki::utils::encode_execute_query(tx_handle_, sql) :
-                jogasaki::utils::encode_execute_statement(tx_handle_, sql);
-        } else {
-            s = query ?
-                jogasaki::utils::encode_execute_prepared_query(tx_handle_, stmt_handles_[idx].first, parameters) :
-                jogasaki::utils::encode_execute_prepared_statement(tx_handle_, stmt_handles_[idx].first, parameters);
+        bool implicit_tx = false;
+        if (! tx_processing_) {
+            if (! begin_tx(true)) {
+                std::cout << "auto commit begin failed." << std::endl;
+                return false;
+            }
+            implicit_tx = true;
         }
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+        call_result res{};
+        jogasaki::common_cli::query_info info{};
         if (query) {
-            res->set_on_write(std::move(on_write));
+            reset_write_buffer();
+            auto on_data = [&](std::string_view data) {
+                if (debug_) {
+                    std::cout << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()} << std::endl;
+                }
+                std::unique_lock lk{write_buffer_mutex_};
+                write_buffer_.write(data.data(), data.size());
+                write_buffer_.flush();
+            };
+            res = sql.empty() ?
+                client_.execute_prepared_query(tx_handle_, stmt_handles_[idx].first, parameters, on_data, &info) :
+                client_.execute_query(tx_handle_, sql, on_data, &info);
+        } else {
+            res = sql.empty() ?
+                client_.execute_prepared_statement(tx_handle_, stmt_handles_[idx].first, parameters) :
+                client_.execute_statement(tx_handle_, sql);
         }
-        on_going_statements_.emplace_back(
-            std::async(std::launch::async, [&, res]() {
-                wait_response(*res);
-                if (res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-                    std::cerr << "error executing command" << std::endl;
-                }
-                if (verify_query_records_) {
-                    auto recs = jogasaki::utils::deserialize_msg(
-                        tateyama::api::server::mock::view_of(write_buffer_),
-                        query_meta_
-                    );
-                    for(auto&& r : recs) {
-                        std::cout << "record : " << r << std::endl;
-                    }
-                }
-                return handle_result_only(res->body_);
-            })
-        );
-        reset_write_buffer();
-        auto st = (*service_)(req, res);
-        if(! st) {
-            std::cerr << "service invocation failed" << std::endl;
+        if (! res) {
+            print_error(res);
+            if (implicit_tx) {
+                // the transaction is already aborted by the error - rollback just to release it
+                (void) client_.rollback(tx_handle_);
+                tx_processing_ = false;
+                tx_handle_ = {};
+            }
             return false;
         }
         if (query) {
-            auto [name, columns] = jogasaki::utils::decode_execute_query(res->body_head_);
-            std::cout << "query name : " << name << std::endl;
-            query_meta_ = jogasaki::utils::create_record_meta(columns);
-            std::size_t ind{};
-            for(auto&& f : query_meta_) {
-                std::cout << "column " << ind << ": " << f << " (\"" << columns[ind].name_ << "\")" << std::endl;
-                ++ind;
-            }
+            show_query_result(info);
         }
-        if (auto_commit_) {
+        std::cout << "command completed successfully." << std::endl;
+        if (implicit_tx) {
             if (! commit_tx(true)) {
                 std::cout << "auto commit failed to commit tx" << std::endl;
                 return false;
@@ -896,17 +862,10 @@ private:
         return true;
     }
     bool issue_statement(std::vector<std::string_view>& args) {
-        return issue_common(false, args, [](std::string_view){});
+        return issue_common(false, args);
     }
     bool issue_query(std::vector<std::string_view>& args) {
-        return issue_common(true, args, [&](std::string_view data) {
-            std::cout << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()} << std::endl;
-            if (verify_query_records_) {
-                std::unique_lock lk{write_buffer_mutex_};
-                write_buffer_.write(data.data(), data.size());
-                write_buffer_.flush();
-            }
-        });
+        return issue_common(true, args);
     }
     bool explain_statement(std::vector<std::string_view>& args) {
         if (args.empty()) {
@@ -926,18 +885,9 @@ private:
         if(! parse_parameters(idx, sql, args, parameters)) {
             return false;
         }
-        auto s = jogasaki::utils::encode_explain(stmt_handles_[idx].first, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        if(! st) {
-            std::cerr << "service invocation failed" << std::endl;
-            return false;
-        }
-
-        auto [explained, id, version, cols, err] = jogasaki::utils::decode_explain(res->body_);
-        if (explained.empty()) {
-            std::cerr << "explain error: " << err.code_ << " " << err.message_ << std::endl;
+        std::string explained{};
+        if (auto res = client_.explain(stmt_handles_[idx].first, parameters, explained); ! res) {
+            print_error(res);
             return false;
         }
         std::cout << explained << std::endl;
@@ -959,12 +909,13 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     tateyama::service_cli::cli e{};
     auto cfg = std::make_shared<jogasaki::configuration>();
-    e.fill_from_flags(*cfg);
+    if (! e.fill_from_flags(*cfg)) {
+        return -1;
+    }
     try {
-        e.run(cfg);  // NOLINT
+        return e.run(cfg);  // NOLINT
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;
     }
-    return 0;
 }

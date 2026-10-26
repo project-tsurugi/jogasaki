@@ -1,6 +1,5 @@
 file(GLOB SOURCES
         "*.cpp"
-        "../common/utils.cpp"
         "../../third_party/linenoise-ng/src/*.cpp"
 )
 
@@ -26,14 +25,7 @@ target_include_directories(service-cli
 )
 
 target_link_libraries(service-cli
-        PRIVATE api
-        PRIVATE ${tateyama_engine}
-        PRIVATE common
-        PRIVATE takatori
-        PRIVATE yugawara
-        PRIVATE ${ENGINE}
-        PRIVATE glog::glog
-        PRIVATE gflags::gflags
+        PRIVATE service-common
         PRIVATE Threads::Threads
 )
 set_compile_options(service-cli)

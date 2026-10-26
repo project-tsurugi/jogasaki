@@ -39,4 +39,13 @@ add_test(
         NAME service-cli
         COMMAND cli --test_build
 )
+# run bundled scripts - they are expected to complete without unexpected errors
+file(GLOB SERVICE_CLI_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.sql")
+foreach(script ${SERVICE_CLI_SCRIPTS})
+    get_filename_component(script_name ${script} NAME_WE)
+    add_test(
+            NAME service-cli-script-${script_name}
+            COMMAND cli --input_file ${script} --timestamp=false --thread_count=1 --partitions=1
+    )
+endforeach()
 endif()

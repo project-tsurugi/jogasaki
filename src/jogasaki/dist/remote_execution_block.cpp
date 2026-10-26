@@ -42,6 +42,7 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/dist/remote_process_execution_block_shape.h>
+#include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 
@@ -161,8 +162,24 @@ namespace {
 class block_builder_context {
 public:
     block_builder_context(remote_execution_block& block, yugawara::compiled_info const* compiled_info,
-                          meta::record_meta const* result_meta, meta::variable_order const* result_order)
-        : block_(&block), compiled_info_(compiled_info), result_meta_(result_meta), result_order_(result_order) {}
+                          meta::record_meta const* result_meta, meta::variable_order const* result_order,
+                          remote_catalog_snapshot const* catalogs, std::string_view remote_server)
+        : block_(&block), compiled_info_(compiled_info), result_meta_(result_meta), result_order_(result_order),
+          catalogs_(catalogs), remote_server_(remote_server) {}
+
+    [[nodiscard]] std::optional<std::uint64_t> definition_id(yugawara::storage::index const& index) const {
+        if (catalogs_) {
+            auto identity = catalogs_->remote_definition(index);
+            if (!identity || identity->kind != remote_declaration_kind::index ||
+                (!remote_server_.empty() && identity->remote_server_name != remote_server_)) {
+                return std::nullopt;
+            }
+            return identity->remote_definition_id;
+        }
+        // Standalone graph conversion may use a local worker declaration. A
+        // coordinator sending to a server must use its retained remote snapshot.
+        return remote_server_.empty() ? index.definition_id() : std::nullopt;
+    }
 
     [[nodiscard]] std::uint64_t variable_id(takatori::descriptor::variable const& variable) {
         for (std::size_t i = 0; i < variables_.size(); ++i) {
@@ -307,6 +324,8 @@ private:
     yugawara::compiled_info const* compiled_info_{};
     meta::record_meta const* result_meta_{};
     meta::variable_order const* result_order_{};
+    remote_catalog_snapshot const* catalogs_{};
+    std::string_view remote_server_{};
     std::vector<takatori::descriptor::variable> variables_{};
 };
 
@@ -318,11 +337,19 @@ template <class Source>
     remote_source result{};
     result.table_name = index.table().simple_name();
     result.index_name = index.simple_name();
+    result.definition_id = context.definition_id(index);
     for (auto const& mapping : source.columns()) {
         auto const& column = yugawara::binding::extract<yugawara::storage::column>(mapping.source());
+        std::optional<std::uint32_t> column_index{};
+        for (std::size_t i = 0; i < index.table().columns().size(); ++i) {
+            if (std::addressof(index.table().columns()[i]) == std::addressof(column)) {
+                column_index = static_cast<std::uint32_t>(i);
+                break;
+            }
+        }
         result.columns.emplace_back(remote_source_column{
-            std::string{column.simple_name()},
-            context.variable_id(mapping.destination()),
+            std::string{column.simple_name()}, context.variable_id(mapping.destination()),
+            column_index, encode_remote_type(column.type()),
         });
     }
     return result;
@@ -398,13 +425,15 @@ template <class Source>
 std::optional<remote_execution_block> create_remote_execution_block(relation::graph_type const& graph,
                                                                     yugawara::compiled_info const* compiled_info,
                                                                     meta::record_meta const* result_meta,
-                                                                    meta::variable_order const* result_order) {
+                                                                    meta::variable_order const* result_order,
+                                                                    remote_catalog_snapshot const* catalogs,
+                                                                    std::string_view remote_server) {
     if (!is_remote_process_execution_block_shape(graph)) {
         return std::nullopt;
     }
 
     remote_execution_block block{};
-    block_builder_context context{block, compiled_info, result_meta, result_order};
+    block_builder_context context{block, compiled_info, result_meta, result_order, catalogs, remote_server};
     auto const* current = first(graph);
     std::uint64_t operator_id{};
     while (current != nullptr) {
@@ -417,6 +446,12 @@ std::optional<remote_execution_block> create_remote_execution_block(relation::gr
             std::nullopt,
         };
         if (!create_operator_payload(*current, op, context)) {
+            return std::nullopt;
+        }
+        if (op.source && (!op.source->definition_id ||
+            std::any_of(op.source->columns.begin(), op.source->columns.end(), [](auto const& column) {
+                return !column.column_index || column.type_payload.empty();
+            }))) {
             return std::nullopt;
         }
         block.operators.emplace_back(std::move(op));

@@ -104,6 +104,9 @@ protected:
     operation_location_test() {
         table_ = storages_.add_table({"T0", {{"C0", type::int8{}}}});
         index_ = storages_.add_index({table_, "I0"});
+        catalogs_ = std::make_shared<dist::remote_catalog_snapshot>(
+            dist::remote_catalog_snapshot::catalogs_type{}, dist::remote_catalog_snapshot::locations_type{},
+            dist::remote_catalog_snapshot::definitions_type{{index_.get(), {"worker", dist::remote_declaration_kind::index, 1257}}});
     }
 
     // Shape of a compiler which did not split the remote source from the local emit.
@@ -163,6 +166,7 @@ protected:
     std::shared_ptr<yugawara::storage::table const> table_{};
     std::shared_ptr<yugawara::storage::index const> index_{};
     std::shared_ptr<yugawara::analyzer::variable_mapping> variables_{std::make_shared<yugawara::analyzer::variable_mapping>()};
+    std::shared_ptr<dist::remote_catalog_snapshot> catalogs_{};
     takatori::plan::graph_type plan_{};
 };
 
@@ -172,7 +176,7 @@ TEST_F(operation_location_test, queries_each_compiled_process_once_and_keeps_gra
     auto consumer_kinds = kinds(*consumer);
     dummy_operation_locations query{{{source, {7}}, {consumer, {0}}}, {{7, "worker"}}};
 
-    auto captured = dist::capture_process_locations(plan_, query);
+    auto captured = dist::capture_process_locations(plan_, query, catalogs_.get());
 
     ASSERT_TRUE(captured.error.empty()) << captured.error;
     // Exactly the compiled process objects, each once; the forward exchange is not placed.
@@ -198,13 +202,13 @@ TEST_F(operation_location_test, dummy_query_throws_for_steps_it_did_not_place) {
     EXPECT_THROW((void) query.find(foreign), std::out_of_range);
     EXPECT_THROW((void) query.location_name(9), std::out_of_range);
     // Capturing after a step was added reaches that step, which the query cannot answer.
-    EXPECT_THROW((void) dist::capture_process_locations(plan_, query), std::out_of_range);
+    EXPECT_THROW((void) dist::capture_process_locations(plan_, query, catalogs_.get()), std::out_of_range);
 }
 
 TEST_F(operation_location_test, captured_locations_reject_foreign_and_added_steps) {
     auto [source, consumer] = add_fenced_processes();
     dummy_operation_locations query{{{source, {7}}, {consumer, {0}}}, {{7, "worker"}}};
-    auto captured = dist::capture_process_locations(plan_, query);
+    auto captured = dist::capture_process_locations(plan_, query, catalogs_.get());
     ASSERT_TRUE(captured.error.empty()) << captured.error;
     auto& added = plan_.insert(takatori::plan::process{});
     takatori::plan::process foreign{};
@@ -225,7 +229,7 @@ TEST_F(operation_location_test, captured_location_outlives_query_owner_and_reach
         dummy_operation_locations::steps_type{{source, {7}}, {consumer, {0}}},
         dummy_operation_locations::names_type{{7, "worker"}});
     std::weak_ptr<dummy_operation_locations> observer = query;
-    auto captured = dist::capture_process_locations(plan_, *query);
+    auto captured = dist::capture_process_locations(plan_, *query, catalogs_.get());
     ASSERT_TRUE(captured.error.empty()) << captured.error;
     query.reset();
     ASSERT_TRUE(observer.expired());
@@ -249,7 +253,7 @@ TEST_F(operation_location_test, rejects_remote_emit_consumer_without_rewriting) 
     auto consumer_kinds = kinds(*consumer);
     dummy_operation_locations query{{{source, {0}}, {consumer, {7}}}, {{7, "worker"}}};
 
-    auto captured = dist::capture_process_locations(plan_, query);
+    auto captured = dist::capture_process_locations(plan_, query, catalogs_.get());
 
     EXPECT_NE(std::string::npos, captured.error.find("did not separate")) << captured.error;
     EXPECT_FALSE(captured.locations);
@@ -262,7 +266,7 @@ TEST_F(operation_location_test, rejects_unsplit_remote_process_without_rewriting
     auto process_kinds = kinds(process);
     dummy_operation_locations query{{{&process, {7}}}, {{7, "worker"}}};
 
-    auto captured = dist::capture_process_locations(plan_, query);
+    auto captured = dist::capture_process_locations(plan_, query, catalogs_.get());
 
     EXPECT_NE(std::string::npos, captured.error.find("did not separate")) << captured.error;
     EXPECT_FALSE(captured.locations);
@@ -275,7 +279,7 @@ TEST_F(operation_location_test, rejects_empty_multiple_and_unknown_locations) {
     auto [source, consumer] = add_fenced_processes();
     auto error_for = [&, source = source, consumer = consumer](dist::operation_locations::location_id_set_type ids) {
         dummy_operation_locations query{{{source, std::move(ids)}, {consumer, {0}}}, {{7, "worker"}, {8, "other"}}};
-        return dist::capture_process_locations(plan_, query).error;
+        return dist::capture_process_locations(plan_, query, catalogs_.get()).error;
     };
 
     EXPECT_NE(std::string::npos, error_for({}).find("no executable location"));
@@ -292,7 +296,7 @@ TEST_F(operation_location_test, rejects_multiple_remote_processes) {
         {{first, {7}}, {first_consumer, {0}}, {second, {7}}, {second_consumer, {0}}},
         {{7, "worker"}}};
 
-    auto captured = dist::capture_process_locations(plan_, query);
+    auto captured = dist::capture_process_locations(plan_, query, catalogs_.get());
 
     EXPECT_NE(std::string::npos, captured.error.find("at most one")) << captured.error;
     EXPECT_FALSE(captured.locations);
@@ -316,7 +320,7 @@ TEST_F(operation_location_test, rejects_remote_output_into_non_forward_exchange)
     process >> group;
     dummy_operation_locations query{{{&process, {7}}}, {{7, "worker"}}};
 
-    auto captured = dist::capture_process_locations(plan_, query);
+    auto captured = dist::capture_process_locations(plan_, query, catalogs_.get());
 
     EXPECT_NE(std::string::npos, captured.error.find("single forward")) << captured.error;
     EXPECT_FALSE(captured.locations);
@@ -332,7 +336,7 @@ TEST_F(operation_location_test, rejects_remote_output_not_connected_downstream) 
     // The step graph has no process -> forward edge, so the runtime would bind no output.
     dummy_operation_locations query{{{&process, {7}}}, {{7, "worker"}}};
 
-    auto captured = dist::capture_process_locations(plan_, query);
+    auto captured = dist::capture_process_locations(plan_, query, catalogs_.get());
 
     EXPECT_NE(std::string::npos, captured.error.find("single forward")) << captured.error;
     EXPECT_FALSE(captured.locations);
@@ -342,7 +346,7 @@ TEST_F(operation_location_test, fixture_split_is_separate_from_operation_locatio
     auto& process = add_inline_process();
     // A result computed for the graph as compiled, before any development split.
     dummy_operation_locations stale{{{&process, {7}}}, {{7, "worker"}}};
-    dist::remote_catalog_snapshot catalogs{{}, {{table_.get(), "worker"}}};
+    dist::remote_catalog_snapshot catalogs{{}, {{table_.get(), "worker"}}, catalogs_->definitions()};
 
     auto adapted = dist::adapt_remote_outputs(plan_, info(), &catalogs);
     (void) adapted;
@@ -359,7 +363,7 @@ TEST_F(operation_location_test, fixture_split_is_separate_from_operation_locatio
     EXPECT_EQ(1, consumers);
     EXPECT_TRUE(dist::validate_remote_plan(plan_, &catalogs).empty());
     // The consumer added by the split has no operation location in the earlier result.
-    EXPECT_THROW((void) dist::capture_process_locations(plan_, stale), std::out_of_range);
+    EXPECT_THROW((void) dist::capture_process_locations(plan_, stale, catalogs_.get()), std::out_of_range);
 }
 
 } // namespace
@@ -387,7 +391,7 @@ TEST_F(operation_location_test, unsupported_type_is_a_diagnostic_not_a_query_exc
     project.output() >> offer->input();
     dummy_operation_locations query{{{source, {7}}, {consumer, {0}}}, {{7, "worker"}}};
     dist::process_locations_result result{};
-    EXPECT_NO_THROW(result = dist::capture_process_locations(plan_, query));
+    EXPECT_NO_THROW(result = dist::capture_process_locations(plan_, query, catalogs_.get()));
     EXPECT_FALSE(result.locations);
     EXPECT_NE(std::string::npos, result.error.find("unsupported remote execution type"));
 }

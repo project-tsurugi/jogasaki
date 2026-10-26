@@ -580,7 +580,7 @@ static status capture_operation_locations(takatori::plan::graph_type const& grap
     std::shared_ptr<dist::process_locations const>& locations) {
     dist::process_locations_result captured{};
     try {
-        captured = dist::capture_process_locations(graph, query);
+        captured = dist::capture_process_locations(graph, query, ctx.remote_catalogs().get());
     } catch (std::exception const& e) {
         return set_operation_location_error(ctx, "operation location lookup failed: ", e);
     }

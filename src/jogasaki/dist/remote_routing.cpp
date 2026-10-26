@@ -153,7 +153,8 @@ std::string validate_remote_plan(takatori::plan::graph_type const& graph, remote
             continue;
         }
         auto const& process = takatori::util::unsafe_downcast<takatori::plan::process>(step);
-        if (!remote_server(process.operators(), catalogs, fallback)) {
+        auto destination = remote_server(process.operators(), catalogs, fallback);
+        if (!destination) {
             continue;
         }
         if (++count > 1) {
@@ -163,8 +164,8 @@ std::string validate_remote_plan(takatori::plan::graph_type const& graph, remote
             return "unsupported remote process shape in remote execution";
         }
         try {
-            if (!create_remote_execution_block(process.operators())) {
-                return "unsupported remote expression or host variable in remote execution";
+            if (!create_remote_execution_block(process.operators(), nullptr, nullptr, nullptr, catalogs, *destination)) {
+                return "unsupported remote expression, host variable, or missing storage definition identity in remote execution";
             }
         } catch (std::invalid_argument const& e) {
             // The development codec rejects unsupported types/literals by exception.

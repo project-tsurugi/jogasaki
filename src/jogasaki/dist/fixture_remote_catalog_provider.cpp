@@ -119,11 +119,22 @@ static std::unordered_set<std::string> collect_primary_key(json const& table,
     return primary_key;
 }
 
+static std::optional<std::uint64_t> fixture_definition_id(json const& table, char const* key) {
+    if (!table.contains(key)) return std::nullopt;
+    auto const& value = table.at(key);
+    if (!value.is_number_unsigned() && (!value.is_number_integer() || value.get<std::int64_t>() < 0)) {
+        throw std::invalid_argument("fixture definition ID must be an unsigned integer");
+    }
+    return value.get<std::uint64_t>();
+}
+
 static std::shared_ptr<yugawara::storage::table> add_fixture_table(json const& table,
-                                                                   yugawara::storage::configurable_provider& storage) {
+                                                                   yugawara::storage::configurable_provider& storage,
+    remote_catalog_snapshot::definitions_type& definitions, std::string const& server) {
     auto table_name = name_of(table, "name");
     auto definition = std::make_shared<yugawara::storage::table>(
         table_name, takatori::util::reference_vector<yugawara::storage::column>{});
+    definition->definition_id(fixture_definition_id(table, "definition_id"));
     std::unordered_set<std::string> column_names{};
     if (!table.at("columns").is_array() || table.at("columns").empty()) {
         throw std::invalid_argument("columns must be a nonempty array");
@@ -145,18 +156,23 @@ static std::shared_ptr<yugawara::storage::table> add_fixture_table(json const& t
         }
     }
     storage.add_table(definition);
-    storage.add_index(
-        yugawara::storage::index{definition,
+    auto index = storage.add_index(
+        yugawara::storage::index{fixture_definition_id(table, "index_definition_id"), definition,
                                  table_name,
                                  std::move(keys),
                                  std::move(values),
                                  {yugawara::storage::index_feature::primary, yugawara::storage::index_feature::find,
                                   yugawara::storage::index_feature::scan, yugawara::storage::index_feature::unique}});
+    definitions.emplace(definition.get(), remote_declaration_identity{server, remote_declaration_kind::table,
+        definition->definition_id()});
+    definitions.emplace(index.get(), remote_declaration_identity{server, remote_declaration_kind::index,
+        index->definition_id()});
     return definition;
 }
 
 static yugawara::schema::declaration
-fixture_schema(json const& schema, remote_catalog_snapshot::locations_type& locations, std::string const& server) {
+fixture_schema(json const& schema, remote_catalog_snapshot::locations_type& locations,
+    remote_catalog_snapshot::definitions_type& definitions, std::string const& server) {
     auto schema_name = name_of(schema, "name");
     auto storage = std::make_shared<yugawara::storage::configurable_provider>();
     std::unordered_set<std::string> table_names{};
@@ -165,7 +181,7 @@ fixture_schema(json const& schema, remote_catalog_snapshot::locations_type& loca
     }
     for (auto const& table : schema.at("tables")) {
         unique(table_names, name_of(table, "name"));
-        auto definition = add_fixture_table(table, *storage);
+        auto definition = add_fixture_table(table, *storage, definitions, server);
         locations.emplace(definition.get(), server);
     }
     return yugawara::schema::declaration{std::nullopt, schema_name, storage};
@@ -174,7 +190,8 @@ fixture_schema(json const& schema, remote_catalog_snapshot::locations_type& loca
 static std::shared_ptr<yugawara::schema::catalog> fixture_catalog(json const& entry,
                                                                   std::unordered_set<std::string> const& server_names,
                                                                   std::unordered_set<std::string>& catalog_names,
-                                                                  remote_catalog_snapshot::locations_type& locations) {
+                                                                  remote_catalog_snapshot::locations_type& locations,
+    remote_catalog_snapshot::definitions_type& definitions) {
     auto name = name_of(entry, "name");
     unique(catalog_names, name);
     auto server = name_of(entry, "server");
@@ -188,7 +205,7 @@ static std::shared_ptr<yugawara::schema::catalog> fixture_catalog(json const& en
     }
     for (auto const& schema : entry.at("schemas")) {
         unique(schema_names, name_of(schema, "name"));
-        schemas->add(fixture_schema(schema, locations, server));
+        schemas->add(fixture_schema(schema, locations, definitions, server));
     }
     return std::make_shared<yugawara::schema::catalog>(name, std::nullopt, schemas);
 }
@@ -223,11 +240,12 @@ status load_fixture_catalogs(std::string const& path, std::vector<remote_server_
         }
         remote_catalog_snapshot::catalogs_type catalogs{};
         remote_catalog_snapshot::locations_type locations{};
+        remote_catalog_snapshot::definitions_type definitions{};
         std::unordered_set<std::string> catalog_names{};
         for (auto const& entry : root.at("catalogs")) {
-            catalogs.emplace_back(fixture_catalog(entry, server_names, catalog_names, locations));
+            catalogs.emplace_back(fixture_catalog(entry, server_names, catalog_names, locations, definitions));
         }
-        result = std::make_shared<remote_catalog_snapshot>(std::move(catalogs), std::move(locations));
+        result = std::make_shared<remote_catalog_snapshot>(std::move(catalogs), std::move(locations), std::move(definitions));
         return status::ok;
     } catch (std::exception const& e) {
         diagnostic = "invalid remote catalog fixture: " + std::string{e.what()};

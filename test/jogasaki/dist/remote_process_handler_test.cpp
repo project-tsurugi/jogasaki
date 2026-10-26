@@ -73,7 +73,8 @@ dist::remote_execution_block scan_block() {
     scan.source = dist::remote_source{};
     scan.source->table_name = "T";
     scan.source->index_name = "T";
-    scan.source->columns = {{"C0", 0}};
+    scan.source->definition_id = 1257;
+    scan.source->columns = {{"C0", 0, 0, dist::encode_remote_type(takatori::type::int8{})}};
     dist::remote_operator offer{};
     offer.operator_id = 1;
     offer.kind = dist::remote_operator_kind::offer;
@@ -108,13 +109,30 @@ dist::remote_execution_block large_row_block() {
     return block;
 }
 }
-class remote_process_handler_test : public ::testing::Test, public api_test_base {
+// The fixture supplies explicit definition identities. Normal SQL DDL currently
+// does not assign them; missing identities are tested separately below.
+class identity_test_base : public api_test_base {
+public:
+    void create_with_identity(std::string const& ddl, std::uint64_t identity = 1257) {
+        execute_statement(ddl);
+        std::vector<std::shared_ptr<yugawara::storage::index const>> indices{};
+        db_impl()->tables()->each_index([&](std::string_view, auto const& index) {
+            if (index->simple_name() == "T" || index->simple_name() == "sales") indices.emplace_back(index);
+        });
+        for (auto const& index : indices) {
+            auto replacement = std::make_shared<yugawara::storage::index>(*index);
+            replacement->definition_id(identity);
+            db_impl()->tables()->add_index(std::move(replacement), true);
+        }
+    }
+};
+class remote_process_handler_test : public ::testing::Test, public identity_test_base {
 public:
     bool to_explain() override { return false; }
     void SetUp() override { db_setup(); }
     void TearDown() override { if (db_) db_teardown(); }
 };
-class remote_process_handler_single_worker_test : public ::testing::Test, public api_test_base {
+class remote_process_handler_single_worker_test : public ::testing::Test, public identity_test_base {
 public:
     bool to_explain() override { return false; }
     void SetUp() override {
@@ -124,8 +142,74 @@ public:
     }
     void TearDown() override { if (db_) db_teardown(); }
 };
-TEST_F(remote_process_handler_test, stream_emits_schema_for_empty_result) {
+TEST_F(remote_process_handler_test, rejects_missing_worker_definition_without_name_fallback) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    dist::remote_process_handler handler{*db_};
+    auto response = handler(dist::serialize_remote_execution_block_proto(scan_block()));
+    EXPECT_FALSE(response.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, response.error_kind);
+}
+
+TEST_F(remote_process_handler_test, resolves_identity_and_rejects_mismatched_column_metadata) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES(205)");
+    dist::remote_process_handler handler{*db_};
+    auto valid = scan_block();
+    ASSERT_TRUE(handler(dist::serialize_remote_execution_block_proto(valid)).success);
+    auto check = [&](dist::remote_execution_block const& block) {
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(response.success);
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, response.error_kind);
+    };
+    auto different_id = valid;
+    different_id.operators[0].source->definition_id = 1258;
+    check(different_id);
+    auto different_name = valid;
+    different_name.operators[0].source->index_name = "other";
+    check(different_name);
+    auto out_of_range = valid;
+    out_of_range.operators[0].source->columns[0].column_index = 1;
+    check(out_of_range);
+    auto different_column = valid;
+    different_column.operators[0].source->columns[0].column_name = "other";
+    check(different_column);
+    auto different_type = valid;
+    different_type.operators[0].source->columns[0].type_payload = dist::encode_remote_type(takatori::type::int4{});
+    check(different_type);
+}
+
+TEST_F(remote_process_handler_test, rejects_recreated_same_name_and_duplicate_definition_id) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    auto old = scan_block();
+    execute_statement("DROP TABLE T");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)", 1258);
+    dist::remote_process_handler handler{*db_};
+    auto stale = handler(dist::serialize_remote_execution_block_proto(old));
+    EXPECT_FALSE(stale.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, stale.error_kind);
+    auto current = old;
+    current.operators[0].source->definition_id = 1258;
+    ASSERT_TRUE(handler(dist::serialize_remote_execution_block_proto(current)).success);
+    auto original = db_impl()->tables()->find_index("T");
+    auto duplicate = std::make_shared<yugawara::storage::index>(*original);
+    duplicate->simple_name("other");
+    db_impl()->tables()->add_index(std::move(duplicate));
+    auto ambiguous = handler(dist::serialize_remote_execution_block_proto(current));
+    EXPECT_FALSE(ambiguous.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, ambiguous.error_kind);
+}
+
+TEST_F(remote_process_handler_test, accepts_definition_id_zero) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)", 0);
+    auto block = scan_block();
+    block.operators[0].source->definition_id = 0;
+    dist::remote_process_handler handler{*db_};
+    auto response = handler(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_TRUE(response.success) << response.error;
+}
+
+TEST_F(remote_process_handler_test, stream_emits_schema_for_empty_result) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     dist::remote_process_handler handler{*db_};
     std::size_t chunks{};
     auto result = handler.execute_stream(dist::serialize_remote_execution_block_proto(scan_block()), {},
@@ -142,7 +226,7 @@ TEST_F(remote_process_handler_test, stream_emits_schema_for_empty_result) {
     EXPECT_EQ(1, chunks);
 }
 TEST_F(remote_process_handler_test, stream_stops_when_sink_rejects_result) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES(1)");
     dist::remote_process_handler handler{*db_};
     std::size_t calls{};
@@ -153,7 +237,7 @@ TEST_F(remote_process_handler_test, stream_stops_when_sink_rejects_result) {
     EXPECT_EQ(1, calls);
 }
 TEST_F(remote_process_handler_test, scan_observes_cancel_on_rpc_thread) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10), (20), (30)");
     std::atomic_int observed{};
     std::atomic_bool on_shared_worker{};
@@ -169,7 +253,7 @@ TEST_F(remote_process_handler_test, scan_observes_cancel_on_rpc_thread) {
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, response.error_kind);
 }
 TEST_F(remote_process_handler_single_worker_test, blocked_stream_sink_does_not_occupy_shared_worker) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (1), (2), (3), (4)");
     std::mutex mutex{};
     std::condition_variable cv{};
@@ -232,7 +316,7 @@ TEST_F(remote_process_handler_single_worker_test, blocked_stream_sink_does_not_o
     EXPECT_TRUE(stream_result.success) << stream_result.error;
 }
 TEST_F(remote_process_handler_test, non_standard_sink_exception_during_scan_is_internal_failure) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (1), (2), (3)");
     std::size_t calls{};
     auto response = dist::remote_process_handler{*db_}.execute_stream(
@@ -245,7 +329,7 @@ TEST_F(remote_process_handler_test, non_standard_sink_exception_during_scan_is_i
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, response.error_kind);
 }
 TEST_F(remote_process_handler_test, rpc_cancel_reaches_filtered_scan_when_scan_cancel_is_disabled) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     std::string sql = "INSERT INTO T VALUES ";
     for (int i = 0; i < 2000; ++i) { if (i) sql += ','; sql += '(' + std::to_string(i) + ')'; }
     execute_statement(sql);
@@ -301,7 +385,7 @@ TEST_F(remote_process_handler_test, rpc_cancel_reaches_filtered_scan_when_scan_c
     EXPECT_EQ(cancel_at, checks.load());
 }
 TEST_F(remote_process_handler_test, escaped_task_exception_discards_job_before_next_rpc_on_thread) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (1), (2), (3), (4)");
     dist::remote_process_handler handler{*db_};
     bool flushed{};
@@ -340,7 +424,7 @@ TEST_F(remote_process_handler_test, escaped_task_exception_discards_job_before_n
     EXPECT_EQ(4, rows);
 }
 TEST_F(remote_process_handler_test, stops_when_encoded_output_exceeds_limit) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     std::string sql = "INSERT INTO T VALUES ";
     for (int i = 0; i < 70; ++i) { if (i) sql += ','; sql += '(' + std::to_string(i) + ')'; }
     execute_statement(sql);
@@ -371,7 +455,7 @@ TEST_F(remote_process_handler_test, stops_when_encoded_output_exceeds_limit) {
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::resource_exhausted, response.error_kind);
 }
 TEST_F(remote_process_handler_test, stream_result_total_may_exceed_message_limit) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     std::string sql = "INSERT INTO T VALUES ";
     for (int i = 0; i < 70; ++i) { if (i) sql += ','; sql += '(' + std::to_string(i) + ')'; }
     execute_statement(sql);
@@ -418,7 +502,7 @@ TEST_F(remote_process_handler_test, stream_result_total_may_exceed_message_limit
 }
 
 TEST_F(remote_process_handler_test, sink_exception_is_internal_failure_not_client_cancellation) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY, C1 BIGINT)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY, C1 BIGINT)");
     execute_statement("INSERT INTO T VALUES (10, 99)");
     dist::remote_process_handler handler{*db_};
     auto response = handler.execute_stream(dist::serialize_remote_execution_block_proto(scan_block()), {},
@@ -428,7 +512,7 @@ TEST_F(remote_process_handler_test, sink_exception_is_internal_failure_not_clien
 }
 
 TEST_F(remote_process_handler_test, resolves_sales_output_in_schema_column_order) {
-    execute_statement("CREATE TABLE sales(sale_number BIGINT PRIMARY KEY, amount BIGINT)");
+    create_with_identity("CREATE TABLE sales(sale_number BIGINT PRIMARY KEY, amount BIGINT)");
     execute_statement("INSERT INTO sales VALUES (308, 20000), (101, 12000), (205, 18000)");
     auto block = scan_block();
     // Stream variable IDs are separate from output column IDs and column positions.
@@ -436,7 +520,7 @@ TEST_F(remote_process_handler_test, resolves_sales_output_in_schema_column_order
     block.external_relations = {42};
     block.operators[0].source->table_name = "sales";
     block.operators[0].source->index_name = "sales";
-    block.operators[0].source->columns = {{"sale_number", 123}, {"amount", 987}};
+    block.operators[0].source->columns = {{"sale_number", 123, 0, dist::encode_remote_type(takatori::type::int8{})}, {"amount", 987, 1, dist::encode_remote_type(takatori::type::int8{})}};
     block.operators.back().offer = dist::remote_offer{42, {{123, 1055}, {987, 1900}}};
     // Both the normal and reversed schemas must resolve sparse IDs, not use IDs as positions.
     for (bool reversed : {false, true}) {
@@ -460,14 +544,14 @@ TEST_F(remote_process_handler_test, resolves_sales_output_in_schema_column_order
     }
 }
 TEST_F(remote_process_handler_test, resolves_sparse_external_ids_and_schema_column_order) {
-    execute_statement("CREATE TABLE sales(sale_number BIGINT PRIMARY KEY, amount BIGINT)");
+    create_with_identity("CREATE TABLE sales(sale_number BIGINT PRIMARY KEY, amount BIGINT)");
     execute_statement("INSERT INTO sales VALUES (101, 12000), (205, NULL)");
     auto block = scan_block();
     block.stream_variables = {123, 987};
     block.external_relations = {42};
     block.operators[0].source->table_name = "sales";
     block.operators[0].source->index_name = "sales";
-    block.operators[0].source->columns = {{"sale_number", 123}, {"amount", 987}};
+    block.operators[0].source->columns = {{"sale_number", 123, 0, dist::encode_remote_type(takatori::type::int8{})}, {"amount", 987, 1, dist::encode_remote_type(takatori::type::int8{})}};
     // Reverse the output order while retaining the documentation's sparse column IDs.
     block.result_schema = {{1900, "int8()", true}, {1055, "int8()", false}};
     block.operators.back().offer = dist::remote_offer{42, {{123, 1055}, {987, 1900}}};
@@ -482,7 +566,7 @@ TEST_F(remote_process_handler_test, resolves_sparse_external_ids_and_schema_colu
     EXPECT_FALSE(result->rows[1][0]); EXPECT_EQ(205, result->rows[1][1]);
 }
 TEST_F(remote_process_handler_test, rejects_unknown_external_binding_before_execution) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     auto block = scan_block();
     block.operators.back().offer->external_relation_id = 999;
     auto response = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
@@ -490,7 +574,7 @@ TEST_F(remote_process_handler_test, rejects_unknown_external_binding_before_exec
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
 }
 TEST_F(remote_process_handler_test, rejects_unknown_output_column_before_execution) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     auto block = scan_block();
     block.external_relations = {42};
     block.result_schema[0].column_id = 1055;
@@ -503,7 +587,7 @@ TEST_F(remote_process_handler_test, rejects_unknown_output_column_before_executi
     EXPECT_NE(std::string::npos, response.error.find("1900"));
 }
 TEST_F(remote_process_handler_test, rejects_duplicate_and_missing_output_columns) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     for (bool duplicate : {false, true}) {
         auto block = scan_block();
         if (duplicate) block.operators.back().offer->columns.push_back({0, 0});
@@ -514,7 +598,7 @@ TEST_F(remote_process_handler_test, rejects_duplicate_and_missing_output_columns
     }
 }
 TEST_F(remote_process_handler_test, declared_output_type_does_not_override_inferred_source_type) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES(42)");
     auto block = scan_block();
     // A valid but wrong schema must not coerce BIGINT to INTEGER via type hints.
@@ -528,7 +612,7 @@ TEST_F(remote_process_handler_test, declared_output_type_does_not_override_infer
 }
 
 TEST_F(remote_process_handler_test, reads_worker_table_in_independent_rtx) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10), (20)");
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(scan_block()));
@@ -541,7 +625,7 @@ TEST_F(remote_process_handler_test, reads_worker_table_in_independent_rtx) {
     EXPECT_EQ(20, result->rows[1][0]);
 }
 TEST_F(remote_process_handler_test, filters_and_projects_worker_rows) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10), (20)");
     auto block = scan_block();
     block.values = {0, 1, 2};
@@ -595,7 +679,7 @@ TEST_F(remote_process_handler_test, evaluates_and_returns_all_output_types) {
     samples.push_back({std::make_shared<t::date>(), std::make_unique<v::date>(takatori::datetime::date{2024, 1, 2})});
     samples.push_back({std::make_shared<t::time_of_day>(), std::make_unique<v::time_of_day>(takatori::datetime::time_of_day{12, 34, 56})});
     samples.push_back({std::make_shared<t::time_point>(), std::make_unique<v::time_point>(takatori::datetime::time_point{takatori::datetime::date{2024, 1, 2}, takatori::datetime::time_of_day{12, 34, 56}})});
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10)");
     dist::remote_process_handler handler{*db_};
     for (auto const& sample : samples) {
@@ -633,7 +717,7 @@ TEST_F(remote_process_handler_test, evaluates_and_returns_all_output_types) {
     }
 }
 TEST_F(remote_process_handler_test, returns_native_sql_error_details) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10)");
     auto block = scan_block();
     block.values = {0, 1};
@@ -668,7 +752,7 @@ TEST_F(remote_process_handler_test, evaluates_supported_intermediate_records) {
     namespace t = takatori::type;
     namespace v = takatori::value;
     using kind = dist::remote_scalar_expression_kind;
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10)");
     dist::remote_process_handler handler{*db_};
     auto run = [&](t::data const& input_type, v::data const& literal, std::string operation,
@@ -725,7 +809,7 @@ TEST_F(remote_process_handler_test, rejects_boolean_and_octet_operation_extensio
     namespace t = takatori::type;
     namespace v = takatori::value;
     using kind = dist::remote_scalar_expression_kind;
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10)");
     auto run = [&](std::vector<dist::remote_scalar_expression> expressions, t::data const& type, v::data const&) {
         auto block = scan_block();
@@ -885,10 +969,11 @@ TEST_F(remote_process_handler_test, rejects_unsupported_output_before_runtime_la
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::unsupported, response.error_kind);
 }
 TEST_F(remote_process_handler_test, rejects_blob_source_even_when_not_offered) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY, C1 BLOB)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY, C1 BLOB)");
     auto block = scan_block();
     block.stream_variables = {0, 1};
-    block.operators[0].source->columns.push_back({"C1", 1});
+    // An INT8 wire hint must not hide the actual unsupported BLOB column.
+    block.operators[0].source->columns.push_back({"C1", 1, 1, dist::encode_remote_type(takatori::type::int8{})});
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     EXPECT_FALSE(response.success);
@@ -909,7 +994,7 @@ TEST_F(remote_process_handler_test, rejects_invalid_payload) {
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
 }
 TEST_F(remote_process_handler_test, cancels_before_execution) {
-    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     dist::remote_process_handler handler{*db_};
     auto response = handler.execute(dist::serialize_remote_execution_block_proto(scan_block()), [] { return true; });
     EXPECT_FALSE(response.success);

@@ -24,6 +24,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <grpcpp/grpcpp.h>
+#include <takatori/type/primitive.h>
 #include <gtest/gtest.h>
 
 #include <tateyama/api/configuration.h>
@@ -32,6 +33,8 @@
 #include <tateyama/proto/distributed_query/remote_catalog.grpc.pb.h>
 
 #include <jogasaki/api/resource/bridge.h>
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/dist/remote_type_codec.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/dist/remote_execution_block_proto.h>
 #include <jogasaki/dist/remote_record_codec.h>
@@ -72,6 +75,13 @@ protected:
         ASSERT_TRUE(server_->start());
         ASSERT_TRUE(bridge_->database());
         ASSERT_EQ("", utils::runner{}.db(*bridge_->database()).text("CREATE TABLE T(C0 BIGINT PRIMARY KEY)").run().report());
+        // Explicit worker definition identity; ordinary SQL DDL does not assign it yet.
+        auto& database = api::impl::get_impl(*bridge_->database());
+        auto original = database.tables()->find_index("T");
+        ASSERT_TRUE(original);
+        auto index = std::make_shared<yugawara::storage::index>(*original);
+        index->definition_id(1257);
+        database.tables()->add_index(std::move(index), true);
     }
     void TearDown() override {
         if (server_ && !stopped_) EXPECT_TRUE(server_->shutdown());
@@ -131,7 +141,7 @@ TEST_F(remote_catalog_bridge_test, framework_executes_native_external_output_wit
     dist::remote_operator scan{};
     scan.kind = dist::remote_operator_kind::scan; scan.operator_id = 0; scan.output_value_id = 0;
     scan.source = dist::remote_source{};
-    scan.source->table_name = "T"; scan.source->index_name = "T"; scan.source->columns = {{"C0", 0}};
+    scan.source->table_name = "T"; scan.source->index_name = "T"; scan.source->definition_id = 1257; scan.source->columns = {{"C0", 0, 0, dist::encode_remote_type(takatori::type::int8{})}};
     dist::remote_operator offer{};
     offer.kind = dist::remote_operator_kind::offer; offer.operator_id = 1; offer.input_value_id = 0;
     offer.offer = dist::remote_offer{73, {{0, 19}}};

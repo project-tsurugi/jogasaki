@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -52,7 +53,7 @@ enum class remote_declaration_kind { table, index, function, aggregate_function 
 struct remote_declaration_identity {
     std::string remote_server_name{};
     remote_declaration_kind kind{remote_declaration_kind::table};
-    std::uint64_t remote_definition_id{};
+    std::optional<std::uint64_t> remote_definition_id{};
 };
 
 /**

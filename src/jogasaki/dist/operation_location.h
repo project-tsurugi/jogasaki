@@ -26,6 +26,7 @@
 #include <takatori/plan/step.h>
 
 namespace jogasaki::dist {
+class remote_catalog_snapshot;
 /**
  * @brief Engine-side boundary for the compiler's operation location result (L3-03 [4], [5]).
  * @details Yugawara does not provide compiler_result::operation_location_query() yet, so only
@@ -85,5 +86,6 @@ struct process_locations_result {
  * operation location.
  */
 [[nodiscard]] process_locations_result capture_process_locations(
-    takatori::plan::graph_type const& graph, operation_locations const& query);
+    takatori::plan::graph_type const& graph, operation_locations const& query,
+    remote_catalog_snapshot const* catalogs = nullptr);
 } // namespace jogasaki::dist

@@ -50,17 +50,14 @@ public:
     virtual ~remote_execution_graph_resolver() = default;
 
     [[nodiscard]] virtual std::optional<takatori::descriptor::relation> resolve_storage(
-        std::string_view table_name,
-        std::string_view index_name) const = 0;
+        remote_source const& source) const = 0;
 
     [[nodiscard]] virtual std::optional<takatori::descriptor::variable> resolve_storage_column(
-        std::string_view table_name,
-        std::string_view index_name,
-        std::string_view column_name) const = 0;
+        remote_source const& source,
+        remote_source_column const& column) const = 0;
 
     [[nodiscard]] virtual std::optional<takatori::descriptor::variable> resolve_storage_key_column(
-        std::string_view table_name,
-        std::string_view index_name,
+        remote_source const& source,
         std::size_t position) const = 0;
 
     [[nodiscard]] virtual std::optional<takatori::descriptor::relation> resolve_external_relation(

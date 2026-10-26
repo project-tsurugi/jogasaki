@@ -294,7 +294,7 @@ private:
                                                        std::vector<std::uint64_t> const& expression_ids) {
         std::vector<Key> result{};
         for (std::size_t i = 0; i < expression_ids.size(); ++i) {
-            auto column = resolver_->resolve_storage_key_column(source.table_name, source.index_name, i);
+            auto column = resolver_->resolve_storage_key_column(source, i);
             if (!column) {
                 error_ = missing("storage key column", i);
                 return {};
@@ -312,7 +312,7 @@ private:
         std::vector<relation::scan::column> result{};
         for (auto const& column : source.columns) {
             auto storage_column =
-                resolver_->resolve_storage_column(source.table_name, source.index_name, column.column_name);
+                resolver_->resolve_storage_column(source, column);
             auto* destination = variable(column.destination_variable_id);
             if (!storage_column) {
                 error_ = missing("storage column", column.column_name);
@@ -345,7 +345,7 @@ private:
         switch (op.kind) {
             case remote_operator_kind::scan: {
                 auto const& source = *op.source;
-                auto storage = resolver_->resolve_storage(source.table_name, source.index_name);
+                auto storage = resolver_->resolve_storage(source);
                 auto mappings = columns(source);
                 auto lower_keys = keys<relation::scan::key>(source, source.lower_key_expression_ids);
                 auto upper_keys = keys<relation::scan::key>(source, source.upper_key_expression_ids);
@@ -363,7 +363,7 @@ private:
             }
             case remote_operator_kind::find: {
                 auto const& source = *op.source;
-                auto storage = resolver_->resolve_storage(source.table_name, source.index_name);
+                auto storage = resolver_->resolve_storage(source);
                 auto mappings = columns(source);
                 auto find_keys = keys<relation::find::key>(source, source.find_key_expression_ids);
                 if (!storage) {

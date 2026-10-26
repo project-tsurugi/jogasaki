@@ -320,7 +320,8 @@ namespace {
 class catalog_graph_resolver final : public remote_execution_graph_resolver {
 public:
     catalog_graph_resolver(api::database& database, remote_execution_block const& block)
-        : database_(&database), relation_id_(block.operators.back().offer->external_relation_id) {
+        : index_(find_index(database, *block.operators.front().source)),
+          relation_id_(block.operators.back().offer->external_relation_id) {
         std::vector<takatori::descriptor::variable> columns{};
         columns.reserve(block.result_schema.size());
         for (auto const& column : block.result_schema) {
@@ -333,45 +334,42 @@ public:
         output_ = std::make_unique<takatori::plan::forward>(std::move(columns));
     }
 
-    std::optional<takatori::descriptor::relation> resolve_storage(std::string_view table_name,
-                                                                  std::string_view index_name) const override {
-        auto index = find_index(table_name, index_name);
-        if (!index) {
+    std::optional<takatori::descriptor::relation> resolve_storage(remote_source const&) const override {
+        if (!index_) {
             return {};
         }
-        return bindings_.index(*index);
+        return bindings_.index(*index_);
     }
 
-    std::optional<takatori::descriptor::variable> resolve_storage_column(std::string_view table_name,
-                                                                         std::string_view index_name,
-                                                                         std::string_view column_name) const override {
-        auto index = find_index(table_name, index_name);
-        if (!index) {
+    std::optional<takatori::descriptor::variable> resolve_storage_column(
+        remote_source const&, remote_source_column const& reference) const override {
+        if (!index_ || !reference.column_index || *reference.column_index >= index_->table().columns().size()) {
             return {};
         }
-        for (auto const& column : index->table().columns()) {
-            if (column.simple_name() == column_name) {
-                if (column.type().kind() == type::type_kind::blob || column.type().kind() == type::type_kind::clob ||
-                    column.type().kind() == type::type_kind::boolean || column.type().kind() == type::type_kind::int1 ||
-                    column.type().kind() == type::type_kind::int2 || column.type().kind() == type::type_kind::bit ||
-                    column.type().kind() == type::type_kind::datetime_interval) {
-                    unsupported_column_ = true;
-                    return {};
-                }
-                return bindings_.table_column(column);
-            }
+        auto const& column = index_->table().columns()[*reference.column_index];
+        if (column.simple_name() != reference.column_name) {
+            return {};
         }
-        return {};
+        if (column.type().kind() == type::type_kind::blob || column.type().kind() == type::type_kind::clob ||
+            column.type().kind() == type::type_kind::boolean || column.type().kind() == type::type_kind::int1 ||
+            column.type().kind() == type::type_kind::int2 || column.type().kind() == type::type_kind::bit ||
+            column.type().kind() == type::type_kind::datetime_interval) {
+            unsupported_column_ = true;
+            return {};
+        }
+        auto expected = decode_remote_type(reference.type_payload);
+        if (!expected || column.type() != *expected) {
+            return {};
+        }
+        return bindings_.table_column(column);
     }
 
-    std::optional<takatori::descriptor::variable> resolve_storage_key_column(std::string_view table_name,
-                                                                             std::string_view index_name,
-                                                                             std::size_t position) const override {
-        auto index = find_index(table_name, index_name);
-        if (!index || position >= index->keys().size()) {
+    std::optional<takatori::descriptor::variable> resolve_storage_key_column(
+        remote_source const&, std::size_t position) const override {
+        if (!index_ || position >= index_->keys().size()) {
             return {};
         }
-        return bindings_.table_column(index->keys()[position].column());
+        return bindings_.table_column(index_->keys()[position].column());
     }
 
     std::optional<takatori::descriptor::relation> resolve_external_relation(std::uint64_t relation_id) const override {
@@ -427,16 +425,33 @@ public:
     [[nodiscard]] takatori::plan::forward const& output() const noexcept { return *output_; }
 
 private:
-    [[nodiscard]] std::shared_ptr<yugawara::storage::index const> find_index(std::string_view table_name,
-                                                                             std::string_view index_name) const {
-        auto index = database_->find_index(index_name);
-        if (!index || index->table().simple_name() != table_name) {
+    [[nodiscard]] static std::shared_ptr<yugawara::storage::index const> find_index(
+        api::database& database, remote_source const& source) {
+        if (!source.definition_id) {
             return {};
         }
-        return index;
+        std::shared_ptr<yugawara::storage::index const> result{};
+        bool ambiguous{};
+        // Resolve once by identity. Do not re-enter provider lookup in its callback,
+        // and do not fall back to a same-name declaration after an identity mismatch.
+        api::impl::get_impl(database).tables()->each_index(
+            [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& candidate) {
+                if (candidate->definition_id() == source.definition_id) {
+                    if (result) {
+                        ambiguous = true;
+                    } else {
+                        result = candidate;
+                    }
+                }
+            });
+        if (ambiguous || !result || result->simple_name() != source.index_name ||
+            result->table().simple_name() != source.table_name) {
+            return {};
+        }
+        return result;
     }
 
-    api::database* database_;
+    std::shared_ptr<yugawara::storage::index const> index_{};
     mutable yugawara::binding::factory bindings_{};
     // Keep inferred source types authoritative. Untrusted result-schema types are
     // checked after compilation, not installed as destination type hints.

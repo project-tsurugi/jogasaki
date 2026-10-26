@@ -174,7 +174,7 @@ public:
 type_ptr int8_type() { return std::make_shared<takatori::type::int8>(); }
 
 // remote_schema.T(C0 BIGINT PRIMARY KEY) with one scalar and one aggregate function
-std::shared_ptr<yugawara::schema::catalog const> remote_catalog(bool include_optional_fields = false) {
+std::shared_ptr<yugawara::schema::catalog const> remote_catalog(bool include_optional_fields = false, std::optional<std::uint64_t> index_identity = 502) {
     auto storage = std::make_shared<yugawara::storage::configurable_provider>();
     auto table = std::make_shared<yugawara::storage::table>(
         std::optional<yugawara::storage::table::definition_id_type>{501}, "T",
@@ -196,7 +196,7 @@ std::shared_ptr<yugawara::schema::catalog const> remote_catalog(bool include_opt
     keys.emplace_back(table->columns()[0], include_optional_fields ? takatori::relation::sort_direction::descendant :
         takatori::relation::sort_direction::ascendant);
     storage->add_index(yugawara::storage::index{
-        std::optional<yugawara::storage::index::definition_id_type>{502}, table, "T", std::move(keys), std::move(values), features, std::string{}});
+        index_identity, table, "T", std::move(keys), std::move(values), features, std::string{}});
     auto functions = std::make_shared<yugawara::function::configurable_provider>();
     functions->add(yugawara::function::declaration{503, "remote_f", int8_type(), std::vector<type_ptr>{int8_type()},
         {yugawara::function::function_feature::scalar_function}});
@@ -385,7 +385,8 @@ TEST_F(remote_catalog_rpc_test, local_catalog_handler_serves_local_definitions) 
     for (auto const& table : message.table_list()) {
         if (table.table_name() != "LT") continue;
         found = true;
-        EXPECT_EQ(local->definition_id().value_or(0), table.remote_definition_id());
+        EXPECT_EQ(local->definition_id().has_value(), table.has_remote_definition_id());
+        if (local->definition_id()) EXPECT_EQ(*local->definition_id(), table.remote_definition_id());
         ASSERT_EQ(2, table.column_index_list_size());
         auto const& c1 = message.column_list(static_cast<int>(table.column_index_list(1)));
         EXPECT_EQ("C1", c1.column_name());
@@ -410,8 +411,31 @@ TEST_F(remote_catalog_rpc_test, local_catalog_round_trips_through_rpc_into_manag
     ASSERT_TRUE(schema);
     auto table = schema->storage_provider().find_table("LT");
     ASSERT_TRUE(table);
-    EXPECT_EQ(db_impl()->tables()->find_table("LT")->definition_id().value_or(0),
+    EXPECT_EQ(db_impl()->tables()->find_table("LT")->definition_id(),
         manager()->snapshot()->remote_definition(*table)->remote_definition_id);
+}
+
+TEST_F(remote_catalog_rpc_test, missing_worker_index_identity_is_rejected_during_prepare) {
+    if (!dist::distributed_query_fixtures_available()) GTEST_SKIP();
+    for (auto identity : {std::optional<std::uint64_t>{502}, std::optional<std::uint64_t>{}}) {
+        SCOPED_TRACE(identity ? "defined index ID" : "missing index ID");
+        remote_.handler = std::make_shared<encoding_handler>(remote_catalog(false, identity));
+        std::string diagnostic{};
+        ASSERT_EQ(status::ok, create("remote", diagnostic)) << diagnostic;
+        api::statement_handle statement{};
+        std::shared_ptr<error::error_info> info{};
+        auto result = db_impl()->prepare("SELECT C0 FROM remote_schema.T", statement, info);
+        if (identity) {
+            ASSERT_EQ(status::ok, result) << (info ? info->message() : "");
+            EXPECT_EQ(status::ok, db_->destroy_statement(statement));
+        } else {
+            EXPECT_EQ(status::err_unsupported, result);
+            ASSERT_TRUE(info);
+            EXPECT_NE(std::string::npos, info->message().find("storage definition identity"));
+        }
+        EXPECT_EQ(0, remote_.execution_calls);
+        ASSERT_EQ(status::ok, manager()->drop("remote"));
+    }
 }
 
 TEST_F(remote_catalog_rpc_test, remote_only_functions_never_compile_for_local_execution) {

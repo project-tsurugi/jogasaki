@@ -203,10 +203,13 @@ public:
         : executor::common::task(&context, &step), server_(std::move(server)),
           meta_(step.io_info()->output_at(0).meta()), state_(std::make_shared<rpc_state>()) {
 
+        if (server_.empty() || !context.remote_catalogs()) {
+            throw std::invalid_argument("remote process requires a retained catalog snapshot and destination server");
+        }
         auto block = create_remote_execution_block(info.relations(), &info.compiled_info(), meta_.get(),
-                                                   &step.io_info()->output_at(0).column_order());
+                                                   &step.io_info()->output_at(0).column_order(), context.remote_catalogs().get(), server_);
         if (!block) {
-            throw std::invalid_argument("unsupported remote process shape");
+            throw std::invalid_argument("remote process requires a supported graph and storage definition IDs");
         }
         payload_ = serialize_remote_execution_block_proto(*block);
         cancel_kind_ = info.details().has_find_operator() ? request_cancel_kind::find : request_cancel_kind::scan;

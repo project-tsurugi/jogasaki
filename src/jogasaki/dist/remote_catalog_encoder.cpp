@@ -222,7 +222,9 @@ template <class Source, class Target>
                                           std::string&) {
     for (auto const& source : plan.tables) {
         auto* target = out.add_table_list();
-        target->set_remote_definition_id(source.remote_definition_id);
+        if (source.remote_definition_id) {
+            target->set_remote_definition_id(*source.remote_definition_id);
+        }
         target->set_table_name(source.name);
         for (auto i : source.columns) {
             target->add_column_index_list(i);
@@ -249,7 +251,9 @@ template <class Source, class Target>
                                            std::string& error) {
     for (auto const& source : plan.indices) {
         auto* target = out.add_index_list();
-        target->set_remote_definition_id(source.remote_definition_id);
+        if (source.remote_definition_id) {
+            target->set_remote_definition_id(*source.remote_definition_id);
+        }
         target->set_index_name(source.name);
         if (source.table) {
             target->set_table_index(*source.table);

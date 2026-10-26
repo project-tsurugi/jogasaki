@@ -19,7 +19,7 @@
 - service_cliの不具合修正 (テーブル登録、`ExecuteResult` の処理、日付・時刻パラメーターでのabort、auto commitの動作、応答待ちのタイムアウト)
 - service_benchmarkの不具合修正 (集計誤り、`db_->start()` の戻り値未確認、古いフラグ説明)
 - 共通部品: `service_client`、gflags定義と起動処理、テーブル準備とデータ投入
-- tgsql/tgsqlmux互換のスクリプト/REPL (複数セッション、`--\sleep`、`--\wait` を含む)
+- tgsql/tgsqlmux互換のスクリプト/REPL (複数セッション、`--\sleep`、`--\wait`、`--\expect_error` を含む)
 - 動作確認のためのスクリプト実行のctest登録
 
 ### 対象外とするもの (将来の課題)
@@ -27,7 +27,8 @@
 - service_benchmarkの機能拡張: リトライとアボート数の集計、レイテンシのパーセンタイル、ワークロード定義ファイル、JSON/CSV出力、オーバーヘッド計測モード、`api::database` 直接呼び出しモード
 - simple-benchmark互換のベンチマーク (「将来の拡張方針」に記載)
 - CPU割当ての改善 (付録に記載)
-- tgsqlにない機能の拡張 (ホスト変数とprepared statementは現行機能相当を維持するにとどめる)
+- tgsqlにない機能の拡張 (ホスト変数とprepared statementは現行機能相当を `\prepare`/`\execute` として維持するにとどめる)
+- BLOB/CLOB、Ctrl-Cによるキャンセル
 - 期待結果コメント (`--[3]` など) による自動照合
 - examples配下の他のcli (sql_cli, scan_cli など)。参考にするが変更しない
 
@@ -87,7 +88,8 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
 
 #### service_client
 
-- 配置: `examples/common/service_client.{h,cpp}`
+- 配置: `examples/common` に静的ライブラリを作り、各ツールからリンクする。`mock/` の `common` ライブラリ (`jogasaki-common-utils`) はテスト用のため使わない
+- 1つのservice_clientオブジェクトは1つのsession_idを持ち、送るリクエストにそれを付ける
 - 設計上の制約
   - 出力しない、スレッドを作らない、セッションやトランザクションの一覧を持たない
   - 戻り値は軽量な結果型 (成功/エラーコード)。成功時は文字列を作らない
@@ -97,20 +99,36 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
 
 #### 起動・データ準備
 
-- スケジューラ関連のgflags定義 (スレッド数、アフィニティ、stealing など) を `examples/common` にまとめ、両ツールで共有する
-- テーブル準備は `utils::add_benchmark_tables()` / `utils::add_test_tables()` (`mock/jogasaki/utils/add_test_tables.cpp`) またはDDLで行う
-- `--prepare_data`、`--load_from` も共通化する
+- スケジューラ関連のgflags定義 (スレッド数、アフィニティ、stealing など) を共通ライブラリにまとめ、両ツールで共有する
+  - 静的ライブラリ内のgflags定義は、そのオブジェクトファイルが参照されないとリンク時に落ちる。定義は起動処理と同じ翻訳単位に置く
+- 組み込みテーブル (テスト用T0/T1/T2、ベンチマーク用TPC-C風テーブル) は `utils::add_test_tables()` / `utils::add_benchmark_tables()` (`mock/jogasaki/utils/add_test_tables.cpp`) で登録する
+- `--prepare_data`、`--load_from` も共通化する。これらは組み込みテーブルが登録されているときだけ有効
 
 #### 共通化しないもの
 
 - CLI: 入力の解析、表示形式、セッション管理、auto commitの扱い
 - benchmark: 実行ループ、統計、リトライ方針、出力形式
+- スクリプトを解釈する部分はservice_cliの中に置く。将来ベンチマークのワークロード定義に使う必要が出たら、その時点で共通ライブラリへ移す
 
 ### service_cli のスクリプト/REPL
 
 既存のtgsqlおよびtgsqlmux (`tsurugi-issues/test-code-sql/tgsqlmux.pl`) のスクリプトを変更なしで実行できることを目標とする。
 
 これにより、QAやユーザーから届くtgsql/tgsqlmux形式の再現手順を同一プロセスで実行してデバッガやperfで調べられる。また同じスクリプトを実サーバ (tgsql) とservice_cliの両方で実行することで、SQLエンジン側の問題か通信/セッション層の問題かを切り分けられる。
+
+旧形式の1文字コマンド (`b`, `c`, `p`, `q`, `s`, `v` など) は廃止する。`examples/service_cli/scripts/` の同梱スクリプトは新形式に書き直す。
+
+#### 起動と入力
+
+- 起動オプションはgflagsの書き方とし、意味だけtgsqlに合わせる
+  - `--transaction=short|long|read|manual` (既定 short)、`--write_preserve=T1,T2`、`--auto_commit` (既定 false) など
+- 組み込みテーブルは既定では登録しない (tgsqlと同様にDDLで作る前提)。`--builtin_tables` (on/off) を指定するとテスト用とベンチマーク用の両方を登録する
+- 入力元
+  - `--input_file` で指定したファイル
+  - 標準入力が端末でない場合は標準入力をスクリプトとして読む (例: `cat x.sql | service_cli`)
+  - それ以外は対話モード
+- 対話モードの履歴は `$HOME/.service_cli_history` に保存する
+- 無操作時の自動終了 (`--exit_on_idle`) は既定で無効とし、オプションとして残す
 
 #### tgsqlと合わせる部分
 
@@ -119,36 +137,70 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
 - 文は `;` で区切る (EOFも区切り)。コメントは `--`, `//`, `/* */`。文字列リテラル・引用符付き識別子中の `;` は区切りとしない
 - `BEGIN [LONG] TRANSACTION` とトランザクションオプション (`READ ONLY [DEFERRABLE]`, `WRITE PRESERVE`, `READ AREA INCLUDE/EXCLUDE`, `INCLUDE DDL`, `EXECUTE PRIOR|EXCLUDING ...`, `AS <label>`, `WITH k=v,...`)
 - `COMMIT [WAIT FOR ACCEPTED|AVAILABLE|STORED|PROPAGATED]`, `ROLLBACK`, `EXPLAIN`
-- 暗黙に開始したトランザクションは文ごとにcommitする。トランザクション種別は起動オプション (`-t short|long|read|manual`, `-w`, `--auto-commit`/`--no-auto-commit`) で指定する
-- メタコマンド `\exit`, `\halt`, `\status`, `\help`, `\show table`, `\timing` を実装する。`\connect` は同一プロセス内で動くため何もしないコマンドとして受け付ける
+- トランザクションの動作はtgsqlのconsoleと同じとする
+  - `BEGIN` なしで実行した文は暗黙のトランザクション (種別は `--transaction` で指定) で実行し、文ごとにcommitする
+  - `BEGIN` で明示的に開始したトランザクションは `COMMIT`/`ROLLBACK` まで続く
+  - `--auto_commit` を指定すると、明示的に開始したトランザクションでも文ごとにcommitする
+- メタコマンド
+  - `\exit`: 後片付け (残っているトランザクションのrollbackとprepare済みの文の破棄) をしてから終了する
+  - `\halt`: 後片付けをせずに即座に終了する
+  - `\status`: 各セッションの状態 (トランザクション、実行中の文、経過時間) を表示する
+  - `\help`, `\show table`, `\timing` を実装する
+  - `\connect` は同一プロセス内で動くため何もしないコマンドとして受け付ける
 - SQLの中身は解析しない。prepareして応答の `has_result_records` を見てクエリか文かを判断する (tgsqlの `BasicSqlProcessor` と同じ方式)
 
-#### tgsqlmuxと合わせる部分
+#### tgsqlmuxと合わせる部分 (セッションと並行実行)
 
 - `NAME:` で送り先のセッションを指定する
   - 行頭の `NAME: <文>` はその行だけをNAMEに送る
   - `NAME:` だけの行は以降の送り先をNAMEに切り替える
   - 初めて出現した名前で新しいセッションを作る。初期セッション名は `T0`
 - 名前が指すのはセッションであり、セッションは同時に1本のトランザクションを持つ
-- 各セッションは専用のワーカースレッドと入力キューを持つ。送り先セッションが処理中ならその完了を待ち、他のセッションの状態とは無関係に進む
+- セッションごとに別のsession_idを割り当てる (1から順に振る。0はjogasakiで「セッションなし」を意味する)
+  - jogasakiはsession_idごとにトランザクションと文の置き場を分けるため、実サーバと同様にセッション間で分離される
+  - prepare済みの文はセッションごとに持つ
+  - mockの `test_request` はセッション単位の情報をリクエストごとに持つため、実サーバのセッション終了時の後片付けは再現されない。代わりにservice_cliが終了時に、残っているトランザクションをrollbackし、prepare済みの文を破棄する
+- 実行方式: セッションごとに専用スレッドと入力キューを持つ
+  - 同じセッションの文は順番に処理し、別のセッション同士は並行に進む
+  - `use_preferred_worker_for_current_thread` により、セッションごとに別の担当ワーカーが付き、実際に複数のクライアントがいる状況に近くなる
   - 完了はプロンプト文字列ではなく実際の応答で判定する
-  - スクリプト終了時は全セッションの完了を待つ
-  - 待ちが一定時間を超えたら、各セッションが何を実行中で待っているかを一覧表示する
+- スクリプト実行時の待ち
+  - 送り先セッションが処理中ならその完了を待つ (tgsqlmuxと同じ)
+  - `--wait_timeout` (既定60秒、0で無制限) を超えたら全セッションの状態 (実行中の文と経過時間) を表示し、エラーとして終了する
+  - スクリプトの最後では、明示しなくても全セッションの完了を待つ
+- 対話モードでは待たない。文を送り先セッションのキューに積んですぐ次の入力を受け付け、結果は届いた順に表示する。状態は `\status` で確認する
 - `;` までの未完了の文はセッションごとに保持する
 - `--\sleep 秒数` を受け付ける
-- 出力の各行にセッション名を付ける。タイムスタンプはオプションで抑止でき、diffを取りやすくする
 
 #### 独自拡張
 
 - 原則として `--\xxx` 形式とする。tgsql/tgsqlmuxではコメントとして無視されるため、service_cli向けに書いたスクリプトもそのまま実サーバで実行できる
-  - 例: `--\wait [NAME]` (指定セッション、または全セッションの完了を待つ)
-- 実行結果に影響する拡張 (ホスト変数とprepared statementなど、tgsqlにない機能) のみ `\xxx` 形式とし、tgsqlでは動かないことを許容する
-- 表示切り替え (生のバイト列、診断情報の詳細、実行時間など) は `\set` で行う
+  - `--\wait`: 全セッションの完了を待つ。`--\wait NAME` で指定セッションのみ待つ
+  - `--\expect_error`: 直後の文 (送り先セッションで次に実行される文) が失敗することを期待する。失敗すれば正常、成功すればエラーとして数える。エラーの種類は照合しない
+- `--\sleep` はtgsqlmux由来、`--\wait` と `--\expect_error` はservice_cli独自である
 
-#### 出力
+#### `--\wait` と `--\sleep` の使い分け
 
-- 結果は表形式で表示し、書式はtgsqlに近づける。スクリプト中に `--[3]`, `--(1 row)` のように期待結果を書く習慣があるため、将来の自動照合に使えるようにする
-- commitのエラーはエラーコードと診断情報 (reason_code、競合キーなど) をそのまま表示する
+- tgsqlmuxが文を送る前に待つのは「送り先セッションが前の文を処理し終えたか」だけである。同じセッション内の順序は保証されるが、別のセッションに切り替えるときは直前のセッションの文の完了を確認しない
+  - そのためtgsqlmuxでセッション間の順序を合わせるには `--\sleep` で時間をおくしかなく、保証にはならない
+- service_cliでは `--\wait` でセッション間の順序を確実に保証できる
+- `--\wait` はtgsqlmuxではコメントとして無視される。スクリプトはエラーにならずに最後まで進むが、待ちは入らない
+  - 送り先セッションの完了は必ず待つため、多くの場合は影響しない
+  - 影響するのは `--\wait T1` の直後に別のセッションへ文を送る書き方である。service_cliではT1の完了後に送られるが、tgsqlmuxでは完了を待たずに送られる
+  - 順序が結果に影響する箇所をtgsqlmuxでも実行したい場合は、`--\wait` に加えて `--\sleep` を併用する
+- `--\sleep` はservice_cliでも残す。エポックの進行など時間の経過そのものが必要な場面があり (例: `issue849_snapshot_tombstone.sql` でOCCのCOMMITと次のLTXのBEGINの間に置かれた `--\sleep 1`)、これは `--\wait` では置き換えられない
+- 実行結果に影響する拡張は `\xxx` 形式とし、tgsqlでは動かないことを許容する
+  - `\prepare <name> [<var>:<型> ...] AS <SQL>;` で文をprepareする。型名はSQLの型名 (`INT`, `BIGINT`, `DOUBLE`, `VARCHAR`, `DECIMAL`, `DATE` など) で書く
+  - `\execute <name> [<var>=<値> ...];` でprepare済みの文を実行する。`NULL` を指定できる
+- 表示切り替え (生のバイト列など) は `\set` で行う
+
+#### 出力とエラー
+
+- 結果の表示 (行の書式、`(1 row)` など) はtgsqlに近づける。型ごとの値の書式 (DECIMAL、日付、NULLなど) は実装時にtgsqlの書式を調べて合わせる。それ以外 (ログ行など) は独自の形式とする
+- 1つの文の結果 (結果の行、件数、エラー) をひとまとまりとして一度に出力し、他のセッションの出力が途中に割り込まないようにする。各行にセッション名を付ける。タイムスタンプはオプションで抑止でき、diffを取りやすくする
+- エラー時はエラーコード、メッセージ、診断情報 (reason_code、競合したストレージやキーなど、応答に含まれるもの全部) を常に表示する
+- `EXPLAIN` はjogasakiが返すJSONをそのまま表示する
+- エラーが起きても次の文に進む (tgsqlのconsoleやtgsqlmuxと同じ)。`--stop_on_error` で打ち切る。エラーが1件でもあれば終了コードを0以外にする (`--\expect_error` で期待されたエラーは数えない)
 
 #### 実装構造
 
@@ -157,11 +209,19 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
 - 入力の行編集と履歴は既存のlinenoise-ngを使う
 - 作らないもの: タブ補完、シンタックスハイライト、変数やループを持つスクリプト言語、SQLの構文解析
 
+#### 対象外
+
+- BLOB/CLOB (`\store blob` など)。BLOB/CLOBの列を含む結果は型名とサイズ程度だけを表示する
+- Ctrl-Cによるリクエストのキャンセル。Ctrl-Cは従来どおりプロセスを終了させる。必要になれば `\cancel NAME` のようなコマンドとして別途検討する
+- 期待結果コメント (`--[3]` など) による結果内容の自動照合
+
 ### service_benchmark
 
 今回の対象:
 
 - service_clientを使うように変更し、変更前後でスループットが変わらないことを確認する
+  - 合格基準: releaseビルドで `--query` と `--insert` を `--clients` 1と4で各3回実行し、スループットの中央値の差が5%程度以内であること (WSL2上の数値のぶれを考慮した許容差)。確認は移行時の1回のみで、継続的な監視はしない
+  - 比較を正しく行うため、移行時はsession_idを付けない (現状どおり) まま移す。比較が終わってから、クライアントごとに別のsession_idを使うように切り替える。現状は全クライアントがセッションなしの共通の置き場を使っており、実サーバの動きと異なるうえ、その置き場の排他処理が計測結果に混ざる可能性があるため
 - 集計誤りを修正する
 - `db_->start()` の戻り値を確認し、古いフラグ説明を直す
 
@@ -181,11 +241,20 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
 
 ## 進め方
 
-1. `examples/common/service_client` と共通のgflags/起動処理を作成する
-2. service_cliの不具合 (テーブル登録、`ExecuteResult` の処理、日付・時刻パラメーターでのabort) をservice_clientを使って修正する
-3. service_benchmarkをservice_clientに移行し、移行前後のスループットを比較する (`--minimum`、`--query` で `--clients` 複数)
-4. service_cliのスクリプト/REPLをtgsql/tgsqlmux互換に作り直す。`tsurugi-issues/test-code-sql/tgsqlmux/*.sql` が実行できることを受け入れ条件とする
-5. スクリプト実行をctestに登録し、動作しなくなったことに気付ける状態にする
+段階ごとにコミット/PRを分ける。
+
+1. 共通部品とservice_cliの最小限の修正
+   - `examples/common` の静的ライブラリ (service_client、共通のgflags/起動処理、テーブル準備とデータ投入) を作成する
+   - service_cliの不具合 (テーブル登録、`ExecuteResult` の処理、日付・時刻パラメーターでのabort、応答待ちのタイムアウト) をservice_clientを使って修正する。この時点ではまだ旧形式のコマンドのまま
+2. service_benchmarkの共通部品への移行
+   - service_clientに移行し、上記の合格基準で移行前後のスループットを比較する
+   - 集計誤り、`db_->start()` の戻り値確認、フラグ説明を修正する
+   - 比較後、クライアントごとのsession_idに切り替える
+3. service_cliのスクリプト/REPLをtgsql/tgsqlmux互換に作り直す
+   - `tsurugi-issues/test-code-sql/tgsqlmux/*.sql` の7本を手元で実行して確認する
+4. ctestへの登録
+   - ctestで回すスクリプトはjogasaki用に新しく書く (tsurugi-issuesのスクリプトはコピーしない。リポジトリ間の依存を避けるため、またissueの再現スクリプトは待ち時間で順序を合わせているなどctestでは不安定になりやすいため)
+   - 意図的にエラーを起こすテストは `--\expect_error` を使う
 
 service_benchmarkの機能拡張 (リトライ、パーセンタイル、ワークロード定義など) は今回のスコープ外とし、上記完了後に別途検討する。
 

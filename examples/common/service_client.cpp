@@ -23,6 +23,7 @@
 
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
+#include <jogasaki/executor/dto/describe_table_utils.h>
 
 namespace jogasaki::common_cli {
 
@@ -138,14 +139,31 @@ call_result service_client::send(
     return {};
 }
 
-call_result service_client::begin(begin_options const& options, api::transaction_handle& out) {
-    auto payload = utils::encode_begin(
-        options.kind_ == begin_options::kind::rtx,
-        options.kind_ == begin_options::kind::ltx,
-        options.write_preserves_,
-        options.label_,
-        options.modifies_definitions_
-    );
+call_result service_client::begin(
+    begin_options const& options,
+    api::transaction_handle& out,
+    std::string* transaction_id
+) {
+    sql::request::Request req{};
+    auto* opt = req.mutable_begin()->mutable_option();
+    switch(options.kind_) {
+        case begin_options::kind::occ: opt->set_type(sql::request::TransactionType::SHORT); break;
+        case begin_options::kind::ltx: opt->set_type(sql::request::TransactionType::LONG); break;
+        case begin_options::kind::rtx: opt->set_type(sql::request::TransactionType::READ_ONLY); break;
+    }
+    for(auto&& t : options.write_preserves_) {
+        opt->add_write_preserves()->set_table_name(t);
+    }
+    for(auto&& t : options.inclusive_read_areas_) {
+        opt->add_inclusive_read_areas()->set_table_name(t);
+    }
+    for(auto&& t : options.exclusive_read_areas_) {
+        opt->add_exclusive_read_areas()->set_table_name(t);
+    }
+    opt->set_priority(options.priority_);
+    opt->set_label(options.label_);
+    opt->set_modifies_definitions(options.modifies_definitions_);
+    auto payload = utils::serialize(req);
     std::shared_ptr<test_response> res{};
     if (auto ret = send(payload, res); ! ret) {
         return ret;
@@ -159,12 +177,21 @@ call_result service_client::begin(begin_options const& options, api::transaction
         return from_error(begin.error());
     }
     out = api::transaction_handle{begin.success().transaction_handle().handle()};
+    if (transaction_id != nullptr) {
+        *transaction_id = begin.success().transaction_id().id();
+    }
     return {};
 }
 
-call_result service_client::commit(api::transaction_handle tx) {
+call_result service_client::commit(api::transaction_handle tx, sql::request::CommitStatus status) {
+    sql::request::Request req{};
+    auto* cm = req.mutable_commit();
+    cm->mutable_transaction_handle()->set_handle(tx.surrogate_id());
+    auto* opt = cm->mutable_option();
+    opt->set_notification_type(status);
+    opt->set_auto_dispose(true);
     std::shared_ptr<test_response> res{};
-    if (auto ret = send(utils::encode_commit(tx, true), res); ! ret) {
+    if (auto ret = send(utils::serialize(req), res); ! ret) {
         return ret;
     }
     return decode_result_only(res->body_);
@@ -318,6 +345,54 @@ call_result service_client::explain(std::string_view sql, std::string& out) {
         return ret;
     }
     return decode_explain(res->body_, out);
+}
+
+}  // namespace jogasaki::common_cli
+
+namespace jogasaki::common_cli {
+
+call_result service_client::list_tables(std::vector<std::string>& out) {
+    std::shared_ptr<test_response> res{};
+    if (auto ret = send(utils::encode_list_tables(), res); ! ret) {
+        return ret;
+    }
+    sql::response::Response resp{};
+    if (! parse_response(res->body_, resp) || ! resp.has_list_tables()) {
+        return missing_response("list_tables");
+    }
+    auto& lt = resp.list_tables();
+    if (lt.has_error()) {
+        return from_error(lt.error());
+    }
+    out.clear();
+    for(auto&& n : lt.success().table_path_names()) {
+        std::string name{};
+        for(auto&& e : n.identifiers()) {
+            if (! name.empty()) {
+                name.append(".");
+            }
+            name.append(e.label());
+        }
+        out.emplace_back(std::move(name));
+    }
+    return {};
+}
+
+call_result service_client::describe_table(std::string_view name, executor::dto::describe_table& out) {
+    std::shared_ptr<test_response> res{};
+    if (auto ret = send(utils::encode_describe_table(name), res); ! ret) {
+        return ret;
+    }
+    sql::response::Response resp{};
+    if (! parse_response(res->body_, resp) || ! resp.has_describe_table()) {
+        return missing_response("describe_table");
+    }
+    auto& dt = resp.describe_table();
+    if (dt.has_error()) {
+        return from_error(dt.error());
+    }
+    out = executor::dto::from_proto(dt.success());
+    return {};
 }
 
 }  // namespace jogasaki::common_cli

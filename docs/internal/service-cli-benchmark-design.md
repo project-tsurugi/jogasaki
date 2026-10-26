@@ -189,10 +189,12 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
   - 影響するのは `--\wait T1` の直後に別のセッションへ文を送る書き方である。service_cliではT1の完了後に送られるが、tgsqlmuxでは完了を待たずに送られる
   - 順序が結果に影響する箇所をtgsqlmuxでも実行したい場合は、`--\wait` に加えて `--\sleep` を併用する
 - `--\sleep` はservice_cliでも残す。エポックの進行など時間の経過そのものが必要な場面があり (例: `issue849_snapshot_tombstone.sql` でOCCのCOMMITと次のLTXのBEGINの間に置かれた `--\sleep 1`)、これは `--\wait` では置き換えられない
+- service_cliは同一プロセス内で動くためtgsqlmuxより速く、既存のtgsqlmuxスクリプトが暗黙に頼っていた順序 (DDLなど短い処理は次のセッションに切り替わる前に終わっている) が崩れることがある (例: `issue1001-rtx-ss.sql` で、T0の `CREATE TABLE` の完了前にT1の `INSERT` が実行され `table_not_found` になる)
+  - セッション切り替え時に直前のセッションを猶予時間だけ待つ案も検討したが、tgsqlmuxと同じ動き (送り先セッションのみ待つ) を維持することとした。順序が必要な箇所にはスクリプト側で `--\wait` を書く
 - 実行結果に影響する拡張は `\xxx` 形式とし、tgsqlでは動かないことを許容する
   - `\prepare <name> [<var>:<型> ...] AS <SQL>;` で文をprepareする。型名はSQLの型名 (`INT`, `BIGINT`, `DOUBLE`, `VARCHAR`, `DECIMAL`, `DATE` など) で書く
   - `\execute <name> [<var>=<値> ...];` でprepare済みの文を実行する。`NULL` を指定できる
-- 表示切り替え (生のバイト列など) は `\set` で行う
+- 生のバイト列の表示は起動オプション `--raw` で切り替える (`\set` は実装しない)
 
 #### 出力とエラー
 

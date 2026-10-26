@@ -32,6 +32,40 @@
 namespace jogasaki::testing {
 namespace {
 using namespace dist;
+// Detect callback lookups before the configurable provider reacquires its shared mutex.
+class non_reentrant_storage final : public yugawara::storage::configurable_provider {
+public:
+    mutable bool callback_active{};
+    std::shared_ptr<yugawara::storage::relation const> find_relation(std::string_view name) const override {
+        if (callback_active) throw std::logic_error{"recursive provider lookup"};
+        return yugawara::storage::configurable_provider::find_relation(name);
+    }
+    void each_relation(relation_consumer_type consumer) const override {
+        yugawara::storage::configurable_provider::each_relation([&](auto name, auto const& relation) {
+            callback_active = true;
+            try { consumer(name, relation); } catch (...) { callback_active = false; throw; }
+            callback_active = false;
+        });
+    }
+};
+
+TEST(symbol_locations_test, uses_callback_relation_without_recursive_lookup) {
+    auto storage = std::make_shared<non_reentrant_storage>();
+    auto table = storage->add_table({"sales", {{"sale_number", takatori::type::int8{}}}});
+    auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
+    schemas->add(yugawara::schema::declaration{std::nullopt, "public", storage});
+    auto catalog = std::make_shared<yugawara::schema::catalog>("branch", std::nullopt, schemas);
+    auto snapshot = std::make_shared<remote_catalog_snapshot>(
+        remote_catalog_snapshot::catalogs_type{catalog},
+        remote_catalog_snapshot::locations_type{{table.get(), "worker"}});
+    auto registry = std::make_shared<location_registry>();
+    symbol_locations query{snapshot, registry};
+    auto locations = query.find(*table);
+    ASSERT_EQ(1U, locations.size());
+    EXPECT_EQ("worker", query.of(*locations.begin()).name);
+    EXPECT_FALSE(storage->callback_active);
+}
+
 TEST(symbol_locations_test, registry_ids_are_stable_and_unknown_ids_fail) {
     location_registry registry{};
     EXPECT_EQ(0, registry.of(0).id);

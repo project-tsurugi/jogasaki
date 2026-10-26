@@ -194,6 +194,15 @@ static void add_table_to_storage_list(
 ) {
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(relation);
     auto& table = secondary_or_primary_index.table();
+    if (auto const& catalogs = container->remote_catalogs(); catalogs && catalogs->remote_server(table)) {
+        if (actions != auth::action_set{auth::action_kind::select}) {
+            throw_exception(plan_exception(create_error_info(
+                error_code::unsupported_compiler_feature_exception,
+                "Writing remote tables is not supported.", status::err_unsupported)));
+        }
+        // Remote declarations have no physical storage entry on the coordinator.
+        return;
+    }
     if(auto v = global::storage_manager()->find_by_name(table.simple_name()); v.has_value()) {
         // ideally preserve() should be called for the storages/actions list, but currently this function is called from
         // many places and storage count is not calculated
@@ -342,8 +351,8 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     compiled_info info, compiler_context &ctx
 ) {
-     (void)ctx;  // unused parameter
     auto container = std::make_shared<mirror_container>();
+    container->remote_catalogs(ctx.remote_catalogs());
     switch(statement->kind()) {
         case statement::statement_kind::execute:
             container->work_level().set_minimum(statement_work_level_kind::key_operation);
@@ -637,7 +646,6 @@ static status create_prepared_statement(
     auto [mirror_status, mirror] = preprocess_mirror(s, provider, info, ctx);
     if (mirror_status != status::ok) { return mirror_status; }
     mirror->process_locations(std::move(locations));
-    mirror->remote_catalogs(ctx.remote_catalogs());
     check_blob_relay_availability(*s, info);
     out = std::make_shared<plan::prepared_statement>(
         s,

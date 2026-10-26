@@ -25,6 +25,8 @@
 
 #include <jogasaki/api/api_test_base.h>
 #include <jogasaki/api/impl/request_context_factory.h>
+#include <jogasaki/api/impl/executable_statement.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/record.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_iterator.h>
@@ -34,6 +36,7 @@
 #include <jogasaki/dist/remote_execution_result.h>
 #include <jogasaki/executor/common/foreign_catalog_statement.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/plan/mirror_container.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/runner.h>
@@ -138,6 +141,47 @@ TEST_F(remote_catalog_sql_test, executable_keeps_catalog_and_routing_after_drop)
     EXPECT_NE(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", later));
 }
 
+TEST_F(remote_catalog_sql_test, prepared_statement_resolves_with_original_snapshot_after_drop) {
+    auto manager = db_impl()->remote_catalogs_manager();
+    ASSERT_TRUE(manager);
+    std::weak_ptr<dist::remote_catalog_snapshot const> original = manager->snapshot();
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", prepared));
+    ASSERT_EQ(status::ok, manager->drop("worker_a"));
+    EXPECT_FALSE(manager->find_catalog("worker_a"));
+    ASSERT_FALSE(original.expired());
+    EXPECT_EQ(0, a_.calls);
+
+    std::unique_ptr<api::executable_statement> statement{};
+    ASSERT_EQ(status::ok, db_->resolve(prepared, std::shared_ptr{api::create_parameter_set()}, statement));
+    ASSERT_TRUE(statement);
+    EXPECT_EQ(0U, api::impl::get_impl(*statement).body()->mirrors()->mutable_storage_operation().storages().size());
+    EXPECT_EQ(0, a_.calls);
+    EXPECT_EQ(original.lock(), api::impl::get_impl(*statement).body()->mirrors()->remote_catalogs());
+    EXPECT_NE(manager->snapshot(), api::impl::get_impl(*statement).body()->mirrors()->remote_catalogs());
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    ASSERT_FALSE(original.expired());
+
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::unique_ptr<api::result_set> results{};
+    std::shared_ptr<error::error_info> error{};
+    std::shared_ptr<request_statistics> statistics{};
+    ASSERT_EQ(status::ok, executor::execute(*db_impl(), api::get_transaction_context(*tx),
+        *statement, results, error, statistics, request_info{}));
+    ASSERT_TRUE(results);
+    auto iterator = results->iterator();
+    ASSERT_TRUE(iterator->has_next());
+    EXPECT_EQ(101, iterator->next()->get_int8(0));
+    EXPECT_FALSE(iterator->has_next());
+    results->close();
+    ASSERT_EQ(status::ok, tx->commit());
+    EXPECT_EQ(1, a_.calls);
+    EXPECT_EQ(0, b_.calls);
+
+    api::statement_handle later{};
+    EXPECT_NE(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", later));
+}
+
 TEST_F(remote_catalog_sql_test, occ_remote_failure_completes_graph) {
     auto tx = utils::create_transaction(*db_);
     status result{};
@@ -151,6 +195,12 @@ TEST_F(remote_catalog_sql_test, host_variables_are_rejected_before_rpc) {
     EXPECT_EQ(status::err_unsupported, db_->prepare("SELECT C0 FROM schema_a.T WHERE C0 = :key", variables, statement));
     EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
 }
+TEST_F(remote_catalog_sql_test, remote_write_is_rejected_before_rpc) {
+    api::statement_handle statement{};
+    EXPECT_NE(status::ok, db_->prepare("INSERT INTO schema_a.T(C0) VALUES(999)", statement));
+    EXPECT_EQ(0, a_.calls);
+    EXPECT_EQ(0, b_.calls);
+}
 TEST_F(remote_catalog_sql_test, qualified_same_table_names_select_distinct_workers) {
     EXPECT_EQ(101, query("SELECT C0 FROM schema_a.T"));
     EXPECT_EQ(202, query("SELECT C0 FROM schema_b.T"));
@@ -158,6 +208,9 @@ TEST_F(remote_catalog_sql_test, qualified_same_table_names_select_distinct_worke
 }
 TEST_F(remote_catalog_sql_test, local_collision_wins_and_qualified_remote_remains_available) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)"); execute_statement("INSERT INTO T VALUES(303)");
+    std::unique_ptr<api::executable_statement> remote{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM schema_b.T", remote));
+    EXPECT_EQ(0U, api::impl::get_impl(*remote).body()->mirrors()->mutable_storage_operation().storages().size());
     EXPECT_EQ(303, query("SELECT C0 FROM T")); EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
     EXPECT_EQ(202, query("SELECT C0 FROM schema_b.T")); EXPECT_EQ(1, b_.calls);
 }

@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -47,6 +48,7 @@
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/utils/finally.h>
 
 namespace jogasaki::dist {
 
@@ -398,6 +400,9 @@ using owners_type = std::vector<std::optional<std::size_t>>;
     if (auto error = validate_functions(
             schema.functions, info.functions,
             [](remote_catalog_information::function const& f) -> std::string {
+                if (f.remote_definition_id == yugawara::function::declaration::unresolved_definition_id) {
+                    return "unresolved remote definition ID";
+                }
                 auto tvf = table_valued(f.features);
                 if (!tvf) {
                     return "invalid function features";
@@ -410,7 +415,10 @@ using owners_type = std::vector<std::optional<std::size_t>>;
     }
     if (auto error = validate_functions(
             schema.aggregate_functions, info.aggregate_functions,
-            [](remote_catalog_information::aggregate_function const& f) {
+            [](remote_catalog_information::aggregate_function const& f) -> std::string {
+                if (f.remote_definition_id == yugawara::aggregate::declaration::unresolved_definition_id) {
+                    return "unresolved remote definition ID";
+                }
                 return validate_return_type(f.return_type, false);
             },
             "aggregate function");
@@ -629,6 +637,14 @@ status remote_catalog_manager::create(remote_catalog_reference const& reference,
 status remote_catalog_manager::create(remote_catalog_reference const& reference,
                                       remote_server_channel_manager const& channel_manager, std::string& diagnostic) {
     diagnostic.clear();
+    bool name_reserved = false;
+    // Construct the guard before reserving: even formatting a failure diagnostic may throw.
+    utils::finally release_name{[this, &reference, &name_reserved] {
+        if (name_reserved) {
+            std::scoped_lock lock{mutex_};
+            creating_.erase(reference.catalog_name);
+        }
+    }};
     {
         std::scoped_lock lock{mutex_};
         if (state_ != state::available) {
@@ -654,6 +670,7 @@ status remote_catalog_manager::create(remote_catalog_reference const& reference,
         }
         // reserves the name so that concurrent create() of the same name fails without RPC
         creating_.emplace(reference.catalog_name);
+        name_reserved = true;
     }
     auto started = std::chrono::steady_clock::now();
     status st = status::ok;
@@ -697,6 +714,7 @@ status remote_catalog_manager::create(remote_catalog_reference const& reference,
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
     std::scoped_lock lock{mutex_};
     creating_.erase(reference.catalog_name);
+    name_reserved = false;
     if (st == status::ok && state_ != state::available) {
         diagnostic = "remote catalog manager stopped during create";
         st = status::err_invalid_state;

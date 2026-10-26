@@ -19,6 +19,8 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <new>
+#include <stdexcept>
 #include <limits>
 #include <set>
 #include <thread>
@@ -706,6 +708,175 @@ TEST_F(remote_catalog_manager_test, dropped_snapshot_preserves_placement_and_def
     EXPECT_EQ(41U, table_id->remote_definition_id);
     EXPECT_EQ(remote_declaration_kind::index, index_id->kind);
     EXPECT_EQ(42U, index_id->remote_definition_id);
+}
+
+
+TEST_F(remote_catalog_manager_test, zero_storage_ids_and_all_index_feature_combinations_are_preserved) {
+    using feature = yugawara::storage::index_feature;
+    std::vector<feature> const values{feature::primary, feature::find, feature::scan,
+        feature::unique, feature::unique_constraint};
+    fetcher->info.tables[0].remote_definition_id = 0;
+    fetcher->info.indices[0].remote_definition_id = 0;
+    for (std::size_t mask = 0; mask < (std::size_t{1} << values.size()); ++mask) {
+        SCOPED_TRACE(mask);
+        yugawara::storage::index_feature_set features{};
+        for (std::size_t bit = 0; bit < values.size(); ++bit) {
+            if ((mask & (std::size_t{1} << bit)) != 0) features.insert(values[bit]);
+        }
+        fetcher->info.indices[0].features = features;
+        ASSERT_EQ(status::ok, manager.create({"remote", "worker"}, channels, diagnostic)) << diagnostic;
+        auto snapshot = manager.snapshot();
+        auto schema = manager.find_catalog("remote")->schema_provider().find("public");
+        auto table = schema->storage_provider().find_table("t");
+        auto index = schema->storage_provider().find_index("pk");
+        ASSERT_TRUE(table); ASSERT_TRUE(index);
+        EXPECT_EQ(features, index->features());
+        ASSERT_TRUE(snapshot->remote_definition(*table));
+        ASSERT_TRUE(snapshot->remote_definition(*index));
+        EXPECT_EQ(0U, snapshot->remote_definition(*table)->remote_definition_id);
+        EXPECT_EQ(0U, snapshot->remote_definition(*index)->remote_definition_id);
+        ASSERT_EQ(status::ok, manager.drop("remote"));
+    }
+}
+
+TEST_F(remote_catalog_manager_test, create_command_condition_matrix_checks_server_before_catalog) {
+    for (bool existing : {false, true}) {
+        for (bool server : {false, true}) {
+            for (bool if_catalog_not_exists : {false, true}) {
+                for (bool if_server_exists : {false, true}) {
+                    SCOPED_TRACE(::testing::Message{} << existing << server
+                        << if_catalog_not_exists << if_server_exists);
+                    remote_catalog_manager catalogs{fetcher};
+                    ASSERT_EQ(status::ok, catalogs.start());
+                    if (existing) ASSERT_EQ(status::ok, catalogs.create({"remote", "worker"}, channels));
+                    auto before = catalogs.snapshot();
+                    auto calls = fetcher->calls.load();
+                    auto expected = !server ? (if_server_exists ? status::ok : status::err_not_found)
+                        : existing ? (if_catalog_not_exists ? status::ok : status::err_already_exists)
+                        : status::ok;
+                    EXPECT_EQ(expected, execute_create_foreign_catalog(
+                        {{"remote", server ? "worker" : "missing"}, if_catalog_not_exists, if_server_exists},
+                        catalogs, channels, diagnostic));
+                    bool created = server && !existing;
+                    EXPECT_EQ(calls + (created ? 1U : 0U), fetcher->calls.load());
+                    EXPECT_EQ(existing || created, static_cast<bool>(catalogs.find_catalog("remote")));
+                    if (!created) EXPECT_EQ(before, catalogs.snapshot());
+                    EXPECT_EQ(expected == status::ok, diagnostic.empty());
+                }
+            }
+        }
+    }
+}
+
+TEST_F(remote_catalog_manager_test, reference_names_are_checked_before_conditional_skip) {
+    std::vector<std::string> invalid{"", "__reserved", std::string{"bad\0name", 8},
+        std::string(1, static_cast<char>(0xFF))};
+    auto before = manager.snapshot();
+    for (auto const& name : invalid) {
+        EXPECT_FALSE(valid_remote_catalog_identifier(name));
+        for (auto const& reference : {remote_catalog_reference{name, "worker"},
+                                     remote_catalog_reference{"remote", name}}) {
+            EXPECT_EQ(status::err_invalid_argument, manager.create(reference, channels, diagnostic));
+            EXPECT_EQ(status::err_invalid_argument,
+                execute_create_foreign_catalog({reference, true, true}, manager, channels, diagnostic));
+            EXPECT_EQ(before, manager.snapshot());
+            EXPECT_FALSE(diagnostic.empty());
+        }
+    }
+    EXPECT_EQ(0U, fetcher->calls.load());
+    EXPECT_EQ(status::err_invalid_argument,
+        execute_create_foreign_catalog({{"remote", "local"}, true, true}, manager, channels, diagnostic));
+    EXPECT_EQ(before, manager.snapshot());
+    EXPECT_EQ(0U, fetcher->calls.load());
+    // Reference identifiers preserve quoted-identifier spelling instead of imposing an ASCII token grammar.
+    for (auto const& name : {std::string{"remote catalog"}, std::string{"販売"}}) {
+        EXPECT_TRUE(valid_remote_catalog_identifier(name));
+        ASSERT_EQ(status::ok, manager.create({name, "worker"}, channels, diagnostic)) << diagnostic;
+        EXPECT_TRUE(manager.find_catalog(name));
+        EXPECT_EQ(status::ok, execute_drop_foreign_catalog({name, false}, manager, diagnostic));
+    }
+}
+
+
+TEST_F(remote_catalog_manager_test, unavailable_manager_does_not_turn_conditional_commands_into_success) {
+    ASSERT_EQ(status::ok, manager.stop());
+    EXPECT_EQ(status::err_invalid_state,
+        execute_create_foreign_catalog({{"remote", "missing"}, true, true}, manager, channels, diagnostic));
+    EXPECT_FALSE(diagnostic.empty());
+    EXPECT_EQ(status::err_invalid_state, execute_drop_foreign_catalog({"missing", true}, manager, diagnostic));
+    EXPECT_FALSE(diagnostic.empty());
+    EXPECT_EQ(0U, fetcher->calls.load());
+}
+
+
+TEST_F(remote_catalog_manager_test, unresolved_function_ids_reject_whole_catalog_and_keep_id_reservations) {
+    add_functions(fetcher->info);
+    // is_defined() excludes only the unresolved marker, not system/builtin ID partitions.
+    fetcher->info.functions[0].remote_definition_id = 1;
+    fetcher->info.aggregate_functions[0].remote_definition_id = 1;
+    auto valid = fetcher->info;
+    ASSERT_EQ(status::ok, manager.create({"existing", "worker"}, channels, diagnostic)) << diagnostic;
+    ASSERT_EQ(2U, ids->reserved_count());
+    for (bool aggregate : {false, true}) {
+        SCOPED_TRACE(aggregate);
+        auto before = manager.snapshot();
+        fetcher->info = valid;
+        if (aggregate) {
+            auto invalid = valid.aggregate_functions[0];
+            invalid.name = "unresolved";
+            invalid.remote_definition_id = yugawara::aggregate::declaration::unresolved_definition_id;
+            fetcher->info.aggregate_functions.push_back(invalid);
+            fetcher->info.schemas[0].aggregate_functions.push_back(valid.aggregate_functions.size());
+        } else {
+            auto invalid = valid.functions[0];
+            invalid.name = "unresolved";
+            invalid.remote_definition_id = yugawara::function::declaration::unresolved_definition_id;
+            fetcher->info.functions.push_back(invalid);
+            fetcher->info.schemas[0].functions.push_back(valid.functions.size());
+        }
+        EXPECT_EQ(status::err_unknown, manager.create({"candidate", "worker"}, channels, diagnostic));
+        EXPECT_NE(std::string::npos, diagnostic.find(aggregate
+            ? "unresolved remote definition ID of aggregate function: unresolved"
+            : "unresolved remote definition ID of function: unresolved"));
+        EXPECT_EQ(before, manager.snapshot());
+        EXPECT_FALSE(manager.find_catalog("candidate"));
+        EXPECT_EQ(2U, ids->reserved_count());
+        fetcher->info = valid;
+        ASSERT_EQ(status::ok, manager.create({"candidate", "worker"}, channels, diagnostic)) << diagnostic;
+        EXPECT_EQ(4U, ids->reserved_count());
+        ASSERT_EQ(status::ok, manager.drop("candidate"));
+        EXPECT_EQ(2U, ids->reserved_count());
+    }
+}
+
+
+TEST_F(remote_catalog_manager_test, fetch_exceptions_preserve_publication_and_release_the_name) {
+    ASSERT_EQ(status::ok, manager.create({"existing", "worker"}, channels, diagnostic));
+    auto existing = manager.find_catalog("existing");
+    std::vector<std::function<void()>> exceptions{
+        [] { throw std::runtime_error{"fetch failed"}; },
+        [] { throw std::bad_alloc{}; },
+        [] { throw 1; },
+    };
+    // Covers successful diagnostic formatting only; allocation failure inside the catch and partial ID insertion
+    // are verified by code review, not injected here.
+    for (std::size_t i = 0; i < exceptions.size(); ++i) {
+        SCOPED_TRACE(i);
+        auto before = manager.snapshot();
+        fetcher->before_fetch = exceptions[i];
+        EXPECT_EQ(status::err_unknown, manager.create({"candidate", "worker"}, channels, diagnostic));
+        EXPECT_EQ(before, manager.snapshot());
+        EXPECT_EQ(existing, manager.find_catalog("existing"));
+        EXPECT_FALSE(manager.find_catalog("candidate"));
+        if (i < 2) {
+            EXPECT_EQ(0U, diagnostic.find("remote catalog construction failed: "));
+        } else {
+            EXPECT_EQ("remote catalog construction threw an unknown exception", diagnostic);
+        }
+        fetcher->before_fetch = {};
+        ASSERT_EQ(status::ok, manager.create({"candidate", "worker"}, channels, diagnostic)) << diagnostic;
+        ASSERT_EQ(status::ok, manager.drop("candidate"));
+    }
 }
 
 } // namespace jogasaki::testing

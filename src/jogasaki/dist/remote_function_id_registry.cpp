@@ -77,7 +77,6 @@ status remote_function_id_registry::reserve(std::size_t functions, std::size_t a
         // a lease could not release its IDs without a shared owner
         return status::err_invalid_state;
     }
-    // declared before the lock: if reservation throws, the lease releases its IDs after the lock is gone
     std::shared_ptr<remote_function_id_lease> lease{};
     {
         std::vector<definition_id_type> function_ids{};
@@ -87,9 +86,20 @@ status remote_function_id_registry::reserve(std::size_t functions, std::size_t a
             !allocate(aggregate_functions_, aggregate_functions, aggregate_ids)) {
             return status::err_resource_limit_reached;
         }
-        lease = std::make_shared<remote_function_id_lease>(owner, function_ids, aggregate_ids);
-        functions_.reserved.insert(function_ids.begin(), function_ids.end());
-        aggregate_functions_.reserved.insert(aggregate_ids.begin(), aggregate_ids.end());
+        try {
+            functions_.reserved.insert(function_ids.begin(), function_ids.end());
+            aggregate_functions_.reserved.insert(aggregate_ids.begin(), aggregate_ids.end());
+            lease = std::make_shared<remote_function_id_lease>(owner, function_ids, aggregate_ids);
+        } catch (...) {
+            // Roll back before unlocking, so another reservation cannot acquire these IDs first.
+            for (auto id : function_ids) {
+                functions_.reserved.erase(id);
+            }
+            for (auto id : aggregate_ids) {
+                aggregate_functions_.reserved.erase(id);
+            }
+            throw;
+        }
     }
     // assigned outside the lock: a lease previously held by out may release into this registry
     out = std::move(lease);

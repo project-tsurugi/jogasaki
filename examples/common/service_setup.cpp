@@ -155,12 +155,11 @@ bool setup_builtin_tables(api::database& db) {
     }
     if (FLAGS_prepare_data > 0) {
         auto& db_impl = unsafe_downcast<api::impl::database&>(db);
-        static constexpr std::size_t mod = 100;
         for(auto&& name : {
             "T0", "T1", "T2",
             "WAREHOUSE", "DISTRICT", "CUSTOMER", "NEW_ORDER", "ORDERS", "ORDER_LINE", "ITEM", "STOCK", "HISTORY"
         }) {
-            utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), name, FLAGS_prepare_data, true, mod);
+            utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), name, FLAGS_prepare_data, true, prepared_data_modulo);
         }
     }
     return true;

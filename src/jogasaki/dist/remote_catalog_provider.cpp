@@ -86,12 +86,15 @@ std::string remote_catalog_snapshot::validation_error(std::vector<remote_server_
         }
         std::unordered_set<std::string> schemas{};
         catalog->schema_provider().each([&](auto const& schema) {
+            if (!error.empty()) return;
             if (!schema || schema->name().empty() || !schemas.emplace(schema->name()).second) {
                 error = "invalid or duplicate remote schema";
                 return;
             }
-            schema->storage_provider().each_relation([&](auto id, auto const&) {
-                auto table = schema->storage_provider().find_table(id);
+            schema->storage_provider().each_relation([&](auto, auto const& relation) {
+                if (!error.empty()) return;
+                // Use the callback relation; a provider lookup would reacquire its lock.
+                auto table = std::dynamic_pointer_cast<yugawara::storage::table const>(relation);
                 if (!table) {
                     error = "unsupported remote catalog relation";
                     return;
@@ -103,9 +106,7 @@ std::string remote_catalog_snapshot::validation_error(std::vector<remote_server_
                 }
             });
         });
-    }
-    if (!error.empty()) {
-        return error;
+        if (!error.empty()) return error;
     }
     for (auto const& entry : locations_) {
         if (owned.count(entry.first) == 0) {

@@ -16,6 +16,16 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
+#include <optional>
+#include <utility>
+#include <takatori/util/reference_vector.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/schema/configurable_provider.h>
+#include <yugawara/schema/declaration.h>
+#include <yugawara/storage/configurable_provider.h>
+
 #include <unistd.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
@@ -280,6 +290,73 @@ TEST_F(remote_catalog_provider_test, reserved_local_server_is_rejected_without_c
     EXPECT_EQ(status::ok, manager.start({
         {"worker", "dns:///localhost:12345", false, dist::root_certificate_source::none, {}}}));
     EXPECT_TRUE(manager.find_channel("worker"));
+}
+
+
+
+namespace {
+class validation_storage final : public yugawara::storage::configurable_provider {
+public:
+    mutable bool callback_active{};
+    std::shared_ptr<yugawara::storage::relation const> find_relation(std::string_view name) const override {
+        if (callback_active) throw std::logic_error{"recursive provider lookup"};
+        return yugawara::storage::configurable_provider::find_relation(name);
+    }
+    void each_relation(relation_consumer_type consumer) const override {
+        yugawara::storage::configurable_provider::each_relation([&](auto name, auto const& relation) {
+            callback_active = true;
+            try { consumer(name, relation); } catch (...) { callback_active = false; throw; }
+            callback_active = false;
+        });
+    }
+};
+
+std::shared_ptr<remote_catalog_snapshot> validation_snapshot(
+    std::shared_ptr<validation_storage> const& storage,
+    remote_catalog_snapshot::locations_type locations) {
+    auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
+    schemas->add(yugawara::schema::declaration{std::nullopt, "public", storage});
+    auto catalog = std::make_shared<yugawara::schema::catalog>("branch", std::nullopt, schemas);
+    return std::make_shared<remote_catalog_snapshot>(
+        remote_catalog_snapshot::catalogs_type{catalog}, std::move(locations));
+}
+} // namespace
+
+TEST_F(remote_catalog_provider_test, validates_callback_relation_without_recursive_lookup) {
+    auto storage = std::make_shared<validation_storage>();
+    auto table = std::make_shared<yugawara::storage::table>("sales",
+        takatori::util::reference_vector<yugawara::storage::column>{});
+    storage->add_table(table);
+    auto snapshot = validation_snapshot(storage, {{table.get(), "worker"}});
+    EXPECT_TRUE(snapshot->validation_error(servers).empty());
+    supplied_provider provider{};
+    provider.snapshot = snapshot;
+    ASSERT_EQ(status::ok, load_remote_catalogs({remote_catalog_source::rpc, {}}, servers,
+        result, diagnostic, &provider)) << diagnostic;
+    EXPECT_EQ(snapshot, result);
+    ASSERT_NE(nullptr, result->remote_server(*table));
+    EXPECT_EQ("worker", *result->remote_server(*table));
+}
+
+TEST_F(remote_catalog_provider_test, validation_rejects_missing_unknown_and_unowned_placements_without_fixture) {
+    auto storage = std::make_shared<validation_storage>();
+    auto table = std::make_shared<yugawara::storage::table>("sales",
+        takatori::util::reference_vector<yugawara::storage::column>{});
+    storage->add_table(table);
+    auto foreign = std::make_shared<yugawara::storage::table>("foreign",
+        takatori::util::reference_vector<yugawara::storage::column>{});
+    std::vector<remote_catalog_snapshot::locations_type> invalid{
+        {}, {{table.get(), "unknown"}}, {{table.get(), "worker"}, {foreign.get(), "worker"}}};
+    for (std::size_t i = 0; i < invalid.size(); ++i) {
+        supplied_provider provider{};
+        provider.snapshot = validation_snapshot(storage, invalid[i]);
+        result = std::make_shared<remote_catalog_snapshot>();
+        EXPECT_EQ(status::err_invalid_argument, load_remote_catalogs({remote_catalog_source::rpc, {}},
+            servers, result, diagnostic, &provider));
+        EXPECT_FALSE(result);
+        EXPECT_EQ(i == 2 ? "remote placement refers to an unowned table"
+                         : "missing or unknown remote table placement", diagnostic);
+    }
 }
 
 } // namespace jogasaki::testing

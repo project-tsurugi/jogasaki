@@ -89,4 +89,10 @@ private:
  */
 bool setup_builtin_tables(api::database& db);
 
+/**
+ * @brief modulo used to generate values for `--prepare_data`
+ * @details key columns of the populated records have values in [0, prepared_data_modulo)
+ */
+constexpr std::size_t prepared_data_modulo = 100;
+
 }  // namespace jogasaki::common_cli

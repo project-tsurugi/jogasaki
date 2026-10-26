@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <atomic>
 #include <boost/thread/latch.hpp>
 #include <chrono>
@@ -486,7 +487,13 @@ public:
                 auto mod = profile_.stock_item_id_max_ > profile_.stock_item_id_min_ ?
                     profile_.stock_item_id_max_ - profile_.stock_item_id_min_ : 1;
                 std::int64_t id = profile_.stock_item_id_min_ + seed.rnd_() % mod;
-                std::int64_t w_id = FLAGS_prepare_data ? id : (client_index+1);
+                std::int64_t w_id = client_index+1;
+                if (FLAGS_prepare_data) {
+                    // populated records have the same values for s_w_id and s_i_id within the modulo
+                    auto n = std::min(static_cast<std::size_t>(FLAGS_prepare_data), jogasaki::common_cli::prepared_data_modulo);
+                    id = static_cast<std::int64_t>(seed.rnd_() % n);
+                    w_id = id;
+                }
                 res = issue_common(client, stmt, false,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{

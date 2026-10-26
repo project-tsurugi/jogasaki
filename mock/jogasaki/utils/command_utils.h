@@ -414,7 +414,7 @@ inline void fill_parameters(
         c0->set_name(p.name_);
         if (! p.value_.has_value()) {
             // null value
-            return;
+            continue;
         }
         using ValueCase = sql::request::Parameter::ValueCase;
         switch (p.type_) {

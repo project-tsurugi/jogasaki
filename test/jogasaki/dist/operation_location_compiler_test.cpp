@@ -55,6 +55,7 @@
 #include <jogasaki/model/step_kind.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/storage/storage_manager.h>
 
 namespace jogasaki::testing {
 
@@ -134,10 +135,15 @@ protected:
         unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
         previous_ = global::config_pool();
         coordinator(true);
+        previous_storage_ = global::storage_manager();
+        auto manager = std::make_shared<storage::storage_manager>();
+        ASSERT_TRUE(manager->add_entry(1, "T0"));
+        global::storage_manager(std::move(manager));
         ctx_.storage_provider(tables());
     }
 
     void TearDown() override {
+        if (previous_storage_) global::storage_manager(previous_storage_);
         if (previous_) global::config_pool(previous_);
     }
 
@@ -200,8 +206,36 @@ protected:
     }
 
     takatori::util::maybe_shared_ptr<configuration> previous_{};
+    std::shared_ptr<storage::storage_manager> previous_storage_{};
     plan::compiler_context ctx_{};
 };
+
+TEST_F(operation_location_compiler_test, missing_local_storage_is_not_treated_as_remote) {
+    global::storage_manager()->clear();
+    EXPECT_EQ(status::err_not_found, plan::prepare("SELECT C0 FROM T0", ctx_));
+    ASSERT_TRUE(ctx_.error_info());
+    EXPECT_EQ(error_code::target_not_found_exception, ctx_.error_info()->code());
+}
+
+TEST_F(operation_location_compiler_test, remote_writes_do_not_use_same_named_local_storage) {
+    auto remote = tables();
+    auto table = remote->find_table("T0");
+    auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
+    schemas->add(yugawara::schema::declaration{std::nullopt, "public", remote});
+    auto catalog = std::make_shared<yugawara::schema::catalog>("branch", std::nullopt, schemas);
+    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
+        dist::remote_catalog_snapshot::catalogs_type{catalog},
+        dist::remote_catalog_snapshot::locations_type{{table.get(), "worker"}});
+    ASSERT_TRUE(global::storage_manager()->find_by_name("T0").has_value());
+    for (auto sql : {"INSERT INTO T0(C0) VALUES(999)", "UPDATE T0 SET C1=1.0 WHERE C0=999", "DELETE FROM T0 WHERE C0=999"}) {
+        plan::compiler_context ctx{};
+        ctx.storage_provider(remote);
+        ctx.remote_catalogs(snapshot);
+        EXPECT_EQ(status::err_unsupported, plan::prepare(sql, ctx)) << sql;
+        ASSERT_TRUE(ctx.error_info());
+        EXPECT_EQ(error_code::unsupported_compiler_feature_exception, ctx.error_info()->code()) << sql;
+    }
+}
 
 TEST_F(operation_location_compiler_test, location_lookup_precedes_statement_ownership_transfer) {
     auto observed = std::make_shared<probe>();

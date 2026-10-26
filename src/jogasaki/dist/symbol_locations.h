@@ -108,8 +108,9 @@ public:
         for (auto const& catalog : snapshot_->catalogs()) {
             catalog->schema_provider().each([&](auto const& schema) {
                 auto const& provider = schema->storage_provider();
-                provider.each_relation([&](std::string_view name, auto const&) {
-                    auto table = provider.find_table(name);
+                provider.each_relation([&](auto, auto const& relation) {
+                    // Reuse the enumerated relation instead of reacquiring the provider lock.
+                    auto table = std::dynamic_pointer_cast<yugawara::storage::table const>(relation);
                     if (!table) {
                         throw std::invalid_argument("unsupported remote relation");
                     }

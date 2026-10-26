@@ -15,6 +15,7 @@
  */
 #include "storage_data.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
@@ -98,6 +99,19 @@ value create_value(
         return {};
     }
     return data::value{std::in_place_type<T>, val};
+}
+
+// fit the generated value length to the column definition - fixed length for CHAR(n)/BINARY(n), and
+// at most n for VARCHAR(n)/VARBINARY(n)
+template <class Option>
+std::size_t fit_length(Option const& opt, std::size_t len) {
+    if (! opt.length_.has_value()) {
+        return len;
+    }
+    if (! opt.varying_) {
+        return *opt.length_;
+    }
+    return std::min(len, *opt.length_);
 }
 
 template <>
@@ -241,13 +255,15 @@ static void fill_fields(
                 break;
             }
             case kind::character: {
-                data::value a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, len)};
-                encode_field(a, meta::field_type(std::make_shared<meta::character_field_option>()), spec, nullable, target);
+                auto l = fit_length(*f.option_unsafe<kind::character>(), len);
+                data::value a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, l)};
+                encode_field(a, f, spec, nullable, target);
                 break;
             }
             case kind::octet: {
-                data::value a{create_value<runtime_t<meta::field_type_kind::octet>>(val, record_count, nullable, len)};
-                encode_field(a, meta::field_type(std::make_shared<meta::octet_field_option>()), spec, nullable, target);
+                auto l = fit_length(*f.option_unsafe<kind::octet>(), len);
+                data::value a{create_value<runtime_t<meta::field_type_kind::octet>>(val, record_count, nullable, l)};
+                encode_field(a, f, spec, nullable, target);
                 break;
             }
             case kind::date: {

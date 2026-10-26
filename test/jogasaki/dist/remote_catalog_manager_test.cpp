@@ -40,6 +40,7 @@
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/provider.h>
 
+#include <jogasaki/utils/finally.h>
 #include <jogasaki/dist/remote_catalog_command.h>
 #include <jogasaki/dist/remote_catalog_information.h>
 #include <jogasaki/dist/remote_catalog_manager.h>
@@ -565,6 +566,146 @@ TEST(remote_function_id_registry_test, concurrent_reservations_are_unique_and_re
     ASSERT_EQ(status::ok, ids->reserve(1, 1, replacement));
     EXPECT_EQ(100, replacement->functions().front());
     EXPECT_EQ(100, replacement->aggregate_functions().front());
+}
+
+
+
+TEST_F(remote_catalog_manager_test, malformed_table_index_and_schema_metadata_preserves_published_snapshot) {
+    ASSERT_EQ(status::ok, manager.create({"existing", "worker"}, channels));
+    auto existing = manager.find_catalog("existing");
+    add_functions(fetcher->info);
+    auto const valid = fetcher->info;
+    struct invalid_case {
+        char const* name;
+        char const* diagnostic;
+        std::function<void(remote_catalog_information&)> edit;
+    };
+    auto second_table = [](remote_catalog_information& info) {
+        info.tables.push_back({51, "other", {1}});
+        info.columns.push_back({"other_column", int8_type(), false});
+        info.schemas[0].tables.push_back(1);
+    };
+    std::vector<invalid_case> cases{
+        {"foreign column", "index column is not in its table", [=](auto& i) {
+            second_table(i); i.indices[0].keys[0].column = 1;
+        }},
+        {"foreign schema", "index table is in another schema", [=](auto& i) {
+            second_table(i); i.schemas[0].tables.pop_back();
+            i.schemas.push_back({"other_schema", {1}, {}}); i.indices[0].table = 1;
+            i.indices[0].keys[0].column = 1;
+        }},
+        {"duplicate table name", "duplicate table name", [=](auto& i) {
+            second_table(i); i.tables[1].name = i.tables[0].name;
+        }},
+        {"duplicate index name", "duplicate index name", [](auto& i) {
+            i.indices.push_back(i.indices[0]); i.schemas[0].indices.push_back(1);
+        }},
+        {"no columns", "table has no columns", [](auto& i) {
+            i.tables[0].columns.clear(); i.columns.clear(); i.indices.clear(); i.schemas[0].indices.clear();
+        }},
+        {"unsupported column type", "unsupported column type", [](auto& i) {
+            i.columns[0].type = std::make_shared<takatori::type::table>(
+                std::vector<takatori::type::table::column_type>{});
+        }},
+        {"multiple table owners", "table referenced by multiple owners", [](auto& i) {
+            i.schemas.push_back({"other_schema", {0}, {}});
+        }},
+        {"duplicate owner reference", "table referenced twice by one owner", [](auto& i) {
+            i.schemas[0].tables.push_back(0);
+        }},
+        {"orphan table", "orphan table", [](auto& i) { i.schemas[0].tables.clear(); }},
+        {"orphan index", "orphan index", [](auto& i) { i.schemas[0].indices.clear(); }},
+        {"orphan column", "orphan column", [](auto& i) {
+            i.columns.push_back({"unowned", int8_type(), false});
+        }},
+        {"multiple column owners", "column referenced by multiple owners", [](auto& i) {
+            i.tables.push_back({51, "other", {0}}); i.schemas[0].tables.push_back(1);
+        }},
+        {"duplicate column owner reference", "column referenced twice by one owner", [](auto& i) {
+            i.tables[0].columns.push_back(0);
+        }},
+        {"empty name", "invalid table name", [](auto& i) { i.tables[0].name.clear(); }},
+        {"invalid UTF-8", "invalid table name", [](auto& i) { i.tables[0].name = std::string(1, static_cast<char>(0xFF)); }},
+        {"embedded NUL", "invalid table name", [](auto& i) { i.tables[0].name = std::string{"bad\0name", 8}; }},
+        {"duplicate schema name", "duplicate schema name", [](auto& i) {
+            i.schemas.push_back({"public", {}, {}});
+        }},
+    };
+    for (auto const& entry : cases) {
+        SCOPED_TRACE(entry.name);
+        auto before = manager.snapshot();
+        fetcher->info = valid;
+        entry.edit(fetcher->info);
+        EXPECT_EQ(status::err_unknown, manager.create({"invalid", "worker"}, channels, diagnostic));
+        EXPECT_NE(std::string::npos, diagnostic.find(entry.diagnostic)) << diagnostic;
+        EXPECT_EQ(before, manager.snapshot());
+        EXPECT_EQ(existing, manager.find_catalog("existing"));
+        EXPECT_FALSE(manager.find_catalog("invalid"));
+        EXPECT_EQ(0U, ids->reserved_count());
+        // The failed name reservation must be reusable.
+        fetcher->info = valid;
+        ASSERT_EQ(status::ok, manager.create({"invalid", "worker"}, channels, diagnostic)) << diagnostic;
+        ASSERT_EQ(status::ok, manager.drop("invalid"));
+    }
+}
+
+TEST_F(remote_catalog_manager_test, different_name_concurrent_creates_keep_both_catalogs) {
+    std::promise<void> entered{}, resume{};
+    auto entered_future = entered.get_future();
+    auto proceed = resume.get_future().share();
+    std::atomic_size_t arrivals{};
+    fetcher->before_fetch = [&] {
+        if (arrivals.fetch_add(1) == 0) { entered.set_value(); proceed.wait(); }
+    };
+    std::future<status> first{}, second{};
+    bool released{};
+    auto release = [&] { if (!released) { resume.set_value(); released = true; } };
+    // Destroyed before either future, including exception and assertion exits.
+    utils::finally release_waiter{release};
+    first = std::async(std::launch::async, [&] { return manager.create({"first", "worker"}, channels); });
+    ASSERT_EQ(std::future_status::ready, entered_future.wait_for(std::chrono::seconds(5)));
+    second = std::async(std::launch::async, [&] { return manager.create({"second", "worker"}, channels); });
+    auto second_ready = second.wait_for(std::chrono::seconds(5));
+    release();
+    auto second_result = second.get();
+    auto first_result = first.get();
+    fetcher->before_fetch = {};
+    EXPECT_EQ(std::future_status::ready, second_ready);
+    ASSERT_EQ(status::ok, second_result);
+    ASSERT_EQ(status::ok, first_result);
+    EXPECT_EQ(2U, manager.entries()->size());
+    EXPECT_EQ(2U, manager.snapshot()->catalogs().size());
+    EXPECT_TRUE(manager.find_catalog("first"));
+    EXPECT_TRUE(manager.find_catalog("second"));
+    EXPECT_EQ(2U, fetcher->calls);
+}
+
+TEST_F(remote_catalog_manager_test, dropped_snapshot_preserves_placement_and_definition_identity) {
+    ASSERT_EQ(status::ok, manager.create({"branch", "worker"}, channels));
+    auto old = manager.snapshot();
+    auto catalog = manager.find_catalog("branch");
+    ASSERT_TRUE(catalog);
+    auto schema = catalog->schema_provider().find("public");
+    ASSERT_TRUE(schema);
+    auto table = schema->storage_provider().find_table("t");
+    auto index = schema->storage_provider().find_index("pk");
+    ASSERT_TRUE(table); ASSERT_TRUE(index);
+    ASSERT_EQ(status::ok, manager.drop("branch"));
+    EXPECT_TRUE(manager.snapshot()->catalogs().empty());
+    ASSERT_EQ(status::ok, manager.create({"branch", "worker"}, channels));
+    EXPECT_NE(catalog, manager.find_catalog("branch"));
+    EXPECT_EQ(nullptr, manager.snapshot()->remote_server(*table));
+    EXPECT_EQ(nullptr, manager.snapshot()->remote_definition(*table));
+    ASSERT_NE(nullptr, old->remote_server(*table));
+    EXPECT_EQ("worker", *old->remote_server(*table));
+    auto table_id = old->remote_definition(*table);
+    auto index_id = old->remote_definition(*index);
+    ASSERT_NE(nullptr, table_id); ASSERT_NE(nullptr, index_id);
+    EXPECT_EQ("worker", table_id->remote_server_name);
+    EXPECT_EQ(remote_declaration_kind::table, table_id->kind);
+    EXPECT_EQ(41U, table_id->remote_definition_id);
+    EXPECT_EQ(remote_declaration_kind::index, index_id->kind);
+    EXPECT_EQ(42U, index_id->remote_definition_id);
 }
 
 } // namespace jogasaki::testing

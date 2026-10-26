@@ -157,7 +157,7 @@ public:
 
 private:
     std::optional<std::string> validate_types() {
-        if (block->version != 1) {
+        if (block->version != 2) {
             return "unsupported RemoteExecutionBlock version";
         }
         for (auto const& expression : block->scalar_expressions) {
@@ -333,10 +333,16 @@ private:
     }
 
     std::optional<std::string> validate_source_columns(remote_operator const& op) {
+        if (!op.source->definition_id) {
+            return id_error("operator", op.operator_id, "has no storage definition ID");
+        }
         if (op.source->table_name.empty() || op.source->index_name.empty()) {
             return id_error("operator", op.operator_id, "has an empty storage name");
         }
         for (auto const& column : op.source->columns) {
+            if (!column.column_index || column.type_payload.empty()) {
+                return id_error("operator", op.operator_id, "has no source column position or type");
+            }
             if (column.column_name.empty()) {
                 return id_error("operator", op.operator_id, "has an empty source column");
             }
@@ -494,6 +500,9 @@ static std::optional<std::string> decode_operator(dqproto::Operator const& op, r
         remote_source decoded_source{};
         decoded_source.table_name = op.source().storage().table_name();
         decoded_source.index_name = op.source().storage().index_name();
+        if (op.source().storage().definition_id_presence_case() == dqproto::StorageReference::kDefinitionId) {
+            decoded_source.definition_id = op.source().storage().definition_id();
+        }
         decoded_source.lower_endpoint_kind = *lower_kind;
         decoded_source.upper_endpoint_kind = *upper_kind;
         decoded_source.lower_key_expression_ids.assign(op.source().lower().key_expression_ids().begin(),
@@ -509,7 +518,10 @@ static std::optional<std::string> decode_operator(dqproto::Operator const& op, r
             decoded_source.limit = op.source().limit();
         }
         for (auto const& column : op.source().columns()) {
-            decoded_source.columns.push_back({column.column_name(), column.destination_variable_id()});
+            decoded_source.columns.push_back({column.column_name(), column.destination_variable_id(),
+                column.column_index_presence_case() == dqproto::SourceColumn::kColumnIndex
+                    ? std::optional<std::uint32_t>{column.column_index()} : std::nullopt,
+                column.type_payload()});
         }
         target.source = std::move(decoded_source);
     }

@@ -53,6 +53,9 @@ public:
         dist::remote_execution_result result{};
         auto block = dist::decode_remote_execution_block(request->execution_block().SerializeAsString());
         if (!block) return {grpc::StatusCode::INVALID_ARGUMENT, block.error};
+        if (block.block->operators.front().source->definition_id != std::optional<std::uint64_t>{1257}) {
+            return {grpc::StatusCode::INVALID_ARGUMENT, "unexpected storage definition identity"};
+        }
         result.columns = block.block->result_schema; result.rows = {{value}};
         wire::RemoteProcessResult response{};
         std::string error{};
@@ -75,7 +78,7 @@ public:
         ASSERT_TRUE(server_a_); ASSERT_TRUE(server_b_); a_.value = 101; b_.value = 202;
         path_ = std::filesystem::temp_directory_path() / ("jogasaki-catalog-sql-" + std::to_string(getpid()) + ".json");
         using json = nlohmann::json;
-        json table{{"name", "T"}, {"columns", json::array({{{"name", "C0"}, {"type", "bigint"}, {"nullable", false}}})}, {"primary_key", json::array({"C0"})}};
+        json table{{"name", "T"}, {"definition_id", 1234}, {"index_definition_id", 1257}, {"columns", json::array({{{"name", "C0"}, {"type", "bigint"}, {"nullable", false}}})}, {"primary_key", json::array({"C0"})}};
         json catalogs = json::array();
         for (auto const& location : {std::pair{"worker_a", "schema_a"}, std::pair{"worker_b", "schema_b"}}) {
             catalogs.push_back({{"name", location.first}, {"server", location.first}, {"schemas", json::array({{{"name", location.second}, {"tables", json::array({table})}}})}});

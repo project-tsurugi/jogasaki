@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <takatori/relation/graph.h>
@@ -34,6 +35,8 @@ namespace jogasaki::meta { class record_meta; class variable_order; }
  * @todo Extend the representation and validation together; preserve wire field numbers and version rules.
  */
 namespace jogasaki::dist {
+
+class remote_catalog_snapshot;
 
 enum class remote_operator_kind {
     scan,
@@ -76,6 +79,9 @@ struct remote_scalar_expression {
 struct remote_source_column {
     std::string column_name{};
     std::uint64_t destination_variable_id{};
+    // Position in the remote table declaration, not a stream-variable ID.
+    std::optional<std::uint32_t> column_index{};
+    std::string type_payload{};
 };
 
 struct remote_source {
@@ -91,6 +97,8 @@ struct remote_source {
     std::size_t find_key_count{};
     std::vector<std::uint64_t> find_key_expression_ids{};
     std::optional<std::uint64_t> limit{};
+    // Remote index declaration identity. Presence is separate from the valid ID zero.
+    std::optional<std::uint64_t> definition_id{};
 };
 
 struct remote_project_column {
@@ -127,7 +135,8 @@ struct remote_operator {
 };
 
 struct remote_execution_block {
-    std::uint32_t version{1};
+    // Version 2 requires storage identity and positional column bindings.
+    std::uint32_t version{2};
     std::vector<remote_operator> operators{};
     std::vector<std::uint64_t> values{};
     std::vector<std::uint64_t> stream_variables{};
@@ -148,7 +157,9 @@ struct remote_execution_block {
     takatori::relation::graph_type const& graph,
     yugawara::compiled_info const* compiled_info = nullptr,
     meta::record_meta const* result_meta = nullptr,
-    meta::variable_order const* result_order = nullptr);
+    meta::variable_order const* result_order = nullptr,
+    remote_catalog_snapshot const* catalogs = nullptr,
+    std::string_view remote_server = {});
 
 [[nodiscard]] std::string serialize_remote_execution_block(
     remote_execution_block const& block);

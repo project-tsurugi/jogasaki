@@ -360,7 +360,7 @@ TEST(remote_catalog_codec_test, optional_indices_distinguish_absent_from_zero) {
     EXPECT_EQ(0U, *decoded.indices[1].table);
 }
 
-TEST(remote_catalog_codec_test, missing_definition_id_is_transferred_as_zero) {
+TEST(remote_catalog_codec_test, missing_definition_id_preserves_absence) {
     auto storage = std::make_shared<yugawara::storage::configurable_provider>();
     auto table = std::make_shared<yugawara::storage::table>("no_id",
         takatori::util::reference_vector<yugawara::storage::column>{});
@@ -370,8 +370,37 @@ TEST(remote_catalog_codec_test, missing_definition_id_is_transferred_as_zero) {
     wire::RemoteCatalog message{};
     ASSERT_EQ(status::ok, remote_catalog_encoder{}.encode(*catalog_of(storage), message));
     ASSERT_EQ(1, message.table_list_size());
-    EXPECT_EQ(0U, message.table_list(0).remote_definition_id());
+    EXPECT_FALSE(message.table_list(0).has_remote_definition_id());
     EXPECT_EQ(0, message.index_list_size());
+}
+
+TEST(remote_catalog_codec_test, table_and_index_ids_distinguish_zero_from_absence) {
+    for (auto id : {std::optional<std::uint64_t>{}, std::optional<std::uint64_t>{0}}) {
+        auto storage = std::make_shared<yugawara::storage::configurable_provider>();
+        auto table = std::make_shared<yugawara::storage::table>("T",
+            takatori::util::reference_vector<yugawara::storage::column>{});
+        table->definition_id(id);
+        table->columns().emplace_back("C0", int8_type(),
+            yugawara::variable::criteria{yugawara::variable::nullity{false}},
+            yugawara::storage::column_value{}, yugawara::storage::column_feature_set{});
+        storage->add_table(table);
+        storage->add_index(yugawara::storage::index{id, table, "T"});
+        wire::RemoteCatalog message{};
+        ASSERT_EQ(status::ok, remote_catalog_encoder{}.encode(*catalog_of(storage), message));
+        ASSERT_EQ(1, message.table_list_size());
+        ASSERT_EQ(1, message.index_list_size());
+        EXPECT_EQ(id.has_value(), message.table_list(0).has_remote_definition_id());
+        EXPECT_EQ(id.has_value(), message.index_list(0).has_remote_definition_id());
+        wire::RemoteCatalog received{};
+        ASSERT_TRUE(received.ParseFromString(message.SerializeAsString()));
+        remote_catalog_information decoded{};
+        std::string diagnostic{};
+        ASSERT_EQ(status::ok, remote_catalog_decoder{}.decode(received, decoded, diagnostic)) << diagnostic;
+        ASSERT_EQ(1, decoded.tables.size());
+        ASSERT_EQ(1, decoded.indices.size());
+        EXPECT_EQ(id, decoded.tables[0].remote_definition_id);
+        EXPECT_EQ(id, decoded.indices[0].remote_definition_id);
+    }
 }
 
 TEST(remote_catalog_codec_test, encoder_rejects_interval_and_leaves_destination_unchanged) {
@@ -688,7 +717,8 @@ TEST(remote_catalog_codec_test, encoder_preserves_each_tables_column_and_index_m
         EXPECT_EQ(i, *index.table);
         auto const& table = restored.tables[*index.table];
         EXPECT_EQ(table.name, index.name);
-        EXPECT_EQ(table.remote_definition_id + 1, index.remote_definition_id);
+        ASSERT_TRUE(table.remote_definition_id);
+        EXPECT_EQ(*table.remote_definition_id + 1, index.remote_definition_id);
         ASSERT_EQ(1U, table.columns.size());
         ASSERT_EQ(1U, index.keys.size());
         ASSERT_TRUE(index.keys[0].column);

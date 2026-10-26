@@ -76,10 +76,17 @@ namespace dqproto = tateyama::grpc::proto;
 static void encode_source(remote_source const& source, dqproto::Source& out) {
     out.mutable_storage()->set_table_name(source.table_name);
     out.mutable_storage()->set_index_name(source.index_name);
+    if (source.definition_id) {
+        out.mutable_storage()->set_definition_id(*source.definition_id);
+    }
     for (auto const& column : source.columns) {
         auto* target = out.add_columns();
         target->set_column_name(column.column_name);
         target->set_destination_variable_id(column.destination_variable_id);
+        if (column.column_index) {
+            target->set_column_index(*column.column_index);
+        }
+        target->set_type_payload(column.type_payload);
     }
     out.mutable_lower()->set_kind(encode(source.lower_endpoint_kind));
     for (auto id : source.lower_key_expression_ids) {

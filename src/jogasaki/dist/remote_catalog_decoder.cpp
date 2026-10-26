@@ -84,7 +84,9 @@ private:
 
     [[nodiscard]] bool decode_tables(wire::RemoteCatalog const& source, remote_catalog_information& out) {
         for (auto const& t : source.table_list()) {
-            remote_catalog_information::table table{t.remote_definition_id(), t.table_name(), {}};
+            remote_catalog_information::table table{
+                t.has_remote_definition_id() ? std::optional<std::uint64_t>{t.remote_definition_id()} : std::nullopt,
+                t.table_name(), {}};
             if (!indices(t.column_index_list(), source.column_list_size(), table.columns, "table column")) return false;
             out.tables.push_back(std::move(table));
         }
@@ -103,7 +105,9 @@ private:
 
     [[nodiscard]] bool decode_indices(wire::RemoteCatalog const& source, remote_catalog_information& out) {
         for (auto const& i : source.index_list()) {
-            remote_catalog_information::index index{i.remote_definition_id(), i.index_name(), {}, {}, {}, {}};
+            remote_catalog_information::index index{
+                i.has_remote_definition_id() ? std::optional<std::uint64_t>{i.remote_definition_id()} : std::nullopt,
+                i.index_name(), {}, {}, {}, {}};
             // an absent index stays absent; it is not the first element
             if (i.table_index_presence_case() == wire::RemoteIndex::kTableIndex) {
                 if (!in_range(i.table_index(), source.table_list_size(), "index table")) return false;

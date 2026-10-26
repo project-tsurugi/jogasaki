@@ -103,7 +103,7 @@ private:
         if (!error.empty()) return;
         if (!table_indices.emplace(table.get(), result.tables.size()).second) return;
         remote_catalog_information::table out_table{
-            table->definition_id().value_or(0), std::string{table->simple_name()}, {}};
+            table->definition_id(), std::string{table->simple_name()}, {}};
         std::unordered_map<yugawara::storage::column const*, index_type> columns{};
         for (auto const& column : table->columns()) {
             columns.emplace(&column, result.columns.size());
@@ -125,7 +125,7 @@ private:
         remote_catalog_information::schema& out_schema) {
         if (!error.empty() || !index) return;
         if (!index_indices.emplace(index.get(), result.indices.size()).second) return;
-        remote_catalog_information::index out_index{index->definition_id().value_or(0),
+        remote_catalog_information::index out_index{index->definition_id(),
             std::string{index->simple_name()}, table_indices.at(table.get()), index->features(), {}, {}};
         for (auto const& key : index->keys()) {
             auto it = columns.find(&key.column());

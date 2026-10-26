@@ -55,7 +55,7 @@ process_location const* process_locations::find(takatori::plan::process const& p
 }
 std::size_t process_locations::size() const noexcept { return entity_.size(); }
 process_locations_result capture_process_locations(takatori::plan::graph_type const& graph,
-                                                   operation_locations const& query) {
+                                                   operation_locations const& query, remote_catalog_snapshot const* catalogs) {
     process_locations::entity_type entity{};
     std::size_t remotes{};
     // Current exchanges run on the coordinator, so only process steps are placed.
@@ -97,8 +97,8 @@ process_locations_result capture_process_locations(takatori::plan::graph_type co
             return {{}, "remote process output must be a single forward exchange in remote execution"};
         }
         try {
-            if (!create_remote_execution_block(process.operators())) {
-                return {{}, "unsupported remote expression or host variable in remote execution"};
+            if (!create_remote_execution_block(process.operators(), nullptr, nullptr, nullptr, catalogs, server)) {
+                return {{}, "unsupported remote expression, host variable, or missing storage definition identity in remote execution"};
             }
         } catch (std::invalid_argument const& e) {
             return {{}, "unsupported remote type or literal in remote execution: " + std::string{e.what()}};

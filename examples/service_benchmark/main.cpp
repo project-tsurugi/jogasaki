@@ -304,7 +304,6 @@ class cli {
     bool verify_query_records_{};
     std::mutex write_buffer_mutex_{};
     std::stringstream write_buffer_{};
-    std::uint64_t stmt_handle_{};
     jogasaki::meta::record_meta query_meta_{};
 
     mode mode_{mode::undefined};
@@ -419,14 +418,14 @@ public:
         std::int64_t seq_{};  //NOLINT
     };
 
-    bool prepare_statement(jogasaki::common_cli::service_client& client) {
+    bool prepare_statement(jogasaki::common_cli::service_client& client, std::uint64_t& stmt) {
         std::string insert_clause("INSERT ");
         switch(mode_) {
             case mode::upsert:
                 insert_clause = "INSERT OR REPLACE ";
                 // fall-thru
             case mode::insert:
-                return prepare_sql(client, insert_clause+"INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)",
+                return prepare_sql(client, stmt, insert_clause+"INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)",
                     {
                         {"no_o_id", sql::common::AtomType::INT8},
                         {"no_d_id", sql::common::AtomType::INT8},
@@ -434,7 +433,7 @@ public:
                     }
                 );
             case mode::update:
-                return prepare_sql(client, "UPDATE STOCK SET s_quantity = :s_quantity WHERE s_i_id = :s_i_id AND s_w_id = :s_w_id",
+                return prepare_sql(client, stmt, "UPDATE STOCK SET s_quantity = :s_quantity WHERE s_i_id = :s_i_id AND s_w_id = :s_w_id",
                     {
                         {"s_quantity", sql::common::AtomType::INT8},
                         {"s_i_id", sql::common::AtomType::INT8},
@@ -442,14 +441,14 @@ public:
                     }
                 );
             case mode::query:
-                return prepare_sql(client, "SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id",
+                return prepare_sql(client, stmt, "SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id",
                     {
                         {"d_w_id", sql::common::AtomType::INT8},
                         {"d_id", sql::common::AtomType::INT8},
                     }
                 );
             case mode::query2:
-                return prepare_sql(client, "SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id",
+                return prepare_sql(client, stmt, "SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id",
                     {
                         {"no_d_id", sql::common::AtomType::INT8},
                         {"no_w_id", sql::common::AtomType::INT8},
@@ -461,6 +460,7 @@ public:
     }
     bool do_statement(
         jogasaki::common_cli::service_client& client,
+        std::uint64_t stmt,
         jogasaki::api::transaction_handle tx_handle,
         data_seed& seed,
         std::size_t client_index,
@@ -471,7 +471,7 @@ public:
             case mode::upsert: // fall-thru
             case mode::insert: {
                 std::int64_t id = profile_.new_order_max_ + (seed.seq_++);
-                res = issue_common(client, false,
+                res = issue_common(client, stmt, false,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"no_o_id", ValueCase::kInt8Value, id},
@@ -487,7 +487,7 @@ public:
                     profile_.stock_item_id_max_ - profile_.stock_item_id_min_ : 1;
                 std::int64_t id = profile_.stock_item_id_min_ + seed.rnd_() % mod;
                 std::int64_t w_id = FLAGS_prepare_data ? id : (client_index+1);
-                res = issue_common(client, false,
+                res = issue_common(client, stmt, false,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"s_quantity", ValueCase::kInt8Value, static_cast<std::int64_t>(seed.rnd_() % 100)}, //NOLINT
@@ -503,7 +503,7 @@ public:
                     profile_.district_id_max_ - profile_.district_id_min_: 1;
                 std::int64_t id = profile_.district_id_min_ + seed.rnd_() % mod;
                 std::int64_t w_id = FLAGS_prepare_data ? id : (client_index+1);
-                res = issue_common(client, true,
+                res = issue_common(client, stmt, true,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"d_w_id", ValueCase::kInt8Value, w_id},
@@ -522,7 +522,7 @@ public:
             }
             case mode::query2: {
                 std::int64_t w_id = FLAGS_prepare_data ? 1 : (client_index+1);
-                res = issue_common(client, true,
+                res = issue_common(client, stmt, true,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"no_d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(1)},
@@ -549,9 +549,8 @@ public:
         return true;
     }
 
-    jogasaki::common_cli::service_client create_client() {
-        // no session is used for now
-        return {env_.service(), 0, {jogasaki::common_cli::wait_kind::spin, 60000ms}};
+    jogasaki::common_cli::service_client create_client(std::size_t session_id) {
+        return {env_.service(), session_id, {jogasaki::common_cli::wait_kind::spin, 60000ms}};
     }
 
     bool run_workers() {
@@ -575,7 +574,12 @@ public:
                             utils::affinity_tag<utils::affinity_kind::numa_affinity>
                         });
                     }
-                    auto client = create_client();
+                    // each client has its own session, so the statement is prepared on the session
+                    auto client = create_client(i+1);
+                    std::uint64_t stmt{};
+                    if (! prepare_statement(client, stmt)) {
+                        std::abort();
+                    }
                     jogasaki::common_cli::begin_options options{};
                     options.kind_ = rtx_ ? jogasaki::common_cli::begin_options::kind::rtx :
                         (ltx_ ? jogasaki::common_cli::begin_options::kind::ltx : jogasaki::common_cli::begin_options::kind::occ);
@@ -598,7 +602,7 @@ public:
                         for(std::size_t j=0, n=statements_; j < n; ++j) {
                             {
                                 auto b = clock::now();
-                                if(auto res = do_statement(client, tx_handle, seed, i, ret.records_); !res) {
+                                if(auto res = do_statement(client, stmt, tx_handle, seed, i, ret.records_); !res) {
                                     LOG(ERROR) << "do_statement failed";
                                     std::abort();
                                 }
@@ -626,6 +630,7 @@ public:
                             ret.commit_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                         }
                     }
+                    (void) client.dispose_statement(stmt);
                     return ret;
                 })
             );
@@ -732,11 +737,14 @@ public:
         if (! setup_db(std::move(cfg))) {
             return -1;
         }
-        auto client = create_client();
-        if (! prepare_statement(client)) {
+        // validate the statement before starting clients
+        auto client = create_client(clients_+1);
+        std::uint64_t stmt{};
+        if (! prepare_statement(client, stmt)) {
             env_.stop();
             return -1;
         }
+        (void) client.dispose_statement(stmt);
         run_workers();
         env_.stop();
         return 0;
@@ -751,14 +759,15 @@ private:
 
     bool prepare_sql(
         jogasaki::common_cli::service_client& client,
+        std::uint64_t& stmt,
         std::string_view sql,
         std::unordered_map<std::string, sql::common::AtomType> const& place_holders
     ) {
-        if (auto res = client.prepare(sql, place_holders, stmt_handle_); ! res) {
+        if (auto res = client.prepare(sql, place_holders, stmt); ! res) {
             report_error("prepare", res);
             return false;
         }
-        LOG(INFO) << "statement prepared: handle(" << stmt_handle_ << ") " << sql;
+        VLOG(jogasaki::log_debug) << "statement prepared: session(" << client.session_id() << ") handle(" << stmt << ") " << sql;
         return true;
     }
 
@@ -769,13 +778,14 @@ private:
 
     bool issue_common(
         jogasaki::common_cli::service_client& client,
+        std::uint64_t stmt,
         bool query,
         jogasaki::api::transaction_handle tx_handle,
         std::vector<jogasaki::utils::parameter> const& parameters,
         jogasaki::common_cli::data_handler on_write
     ) {
         if (! query) {
-            if (auto res = client.execute_prepared_statement(tx_handle, stmt_handle_, parameters); ! res) {
+            if (auto res = client.execute_prepared_statement(tx_handle, stmt, parameters); ! res) {
                 report_error("execute statement", res);
                 return false;
             }
@@ -785,7 +795,7 @@ private:
         jogasaki::common_cli::query_info info{};
         if (auto res = client.execute_prepared_query(
                 tx_handle,
-                stmt_handle_,
+                stmt,
                 parameters,
                 std::move(on_write),
                 verify_query_records_ ? &info : nullptr

@@ -197,6 +197,27 @@ TEST_F(remote_catalog_provider_test, same_table_name_in_two_catalogs_has_distinc
     EXPECT_EQ("second", *result->remote_server(*other));
 }
 
+TEST_F(remote_catalog_provider_test, fixture_preserves_explicit_zero_and_missing_definition_ids) {
+    if (!distributed_query_fixtures_available()) GTEST_SKIP();
+    for (bool present : {false, true}) {
+        if (present) {
+            table()["definition_id"] = 0;
+            table()["index_definition_id"] = 0;
+        }
+        ASSERT_EQ(status::ok, load()) << diagnostic;
+        auto schema = result->catalogs()[0]->schema_provider().find("public");
+        auto table = schema->storage_provider().find_table("t");
+        auto index = schema->storage_provider().find_index("t");
+        ASSERT_TRUE(table);
+        ASSERT_TRUE(index);
+        ASSERT_TRUE(result->remote_definition(*table));
+        ASSERT_TRUE(result->remote_definition(*index));
+        EXPECT_EQ(present, result->remote_definition(*table)->remote_definition_id.has_value());
+        EXPECT_EQ(present, result->remote_definition(*index)->remote_definition_id.has_value());
+        if (present) EXPECT_EQ(std::optional<std::uint64_t>{0}, result->remote_definition(*index)->remote_definition_id);
+    }
+}
+
 TEST_F(remote_catalog_provider_test, rejects_invalid_metadata_atomically) {
     if (!distributed_query_fixtures_available()) { GTEST_SKIP(); }
     auto original = fixture;
@@ -209,6 +230,8 @@ TEST_F(remote_catalog_provider_test, rejects_invalid_metadata_atomically) {
     table()["columns"][0]["nullable"] = true; invalid.push_back(fixture); fixture = original;
     table()["primary_key"] = json::array({"unknown"}); invalid.push_back(fixture); fixture = original;
     table()["primary_key"] = json::array(); invalid.push_back(fixture); fixture = original;
+    table()["definition_id"] = -1; invalid.push_back(fixture); fixture = original;
+    table()["index_definition_id"] = "1257"; invalid.push_back(fixture); fixture = original;
     table()["columns"] = json::array(); invalid.push_back(fixture);
     for (auto const& entry : invalid) {
         fixture = entry;

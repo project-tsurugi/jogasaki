@@ -46,6 +46,8 @@
 #include <tateyama/proto/distributed_query/remote_execution_block.pb.h>
 
 #include <jogasaki/dist/remote_execution_block.h>
+#include <jogasaki/dist/remote_type_codec.h>
+#include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/dist/remote_execution_block_decoder.h>
 #include <jogasaki/dist/remote_execution_block_proto.h>
 #include <jogasaki/dist/remote_execution_graph_builder.h>
@@ -99,21 +101,18 @@ public:
     {}
 
     std::optional<takatori::descriptor::relation> resolve_storage(
-        std::string_view,
-        std::string_view) const override {
+        dist::remote_source const&) const override {
         return storage_;
     }
 
     std::optional<takatori::descriptor::variable> resolve_storage_column(
-        std::string_view,
-        std::string_view,
-        std::string_view) const override {
+        dist::remote_source const&,
+        dist::remote_source_column const&) const override {
         return storage_column_;
     }
 
     std::optional<takatori::descriptor::variable> resolve_storage_key_column(
-        std::string_view,
-        std::string_view,
+        dist::remote_source const&,
         std::size_t) const override {
         return storage_column_;
     }
@@ -157,7 +156,7 @@ TEST(remote_execution_block_test, rejects_multiple_remote_processes_for_one_exec
     yugawara::binding::factory bindings{};
     yugawara::storage::configurable_provider storages{};
     auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
-    auto index = storages.add_index({table, "I0"});
+    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
     takatori::plan::graph_type plan{};
     auto add = [&] {
         auto& process = plan.insert(takatori::plan::process{});
@@ -169,11 +168,11 @@ TEST(remote_execution_block_test, rejects_multiple_remote_processes_for_one_exec
         process >> forward;
     };
     add();
-    dist::remote_catalog_snapshot catalogs{{}, {{table.get(), "worker"}}};
+    dist::remote_catalog_snapshot catalogs{{}, {{table.get(), "worker"}}, {{index.get(), {"worker", dist::remote_declaration_kind::index, 1257}}}};
     EXPECT_TRUE(dist::validate_remote_plan(plan, &catalogs).empty());
-    EXPECT_TRUE(dist::validate_remote_plan(plan, nullptr, "worker").empty());
+    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker").find("storage definition identity"));
     add();
-    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker").find("at most one"));
+    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker").find("storage definition identity"));
     EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, &catalogs).find("at most one"));
     // Without remote metadata or an explicit override, both ordinary SQL processes are valid.
     EXPECT_TRUE(dist::validate_remote_plan(plan, nullptr).empty());
@@ -212,7 +211,7 @@ TEST(remote_execution_block_test, offer_wire_order_matches_downstream_columns) {
     yugawara::binding::factory bindings{};
     yugawara::storage::configurable_provider storages{};
     auto table = storages.add_table({"T0", {{"C0", type::int8{}}, {"C1", type::int8{}}}});
-    auto index = storages.add_index({table, "I0"});
+    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
     auto first = bindings.stream_variable(); auto second = bindings.stream_variable();
     auto output_first = bindings.exchange_column(); auto output_second = bindings.exchange_column();
     takatori::plan::forward forward{output_first, output_second};
@@ -235,7 +234,7 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     yugawara::binding::factory bindings{};
     yugawara::storage::configurable_provider storages{};
     auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
-    auto index = storages.add_index({table, "I0"});
+    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
     auto c0 = bindings.stream_variable("c0");
     auto c1 = bindings.stream_variable("c1");
 
@@ -291,7 +290,7 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     auto block = dist::create_remote_execution_block(graph);
 
     ASSERT_TRUE(block);
-    EXPECT_EQ(1, block->version);
+    EXPECT_EQ(2, block->version);
     ASSERT_EQ(4, block->operators.size());
     EXPECT_EQ(dist::remote_operator_kind::scan, block->operators[0].kind);
     EXPECT_EQ(dist::remote_operator_kind::filter, block->operators[1].kind);
@@ -349,7 +348,7 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     EXPECT_FALSE(block->result_schema[0].nullable);
 
     auto serialized = dist::serialize_remote_execution_block(*block);
-    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.version=1\n"));
+    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.version=2\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.2.kind=project\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.result_value_id=2\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.0.source.table_name=T0\n"));
@@ -364,10 +363,19 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.3.offer.column.0.source_variable_id=0\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.result_schema.column.0.type=unknown\n"));
 
+    ASSERT_TRUE(block->operators.front().source->definition_id);
+    EXPECT_EQ(1257U, *block->operators.front().source->definition_id);
+    ASSERT_EQ(1U, block->operators.front().source->columns.size());
+    EXPECT_EQ(std::optional<std::uint32_t>{0}, block->operators.front().source->columns[0].column_index);
+    EXPECT_EQ(dist::encode_remote_type(type::int8{}), block->operators.front().source->columns[0].type_payload);
     auto bytes = dist::serialize_remote_execution_block_proto(*block);
     tateyama::grpc::proto::RemoteExecutionBlock decoded{};
     ASSERT_TRUE(decoded.ParseFromString(bytes));
-    EXPECT_EQ(1, decoded.version());
+    EXPECT_EQ(2, decoded.version());
+    ASSERT_TRUE(decoded.operators(0).source().storage().has_definition_id());
+    EXPECT_EQ(1257U, decoded.operators(0).source().storage().definition_id());
+    ASSERT_TRUE(decoded.operators(0).source().columns(0).has_column_index());
+    EXPECT_EQ(0U, decoded.operators(0).source().columns(0).column_index());
     ASSERT_EQ(4, decoded.operators_size());
     EXPECT_EQ(tateyama::grpc::proto::OPERATOR_KIND_SCAN, decoded.operators(0).kind());
     EXPECT_EQ("T0", decoded.operators(0).source().storage().table_name());
@@ -384,6 +392,69 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     ASSERT_EQ(4, decoded_block.block->operators.size());
     EXPECT_EQ("T0", decoded_block.block->operators.front().source->table_name);
     EXPECT_EQ(2, decoded_block.block->result_value_id);
+    block->operators.front().source->definition_id = 0;
+    auto zero = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(*block));
+    ASSERT_TRUE(zero) << zero.error;
+    EXPECT_EQ(std::optional<std::uint64_t>{0}, zero.block->operators.front().source->definition_id);
+    EXPECT_EQ(std::optional<std::uint32_t>{0}, zero.block->operators.front().source->columns[0].column_index);
+}
+
+TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {
+    yugawara::binding::factory bindings{};
+    yugawara::storage::configurable_provider storages{};
+    auto table = storages.add_table({"T", {{"C0", type::int8{}}}});
+    auto index = std::make_shared<yugawara::storage::index>(table, "T");
+    auto variable = bindings.stream_variable("c0");
+    takatori::plan::forward output{bindings.exchange_column("c0")};
+    relation::graph_type graph{};
+    auto& scan = graph.insert(relation::scan{bindings(*index), {{bindings(table->columns()[0]), variable}}, {}, {}});
+    auto& offer = graph.insert(relation::step::offer{bindings.exchange(output), {{variable, output.columns()[0]}}});
+    scan.output() >> offer.input();
+    EXPECT_FALSE(dist::create_remote_execution_block(graph));
+    index->definition_id(0);
+    auto block = dist::create_remote_execution_block(graph);
+    ASSERT_TRUE(block);
+    EXPECT_EQ(std::optional<std::uint64_t>{0}, block->operators[0].source->definition_id);
+    EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, nullptr, "worker"));
+    using identity = dist::remote_declaration_identity;
+    using kind = dist::remote_declaration_kind;
+    auto make_snapshot = [&](identity value) {
+        return dist::remote_catalog_snapshot{{}, {}, {{index.get(), std::move(value)}}};
+    };
+    auto remote = make_snapshot({"worker", kind::index, 5678});
+    auto forwarded = dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &remote, "worker");
+    ASSERT_TRUE(forwarded);
+    EXPECT_EQ(std::optional<std::uint64_t>{5678}, forwarded->operators[0].source->definition_id);
+    auto remote_zero = make_snapshot({"worker", kind::index, 0});
+    auto zero = dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &remote_zero, "worker");
+    ASSERT_TRUE(zero);
+    EXPECT_EQ(std::optional<std::uint64_t>{0}, zero->operators[0].source->definition_id);
+    for (auto invalid : {identity{"other", kind::index, 5678}, identity{"worker", kind::table, 5678},
+                         identity{"worker", kind::index, std::nullopt}}) {
+        auto snapshot = make_snapshot(std::move(invalid));
+        EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &snapshot, "worker"));
+    }
+    dist::remote_catalog_snapshot missing_identity{};
+    EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &missing_identity, "worker"));
+    auto legacy = *block;
+    legacy.version = 1;
+    auto rejected = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(legacy));
+    EXPECT_FALSE(rejected);
+    EXPECT_EQ("unsupported RemoteExecutionBlock version", rejected.error);
+    auto missing_column = *block;
+    missing_column.operators[0].source->columns[0].column_index.reset();
+    auto missing_position = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(missing_column));
+    EXPECT_FALSE(missing_position);
+    EXPECT_NE(std::string::npos, missing_position.error.find("no source column position or type"));
+    auto missing_type = *block;
+    missing_type.operators[0].source->columns[0].type_payload.clear();
+    auto missing_payload = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(missing_type));
+    EXPECT_FALSE(missing_payload);
+    EXPECT_NE(std::string::npos, missing_payload.error.find("no source column position or type"));
+    block->operators[0].source->definition_id.reset();
+    auto missing = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(*block));
+    EXPECT_FALSE(missing);
+    EXPECT_NE(std::string::npos, missing.error.find("no storage definition ID"));
 }
 
 TEST(remote_execution_block_test, rejects_invalid_protobuf_payload) {
@@ -394,7 +465,7 @@ TEST(remote_execution_block_test, rejects_invalid_protobuf_payload) {
 
 TEST(remote_execution_block_test, rejects_undefined_expression_reference) {
     tateyama::grpc::proto::RemoteExecutionBlock block{};
-    block.set_version(1);
+    block.set_version(2);
     block.add_value_ids(0);
     block.add_stream_variable_ids(0);
     block.add_external_relation_ids(0);
@@ -408,6 +479,7 @@ TEST(remote_execution_block_test, rejects_undefined_expression_reference) {
     scan->set_output_value_id(0);
     scan->mutable_source()->mutable_storage()->set_table_name("T0");
     scan->mutable_source()->mutable_storage()->set_index_name("I0");
+    scan->mutable_source()->mutable_storage()->set_definition_id(1257);
     scan->mutable_source()->mutable_lower()->set_kind(tateyama::grpc::proto::ENDPOINT_KIND_UNBOUND);
     scan->mutable_source()->mutable_upper()->set_kind(tateyama::grpc::proto::ENDPOINT_KIND_UNBOUND);
     scan->mutable_source()->add_find_key_expression_ids(999);
@@ -425,7 +497,7 @@ TEST(remote_execution_block_test, rejects_undefined_expression_reference) {
 
 TEST(remote_execution_block_test, rejects_non_operator_sequence) {
     tateyama::grpc::proto::RemoteExecutionBlock block{};
-    block.set_version(1);
+    block.set_version(2);
     block.add_value_ids(0);
     block.set_result_value_id(0);
     auto* project = block.add_operators();
@@ -448,7 +520,7 @@ TEST(remote_execution_block_test, creates_find_source_payload) {
     yugawara::binding::factory bindings{};
     yugawara::storage::configurable_provider storages{};
     auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
-    auto index = storages.add_index({table, "I0"});
+    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
     auto c0 = bindings.stream_variable("c0");
 
     relation::graph_type graph{};
@@ -487,7 +559,7 @@ TEST(remote_execution_block_test, rebuilds_takatori_graph) {
     yugawara::binding::factory bindings{};
     yugawara::storage::configurable_provider storages{};
     auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
-    auto index = storages.add_index({table, "I0"});
+    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
     auto c0 = bindings.stream_variable("c0");
 
     relation::graph_type source_graph{};
@@ -569,7 +641,7 @@ TEST(remote_execution_block_test, native_external_layout_preserves_order_and_rej
         yugawara::binding::factory bindings{};
         yugawara::storage::configurable_provider storages{};
         auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
-        auto index = storages.add_index({table, "I0"});
+        auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
         auto source = bindings.stream_variable("source");
         auto first = bindings.exchange_column("first");
         auto second = bindings.exchange_column("second");

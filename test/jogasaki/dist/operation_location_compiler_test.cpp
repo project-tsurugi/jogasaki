@@ -140,6 +140,10 @@ protected:
         ASSERT_TRUE(manager->add_entry(1, "T0"));
         global::storage_manager(std::move(manager));
         ctx_.storage_provider(tables());
+        auto index = ctx_.storage_provider()->find_index("I0");
+        ctx_.remote_catalogs(std::make_shared<dist::remote_catalog_snapshot>(
+            dist::remote_catalog_snapshot::catalogs_type{}, dist::remote_catalog_snapshot::locations_type{},
+            dist::remote_catalog_snapshot::definitions_type{{index.get(), {"worker", dist::remote_declaration_kind::index, 1257}}}));
     }
 
     void TearDown() override {

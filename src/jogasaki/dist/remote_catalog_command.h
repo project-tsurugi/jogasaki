@@ -48,10 +48,14 @@ struct drop_foreign_catalog_command {
 /**
  * @brief executes CREATE FOREIGN CATALOG against the runtime registry.
  * @details Evaluates the conditional clauses, which the compiler leaves to the engine, then calls
- * remote_catalog_manager::create(). When both clauses are given the catalog is created only if both conditions hold.
+ * remote_catalog_manager::create(). Checks the server before the published catalog.
+ * When both clauses are given the catalog is created only if both conditions hold.
  * @return status::ok if created or skipped by a clause,
+ * status::err_invalid_argument if a catalog or server name is invalid or reserved,
+ * status::err_invalid_state if the manager is not available,
  * status::err_not_found if the server is not configured,
  * status::err_already_exists if the catalog exists,
+ * status::err_serialization_failure if another creation of the same catalog is in progress,
  * otherwise the status of remote_catalog_manager::create()
  */
 [[nodiscard]] status execute_create_foreign_catalog(
@@ -63,6 +67,7 @@ struct drop_foreign_catalog_command {
 /**
  * @brief executes DROP FOREIGN CATALOG against the runtime registry.
  * @return status::ok if dropped or skipped by the clause, status::err_not_found if the catalog does not exist,
+ * status::err_invalid_state if the manager is not available,
  * otherwise the status of remote_catalog_manager::drop()
  */
 [[nodiscard]] status execute_drop_foreign_catalog(

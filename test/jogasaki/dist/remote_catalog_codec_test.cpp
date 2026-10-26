@@ -59,6 +59,7 @@
 #include <yugawara/variable/nullity.h>
 #include <tateyama/proto/distributed_query/remote_catalog.pb.h>
 
+
 #include <jogasaki/dist/remote_catalog_decoder.h>
 #include <jogasaki/dist/remote_catalog_encoder.h>
 #include <jogasaki/dist/remote_catalog_information.h>
@@ -559,6 +560,168 @@ TEST(remote_catalog_fragment_test, stream_violations_discard_received_fragments)
         ASSERT_EQ(1U, destination.schemas.size());
         EXPECT_EQ("previous", destination.schemas[0].name);
     }
+}
+
+
+// Fail deterministically before the provider's shared_mutex is acquired recursively.
+class non_reentrant_storage final : public yugawara::storage::configurable_provider {
+public:
+    mutable bool callback_active{};
+    std::function<void()> after_relations{};
+
+    std::shared_ptr<yugawara::storage::relation const> find_relation(std::string_view name) const override {
+        if (callback_active) throw std::logic_error{"recursive provider lookup"};
+        return yugawara::storage::configurable_provider::find_relation(name);
+    }
+    void each_relation(relation_consumer_type consumer) const override {
+        yugawara::storage::configurable_provider::each_relation([&](auto name, auto const& relation) {
+            callback_active = true;
+            try { consumer(name, relation); } catch (...) { callback_active = false; throw; }
+            callback_active = false;
+        });
+        if (after_relations) after_relations();
+    }
+    void each_index(index_consumer_type const& consumer) const override {
+        if (callback_active) throw std::logic_error{"recursive provider index enumeration"};
+        yugawara::storage::configurable_provider::each_index([&](auto name, auto const& index) {
+            callback_active = true;
+            try { consumer(name, index); } catch (...) { callback_active = false; throw; }
+            callback_active = false;
+        });
+    }
+};
+
+void add_table_with_primary(yugawara::storage::configurable_provider& storage, std::string const& name,
+                            std::uint64_t definition) {
+    auto table = std::make_shared<yugawara::storage::table>(definition, name,
+        takatori::util::reference_vector<yugawara::storage::column>{}, std::string{});
+    table->columns().emplace_back("sale_number", int8_type(),
+        yugawara::variable::criteria{yugawara::variable::nullity{false}},
+        yugawara::storage::column_value{}, yugawara::storage::column_feature_set{});
+    storage.add_table(table);
+    std::vector<yugawara::storage::index::key> keys{};
+    keys.emplace_back(table->columns()[0], takatori::relation::sort_direction::ascendant);
+    storage.add_index(yugawara::storage::index{
+        std::optional<yugawara::storage::index::definition_id_type>{definition + 1}, table, name,
+        std::move(keys), {},
+        {index_feature::primary, index_feature::find, index_feature::scan, index_feature::unique}, std::string{}});
+}
+
+TEST(remote_catalog_codec_test, encoder_never_reenters_a_provider_callback) {
+    auto storage = std::make_shared<non_reentrant_storage>();
+    add_table_with_primary(*storage, "sales", 501);
+    auto source = catalog_of(storage);
+    wire::RemoteCatalog message{};
+    std::string diagnostic{};
+    ASSERT_EQ(status::ok, remote_catalog_encoder{}.encode(*source, message, diagnostic)) << diagnostic;
+    ASSERT_EQ(1, message.table_list_size());
+    ASSERT_EQ(1, message.index_list_size());
+    EXPECT_EQ(501U, message.table_list(0).remote_definition_id());
+    EXPECT_EQ(502U, message.index_list(0).remote_definition_id());
+    remote_catalog_information restored{};
+    ASSERT_EQ(status::ok, remote_catalog_decoder{}.decode(message, restored, diagnostic)) << diagnostic;
+    EXPECT_EQ((std::vector<remote_catalog_information::index_type>{0}), restored.tables[0].columns);
+    ASSERT_TRUE(restored.indices[0].table);
+    EXPECT_EQ(0U, *restored.indices[0].table);
+    ASSERT_TRUE(restored.indices[0].keys[0].column);
+    EXPECT_EQ(0U, *restored.indices[0].keys[0].column);
+}
+
+TEST(remote_catalog_codec_test, encoder_preserves_tables_without_indexes) {
+    auto provider = std::make_shared<non_reentrant_storage>();
+    add_table_with_primary(*provider, "sales", 501);
+    ASSERT_TRUE(provider->remove_index("sales"));
+    auto source = catalog_of(provider);
+    wire::RemoteCatalog message{};
+    std::string diagnostic{};
+    ASSERT_EQ(status::ok, remote_catalog_encoder{}.encode(*source, message, diagnostic)) << diagnostic;
+    ASSERT_EQ(1, message.table_list_size());
+    EXPECT_EQ(501U, message.table_list(0).remote_definition_id());
+    EXPECT_EQ(1, message.column_list_size());
+    EXPECT_EQ(0, message.index_list_size());
+}
+
+TEST(remote_catalog_codec_test, encoder_retains_tables_after_provider_removal) {
+    auto provider = std::make_shared<non_reentrant_storage>();
+    add_table_with_primary(*provider, "sales", 501);
+    auto table = provider->find_table("sales");
+    std::weak_ptr<yugawara::storage::table const> retained = table;
+    table.reset();
+    bool retained_after_removal{};
+    // Deletion probes ownership only; cross-DDL snapshot consistency is a separate task.
+    provider->after_relations = [&] {
+        provider->remove_index("sales");
+        provider->remove_relation("sales");
+        retained_after_removal = !retained.expired();
+    };
+    auto source = catalog_of(provider);
+    wire::RemoteCatalog message{};
+    std::string diagnostic{};
+    auto result = remote_catalog_encoder{}.encode(*source, message, diagnostic);
+    EXPECT_TRUE(retained_after_removal);
+    EXPECT_TRUE(retained.expired());
+    ASSERT_EQ(status::ok, result) << diagnostic;
+    ASSERT_EQ(1, message.table_list_size());
+    EXPECT_EQ(501U, message.table_list(0).remote_definition_id());
+    EXPECT_EQ(1, message.column_list_size());
+    EXPECT_EQ(0, message.index_list_size());
+}
+
+TEST(remote_catalog_codec_test, encoder_preserves_each_tables_column_and_index_mapping) {
+    auto provider = std::make_shared<non_reentrant_storage>();
+    add_table_with_primary(*provider, "first", 501);
+    add_table_with_primary(*provider, "second", 601);
+    auto source = catalog_of(provider);
+    wire::RemoteCatalog message{};
+    std::string diagnostic{};
+    ASSERT_EQ(status::ok, remote_catalog_encoder{}.encode(*source, message, diagnostic)) << diagnostic;
+    remote_catalog_information restored{};
+    ASSERT_EQ(status::ok, remote_catalog_decoder{}.decode(message, restored, diagnostic)) << diagnostic;
+    ASSERT_EQ(1U, restored.schemas.size());
+    ASSERT_EQ(2U, restored.tables.size());
+    ASSERT_EQ(2U, restored.indices.size());
+    EXPECT_EQ((std::vector<remote_catalog_information::index_type>{0, 1}), restored.schemas[0].tables);
+    EXPECT_EQ((std::vector<remote_catalog_information::index_type>{0, 1}), restored.schemas[0].indices);
+    for (std::size_t i = 0; i < restored.indices.size(); ++i) {
+        auto const& index = restored.indices[i];
+        ASSERT_TRUE(index.table);
+        EXPECT_EQ(i, *index.table);
+        auto const& table = restored.tables[*index.table];
+        EXPECT_EQ(table.name, index.name);
+        EXPECT_EQ(table.remote_definition_id + 1, index.remote_definition_id);
+        ASSERT_EQ(1U, table.columns.size());
+        ASSERT_EQ(1U, index.keys.size());
+        ASSERT_TRUE(index.keys[0].column);
+        EXPECT_EQ(table.columns[0], *index.keys[0].column);
+    }
+}
+
+TEST(remote_catalog_codec_test, enumeration_failure_preserves_destination) {
+    auto provider = std::make_shared<non_reentrant_storage>();
+    add_table_with_primary(*provider, "sales", 501);
+    provider->after_relations = [] { throw std::runtime_error{"enumeration failed"}; };
+    auto source = catalog_of(provider);
+    wire::RemoteCatalog message{};
+    message.add_schema_list()->set_schema_name("previous");
+    std::string diagnostic{};
+    EXPECT_EQ(status::err_unknown, remote_catalog_encoder{}.encode(*source, message, diagnostic));
+    ASSERT_EQ(1, message.schema_list_size());
+    EXPECT_EQ("previous", message.schema_list(0).schema_name());
+    EXPECT_EQ(0, message.table_list_size());
+    EXPECT_EQ(0, message.index_list_size());
+}
+
+TEST(remote_catalog_codec_test, encoder_ignores_indexes_of_unregistered_tables) {
+    auto provider = std::make_shared<non_reentrant_storage>();
+    add_table_with_primary(*provider, "removed", 501);
+    // The legacy table API can remove just the relation, leaving its index registered.
+    ASSERT_TRUE(provider->remove_relation("removed"));
+    auto source = catalog_of(provider);
+    wire::RemoteCatalog message{};
+    std::string diagnostic{};
+    ASSERT_EQ(status::ok, remote_catalog_encoder{}.encode(*source, message, diagnostic)) << diagnostic;
+    EXPECT_EQ(0, message.table_list_size());
+    EXPECT_EQ(0, message.index_list_size());
 }
 
 }  // namespace

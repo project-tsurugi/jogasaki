@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 #include <atomic>
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <future>
 #include <memory>
+#include <limits>
+#include <set>
+#include <thread>
 #include <optional>
 #include <string>
 #include <utility>
@@ -40,6 +44,7 @@
 #include <jogasaki/dist/remote_catalog_information.h>
 #include <jogasaki/dist/remote_catalog_manager.h>
 #include <jogasaki/dist/remote_function_id_registry.h>
+#include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
 
 namespace jogasaki::testing {
 namespace {
@@ -413,6 +418,153 @@ TEST_F(remote_catalog_manager_test, reserved_local_server_is_rejected_before_fet
     EXPECT_EQ(0, fetcher->calls);
     EXPECT_EQ(before, manager.snapshot());
     EXPECT_EQ(status::ok, manager.create({"valid", "worker"}, channels, diagnostic));
+}
+
+
+TEST_F(remote_catalog_manager_test, snapshot_fetcher_describes_published_catalog_and_rejects_wrong_reference) {
+    add_functions(fetcher->info);
+    ASSERT_EQ(status::ok, manager.create({"remote", "worker"}, channels, diagnostic));
+    // This source contains coordinator declarations: their definition IDs are not the original remote IDs.
+    snapshot_remote_catalog_fetcher source{manager.snapshot()};
+    auto references = source.references();
+    ASSERT_EQ(1, references.size());
+    EXPECT_EQ("remote", references[0].catalog_name);
+    EXPECT_EQ("worker", references[0].remote_server_name);
+    remote_catalog_information restored{};
+    ASSERT_EQ(status::ok, source.fetch(references[0], {}, {}, restored, diagnostic)) << diagnostic;
+    ASSERT_EQ(1, restored.tables.size());
+    EXPECT_EQ("t", restored.tables[0].name);
+    ASSERT_EQ(1, restored.columns.size());
+    EXPECT_EQ("id", restored.columns[0].name);
+    EXPECT_FALSE(restored.columns[0].nullable);
+    EXPECT_EQ(takatori::type::int8::tag, restored.columns[0].type->kind());
+    ASSERT_EQ(1, restored.functions.size());
+    EXPECT_EQ("f", restored.functions[0].name);
+    auto before = restored.tables[0].name;
+    auto counts = [](remote_catalog_information const& info) {
+        return std::vector<std::size_t>{info.schemas.size(), info.tables.size(), info.columns.size(),
+            info.indices.size(), info.functions.size(), info.aggregate_functions.size()};
+    };
+    auto before_counts = counts(restored);
+    EXPECT_EQ(status::err_not_found, source.fetch({"missing", "worker"}, {}, {}, restored, diagnostic));
+    EXPECT_EQ(before, restored.tables[0].name);
+    EXPECT_EQ(before_counts, counts(restored));
+    EXPECT_EQ(status::err_not_found, source.fetch({"remote", "other"}, {}, {}, restored, diagnostic));
+    EXPECT_EQ(before, restored.tables[0].name);
+    EXPECT_EQ(before_counts, counts(restored));
+}
+
+TEST_F(remote_catalog_manager_test, snapshot_fetcher_rejects_absent_or_inconsistent_placement) {
+    ASSERT_EQ(status::ok, manager.create({"remote", "worker"}, channels, diagnostic));
+    auto snapshot = manager.snapshot();
+    auto locations = snapshot->locations();
+    ASSERT_FALSE(locations.empty());
+    locations.clear();
+    auto unplaced = std::make_shared<remote_catalog_snapshot>(snapshot->catalogs(), locations);
+    snapshot_remote_catalog_fetcher missing{unplaced};
+    remote_catalog_information result{};
+    EXPECT_TRUE(missing.references().empty());
+    EXPECT_EQ(status::err_not_found, missing.fetch({"remote", "worker"}, {}, {}, result, diagnostic));
+    snapshot_remote_catalog_fetcher absent{{}};
+    EXPECT_TRUE(absent.references().empty());
+    EXPECT_EQ(status::err_not_found, absent.fetch({"remote", "worker"}, {}, {}, result, diagnostic));
+
+    fetcher->info.tables.push_back({43, "t2", {1}});
+    fetcher->info.columns.push_back({"id2", int8_type(), true});
+    fetcher->info.schemas[0].tables.push_back(1);
+    ASSERT_EQ(status::ok, manager.create({"mixed", "worker"}, channels, diagnostic));
+    auto mixed = manager.snapshot();
+    auto placements = mixed->locations();
+    auto table = manager.find_catalog("mixed")->schema_provider().find("public")->storage_provider().find_table("t2");
+    ASSERT_TRUE(table);
+    placements.at(table.get()) = "other";
+    snapshot_remote_catalog_fetcher inconsistent{
+        std::make_shared<remote_catalog_snapshot>(mixed->catalogs(), placements)};
+    EXPECT_EQ(status::err_not_found, inconsistent.fetch({"mixed", "worker"}, {}, {}, result, diagnostic));
+    auto refs = inconsistent.references();
+    ASSERT_EQ(1, refs.size());
+    EXPECT_EQ("remote", refs[0].catalog_name);
+}
+
+TEST_F(remote_catalog_manager_test, snapshot_fetcher_does_not_select_a_catalog_without_tables) {
+    fetcher->info = {};
+    fetcher->info.schemas.push_back({"public", {}, {}});
+    add_functions(fetcher->info);
+    // Development fetcher uses table placement; RPC can transfer a function-only catalog.
+    ASSERT_EQ(status::ok, manager.create({"functions", "worker"}, channels, diagnostic)) << diagnostic;
+    snapshot_remote_catalog_fetcher source{manager.snapshot()};
+    EXPECT_TRUE(source.references().empty());
+    remote_catalog_information result{};
+    EXPECT_EQ(status::err_not_found, source.fetch({"functions", "worker"}, {}, {}, result, diagnostic));
+}
+
+TEST(remote_function_id_registry_test, exhaustion_is_atomic_and_preserves_output_lease) {
+    using id_type = remote_function_id_lease::definition_id_type;
+    auto maximum = std::numeric_limits<id_type>::max();
+    auto ids = std::make_shared<remote_function_id_registry>(maximum);
+    std::shared_ptr<remote_function_id_lease> held{};
+    ASSERT_EQ(status::ok, ids->reserve(1, 0, held));
+    EXPECT_EQ(maximum, held->functions().front());
+    auto output = held;
+    EXPECT_EQ(status::err_resource_limit_reached, ids->reserve(0, 2, output));
+    EXPECT_EQ(held, output);
+    EXPECT_EQ(1, ids->reserved_count());
+    EXPECT_FALSE(ids->aggregate_function_reserved(maximum));
+    held.reset(); output.reset();
+    // First space can allocate, second cannot: neither space may be committed.
+    EXPECT_EQ(status::err_resource_limit_reached, ids->reserve(1, 2, output));
+    EXPECT_FALSE(output);
+    EXPECT_EQ(0, ids->reserved_count());
+    ASSERT_EQ(status::ok, ids->reserve(1, 1, output));
+    EXPECT_EQ(maximum, output->functions().front());
+    EXPECT_EQ(maximum, output->aggregate_functions().front());
+    output.reset();
+    EXPECT_EQ(0, ids->reserved_count());
+}
+
+TEST(remote_function_id_registry_test, concurrent_reservations_are_unique_and_released_ids_are_reused) {
+    auto ids = std::make_shared<remote_function_id_registry>(100);
+    constexpr std::size_t workers = 8;
+    std::vector<std::shared_ptr<remote_function_id_lease>> leases(workers);
+    std::vector<status> results(workers);
+    std::vector<std::thread> threads{};
+    std::promise<void> start{};
+    auto ready = start.get_future().share();
+    for (std::size_t i = 0; i < workers; ++i) {
+        threads.emplace_back([&, i] { ready.wait(); results[i] = ids->reserve(2, 1, leases[i]); });
+    }
+    start.set_value();
+    for (auto& thread : threads) thread.join();
+    std::set<remote_function_id_lease::definition_id_type> regular{}, aggregate{};
+    for (std::size_t i = 0; i < workers; ++i) {
+        ASSERT_EQ(status::ok, results[i]);
+        for (auto id : leases[i]->functions()) EXPECT_TRUE(regular.insert(id).second);
+        for (auto id : leases[i]->aggregate_functions()) EXPECT_TRUE(aggregate.insert(id).second);
+    }
+    EXPECT_EQ(workers * 3, ids->reserved_count());
+    threads.clear();
+    // Release one lease while another request reserves. Kept leases must remain reserved.
+    std::shared_ptr<remote_function_id_lease> replacement{};
+    status next{};
+    std::thread release{[&] { leases[0].reset(); }};
+    std::thread reserve{[&] { next = ids->reserve(2, 1, replacement); }};
+    release.join(); reserve.join();
+    ASSERT_EQ(status::ok, next);
+    for (std::size_t i = 1; i < workers; ++i) {
+        for (auto id : leases[i]->functions()) EXPECT_TRUE(ids->function_reserved(id));
+        for (auto id : leases[i]->aggregate_functions()) EXPECT_TRUE(ids->aggregate_function_reserved(id));
+        for (auto id : replacement->functions()) {
+            EXPECT_EQ(0, std::count(leases[i]->functions().begin(), leases[i]->functions().end(), id));
+        }
+        for (auto id : replacement->aggregate_functions()) {
+            EXPECT_EQ(0, std::count(leases[i]->aggregate_functions().begin(), leases[i]->aggregate_functions().end(), id));
+        }
+    }
+    leases.clear(); replacement.reset();
+    EXPECT_EQ(0, ids->reserved_count());
+    ASSERT_EQ(status::ok, ids->reserve(1, 1, replacement));
+    EXPECT_EQ(100, replacement->functions().front());
+    EXPECT_EQ(100, replacement->aggregate_functions().front());
 }
 
 } // namespace jogasaki::testing

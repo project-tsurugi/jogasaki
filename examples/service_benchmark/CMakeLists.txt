@@ -1,6 +1,5 @@
 file(GLOB SOURCES
         "*.cpp"
-        "../common/utils.cpp"
 )
 
 set_source_files_properties(
@@ -24,14 +23,7 @@ target_include_directories(service-benchmark
 )
 
 target_link_libraries(service-benchmark
-        PRIVATE api
-        PRIVATE ${tateyama_engine}
-        PRIVATE common
-        PRIVATE takatori
-        PRIVATE yugawara
-        PRIVATE ${ENGINE}
-        PRIVATE glog::glog
-        PRIVATE gflags::gflags
+        PRIVATE service-common
         PRIVATE Threads::Threads
 )
 

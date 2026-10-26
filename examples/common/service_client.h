@@ -30,8 +30,10 @@
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/executor/dto/common_column.h>
+#include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/error.pb.h>
+#include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/utils/command_utils.h>
 
@@ -110,6 +112,9 @@ struct begin_options {
     };
     kind kind_{kind::occ};  //NOLINT
     std::vector<std::string> write_preserves_{};  //NOLINT
+    std::vector<std::string> inclusive_read_areas_{};  //NOLINT
+    std::vector<std::string> exclusive_read_areas_{};  //NOLINT
+    proto::sql::request::TransactionPriority priority_{};  //NOLINT
     std::string label_{};  //NOLINT
     bool modifies_definitions_{};  //NOLINT
 };
@@ -154,9 +159,21 @@ public:
         return session_id_;
     }
 
-    call_result begin(begin_options const& options, api::transaction_handle& out);
+    /**
+     * @brief begin transaction
+     * @param out filled with the transaction handle
+     * @param transaction_id if non-null, filled with the transaction id
+     */
+    call_result begin(begin_options const& options, api::transaction_handle& out, std::string* transaction_id = nullptr);
 
-    call_result commit(api::transaction_handle tx);
+    /**
+     * @brief commit transaction
+     * @param status the commit status to wait for. Unspecified means the default one.
+     */
+    call_result commit(
+        api::transaction_handle tx,
+        proto::sql::request::CommitStatus status = proto::sql::request::CommitStatus::COMMIT_STATUS_UNSPECIFIED
+    );
 
     call_result rollback(api::transaction_handle tx);
 
@@ -228,6 +245,16 @@ public:
      * @param out filled with the explained text (json)
      */
     call_result explain(std::string_view sql, std::string& out);
+
+    /**
+     * @brief list table names
+     */
+    call_result list_tables(std::vector<std::string>& out);
+
+    /**
+     * @brief describe the table
+     */
+    call_result describe_table(std::string_view name, executor::dto::describe_table& out);
 
 private:
     std::shared_ptr<api::impl::service> service_{};

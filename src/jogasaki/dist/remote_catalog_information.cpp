@@ -16,9 +16,12 @@
 #include "remote_catalog_information.h"
 
 #include <exception>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <yugawara/aggregate/declaration.h>
 #include <yugawara/aggregate/provider.h>
@@ -64,9 +67,23 @@ public:
             result.aggregate_functions.push_back(std::move(out));
         });
         auto const& storage = schema->storage_provider();
-        storage.each_relation([&](std::string_view id, auto const&) {
-            describe_table(storage, id, out_schema);
+        // Provider callbacks run under a non-recursive shared_mutex. Retain the
+        // declarations here, then enumerate their indexes after the callback ends.
+        // This preserves declaration lifetime, not an atomic snapshot across DDL.
+        std::vector<std::shared_ptr<yugawara::storage::table const>> tables{};
+        storage.each_relation([&](std::string_view id, auto const& relation) {
+            if (!error.empty()) return;
+            auto table = std::dynamic_pointer_cast<yugawara::storage::table const>(relation);
+            if (!table) {
+                error = "unsupported relation kind: " + std::string{id};
+                unsupported = true;
+                return;
+            }
+            tables.emplace_back(std::move(table));
         });
+        for (auto const& table : tables) {
+            describe_table(storage, table, out_schema);
+        }
         result.schemas.push_back(std::move(out_schema));
     }
 private:
@@ -80,15 +97,10 @@ private:
     static remote_catalog_information::type_ptr clone(takatori::type::data const& type) {
         return remote_catalog_information::type_ptr{type.clone()};
     }
-    void describe_table(yugawara::storage::provider const& storage, std::string_view id,
+    void describe_table(yugawara::storage::provider const& storage,
+        std::shared_ptr<yugawara::storage::table const> const& table,
         remote_catalog_information::schema& out_schema) {
         if (!error.empty()) return;
-        auto table = storage.find_table(id);
-        if (!table) {
-            error = "unsupported relation kind: " + std::string{id};
-            unsupported = true;
-            return;
-        }
         if (!table_indices.emplace(table.get(), result.tables.size()).second) return;
         remote_catalog_information::table out_table{
             table->definition_id().value_or(0), std::string{table->simple_name()}, {}};

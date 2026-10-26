@@ -55,6 +55,8 @@
 #include <jogasaki/dist/remote_catalog_encoder.h>
 #include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/dist/remote_function_id_registry.h>
+#include <jogasaki/dist/rpc_remote_catalog_fetcher.h>
+#include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
 
@@ -172,20 +174,29 @@ public:
 type_ptr int8_type() { return std::make_shared<takatori::type::int8>(); }
 
 // remote_schema.T(C0 BIGINT PRIMARY KEY) with one scalar and one aggregate function
-std::shared_ptr<yugawara::schema::catalog const> remote_catalog() {
+std::shared_ptr<yugawara::schema::catalog const> remote_catalog(bool include_optional_fields = false) {
     auto storage = std::make_shared<yugawara::storage::configurable_provider>();
     auto table = std::make_shared<yugawara::storage::table>(
         std::optional<yugawara::storage::table::definition_id_type>{501}, "T",
         takatori::util::reference_vector<yugawara::storage::column>{}, std::string{});
     table->columns().emplace_back("C0", int8_type(), yugawara::variable::criteria{yugawara::variable::nullity{false}},
         yugawara::storage::column_value{}, yugawara::storage::column_feature_set{});
+    if (include_optional_fields) {
+        table->columns().emplace_back("C1", int8_type(), yugawara::variable::criteria{yugawara::variable::nullity{true}},
+            yugawara::storage::column_value{}, yugawara::storage::column_feature_set{});
+    }
     storage->add_table(table);
+    std::vector<yugawara::storage::index::column_ref> values{};
+    if (include_optional_fields) values.emplace_back(table->columns()[1]);
+    auto features = yugawara::storage::index_feature_set{yugawara::storage::index_feature::primary,
+        yugawara::storage::index_feature::find, yugawara::storage::index_feature::scan,
+        yugawara::storage::index_feature::unique};
+    if (include_optional_fields) features.insert(yugawara::storage::index_feature::unique_constraint);
     std::vector<yugawara::storage::index::key> keys{};
-    keys.emplace_back(table->columns()[0], takatori::relation::sort_direction::ascendant);
+    keys.emplace_back(table->columns()[0], include_optional_fields ? takatori::relation::sort_direction::descendant :
+        takatori::relation::sort_direction::ascendant);
     storage->add_index(yugawara::storage::index{
-        std::optional<yugawara::storage::index::definition_id_type>{502}, table, "T", std::move(keys), {},
-        {yugawara::storage::index_feature::primary, yugawara::storage::index_feature::find,
-            yugawara::storage::index_feature::scan, yugawara::storage::index_feature::unique}, std::string{}});
+        std::optional<yugawara::storage::index::definition_id_type>{502}, table, "T", std::move(keys), std::move(values), features, std::string{}});
     auto functions = std::make_shared<yugawara::function::configurable_provider>();
     functions->add(yugawara::function::declaration{503, "remote_f", int8_type(), std::vector<type_ptr>{int8_type()},
         {yugawara::function::function_feature::scalar_function}});
@@ -435,6 +446,97 @@ TEST_F(remote_catalog_rpc_test, remote_only_functions_never_compile_for_local_ex
     EXPECT_EQ(aggregate, (first<yugawara::aggregate::provider, yugawara::aggregate::declaration>(schema->set_function_provider())));
     EXPECT_TRUE(snapshot->remote_definition(*function));
     EXPECT_TRUE(snapshot->remote_definition(*aggregate));
+}
+
+
+TEST_F(remote_catalog_rpc_test, empty_catalog_stream_builds_an_empty_result_and_publishes_no_schema) {
+    auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
+    auto empty = std::make_shared<yugawara::schema::catalog>("empty", std::nullopt, schemas);
+    remote_.handler = std::make_shared<encoding_handler>(empty);
+    dist::rpc_remote_catalog_fetcher fetcher{};
+    dist::remote_catalog_information result{};
+    result.schemas.push_back({"previous", {}, {}});
+    std::string diagnostic{};
+    ASSERT_EQ(status::ok, fetcher.fetch({"empty", "worker"},
+        db_impl()->remote_server_channels().find_channel("worker"),
+        std::chrono::system_clock::now() + std::chrono::seconds(5), result, diagnostic)) << diagnostic;
+    EXPECT_TRUE(result.schemas.empty());
+    EXPECT_TRUE(result.tables.empty());
+    EXPECT_TRUE(result.columns.empty());
+    EXPECT_TRUE(result.indices.empty());
+    EXPECT_TRUE(result.functions.empty());
+    EXPECT_TRUE(result.aggregate_functions.empty());
+    EXPECT_EQ(1, remote_.calls);
+    // Characterize the current publication policy; L3-07 only specifies empty-stream acceptance.
+    ASSERT_EQ(status::ok, create("empty", diagnostic)) << diagnostic;
+    auto catalog = manager()->find_catalog("empty");
+    ASSERT_TRUE(catalog);
+    std::size_t schemas_count{};
+    catalog->schema_provider().each([&](auto const&) { ++schemas_count; });
+    EXPECT_EQ(0, schemas_count);
+    EXPECT_EQ(0, db_impl()->remote_function_ids()->reserved_count());
+    ASSERT_TRUE(manager()->entries());
+    EXPECT_EQ(1, manager()->entries()->size());
+    EXPECT_EQ(2, remote_.calls);
+}
+
+TEST_F(remote_catalog_rpc_test, snapshot_and_rpc_fetchers_preserve_the_same_catalog_contract) {
+    auto source = remote_catalog(true);
+    remote_.handler = std::make_shared<encoding_handler>(source);
+    dist::remote_catalog_snapshot::locations_type locations{};
+    auto table = source->schema_provider().find("remote_schema")->storage_provider().find_table("T");
+    ASSERT_TRUE(table);
+    locations.emplace(table.get(), "worker");
+    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
+        dist::remote_catalog_snapshot::catalogs_type{source}, locations);
+    dist::snapshot_remote_catalog_fetcher fixture{snapshot};
+    dist::rpc_remote_catalog_fetcher rpc{};
+    dist::remote_catalog_information expected{}, actual{};
+    std::string diagnostic{};
+    dist::remote_catalog_reference reference{"remote_source", "worker"};
+    ASSERT_EQ(status::ok, fixture.fetch(reference, {}, {}, expected, diagnostic)) << diagnostic;
+    ASSERT_EQ(status::ok, rpc.fetch(reference, db_impl()->remote_server_channels().find_channel("worker"),
+        std::chrono::system_clock::now() + std::chrono::seconds(5), actual, diagnostic)) << diagnostic;
+    ASSERT_EQ(1, actual.schemas.size()); ASSERT_EQ(1, expected.schemas.size());
+    EXPECT_EQ(expected.schemas[0].name, actual.schemas[0].name);
+    EXPECT_EQ(expected.schemas[0].tables, actual.schemas[0].tables);
+    EXPECT_EQ(expected.schemas[0].indices, actual.schemas[0].indices);
+    EXPECT_EQ(expected.schemas[0].functions, actual.schemas[0].functions);
+    EXPECT_EQ(expected.schemas[0].aggregate_functions, actual.schemas[0].aggregate_functions);
+    ASSERT_EQ(1, actual.tables.size()); ASSERT_EQ(1, expected.tables.size());
+    EXPECT_EQ(expected.tables[0].name, actual.tables[0].name);
+    EXPECT_EQ(expected.tables[0].remote_definition_id, actual.tables[0].remote_definition_id);
+    EXPECT_EQ(expected.tables[0].columns, actual.tables[0].columns);
+    ASSERT_EQ(2, actual.columns.size()); ASSERT_EQ(2, expected.columns.size());
+    for (std::size_t i = 0; i < expected.columns.size(); ++i) {
+        EXPECT_EQ(expected.columns[i].name, actual.columns[i].name);
+        EXPECT_EQ(expected.columns[i].nullable, actual.columns[i].nullable);
+        EXPECT_EQ(*expected.columns[i].type, *actual.columns[i].type);
+    }
+    EXPECT_FALSE(actual.columns[0].nullable);
+    EXPECT_TRUE(actual.columns[1].nullable);
+    ASSERT_EQ(1, actual.indices.size()); ASSERT_EQ(1, expected.indices.size());
+    auto const& ei = expected.indices[0]; auto const& ai = actual.indices[0];
+    EXPECT_EQ(ei.name, ai.name); EXPECT_EQ(ei.remote_definition_id, ai.remote_definition_id);
+    EXPECT_EQ(ei.table, ai.table); EXPECT_EQ(ei.features, ai.features); EXPECT_EQ(ei.values, ai.values);
+    ASSERT_EQ(1, ai.keys.size()); ASSERT_EQ(1, ei.keys.size());
+    EXPECT_EQ(ei.keys[0].column, ai.keys[0].column);
+    EXPECT_EQ(ei.keys[0].direction, ai.keys[0].direction);
+    EXPECT_EQ(takatori::relation::sort_direction::descendant, ai.keys[0].direction);
+    EXPECT_EQ((std::vector<dist::remote_catalog_information::index_type>{1}), ai.values);
+    EXPECT_TRUE(ai.features.contains(yugawara::storage::index_feature::unique_constraint));
+    ASSERT_EQ(1, actual.functions.size()); ASSERT_EQ(1, expected.functions.size());
+    auto const& ef = expected.functions[0]; auto const& af = actual.functions[0];
+    EXPECT_EQ(ef.name, af.name); EXPECT_EQ(ef.remote_definition_id, af.remote_definition_id);
+    EXPECT_EQ(ef.features, af.features); EXPECT_EQ(*ef.return_type, *af.return_type);
+    ASSERT_EQ(1, af.parameter_types.size()); ASSERT_EQ(1, ef.parameter_types.size());
+    EXPECT_EQ(*ef.parameter_types[0], *af.parameter_types[0]);
+    ASSERT_EQ(1, actual.aggregate_functions.size()); ASSERT_EQ(1, expected.aggregate_functions.size());
+    auto const& ea = expected.aggregate_functions[0]; auto const& aa = actual.aggregate_functions[0];
+    EXPECT_EQ(ea.name, aa.name); EXPECT_EQ(ea.remote_definition_id, aa.remote_definition_id);
+    EXPECT_EQ(ea.incremental, aa.incremental); EXPECT_EQ(*ea.return_type, *aa.return_type);
+    ASSERT_EQ(1, aa.parameter_types.size()); ASSERT_EQ(1, ea.parameter_types.size());
+    EXPECT_EQ(*ea.parameter_types[0], *aa.parameter_types[0]);
 }
 
 }  // namespace jogasaki::testing

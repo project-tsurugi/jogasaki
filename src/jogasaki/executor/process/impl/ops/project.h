@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/executor/conv/record_assignment.h>
 
 #include <cstddef>
 #include <memory>
@@ -39,20 +40,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-namespace details {
 
-/**
- * @brief field for the project operator
- */
-struct project_field {
-    meta::field_type type_{};  //NOLINT
-    bool nullable_{true};  //NOLINT
-    std::size_t offset_{};  //NOLINT
-    std::size_t nullity_offset_{};  //NOLINT
-    takatori::type::data const* target_type_{};  //NOLINT
-};
-
-} // namespace details
 
 /**
  * @brief project operator
@@ -111,10 +99,10 @@ public:
 
 private:
     std::vector<expr::evaluator> evaluators_{};
-    std::vector<details::project_field> fields_{};
+    std::vector<conv::record_assignment> assignments_{};
     std::unique_ptr<operator_base> downstream_{};
 
-    [[nodiscard]] std::vector<details::project_field> create_fields(
+    [[nodiscard]] std::vector<conv::record_assignment> create_assignments(
         takatori::tree::tree_fragment_vector<takatori::relation::project::column> const& columns,
         processor_info const& info
     );

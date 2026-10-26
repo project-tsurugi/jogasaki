@@ -28,6 +28,7 @@ field_locator::field_locator(
     std::size_t nullity_offset
 ) :
     type_(std::addressof(type)),
+    operations_(data::field_operations::for_type(type)),
     nullable_(nullable),
     value_offset_(value_offset),
     nullity_offset_(nullity_offset)

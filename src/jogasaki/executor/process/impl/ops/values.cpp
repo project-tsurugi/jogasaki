@@ -56,19 +56,24 @@ values::values(
     std::unique_ptr<operator_base> downstream
 ) :
     record_operator(index, info, block_index),
-    fields_(create_fields(node.columns(), info)),
     downstream_(std::move(downstream))
 {
     row_evaluators_.reserve(node.rows().size());
-    row_source_types_.reserve(node.rows().size());
+    row_assignments_.reserve(node.rows().size());
     for (auto&& row : node.rows()) {
         auto& revals = row_evaluators_.emplace_back();
-        auto& src_types = row_source_types_.emplace_back();
+        auto& assignments = row_assignments_.emplace_back();
         revals.reserve(row.elements().size());
-        src_types.reserve(row.elements().size());
-        for (auto&& elem : row.elements()) {
+        assignments.reserve(row.elements().size());
+        for (std::size_t i = 0; i < row.elements().size(); ++i) {
+            auto const& elem = row.elements()[i];
+            auto const& column = node.columns().at(i);
+            auto const& target_type = info.compiled_info().type_of(column);
+            auto const& location = block_info().at(column);
             revals.emplace_back(elem, info.compiled_info(), info.host_variables());
-            src_types.emplace_back(&info.compiled_info().type_of(elem));
+            assignments.emplace_back(conv::record_assignment::prepare_value(info.compiled_info().type_of(elem),
+                target_type, utils::type_for(target_type), {location.value_offset(), location.nullity_offset()},
+                true, conv::conversion_kind::unify));
         }
     }
 }
@@ -104,13 +109,10 @@ operation_status values::operator()(values_context& ctx, abstract::task_context*
             auto& revals = row_evaluators_[ctx.current_row_];
             context_helper helper{ctx.task_context()};
             process::impl::variables_view empty{};
-            for (std::size_t i = 0, n = fields_.size(); i < n; ++i) {
-                auto const& field = fields_[i];
+            for (std::size_t i = 0, n = revals.size(); i < n; ++i) {
                 if (auto st = wrt::fill_evaluated_value(
                         revals[i],
-                        *row_source_types_[ctx.current_row_][i],
-                        wrt::value_input_conversion_kind::unify,
-                        field,
+                        row_assignments_[ctx.current_row_][i],
                         *ctx.req_context(),
                         helper.blob_session_container(),
                         empty,
@@ -160,24 +162,5 @@ void values::finish(abstract::task_context* context) {
     }
 }
 
-std::vector<details::values_field> values::create_fields(
-    std::vector<takatori::descriptor::variable> const& columns,
-    processor_info const& pinfo
-) {
-    std::vector<details::values_field> fields{};
-    fields.reserve(columns.size());
-    for (auto const& col : columns) {
-        auto const& target_type = pinfo.compiled_info().type_of(col);
-        auto const& vinfo = block_info().at(col);
-        fields.emplace_back(details::values_field{
-            utils::type_for(target_type),
-            true,  // always nullable, so values op. does not cause not-null violation
-            vinfo.value_offset(),
-            vinfo.nullity_offset(),
-            std::addressof(target_type)
-        });
-    }
-    return fields;
-}
 
 }  // namespace jogasaki::executor::process::impl::ops

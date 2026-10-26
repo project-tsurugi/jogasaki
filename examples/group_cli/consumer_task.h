@@ -63,21 +63,21 @@ public:
         data::small_record_store key{meta_->key_shared()};
         data::small_record_store value{meta_->value_shared()};
         accessor::record_copier key_copier{meta_->key_shared()};
-        accessor::record_ref value_ref(value.ref());
+        accessor::record_ref any(value.ref());
         accessor::record_ref key_ref(key.ref());
 
         while(reader->next_group()) {
             key_copier(key_ref, reader->get_group());
-            value_ref.set_value(meta_->value().value_offset(0), 0.0);
+            any.set_value(meta_->value().value_offset(0), 0.0);
             while(reader->next_member()) {
-                (*aggregator)(&meta_->value(), value_ref, reader->get_member());
+                (*aggregator)(&meta_->value(), any, reader->get_member());
             }
             total_key_ += key_ref.get_value<std::int64_t>(key_offset_);
-            total_val_ += value_ref.get_value<double>(value_offset_);
+            total_val_ += any.get_value<double>(value_offset_);
             ++keys_;
             ++records_;
             DVLOG(log_trace) << *this << " key : " << key_ref.get_value<std::int64_t>(key_offset_);
-            DVLOG(log_trace) << *this << "   value : " << value_ref.get_value<double>(value_offset_);
+            DVLOG(log_trace) << *this << "   value : " << any.get_value<double>(value_offset_);
         }
     }
     void execute() override {

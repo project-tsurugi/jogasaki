@@ -37,7 +37,7 @@
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/lazy_checkpoint_holder.h>
 #include <jogasaki/utils/validation.h>
 
@@ -153,8 +153,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
             auto key = ctx.reader_->get_group();
             for(auto &f : fields_) {
                 if (! f.is_key_) continue;
-                utils::copy_nullable_field(
-                    f.type_,
+                f.operations_.copy_nullable(
                     target,
                     f.target_offset_,
                     f.target_nullity_offset_,
@@ -178,8 +177,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
                 auto value = ctx.reader_->get_member();
                 for(auto &f : fields_) {
                     if (f.is_key_) continue;
-                    utils::copy_nullable_field(
-                        f.type_,
+                    f.operations_.copy_nullable(
                         target,
                         f.target_offset_,
                         f.target_nullity_offset_,
@@ -260,7 +258,7 @@ std::vector<details::take_group_field> take_group::create_fields(
         auto [src_idx, is_key] = order.key_value_index(c.source());
         auto& target_info = block_info().at(c.destination());
         fields[i] = details::take_group_field{
-            is_key ? key_meta.at(src_idx) : value_meta.at(src_idx),
+            data::field_operations::for_type(is_key ? key_meta.at(src_idx) : value_meta.at(src_idx)),
             is_key ? key_meta.value_offset(src_idx) : value_meta.value_offset(src_idx),
             target_info.value_offset(),
             is_key ? key_meta.nullity_offset(src_idx) : value_meta.nullity_offset(src_idx),

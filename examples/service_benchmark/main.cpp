@@ -70,25 +70,13 @@
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/utils/tables.h>
 
-#include "../common/temporary_folder.h"
-#include "../common/utils.h"
 #include "../query_bench_cli/utils.h"
+#include "service_client.h"
+#include "service_setup.h"
 
-DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
-DEFINE_int32(thread_count, 1, "Number of threads used in server thread pool");  //NOLINT
-DEFINE_bool(core_affinity, false, "Whether threads are assigned to cores");  //NOLINT
-DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
-DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
-DEFINE_int32(partitions, 5, "Number of partitions per process");  //NOLINT
-DEFINE_bool(steal, true, "Enable stealing for task scheduling");  //NOLINT
-DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
 DEFINE_bool(verify, false, "Whether to deserialize the query result records. Requires clients=1");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
-DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
-DEFINE_string(load_from, "", "specify the generated db file directory. Use to prepare initial data.");  //NOLINT
-DECLARE_int32(dump_batch_size);  //NOLINT
-DECLARE_int32(load_batch_size);  //NOLINT
 DEFINE_bool(insert, false, "run on insert mode");  //NOLINT
 DEFINE_bool(upsert, false, "run on upsert mode");  //NOLINT
 DEFINE_bool(update, false, "run on update mode");  //NOLINT
@@ -99,25 +87,15 @@ DEFINE_int64(duration, 5000, "Run duration in milli-seconds");  //NOLINT
 DEFINE_int64(transactions, -1, "Number of transactions executed per client thread. Specify -1 to use duration instead.");  //NOLINT
 DEFINE_int32(clients, 1, "Number of client threads");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
-DEFINE_int32(stealing_wait, -1, "Coefficient for the number of times checking local queue before stealing. Specify -1 to use jogasaki default.");  //NOLINT
-DEFINE_int32(task_polling_wait, 0, "wait method/duration parameter in the worker's busy loop");  //NOLINT
-DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is selected depending on the current thread requesting schedule");  //NOLINT
 DEFINE_bool(ltx, false, "use ltx instead of occ for benchmark. Use exclusively with --rtx.");  //NOLINT
-DEFINE_bool(rtx, false, "use ltx instead of occ for benchmark. Use exclusively with --ltx.");  //NOLINT
+DEFINE_bool(rtx, false, "use rtx instead of occ for benchmark. Use exclusively with --ltx.");  //NOLINT
 DEFINE_int64(client_idle, 0, "clients take idle spin loop n times");  //NOLINT
-DEFINE_bool(enable_hybrid_scheduler, true, "enable serial-stealing hybrid scheduler");  //NOLINT
-DEFINE_int32(lightweight_job_level, 0, "Specify job level regarded as lightweight");  //NOLINT
-DEFINE_bool(busy_worker, true, "whether task scheduler workers suspend when they have no task. Specify true to stop suspend.");  //NOLINT
-DEFINE_int64(watcher_interval, 1000, "duration in us before watcher thread wakes up in order to try next check");  //NOLINT
-DEFINE_int64(worker_try_count, 1000, "how many times worker checks the task queues before suspend");  //NOLINT
-DEFINE_int64(worker_suspend_timeout, 1000000, "duration in us before worker wakes up from suspend");  //NOLINT
 DEFINE_bool(md, false, "output result to stdout as markdown table");  //NOLINT
 DEFINE_bool(ddl, false, "issue ddl instead of using built-in table. Required for --secondary.");  //NOLINT
 DEFINE_bool(secondary, false, "use secondary index");  //NOLINT
-DEFINE_int64(scan_block_size, 100, "max records processed by scan operator before yielding to other tasks");  //NOLINT
-DEFINE_int64(scan_yield_interval, 1, "max time (ms) processed by scan operator before yielding to other tasks");  //NOLINT
-DEFINE_int64(scan_default_parallel, 1, "max parallel execution count of scan tasks");  //NOLINT
-DEFINE_int64(max_result_set_writers, 64, "max number of result set writers");  //NOLINT
+DECLARE_bool(builtin_tables);  //NOLINT
+DECLARE_int32(prepare_data);  //NOLINT
+DECLARE_int32(thread_count);  //NOLINT
 
 namespace tateyama::service_benchmark {
 
@@ -175,6 +153,7 @@ struct formatted_result {
     std::string throughput_statements_per_thread_;
     std::string avg_turn_around_transaction_;
     std::string avg_turn_around_statement_;
+    std::string records_;
 };
 
 [[nodiscard]] formatted_result create_format_result(
@@ -182,7 +161,7 @@ struct formatted_result {
     std::size_t duration_ms,
     std::size_t threads
 ) {
-    auto transaction_ns = result.commit_ns_ + result.statement_ns_ + result.commit_ns_;
+    auto transaction_ns = result.begin_ns_ + result.statement_ns_ + result.commit_ns_;
     auto& statement_ns = result.statement_ns_;
 
     formatted_result ret{};
@@ -190,8 +169,9 @@ struct formatted_result {
     auto& statements = result.statements_;
 
     ret.duration_ =  format(duration_ms);
-    ret.avg_begin_commit_interval_ = format((std::int64_t)(double)transaction_ns / threads);
-    ret.avg_statements_interval_ = format((std::int64_t)(double)statement_ns / threads);
+    ret.avg_begin_commit_interval_ = format(transactions == 0 ? 0 : (std::int64_t)((double)transaction_ns / transactions));
+    ret.avg_statements_interval_ = format(statements == 0 ? 0 : (std::int64_t)((double)statement_ns / statements));
+    ret.records_ = format(result.records_);
     ret.executed_transactions_ = format(transactions);
     ret.executed_statements_ = format(statements);
     ret.throughput_transactions_ = format((std::int64_t)((double)transactions / duration_ms * 1000));
@@ -206,11 +186,12 @@ struct formatted_result {
 
 void display_text(formatted_result const& result) {
     LOG(INFO) << "duration: " << result.duration_ << " ms";
-    LOG(INFO) << "  avg. begin-commit interval : " << result.avg_begin_commit_interval_ << " ns/thread";
-    LOG(INFO) << "  avg. statements interval : " << result.avg_statements_interval_ << " ns/thread";
+    LOG(INFO) << "  avg. begin-commit interval : " << result.avg_begin_commit_interval_ << " ns/transaction";
+    LOG(INFO) << "  avg. statements interval : " << result.avg_statements_interval_ << " ns/statement";
     LOG(INFO) << "executed: " <<
       result.executed_transactions_ << " transactions, " <<
-      result.executed_statements_ << " statements";
+      result.executed_statements_ << " statements, " <<
+      result.records_ << " query result writes";
     LOG(INFO) << "throughput: " <<
         result.throughput_transactions_ << " transactions/s, " <<  //NOLINT
         result.throughput_statements_ << " statements/s";  //NOLINT
@@ -318,17 +299,13 @@ struct data_profile {
 };
 
 class cli {
-    takatori::util::maybe_shared_ptr<jogasaki::api::database> db_{};
-    std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
+    jogasaki::common_cli::service_environment env_{};
     bool debug_{}; //NOLINT
     bool verify_query_records_{};
     std::mutex write_buffer_mutex_{};
     std::stringstream write_buffer_{};
     std::uint64_t stmt_handle_{};
-    std::vector<std::future<bool>> on_going_statements_{};
     jogasaki::meta::record_meta query_meta_{};
-    jogasaki::common_cli::temporary_folder temporary_{};
-    std::map<std::string, sql::common::AtomType> host_variables_{};
 
     mode mode_{mode::undefined};
     data_profile profile_{profile_v<profile::normal>};
@@ -345,65 +322,24 @@ class cli {
 
 public:
     void print_diagnostics() {
-        db_->print_diagnostic(std::cerr);
+        env_.database().print_diagnostic(std::cerr);
     }
 
-    void prepare_data(jogasaki::api::database& db, std::size_t rows) {
-        auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(db);
-        static constexpr std::size_t mod = 100;
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "WAREHOUSE", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "DISTRICT", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "CUSTOMER", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "NEW_ORDER", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ORDERS", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ORDER_LINE", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "ITEM", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "STOCK", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "HISTORY", rows, true, mod);
-    }
-
-    bool fill_from_flags(
-        jogasaki::configuration& cfg,
-        std::string const& str = {}
-    ) {
-        gflags::FlagSaver saver{};
-        if (! str.empty()) {
-            if(! gflags::ReadFlagsFromString(str, "", false)) {
-                LOG(ERROR) << "parsing options failed";
-            }
-        }
-        cfg.single_thread(FLAGS_single_thread);
-        cfg.thread_pool_size(FLAGS_thread_count);
-
-        cfg.core_affinity(FLAGS_core_affinity);
-        cfg.initial_core(FLAGS_initial_core);
-        cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
-        cfg.default_partitions(FLAGS_partitions);
-        if(FLAGS_stealing_wait != -1) {
-            cfg.stealing_wait(FLAGS_stealing_wait);
-        }
-        cfg.stealing_enabled(FLAGS_steal);
-        cfg.task_polling_wait(FLAGS_task_polling_wait);
-        cfg.use_preferred_worker_for_current_thread(FLAGS_use_preferred_worker_for_current_thread);
-        cfg.enable_hybrid_scheduler(FLAGS_enable_hybrid_scheduler);
-        cfg.lightweight_job_level(FLAGS_lightweight_job_level);
-        cfg.busy_worker(FLAGS_busy_worker);
-        cfg.watcher_interval(FLAGS_watcher_interval);
-        cfg.worker_suspend_timeout(FLAGS_worker_suspend_timeout);
-
+    bool fill_from_flags(jogasaki::configuration& cfg) {
         if (FLAGS_minimum) {
-            cfg.single_thread(false);
-            cfg.thread_pool_size(1);
-            cfg.initial_core(1);
-            cfg.core_affinity(false);
-            cfg.default_partitions(1);
+            jogasaki::common_cli::set_flag_defaults({
+                {"single_thread", "false"},
+                {"thread_count", "1"},
+                {"initial_core", "1"},
+                {"core_affinity", "false"},
+                {"assign_numa_nodes_uniformly", "false"},
+                {"partitions", "1"},
+            });
         }
-
-        if (FLAGS_location == "TMP") {
-            temporary_.prepare();
-            cfg.db_location(temporary_.path());
-        } else {
-            cfg.db_location(std::string(FLAGS_location));
+        // built-in benchmark tables are used unless tables are created by DDL
+        FLAGS_builtin_tables = ! FLAGS_ddl;
+        if (! jogasaki::common_cli::fill_configuration(cfg)) {
+            return false;
         }
 
         debug_ = FLAGS_debug;
@@ -483,87 +419,78 @@ public:
         std::int64_t seq_{};  //NOLINT
     };
 
-    void prepare_statement() {
-        bool res;
+    bool prepare_statement(jogasaki::common_cli::service_client& client) {
         std::string insert_clause("INSERT ");
         switch(mode_) {
             case mode::upsert:
                 insert_clause = "INSERT OR REPLACE ";
                 // fall-thru
             case mode::insert:
-                res = prepare_sql(insert_clause+"INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)",
+                return prepare_sql(client, insert_clause+"INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)",
                     {
                         {"no_o_id", sql::common::AtomType::INT8},
                         {"no_d_id", sql::common::AtomType::INT8},
                         {"no_w_id", sql::common::AtomType::INT8},
                     }
                 );
-                break;
             case mode::update:
-                res = prepare_sql("UPDATE STOCK SET s_quantity = :s_quantity WHERE s_i_id = :s_i_id AND s_w_id = :s_w_id",
+                return prepare_sql(client, "UPDATE STOCK SET s_quantity = :s_quantity WHERE s_i_id = :s_i_id AND s_w_id = :s_w_id",
                     {
-                        {"s_quantity", sql::common::AtomType::FLOAT8},
+                        {"s_quantity", sql::common::AtomType::INT8},
                         {"s_i_id", sql::common::AtomType::INT8},
                         {"s_w_id", sql::common::AtomType::INT8},
                     }
                 );
-                break;
             case mode::query:
-                res = prepare_sql("SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id",
+                return prepare_sql(client, "SELECT d_next_o_id, d_tax FROM DISTRICT WHERE d_w_id = :d_w_id AND d_id = :d_id",
                     {
                         {"d_w_id", sql::common::AtomType::INT8},
                         {"d_id", sql::common::AtomType::INT8},
                     }
                 );
-                break;
             case mode::query2:
-                res = prepare_sql("SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id",
+                return prepare_sql(client, "SELECT no_o_id FROM NEW_ORDER WHERE no_d_id = :no_d_id AND no_w_id = :no_w_id ORDER BY no_o_id",
                     {
                         {"no_d_id", sql::common::AtomType::INT8},
                         {"no_w_id", sql::common::AtomType::INT8},
                     }
                 );
-                break;
             default:
                 std::abort();
         }
-        if (!res) {
-            std::abort();
-        }
     }
     bool do_statement(
+        jogasaki::common_cli::service_client& client,
         jogasaki::api::transaction_handle tx_handle,
         data_seed& seed,
-        std::size_t client,
+        std::size_t client_index,
         std::int64_t& result_count
     ) {
         bool res{};
         switch(mode_) {
             case mode::upsert: // fall-thru
             case mode::insert: {
-                result_count = 0;
                 std::int64_t id = profile_.new_order_max_ + (seed.seq_++);
-                res = issue_common(false,
+                res = issue_common(client, false,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"no_o_id", ValueCase::kInt8Value, id},
                         {"no_d_id", ValueCase::kInt8Value, static_cast<int64_t>(1)},
-                        {"no_w_id", ValueCase::kInt8Value, static_cast<int64_t>(client+1)},
+                        {"no_w_id", ValueCase::kInt8Value, static_cast<int64_t>(client_index+1)},
                     },
                     {}
                 );
                 break;
             }
             case mode::update: {
-                result_count = 0;
                 auto mod = profile_.stock_item_id_max_ > profile_.stock_item_id_min_ ?
                     profile_.stock_item_id_max_ - profile_.stock_item_id_min_ : 1;
                 std::int64_t id = profile_.stock_item_id_min_ + seed.rnd_() % mod;
-                std::int64_t w_id = FLAGS_prepare_data ? id : (client+1);
-                res = issue_common(false,
+                std::int64_t w_id = FLAGS_prepare_data ? id : (client_index+1);
+                res = issue_common(client, false,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"s_quantity", ValueCase::kFloat8Value, static_cast<double>(seed.rnd_())}, //NOLINT
+                        {"s_quantity", ValueCase::kInt8Value, static_cast<std::int64_t>(seed.rnd_() % 100)}, //NOLINT
                         {"s_i_id", ValueCase::kInt8Value, id},
                         {"s_w_id", ValueCase::kInt8Value, w_id},
                     },
@@ -575,8 +502,8 @@ public:
                 auto mod = profile_.district_id_max_ > profile_.district_id_min_ ?
                     profile_.district_id_max_ - profile_.district_id_min_: 1;
                 std::int64_t id = profile_.district_id_min_ + seed.rnd_() % mod;
-                std::int64_t w_id = FLAGS_prepare_data ? id : (client+1);
-                res = issue_common(true,
+                std::int64_t w_id = FLAGS_prepare_data ? id : (client_index+1);
+                res = issue_common(client, true,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"d_w_id", ValueCase::kInt8Value, w_id},
@@ -594,8 +521,8 @@ public:
                 break;
             }
             case mode::query2: {
-                std::int64_t w_id = FLAGS_prepare_data ? 1 : (client+1);
-                res = issue_common(true,
+                std::int64_t w_id = FLAGS_prepare_data ? 1 : (client_index+1);
+                res = issue_common(client, true,
                     tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"no_d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(1)},
@@ -622,8 +549,12 @@ public:
         return true;
     }
 
-    bool run_workers(std::shared_ptr<jogasaki::configuration> cfg) {
-        (void)cfg;
+    jogasaki::common_cli::service_client create_client() {
+        // no session is used for now
+        return {env_.service(), 0, {jogasaki::common_cli::wait_kind::spin, 60000ms}};
+    }
+
+    bool run_workers() {
         std::vector<std::future<result_info>> results{};
         results.reserve(clients_);
         std::atomic_bool stop = false;
@@ -644,15 +575,22 @@ public:
                             utils::affinity_tag<utils::affinity_kind::numa_affinity>
                         });
                     }
+                    auto client = create_client();
+                    jogasaki::common_cli::begin_options options{};
+                    options.kind_ = rtx_ ? jogasaki::common_cli::begin_options::kind::rtx :
+                        (ltx_ ? jogasaki::common_cli::begin_options::kind::ltx : jogasaki::common_cli::begin_options::kind::occ);
+                    if (ltx_) {
+                        options.write_preserves_ = {"NEW_ORDER", "STOCK"};
+                    }
                     result_info ret{};
                     start.count_down_and_wait();
                     data_seed seed{i, 0};
-                    std::vector<std::string> write_preserves{"NEW_ORDER", "STOCK"};
                     while((transactions_ == -1 && !stop) || (transactions_ != -1 && ret.transactions_ < transactions_)) {
                         jogasaki::api::transaction_handle tx_handle{};
                         {
                             auto b = clock ::now();
-                            if (auto res = begin_tx(tx_handle, rtx_, ltx_, write_preserves); !res) {
+                            if (auto res = client.begin(options, tx_handle); !res) {
+                                report_error("begin", res);
                                 std::abort();
                             }
                             ret.begin_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
@@ -660,7 +598,7 @@ public:
                         for(std::size_t j=0, n=statements_; j < n; ++j) {
                             {
                                 auto b = clock::now();
-                                if(auto res = do_statement(tx_handle, seed, i, ret.records_); !res) {
+                                if(auto res = do_statement(client, tx_handle, seed, i, ret.records_); !res) {
                                     LOG(ERROR) << "do_statement failed";
                                     std::abort();
                                 }
@@ -681,8 +619,8 @@ public:
                         ++ret.transactions_;
                         {
                             auto b = clock ::now();
-                            if (auto res = commit_tx(tx_handle); !res) {
-                                LOG(ERROR) << "commit_tx failed";
+                            if (auto res = client.commit(tx_handle); !res) {
+                                report_error("commit", res);
                                 std::abort();
                             }
                             ret.commit_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
@@ -711,14 +649,14 @@ public:
         }
         results.clear();
         auto end = clock::now();
-        auto duration_ms = std::chrono::duration_cast<clock::duration>(end-begin).count()/1000/1000;
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count();
         show_result(total_result, duration_ms, clients_, md_);
         return true;
     }
 
     void execute_statement(std::string_view stmt) {
         std::string msg = std::string{jogasaki::utils::runner{}
-            .db(*db_)
+            .db(env_.database())
             .show_plan(false)
             .show_recs(false)
             .text(stmt)
@@ -774,145 +712,52 @@ public:
             "s_data VARCHAR(50) NOT NULL, "
             "PRIMARY KEY(s_w_id, s_i_id))");
     }
-    void setup_db(
-        std::shared_ptr<jogasaki::configuration> cfg,
-        jogasaki::common_cli::temporary_folder& dir
-    ) {
+    bool setup_db(std::shared_ptr<jogasaki::configuration> cfg) {
         auto begin = clock::now();
-        if (FLAGS_location == "TMP") {
-            dir.prepare();
-            cfg->db_location(dir.path());
-        } else {
-            cfg->db_location(std::string(FLAGS_location));
+        if (! env_.start(std::move(cfg))) {
+            return false;
         }
-
-        cfg->skip_smv_check(true);  // skip strict version check for internal use
-        db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};
-        auto c = std::make_shared<tateyama::api::configuration::whole>("");
-        service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
-        db_->start();
-
         if(ddl_) {
             setup_tables();
-        } else {
-            jogasaki::utils::add_benchmark_tables();
-        }
-        if (! FLAGS_load_from.empty()) {
-            jogasaki::common_cli::load(*db_, FLAGS_load_from);
-        }
-        if (FLAGS_prepare_data > 0) {
-            prepare_data(*db_, FLAGS_prepare_data);
+        } else if (! jogasaki::common_cli::setup_builtin_tables(env_.database())) {
+            return false;
         }
         auto end = clock::now();
-        auto duration_ms = std::chrono::duration_cast<clock::duration>(end-begin).count()/1000/1000;
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count();
         LOG(INFO) << "setup duration: " << format(duration_ms) << " ms";
+        return true;
     }
 
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
-        jogasaki::common_cli::temporary_folder dir{};
-        setup_db(cfg, dir);
-        prepare_statement();
-        run_workers(cfg);
-        db_->stop();
-        dir.clean();
+        if (! setup_db(std::move(cfg))) {
+            return -1;
+        }
+        auto client = create_client();
+        if (! prepare_statement(client)) {
+            env_.stop();
+            return -1;
+        }
+        run_workers();
+        env_.stop();
         return 0;
     }
 
 private:
-    bool begin_tx(jogasaki::api::transaction_handle& tx_handle,
-            bool readonly,
-            bool is_long,
-            std::vector<std::string> const& write_preserves
-    ) {
-        auto s = jogasaki::utils::encode_begin(readonly, is_long, write_preserves);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        if (!res->wait_completion() || !st || !res->completed() ||
-            res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            LOG(ERROR) << "error executing command";
-            return false;
-        }
-        auto [h, id] = jogasaki::utils::decode_begin(res->body_);
-        tx_handle = h;
-        (void) id;
-        return true;
-    }
-
-    bool handle_result_only(bool execute_result, std::string_view body) {
-        if (execute_result) {
-            auto [success, error, stats] = jogasaki::utils::decode_execute_result(body);
-            if (success) {
-                return true;
-            }
-            LOG(ERROR) << "command returned " << error.code_ << ": " << error.message_;
-            return false;
-        }
-        auto [success, error] = jogasaki::utils::decode_result_only(body);
-        if (success) {
-            return true;
-        }
-        LOG(ERROR) << "command returned " << error.code_ << ": " << error.message_;
-        return false;
-    }
-
-    // block wait for async query execution
-    void wait_for_statements() {
-        for(auto&& f : on_going_statements_) {
-            (void)f.get();
-        }
-        on_going_statements_.clear();
-    }
-
-    bool commit_tx(jogasaki::api::transaction_handle tx_handle) {
-        wait_for_statements();
-        auto s = jogasaki::utils::encode_commit(tx_handle, true);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        if(! res->wait_completion()) {
-            LOG(ERROR) << "response timed out";
-            return false;
-        }
-        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            LOG(ERROR) << "error executing command";
-        }
-        auto ret = handle_result_only(false, res->body_);
-        wait_for_statements(); // just for cleanup
-        return ret;
-    }
-
-    bool abort_tx(jogasaki::api::transaction_handle tx_handle) {
-        wait_for_statements();
-        auto s = jogasaki::utils::encode_rollback(tx_handle);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-
-        if (! st || !res->completed() ||
-            res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            LOG(ERROR) << "error executing command";
-        }
-        auto ret = handle_result_only(false, res->body_);
-        wait_for_statements(); // just for cleanup
-        return ret;
+    static void report_error(std::string_view operation, jogasaki::common_cli::call_result const& res) {
+        auto& diag = res.diag();
+        LOG(ERROR) << operation << " failed " << sql::error::Code_Name(diag.code_) << ": " << diag.message_
+            << (diag.supplemental_text_.empty() ? "" : " supplemental text: ") << diag.supplemental_text_;
     }
 
     bool prepare_sql(
+        jogasaki::common_cli::service_client& client,
         std::string_view sql,
         std::unordered_map<std::string, sql::common::AtomType> const& place_holders
     ) {
-        auto s = jogasaki::utils::encode_prepare_vars(std::string{sql}, place_holders);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        auto st = (*service_)(req, res);
-        if (! st || !res->completed() ||
-            res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-            LOG(ERROR) << "error executing command";
+        if (auto res = client.prepare(sql, place_holders, stmt_handle_); ! res) {
+            report_error("prepare", res);
             return false;
         }
-        stmt_handle_ = jogasaki::utils::decode_prepare(res->body_);
-
         LOG(INFO) << "statement prepared: handle(" << stmt_handle_ << ") " << sql;
         return true;
     }
@@ -923,57 +768,48 @@ private:
     }
 
     bool issue_common(
+        jogasaki::common_cli::service_client& client,
         bool query,
         jogasaki::api::transaction_handle tx_handle,
         std::vector<jogasaki::utils::parameter> const& parameters,
-        std::function<void(std::string_view)> on_write
+        jogasaki::common_cli::data_handler on_write
     ) {
-        auto s = query ?
-            jogasaki::utils::encode_execute_prepared_query(tx_handle, stmt_handle_, parameters) :
-            jogasaki::utils::encode_execute_prepared_statement(tx_handle, stmt_handle_, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-        if (query) {
-            res->set_on_write(std::move(on_write));
+        if (! query) {
+            if (auto res = client.execute_prepared_statement(tx_handle, stmt_handle_, parameters); ! res) {
+                report_error("execute statement", res);
+                return false;
+            }
+            return true;
         }
         reset_write_buffer();
-        auto st = (*service_)(req, res);
-        if(! st) {
-            LOG(ERROR) << "service invocation failed";
+        jogasaki::common_cli::query_info info{};
+        if (auto res = client.execute_prepared_query(
+                tx_handle,
+                stmt_handle_,
+                parameters,
+                std::move(on_write),
+                verify_query_records_ ? &info : nullptr
+            ); ! res) {
+            report_error("execute query", res);
             return false;
         }
-        if (query && verify_query_records_) {
-            auto [name, columns] = jogasaki::utils::decode_execute_query(res->body_head_);
-            DVLOG(jogasaki::log_debug) << "query name : " << name;
-            query_meta_ = jogasaki::utils::create_record_meta(columns);
+        if (verify_query_records_) {
+            DVLOG(jogasaki::log_debug) << "query name : " << info.name_;
+            query_meta_ = jogasaki::utils::create_record_meta(info.columns_);
             std::size_t ind{};
             for(auto&& f : query_meta_) {
                 DVLOG(jogasaki::log_debug) << "column " << ind << ": " << f;
                 ++ind;
             }
+            auto recs = jogasaki::utils::deserialize_msg(
+                tateyama::api::server::mock::view_of(write_buffer_),
+                query_meta_
+            );
+            for(auto&& r : recs) {
+                DVLOG(jogasaki::log_debug) << "record : " << r;
+            }
         }
-
-        // making lambda in order to change this to async
-        auto wait_completion = [&, res]() {
-            if(! res->wait_completion(60000ms)) {
-                LOG(ERROR) << "execution took too long";
-                std::abort();
-            }
-            if (res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
-                LOG(ERROR) << "error executing command";
-            }
-            if (verify_query_records_) {
-                auto recs = jogasaki::utils::deserialize_msg(
-                    tateyama::api::server::mock::view_of(write_buffer_),
-                    query_meta_
-                );
-                for(auto&& r : recs) {
-                    DVLOG(jogasaki::log_debug) << "record : " << r;
-                }
-            }
-            return handle_result_only(!query, res->body_);
-        };
-        return wait_completion();
+        return true;
     }
 };
 
@@ -993,6 +829,12 @@ extern "C" int main(int argc, char* argv[]) {
     google::InitGoogleLogging("service benchmark");
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("service benchmark");
+    // defaults of this benchmark, kept from the ones before using common flags
+    jogasaki::common_cli::set_flag_defaults({
+        {"thread_count", "1"},
+        {"assign_numa_nodes_uniformly", "true"},
+        {"busy_worker", "true"},
+    });
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     tateyama::service_benchmark::cli c{};
     cli_ = std::addressof(c);
@@ -1004,10 +846,9 @@ extern "C" int main(int argc, char* argv[]) {
         return -1;
     }
     try {
-        c.run(cfg);  // NOLINT
+        return c.run(cfg);  // NOLINT
     } catch (std::exception& e) {
         LOG(ERROR) << e.what();
         return -1;
     }
-    return 0;
 }

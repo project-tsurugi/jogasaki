@@ -223,4 +223,25 @@ TEST_F(remote_catalog_sql_test, missing_table_and_multi_remote_plan_do_not_start
     EXPECT_EQ(status::err_unsupported, db_->prepare("SELECT a.C0 FROM schema_a.T a JOIN schema_b.T b ON a.C0=b.C0", statement));
     EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
 }
+
+TEST_F(remote_catalog_sql_test, request_factory_keeps_original_snapshot_after_drop_and_new_request_sees_drop) {
+    auto manager = db_impl()->remote_catalogs_manager();
+    auto before = api::impl::create_request_context(*db_impl(), {}, {}, {}, {}, false);
+    auto original = before->remote_catalogs();
+    ASSERT_TRUE(original);
+    ASSERT_EQ(2, original->catalogs().size());
+    EXPECT_EQ(manager, before->remote_catalogs_manager());
+    EXPECT_EQ(std::addressof(db_impl()->remote_server_channels()), before->remote_server_channels());
+    ASSERT_EQ(status::ok, manager->drop("worker_a"));
+    auto after = api::impl::create_request_context(*db_impl(), {}, {}, {}, {}, false);
+    EXPECT_EQ(original, before->remote_catalogs());
+    EXPECT_NE(original, after->remote_catalogs());
+    ASSERT_TRUE(after->remote_catalogs());
+    ASSERT_EQ(1, after->remote_catalogs()->catalogs().size());
+    EXPECT_EQ("worker_b", after->remote_catalogs()->catalogs().front()->name());
+    EXPECT_EQ(2, before->remote_catalogs()->catalogs().size());
+    db_impl()->task_scheduler()->unregister_job(before->job()->id());
+    db_impl()->task_scheduler()->unregister_job(after->job()->id());
+}
+
 }

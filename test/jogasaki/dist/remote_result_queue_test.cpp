@@ -62,4 +62,19 @@ TEST(remote_result_queue_test, rejects_one_message_larger_than_capacity_without_
     EXPECT_FALSE(queue.push("12345"));
     EXPECT_TRUE(queue.empty());
 }
+
+TEST(remote_result_queue_test, rejects_zero_capacity) {
+    EXPECT_THROW((void)dist::remote_result_queue(0, 1), std::logic_error);
+    EXPECT_THROW((void)dist::remote_result_queue(1, 0), std::logic_error);
+}
+TEST(remote_result_queue_test, cancel_preserves_queued_messages_but_prevents_more_pushes) {
+    dist::remote_result_queue queue{6, 2};
+    ASSERT_TRUE(queue.push("first")); ASSERT_TRUE(queue.push("x"));
+    queue.cancel(); queue.cancel();
+    EXPECT_FALSE(queue.push(""));
+    EXPECT_EQ((std::deque<std::string>{"first", "x"}), queue.take());
+    EXPECT_TRUE(queue.empty()); EXPECT_TRUE(queue.take().empty());
+    EXPECT_FALSE(queue.push("again"));
+}
+
 } // namespace jogasaki::testing

@@ -208,6 +208,155 @@ TEST_F(remote_process_handler_test, accepts_definition_id_zero) {
     EXPECT_TRUE(response.success) << response.error;
 }
 
+TEST_F(remote_process_handler_test, rejects_missing_sinks_before_cancellation_and_decoding) {
+    dist::remote_process_handler handler{*db_};
+    std::size_t cancellation_checks{};
+    auto cancelled = [&] { ++cancellation_checks; return true; };
+    auto records = handler.execute_records("not protobuf", cancelled, {});
+    EXPECT_FALSE(records.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, records.error_kind);
+    EXPECT_EQ("remote record sink is required", records.error);
+    EXPECT_TRUE(records.payload.empty());
+    auto stream = handler.execute_stream("not protobuf", cancelled, {});
+    EXPECT_FALSE(stream.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, stream.error_kind);
+    EXPECT_EQ("remote result sink is required", stream.error);
+    EXPECT_TRUE(stream.payload.empty());
+    EXPECT_EQ(0, cancellation_checks);
+}
+TEST_F(remote_process_handler_test, record_sink_reads_fresh_rows_and_nullable_values) {
+    create_with_identity("CREATE TABLE sales(sale_number BIGINT PRIMARY KEY, amount BIGINT)");
+    execute_statement("INSERT INTO sales VALUES (308, 20000), (101, 12000), (205, 18000)");
+    auto block = scan_block();
+    block.stream_variables = {0, 1};
+    block.external_relations = {42};
+    block.result_schema = {{1055, "int8()", false}, {1900, "int8()", true}};
+    block.operators.front().source->table_name = "sales";
+    block.operators.front().source->index_name = "sales";
+    block.operators.front().source->columns = {
+        {"sale_number", 0, 0, dist::encode_remote_type(takatori::type::int8{})},
+        {"amount", 1, 1, dist::encode_remote_type(takatori::type::int8{})},
+    };
+    block.operators.back().offer = dist::remote_offer{42, {{0, 1055}, {1, 1900}}};
+    auto payload = dist::serialize_remote_execution_block_proto(block);
+    dist::remote_process_handler handler{*db_};
+    auto read = [&] {
+        dist::remote_execution_result wire{};
+        wire.columns = block.result_schema;
+        std::size_t batches{};
+        std::size_t cancellation_checks{};
+        auto response = handler.execute_records(payload, [&] { ++cancellation_checks; return false; },
+            [&](std::vector<std::string> const& rows) {
+            ++batches;
+            EXPECT_FALSE(scheduler::thread_local_info_.is_worker_thread());
+            EXPECT_FALSE(rows.empty());
+            wire.encoded_rows.insert(wire.encoded_rows.end(), rows.begin(), rows.end());
+            return true;
+        });
+        EXPECT_TRUE(response.success) << response.error;
+        EXPECT_TRUE(response.payload.empty());
+        EXPECT_EQ(1, batches);
+        EXPECT_GT(cancellation_checks, 0);
+        std::string error{};
+        auto decoded = dist::deserialize_remote_execution_result(dist::serialize_remote_execution_result(wire), error);
+        EXPECT_TRUE(decoded) << error;
+        return decoded;
+    };
+    auto first = read();
+    ASSERT_TRUE(first);
+    ASSERT_EQ(3, first->rows.size());
+    EXPECT_EQ(101, first->rows[0][0]); EXPECT_EQ(12000, first->rows[0][1]);
+    EXPECT_EQ(205, first->rows[1][0]); EXPECT_EQ(18000, first->rows[1][1]);
+    EXPECT_EQ(308, first->rows[2][0]); EXPECT_EQ(20000, first->rows[2][1]);
+    // A subsequent RPC must read the committed update rather than reuse the earlier read snapshot.
+    execute_statement("UPDATE sales SET amount = NULL WHERE sale_number = 205");
+    auto next = read();
+    ASSERT_TRUE(next);
+    ASSERT_EQ(3, next->rows.size());
+    EXPECT_EQ(101, next->rows[0][0]); EXPECT_EQ(12000, next->rows[0][1]);
+    EXPECT_EQ(205, next->rows[1][0]); EXPECT_FALSE(next->rows[1][1].has_value());
+    EXPECT_EQ(308, next->rows[2][0]); EXPECT_EQ(20000, next->rows[2][1]);
+    EXPECT_EQ(18000, first->rows[1][1]);
+}
+TEST_F(remote_process_handler_test, record_sink_empty_result_succeeds_without_batch) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    std::size_t batches{};
+    auto result = dist::remote_process_handler{*db_}.execute_records(
+        dist::serialize_remote_execution_block_proto(scan_block()), {},
+        [&](std::vector<std::string> const&) { ++batches; return true; });
+    EXPECT_TRUE(result.success) << result.error;
+    EXPECT_TRUE(result.payload.empty());
+    EXPECT_EQ(0, batches);
+}
+TEST_F(remote_process_handler_test, record_sink_rejection_at_finish_is_cancelled) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10)");
+    std::size_t batches{};
+    auto result = dist::remote_process_handler{*db_}.execute_records(
+        dist::serialize_remote_execution_block_proto(scan_block()), {}, [&](std::vector<std::string> const& rows) {
+            ++batches; EXPECT_EQ(1, rows.size()); return false;
+        });
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, result.error_kind);
+    EXPECT_EQ("remote result sink was closed", result.error);
+    EXPECT_EQ(1, batches);
+}
+TEST_F(remote_process_handler_test, record_sink_exception_at_finish_is_internal) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10)");
+    std::size_t batches{};
+    auto result = dist::remote_process_handler{*db_}.execute_records(
+        dist::serialize_remote_execution_block_proto(scan_block()), {}, [&](std::vector<std::string> const&) -> bool {
+            ++batches; throw std::runtime_error("record sink failed at finish");
+        });
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, result.error_kind);
+    EXPECT_EQ(1, batches);
+}
+TEST_F(remote_process_handler_test, record_sink_rejection_during_execution_stops_batches) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10), (20), (30)");
+    dist::remote_process_handler handler{*db_};
+    std::size_t batches{};
+    auto result = handler.execute_records(dist::serialize_remote_execution_block_proto(large_row_block()), {},
+        [&](std::vector<std::string> const& rows) { ++batches; EXPECT_EQ(1, rows.size()); return false; });
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, result.error_kind);
+    EXPECT_EQ("remote result sink was closed", result.error);
+    EXPECT_EQ(1, batches);
+    auto next = handler(dist::serialize_remote_execution_block_proto(scan_block()));
+    EXPECT_TRUE(next.success) << next.error;
+}
+TEST_F(remote_process_handler_test, record_sink_exception_during_execution_is_internal) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10), (20), (30)");
+    std::size_t batches{};
+    auto result = dist::remote_process_handler{*db_}.execute_records(
+        dist::serialize_remote_execution_block_proto(large_row_block()), {},
+        [&](std::vector<std::string> const&) -> bool { ++batches; throw 42; }); // NOLINT
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, result.error_kind);
+    EXPECT_EQ(1, batches);
+}
+TEST_F(remote_process_handler_test, stream_sink_rejection_during_execution_stops_output) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10), (20), (30)");
+    std::size_t chunks{};
+    auto result = dist::remote_process_handler{*db_}.execute_stream(
+        dist::serialize_remote_execution_block_proto(large_row_block()), {},
+        [&](std::string_view payload) {
+            ++chunks;
+            std::string error{};
+            auto decoded = dist::deserialize_remote_execution_result(payload, error);
+            EXPECT_TRUE(decoded) << error;
+            if (decoded) EXPECT_EQ(1, decoded->encoded_rows.size());
+            return false;
+        });
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, result.error_kind);
+    EXPECT_EQ("remote result sink was closed", result.error);
+    EXPECT_EQ(1, chunks);
+}
 TEST_F(remote_process_handler_test, stream_emits_schema_for_empty_result) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     dist::remote_process_handler handler{*db_};

@@ -747,4 +747,23 @@ TEST_F(remote_process_sql_test, completion_releases_tasks_and_flows_on_rpc_timeo
     EXPECT_LE(service_.calls.load(), 1);
 }
 
+
+TEST_F(remote_process_sql_test, transport_status_mapping_preserves_failure_category) {
+    for (auto [transport, expected] : {
+            std::pair{grpc::StatusCode::UNAVAILABLE, status::err_io_error},
+            std::pair{grpc::StatusCode::RESOURCE_EXHAUSTED, status::err_resource_limit_reached},
+            std::pair{grpc::StatusCode::INVALID_ARGUMENT, status::err_invalid_argument},
+            std::pair{grpc::StatusCode::DATA_LOSS, status::err_invalid_argument},
+            std::pair{grpc::StatusCode::UNIMPLEMENTED, status::err_unsupported},
+            std::pair{grpc::StatusCode::NOT_FOUND, status::err_not_found},
+            std::pair{grpc::StatusCode::INTERNAL, status::err_unknown}}) {
+        SCOPED_TRACE(static_cast<int>(transport));
+        service_.failure = transport;
+        auto tx = utils::create_transaction(*db_, true, false);
+        status actual{};
+        builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(actual).run();
+        EXPECT_EQ(expected, actual);
+    }
+}
+
 }

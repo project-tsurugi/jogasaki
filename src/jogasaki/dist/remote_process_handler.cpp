@@ -44,6 +44,7 @@
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/dist/remote_execution_block_decoder.h>
@@ -85,18 +86,20 @@ using remote_error = dq::remote_process_error_kind;
 
 class transaction_abort_guard {
 public:
-    explicit transaction_abort_guard(std::shared_ptr<transaction_context> transaction) noexcept
-        : transaction_(std::move(transaction)) {}
+    transaction_abort_guard(api::impl::database& database, std::shared_ptr<transaction_context> transaction) noexcept
+        : database_(database), handle_(transaction->surrogate_id(), transaction->option()->session_id()),
+          transaction_(std::move(transaction)) {}
 
     ~transaction_abort_guard() {
-        if (!transaction_) {
-            return;
+        if (transaction_) {
+            if (direct_) {
+                (void)transaction_->abort_transaction();
+            } else {
+                executor::abort_transaction(std::move(transaction_));
+            }
         }
-        if (direct_) {
-            (void)transaction_->abort_transaction();
-            return;
-        }
-        executor::abort_transaction(std::move(transaction_));
+        // Commit/abort ends the KVS transaction; the database registration must also be released.
+        (void)database_.destroy_transaction(handle_);
     }
 
     transaction_abort_guard(transaction_abort_guard const&) = delete;
@@ -110,6 +113,8 @@ public:
     void abort_directly() noexcept { direct_ = true; }
 
 private:
+    api::impl::database& database_;
+    api::transaction_handle handle_;
     std::shared_ptr<transaction_context> transaction_{};
     bool direct_{};
 };
@@ -516,7 +521,7 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
     if (auto st = database.create_transaction_internal(transaction, option); st != status::ok) {
         return {false, {}, "failed to create remote RTX", remote_error::unavailable};
     }
-    transaction_abort_guard abort_guard{transaction};
+    transaction_abort_guard abort_guard{database, transaction};
 
     while (!transaction->is_ready()) {
         if (is_cancelled && is_cancelled()) {

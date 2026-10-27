@@ -142,6 +142,71 @@ public:
     }
     void TearDown() override { if (db_) db_teardown(); }
 };
+TEST_F(remote_process_handler_test, releases_transaction_registration_after_success_for_all_entry_points) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto before = db_impl()->transaction_count();
+    auto payload = dist::serialize_remote_execution_block_proto(scan_block());
+    dist::remote_process_handler handler{*db_};
+    // No other SQL or RPC runs concurrently while the test reads transaction_count().
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        auto result = handler(payload);
+        ASSERT_TRUE(result.success) << result.error;
+        EXPECT_EQ(before, db_impl()->transaction_count());
+        std::size_t batches{};
+        auto records = handler.execute_records(payload, {}, [&](auto const& rows) {
+            ++batches;
+            EXPECT_EQ(before + 1, db_impl()->transaction_count());
+            EXPECT_EQ(1, rows.size());
+            return true;
+        });
+        EXPECT_TRUE(records.success) << records.error;
+        EXPECT_EQ(1, batches);
+        EXPECT_EQ(before, db_impl()->transaction_count());
+        auto stream = handler.execute_stream(payload, {}, [&](auto) {
+            EXPECT_EQ(before + 1, db_impl()->transaction_count());
+            return true;
+        });
+        EXPECT_TRUE(stream.success) << stream.error;
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
+}
+TEST_F(remote_process_handler_test, releases_transaction_registration_after_sink_failure) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto before = db_impl()->transaction_count();
+    bool called{};
+    auto result = dist::remote_process_handler{*db_}.execute_records(
+        dist::serialize_remote_execution_block_proto(scan_block()), {}, [&](auto const&) -> bool {
+            called = true;
+            EXPECT_EQ(before + 1, db_impl()->transaction_count());
+            throw std::runtime_error("sink failure after RTX creation");
+        });
+    EXPECT_TRUE(called);
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, result.error_kind);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+}
+TEST_F(remote_process_handler_test, releases_transaction_registration_after_cancellation_during_execution) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (101), (205), (308)");
+    auto before = db_impl()->transaction_count();
+    std::atomic_bool cancel{};
+    std::size_t batches{};
+    auto result = dist::remote_process_handler{*db_}.execute_records(
+        dist::serialize_remote_execution_block_proto(large_row_block()), [&] { return cancel.load(); },
+        [&](auto const& rows) {
+            ++batches;
+            EXPECT_EQ(before + 1, db_impl()->transaction_count());
+            EXPECT_EQ(1, rows.size());
+            cancel.store(true);
+            return true;
+        });
+    EXPECT_EQ(1, batches);
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, result.error_kind);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+}
 TEST_F(remote_process_handler_test, rejects_missing_worker_definition_without_name_fallback) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     dist::remote_process_handler handler{*db_};
@@ -537,6 +602,7 @@ TEST_F(remote_process_handler_test, escaped_task_exception_discards_job_before_n
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (1), (2), (3), (4)");
     dist::remote_process_handler handler{*db_};
+    auto before = db_impl()->transaction_count();
     bool flushed{};
     bool thrown{};
     // The task wrapper converts only std/boost exceptions, so a non-standard exception from the
@@ -559,6 +625,8 @@ TEST_F(remote_process_handler_test, escaped_task_exception_discards_job_before_n
     EXPECT_FALSE(failed.success);
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, failed.error_kind);
 
+    EXPECT_EQ(before, db_impl()->transaction_count());
+
     // The next RPC on the same thread must see none of the discarded work and complete normally.
     std::size_t rows{};
     auto next = handler.execute_stream(dist::serialize_remote_execution_block_proto(scan_block()), {},
@@ -571,6 +639,7 @@ TEST_F(remote_process_handler_test, escaped_task_exception_discards_job_before_n
         });
     EXPECT_TRUE(next.success) << next.error;
     EXPECT_EQ(4, rows);
+    EXPECT_EQ(before, db_impl()->transaction_count());
 }
 TEST_F(remote_process_handler_test, stops_when_encoded_output_exceeds_limit) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
@@ -889,8 +958,10 @@ TEST_F(remote_process_handler_test, returns_native_sql_error_details) {
     offer.offer->columns[0].source_variable_id = 1;
     block.operators = {block.operators.front(), project, offer};
     dist::remote_process_handler handler{*db_};
+    auto before = db_impl()->transaction_count();
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     EXPECT_FALSE(response.success);
+    EXPECT_EQ(before, db_impl()->transaction_count());
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::sql_error, response.error_kind);
     proto::sql::response::Error error{};
     ASSERT_TRUE(error.ParseFromString(response.sql_error_details));

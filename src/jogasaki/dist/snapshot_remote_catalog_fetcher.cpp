@@ -22,6 +22,7 @@
 #include <yugawara/schema/declaration.h>
 #include <yugawara/schema/provider.h>
 #include <yugawara/storage/provider.h>
+#include <yugawara/storage/table.h>
 
 namespace jogasaki::dist {
 
@@ -39,8 +40,8 @@ namespace {
             return;
         }
         auto const& storage = schema->storage_provider();
-        storage.each_relation([&](std::string_view id, auto const&) {
-            auto table = storage.find_table(id);
+        storage.each_relation([&](std::string_view, auto const& relation) {
+            auto const* table = dynamic_cast<yugawara::storage::table const*>(relation.get());
             auto const* server = table ? snapshot.remote_server(*table) : nullptr;
             if (!server || (result && *result != *server)) {
                 mixed = true;

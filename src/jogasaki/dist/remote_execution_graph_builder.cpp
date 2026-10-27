@@ -41,8 +41,8 @@ namespace jogasaki::dist {
 namespace relation = takatori::relation;
 namespace scalar = takatori::scalar;
 
-[[nodiscard]] static remote_execution_graph_build_result failure(std::string message) {
-    return {{}, std::move(message)};
+[[nodiscard]] static remote_execution_graph_build_result failure(std::string message, bool invalid_request = false) {
+    return {{}, std::move(message), invalid_request};
 }
 
 template <class T> [[nodiscard]] static std::string missing(char const* category, T const& value) {
@@ -197,7 +197,7 @@ public:
         for (auto const& op : block_->operators) {
             auto node = build_operator(op);
             if (!node) {
-                return failure(error_);
+                return failure(error_, invalid_request_);
             }
             auto& current = graph->insert(std::move(node));
             if (previous != nullptr) {
@@ -220,6 +220,7 @@ private:
 
     [[nodiscard]] std::unique_ptr<scalar::expression> expression(std::uint64_t id) {
         if (++expanded_expression_count_ > 10000) {
+            invalid_request_ = true;
             error_ = "scalar expression expansion limit exceeded";
             return {};
         }
@@ -233,6 +234,7 @@ private:
             case remote_scalar_expression_kind::immediate: {
                 auto result = resolver_->resolve_immediate(source);
                 if (!result) {
+                    invalid_request_ = true;
                     error_ = missing("immediate expression", id);
                 }
                 return result;
@@ -247,6 +249,7 @@ private:
             case remote_scalar_expression_kind::unary: {
                 auto kind = unary_operator(source.operator_kind);
                 if (!kind) {
+                    invalid_request_ = true;
                     error_ = missing("unary operator", source.operator_kind);
                     return {};
                 }
@@ -261,6 +264,7 @@ private:
             case remote_scalar_expression_kind::binary: {
                 auto kind = binary_operator(source.operator_kind);
                 if (!kind) {
+                    invalid_request_ = true;
                     error_ = missing("binary operator", source.operator_kind);
                     return {};
                 }
@@ -274,6 +278,7 @@ private:
             case remote_scalar_expression_kind::compare: {
                 auto kind = comparison_operator(source.operator_kind);
                 if (!kind) {
+                    invalid_request_ = true;
                     error_ = missing("comparison operator", source.operator_kind);
                     return {};
                 }
@@ -296,6 +301,7 @@ private:
         for (std::size_t i = 0; i < expression_ids.size(); ++i) {
             auto column = resolver_->resolve_storage_key_column(source, i);
             if (!column) {
+                invalid_request_ = true;
                 error_ = missing("storage key column", i);
                 return {};
             }
@@ -406,10 +412,12 @@ private:
                                                 : decode_remote_type(source.type_payload);
         auto policy = cast_loss_policy(source.operator_kind);
         if (!type) {
+            invalid_request_ = true;
             error_ = missing("type", source.type);
             return {};
         }
         if (!policy) {
+            invalid_request_ = true;
             error_ = missing("cast loss policy", source.operator_kind);
             return {};
         }
@@ -450,6 +458,7 @@ private:
     std::unordered_map<std::uint64_t, takatori::descriptor::variable> variables_{};
     std::unordered_map<std::uint64_t, remote_scalar_expression const*> expressions_{};
     std::string error_{};
+    bool invalid_request_{};
 };
 
 } // namespace
@@ -457,7 +466,7 @@ private:
 remote_execution_graph_build_result build_remote_execution_graph(remote_execution_block const& block,
                                                                  remote_execution_graph_resolver const& resolver) {
     if (auto error = validate_remote_execution_block(block)) {
-        return failure(std::move(*error));
+        return failure(std::move(*error), true);
     }
     return builder{block, resolver}.build();
 }

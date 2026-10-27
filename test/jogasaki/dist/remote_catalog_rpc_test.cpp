@@ -16,6 +16,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <thread>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -67,7 +68,7 @@ namespace wire = ::tateyama::grpc::proto;
 namespace dq = ::tateyama::grpc::distributed_query;
 using type_ptr = std::shared_ptr<takatori::type::data const>;
 
-enum class stream_mode { normal, fail_after_first, sequence_gap };
+enum class stream_mode { normal, fail_after_first, sequence_gap, wait_for_deadline };
 
 // one element per response, so that reassembly across fragments is always exercised
 std::vector<wire::RemoteCatalogResponse> one_element_per_fragment(wire::RemoteCatalog const& catalog) {
@@ -111,6 +112,10 @@ public:
             std::lock_guard lock{mutex_};
             metadata_ = request->metadata();
             finite_deadline_ = context->deadline() < std::chrono::system_clock::time_point::max();
+        }
+        if (mode == stream_mode::wait_for_deadline) {
+            while (!context->IsCancelled()) std::this_thread::sleep_for(std::chrono::milliseconds{1});
+            return {grpc::StatusCode::CANCELLED, "deadline reached"};
         }
         auto result = (*handler)();
         if (!result.success) {
@@ -561,6 +566,31 @@ TEST_F(remote_catalog_rpc_test, snapshot_and_rpc_fetchers_preserve_the_same_cata
     EXPECT_EQ(ea.incremental, aa.incremental); EXPECT_EQ(*ea.return_type, *aa.return_type);
     ASSERT_EQ(1, aa.parameter_types.size()); ASSERT_EQ(1, ea.parameter_types.size());
     EXPECT_EQ(*ea.parameter_types[0], *aa.parameter_types[0]);
+}
+
+
+TEST_F(remote_catalog_rpc_test, deadline_failure_releases_catalog_name_for_retry) {
+    dist::remote_catalog_manager timed{std::make_shared<dist::rpc_remote_catalog_fetcher>(),
+        std::chrono::milliseconds{500}, db_impl()->remote_function_ids()};
+    ASSERT_EQ(status::ok, timed.start());
+    auto reserved_before = db_impl()->remote_function_ids()->reserved_count();
+    remote_.mode = stream_mode::wait_for_deadline;
+    std::string diagnostic{};
+    dist::rpc_remote_catalog_fetcher fetcher{};
+    dist::remote_catalog_information unchanged{};
+    unchanged.schemas.push_back({"previous", {}, {}});
+    EXPECT_EQ(status::err_time_out, fetcher.fetch({"retry", "worker"},
+        db_impl()->remote_server_channels().find_channel("worker"),
+        std::chrono::system_clock::now() + std::chrono::milliseconds{500}, unchanged, diagnostic));
+    ASSERT_EQ(1U, unchanged.schemas.size());
+    EXPECT_EQ("previous", unchanged.schemas.front().name);
+    EXPECT_NE(status::ok, timed.create({"retry", "worker"}, db_impl()->remote_server_channels(), diagnostic));
+    EXPECT_FALSE(timed.find_catalog("retry"));
+    EXPECT_TRUE(timed.snapshot()->catalogs().empty());
+    EXPECT_EQ(reserved_before, db_impl()->remote_function_ids()->reserved_count());
+    remote_.mode = stream_mode::normal;
+    ASSERT_EQ(status::ok, timed.create({"retry", "worker"}, db_impl()->remote_server_channels(), diagnostic)) << diagnostic;
+    EXPECT_TRUE(timed.find_catalog("retry"));
 }
 
 }  // namespace jogasaki::testing

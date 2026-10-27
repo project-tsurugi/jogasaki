@@ -35,6 +35,9 @@
 #include <takatori/value/time_point.h>
 
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/utils/finally.h>
 #include <jogasaki/dist/remote_record_codec.h>
 #include <jogasaki/dist/remote_type_codec.h>
 #include <jogasaki/proto/distributed_query/remote_execution_block.pb.h>
@@ -129,6 +132,60 @@ TEST(remote_type_codec_test, rejects_unsupported_types_and_literals_including_nu
     }
     EXPECT_THROW((void) dist::encode_remote_literal(v::bit{"1010101"}), std::invalid_argument);
     EXPECT_THROW((void) dist::encode_remote_literal(v::datetime_interval{takatori::datetime::datetime_interval{}}), std::invalid_argument);
+}
+
+
+TEST(remote_type_codec_test, rejects_invalid_boolean_int4_overflow_and_nonnullable_null) {
+    for (int sample = 0; sample != 3; ++sample) {
+        SCOPED_TRACE(sample);
+        auto type = sample == 0 ? utils::type_for(t::boolean{}) : utils::type_for(t::int4{});
+        meta::record_meta meta{std::vector<meta::field_type>{type}, boost::dynamic_bitset<std::uint64_t>{1, 0}};
+        buffer_writer buffer{};
+        serializer::value_writer<buffer_writer> writer{buffer};
+        writer.write_row_begin(1);
+        if (sample == 0) writer.write_int(2);
+        if (sample == 1) writer.write_int(std::int64_t{2147483648LL});
+        if (sample == 2) writer.write_null();
+        data::small_record_store record{std::make_shared<meta::record_meta>(meta)};
+        std::string error{};
+        EXPECT_FALSE(dist::decode_remote_record(buffer.bytes, meta, record.ref(), error));
+        EXPECT_FALSE(error.empty());
+    }
+}
+
+
+TEST(remote_type_codec_test, timezone_rows_preserve_values_with_different_local_offsets) {
+    auto previous = global::config_pool();
+    auto reset = utils::finally([&] { global::config_pool(previous); });
+    auto config = std::make_shared<configuration>();
+    global::config_pool(config);
+    for (auto const& type : std::vector<std::shared_ptr<t::data const>>{
+        std::make_shared<t::time_of_day>(t::with_time_zone), std::make_shared<t::time_point>(t::with_time_zone)}) {
+        auto meta = std::make_shared<meta::record_meta>(std::vector<meta::field_type>{utils::type_for(*type)},
+            boost::dynamic_bitset<std::uint64_t>{1, 0});
+        data::small_record_store source{meta};
+        auto ref = source.ref();
+        if (type->kind() == t::type_kind::time_of_day) {
+            ref.set_value(meta->value_offset(0), takatori::datetime::time_of_day{12, 34, 56});
+        } else {
+            ref.set_value(meta->value_offset(0), takatori::datetime::time_point{
+                takatori::datetime::date{2026, 10, 27}, takatori::datetime::time_of_day{12, 34, 56}});
+        }
+        config->zone_offset(540);
+        auto encoded = dist::encode_remote_record(ref, *meta);
+        config->zone_offset(-300);
+        data::small_record_store decoded{meta};
+        std::string error{};
+        ASSERT_TRUE(dist::decode_remote_record(encoded, *meta, decoded.ref(), error)) << error;
+        EXPECT_NE(encoded, dist::encode_remote_record(decoded.ref(), *meta));
+        if (type->kind() == t::type_kind::time_of_day) {
+            EXPECT_EQ(ref.get_value<takatori::datetime::time_of_day>(meta->value_offset(0)),
+                decoded.ref().get_value<takatori::datetime::time_of_day>(meta->value_offset(0)));
+        } else {
+            EXPECT_EQ(ref.get_value<takatori::datetime::time_point>(meta->value_offset(0)),
+                decoded.ref().get_value<takatori::datetime::time_point>(meta->value_offset(0)));
+        }
+    }
 }
 
 }

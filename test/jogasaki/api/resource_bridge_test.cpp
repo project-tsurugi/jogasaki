@@ -21,6 +21,8 @@
 #include <string_view>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <fstream>
+#include <jogasaki/utils/finally.h>
 #include <grpcpp/grpcpp.h>
 #include <tateyama/framework/transactional_kvs_resource.h>
 #include <tateyama/grpc/server_resource.h>
@@ -441,6 +443,10 @@ TEST_F(remote_bridge_lifecycle_test, missing_adapter_stop_failure_is_retried_on_
     // Retain a request reference so the missing-adapter cleanup takes the stop timeout path.
     EXPECT_FALSE(resource_->start(*env_));
     EXPECT_NE(nullptr, database.task_scheduler());
+    // A failed stop leaves the database running: never start it twice.
+    auto* scheduler = database.task_scheduler();
+    EXPECT_FALSE(resource_->start(*env_));
+    EXPECT_EQ(scheduler, database.task_scheduler());
     pending_request.reset();
     EXPECT_EQ(1U, database.requests_inprocess().count());
 
@@ -465,6 +471,104 @@ TEST_F(remote_bridge_lifecycle_test, destructor_unregisters_both_handlers) {
     resource_.reset();
     EXPECT_EQ(grpc::StatusCode::UNIMPLEMENTED, catalog_status().error_code());
     EXPECT_EQ(grpc::StatusCode::UNIMPLEMENTED, process_status().error_code());
+}
+
+
+TEST(resource_bridge_configuration_test, rejects_invalid_remote_enabled_during_setup) {
+    std::stringstream input{"[distributed_query_remote]\nenabled=invalid\n"};
+    auto config = std::make_shared<tateyama::api::configuration::whole>(input,
+        std::string{default_configuration} + "\n[distributed_query_remote]\nenabled=false\n");
+    framework::environment env{framework::boot_mode::database_server, config};
+    bridge resource{};
+    bool result{true};
+    EXPECT_NO_THROW(result = resource.setup(env));
+    EXPECT_FALSE(result);
+    EXPECT_EQ(nullptr, resource.database());
+}
+TEST_F(remote_bridge_lifecycle_test, rejects_start_while_already_running) {
+    add_listener();
+    ASSERT_TRUE(resource_->start(*env_));
+    auto& database = impl::get_impl(*resource_->database());
+    auto* scheduler = database.task_scheduler();
+    EXPECT_FALSE(resource_->start(*env_));
+    EXPECT_EQ(scheduler, database.task_scheduler());
+    ASSERT_TRUE(resource_->shutdown(*env_));
+    EXPECT_TRUE(resource_->start(*env_));
+}
+
+
+TEST_F(resource_bridge_test, rejects_invalid_client_lists_and_uris_when_enabled) {
+    for (auto const& client : {
+        "name=worker|second\nuri=dns:///localhost:12345\n",
+        "name=worker\nuri=dns:///localhost:12345\nsecure=true|false\n",
+        "name=worker\nuri=dns:///localhost:12345\nroot_cert=grpc_default|grpc_default\n",
+        "name=worker\nuri=unsupported://host\n",
+        "name=worker\nuri=dns:///localhost:12345\nsecure=invalid\n",
+        "name=worker\nuri=dns:///localhost:12345\nsecure=true\nroot_cert=relative-missing.pem\n"}) {
+        SCOPED_TRACE(client);
+        std::stringstream input{std::string{"[distributed_query_coordinator]\nenabled=true\n[distributed_query_client]\n"} + client};
+        tateyama::api::configuration::whole config{input,
+            "[distributed_query_coordinator]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+        EXPECT_FALSE(api::resource::convert_config(config));
+    }
+}
+TEST_F(resource_bridge_test, enabled_client_uses_default_tls_roots) {
+    std::stringstream input{"[distributed_query_coordinator]\nenabled=true\n[distributed_query_client]\nname=worker\nuri=dns:///localhost:12345\nsecure=true\n"};
+    tateyama::api::configuration::whole config{input,
+        "[distributed_query_coordinator]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+    auto converted = api::resource::convert_config(config);
+    ASSERT_TRUE(converted);
+    ASSERT_EQ(1U, converted->distributed_query_remote_servers().size());
+    auto const& server = converted->distributed_query_remote_servers().front();
+    EXPECT_TRUE(server.secure);
+    EXPECT_EQ(dist::root_certificate_source::grpc_default_roots, server.root_certificate);
+    EXPECT_TRUE(server.pem_root_certs.empty());
+}
+
+
+TEST_F(resource_bridge_test, resolves_relative_certificate_and_rejects_missing_or_non_pem_file) {
+    test::temporary_folder directory{};
+    directory.prepare();
+    auto cleanup = utils::finally([&] { directory.clean(); });
+    auto certificate = std::filesystem::path{directory.path()} / "root.pem";
+    auto parse = [&] {
+        std::stringstream input{"[distributed_query_coordinator]\nenabled=true\n[distributed_query_client]\nname=worker\nuri=dns:///localhost:12345\nsecure=true\nroot_cert=root.pem\n"};
+        tateyama::api::configuration::whole config{input,
+            "[distributed_query_coordinator]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+        config.base_path(directory.path());
+        return api::resource::convert_config(config);
+    };
+    EXPECT_FALSE(parse());
+    { std::ofstream out{certificate}; out << "not a PEM certificate"; }
+    EXPECT_FALSE(parse());
+    // Configuration parsing checks the PEM envelope; TLS verifies X.509 contents later.
+    std::string pem{"-----BEGIN CERTIFICATE-----\nparser-fixture\n-----END CERTIFICATE-----\n"};
+    { std::ofstream out{certificate}; out << pem; }
+    auto converted = parse();
+    ASSERT_TRUE(converted);
+    ASSERT_EQ(1U, converted->distributed_query_remote_servers().size());
+    auto const& server = converted->distributed_query_remote_servers().front();
+    EXPECT_EQ(dist::root_certificate_source::pem, server.root_certificate);
+    EXPECT_EQ(pem, server.pem_root_certs);
+}
+
+
+TEST_F(remote_bridge_lifecycle_test, database_start_failure_leaves_handlers_unregistered_and_allows_retry) {
+    // Create the database once without an adapter; the bridge stops it again.
+    ASSERT_FALSE(resource_->start(*env_));
+    ASSERT_NE(nullptr, resource_->database());
+    add_listener();
+    ASSERT_TRUE(listener_->start(*env_));
+    auto configuration = impl::get_impl(*resource_->database()).configuration();
+    configuration->distributed_query_coordinator_enabled(true);
+    configuration->distributed_query_remote_servers({});
+    EXPECT_FALSE(resource_->start(*env_));
+    EXPECT_EQ(grpc::StatusCode::UNIMPLEMENTED, catalog_status().error_code());
+    EXPECT_EQ(grpc::StatusCode::UNIMPLEMENTED, process_status().error_code());
+    configuration->distributed_query_coordinator_enabled(false);
+    ASSERT_TRUE(resource_->start(*env_));
+    EXPECT_TRUE(catalog_status().ok());
+    EXPECT_EQ(grpc::StatusCode::INVALID_ARGUMENT, process_status().error_code());
 }
 
 }

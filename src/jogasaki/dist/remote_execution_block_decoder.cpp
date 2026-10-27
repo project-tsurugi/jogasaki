@@ -373,8 +373,17 @@ private:
             return "scan operator must not have find keys";
         }
         if (op.kind == remote_operator_kind::find &&
-            (!op.source->lower_key_expression_ids.empty() || !op.source->upper_key_expression_ids.empty())) {
-            return "find operator must not have scan endpoints";
+            (!op.source->lower_key_expression_ids.empty() || !op.source->upper_key_expression_ids.empty() ||
+             op.source->lower_endpoint_kind != remote_endpoint_kind::unbound ||
+             op.source->upper_endpoint_kind != remote_endpoint_kind::unbound || op.source->limit)) {
+            return "find operator must not have scan endpoints or limit";
+        }
+        if (op.kind == remote_operator_kind::scan &&
+            ((op.source->lower_endpoint_kind == remote_endpoint_kind::unbound &&
+              !op.source->lower_key_expression_ids.empty()) ||
+             (op.source->upper_endpoint_kind == remote_endpoint_kind::unbound &&
+              !op.source->upper_key_expression_ids.empty()))) {
+            return "unbound scan endpoint must not have keys";
         }
         return {};
     }

@@ -25,7 +25,7 @@
 ### 対象外とするもの (将来の課題)
 
 - service_benchmarkの機能拡張: リトライとアボート数の集計、レイテンシのパーセンタイル、ワークロード定義ファイル、JSON/CSV出力、オーバーヘッド計測モード、`api::database` 直接呼び出しモード
-- simple-benchmark互換のベンチマーク (「将来の拡張方針」に記載)
+- simple-benchmark互換のベンチマーク (「将来の拡張方針」に記載。後に `examples/nsbench` として着手した)
 - CPU割当ての改善 (付録に記載)
 - tgsqlにない機能の拡張 (ホスト変数とprepared statementは現行機能相当を `\prepare`/`\execute` として維持するにとどめる)
 - BLOB/CLOB、Ctrl-Cによるキャンセル
@@ -267,20 +267,61 @@ service_benchmarkの機能拡張 (リトライ、パーセンタイル、ワー�
 
 ## 将来の拡張方針: ベンチマークのバリエーション
 
-### simple-benchmark互換
+### simple-benchmark互換 (nsbench)
 
-simple-benchmark (`project-tsurugi/simple-benchmark`) のCBで問題が報告された際に、ローカルでも同じ条件で再現させたいことがある。そのためsimple-benchmarkと互換のベンチマークを用意することを将来の拡張とする。
+simple-benchmark (`project-tsurugi/simple-benchmark`、以下sbench) のCBで問題が報告された際に、ローカルでも同じ条件で再現させたいことがある。そのためsbenchと互換のベンチマーク `examples/nsbench` (native simple bench) をservice_benchmarkとは別のプログラムとして用意した。
 
-- simple-benchmarkは `Insert`, `Update`, `Select`, `Delete`, `UpsertSameKey`, `KvsGet`/`KvsPut` などのシナリオを持ち、単一テーブル/複数テーブルの変種がある。レイテンシはヒストグラムで集計し、結果をファイルに出力する
-- 互換の範囲は、シナリオ名、主要なオプション、テーブル定義、出力形式 (CBの結果と比較できること) とする
 - endpointを通らないため、endpointやセッション層に起因する問題はローカルでは再現しない。再現しないこと自体が問題の切り分けに使える
+- 互換の範囲は、コマンド名、主要なオプション、テーブル定義とSQL、出力形式 (CBの結果と比較できること) とする
+
+#### コマンド
+
+- 実行形式は `nsbench <command>... [options]`。sbenchと同じコマンド名を使う
+  - `prepare`、`insert`/`insert-st`/`insert-mt`、`update`/`update-st`/`update-mt`、`select`/`select-st`/`select-mt`、`delete`/`delete-mt`、`noptx`/`noptx-st`
+  - `kvs-*`、`connect*`、`upsert-samekey*`、`stub-*` は対象外 (KVS/接続はin-processでは意味がなく、upsert-samekeyは必要になった時点で追加する)
+- 複数のコマンドを並べると同じDB上で順に実行する (例: `nsbench prepare insert-mt update-mt --tables 4`)
+  - 既定の `--location=TMP` では実行ごとにDBが作り直されるため、sbenchのように `prepare` と各ベンチマークを別プロセスで実行するとテーブルがない。1回の実行にまとめるか、`--location` で永続ディレクトリを指定する
+  - コマンドごとにオプションを変えることはできない。変えたい場合は `--location` を指定して別々に実行する
+- `-st` は全スレッドが `table_id=1` のテーブルを使い、スレッドiの主キー範囲は `i * --id_coefficient` から始まる (sbenchのシステムプロパティ `idCoefficient` 相当)。`-mt` はスレッドiがテーブルiを使い、主キーは1から始まる
+
+#### オプション
+
+- sbenchと同じ名前のオプションを受け付ける: `--transaction`(`-t`)、`--entity`(`-e`)、`--duration`(`-d`)、`--interval`(`-i`)、`--output`(`-o`)、`--header`(`-h`)、`--read_area`、`--operations`、`--operations_per_tx`、`--id_origin`、`--table_id`、`--insert_mode`、`--threads`、`--tables`、`--scan_range`、`--max_value`、`--select_columns`、`--condition_column`、`--index`、`--without-pk`
+  - gflagsで受けるため、短縮形とハイフンを含む名前は解析前に変換する。値を別引数で与える真偽値オプション (`--without-pk true`) も受け付ける
+  - 列挙値 (`OCC`/`LTX`/`RO`、`UPSERT` など) は大文字小文字を区別しない
+- `--connection`、`--session_timeout`、`--session_shutdown`、`--auto_inc` はスクリプトの互換のため受け付けるが無視する
+- コマンドによって既定値が異なるオプション (`--operations_per_tx` はinsert/updateが1、select/deleteが0。`--scan_range` はselectが1、deleteが0) は、未指定を表す値を既定値にしてコマンドごとに解決する
+- エンジンの設定 (`--thread_count` など) は共通部品のフラグを使い、既定値はjogasaki::configurationのまま変えない (CBのサーバーの既定設定に近づけるため)
+- `--client_spin` (既定true) でクライアントの応答待ちをビジーループにする。nsbench独自
+
+#### テーブルと処理
+
+- エンティティ `lkv` (`lkv<N>(k bigint primary key, v bigint not null)`、既定) と `sysbench` (`sbtest<N>(id int primary key, k int, c char(120), pad char(60))`) を持つ。`lob` は対象外
+- SQL、パラメーターの値の作り方 (主キーは連番、それ以外は乱数)、`--select_columns` のカンマを空白に置き換える挙動、scan-deleteの範囲のずらし方などはsbenchのコードに合わせる
+- `prepare` のDDLは `--transaction` に関わらずOCCで実行する
+- LTXのwrite preserve (と `--read_area inclusive` のread area) は対象テーブルとする。sbenchのnoptxは `sbtest<N>` 固定だが、nsbenchではエンティティのテーブルを使う
+- リトライはしない (sbenchも同じ)。エラーになったらその時点でベンチマークを中止し、0以外で終了する
+
+#### 計測と出力
+
+- レイテンシはsbenchと同じく、トランザクション開始からコミット完了まで (Tx) と、コミット直前まで (Bc) をトランザクションごとに記録する。パラメーターの生成は計測に含めない
+- Elapsedはスレッドごとのシナリオ全体 (セッション作成と文のprepareを含む) の時間で、`-st`/`-mt` ではスレッド平均とする
+- 集計はsbenchの `StatsUtil` と同じ: パーセンタイルはnearest-rank、複数スレッドの集計は件数の合計、最小/最大は全体、平均と50/95パーセンタイルはスレッドごとの値の平均/パーセンタイル。OPSは経過秒数が1未満なら1秒として割る
+- 出力はsbenchのログと同じ列と書式 (`"1,234"` 形式) を標準出力に出す。`-st`/`-mt` はスレッドごとの結果 (`report of thread-N`) と集計結果を出す。ヒストグラムも同じ区間 (<1ms, 1-3ms, ..., >300ms) で出す
+- `-o` を指定するとCSVファイルに追記する。`-st`/`-mt` でファイル名が `.csv` で終わる場合はスレッドごとに `_t<N>.csv`、ヒストグラムは `_hist.csv` に出す (sbenchと同じ)
+
+#### sbenchとの違い
+
+- full scanのselectは、sbenchではiceaxeの `executeAndFindRecord` で先頭の1件だけを読むが、nsbenchでは結果をすべて読み捨てる
+- sbenchで実行時例外になる設定 (例: `select-st` で `--operations_per_tx` を省略した場合の集計時のゼロ除算) は、補正後の値を使って動くようにした
+- スレッドは一斉に開始する (sbenchはスレッドプールに順に投入する)
 
 ### バリエーションごとにプログラムを分ける
 
 ベンチマークのバリエーションは無数にありうるため、service_benchmark 1つにすべてを詰め込まず、ニーズに応じて別のプログラムとして作る。
 
 - 1つのプログラムに詰め込むと、モードごとの分岐やオプションの組み合わせが増え、計測ループに余計な処理が入りやすくなる。プログラムを分ければ、それぞれのループを単純に保てる
-- プログラム名は連番 (service_benchmark2 など) ではなく目的を表す名前とする (例: simple-benchmark互換なら service_sbench)
+- プログラム名は連番 (service_benchmark2 など) ではなく目的を表す名前とする (例: simple-benchmark互換は nsbench)
 - 既存のservice_benchmarkは `simple_benchmark_client.md` に記述された簡易ベンチマークとして残す
 - 各プログラムは共通部品 (`service_client`、gflags定義と起動処理、テーブル準備とデータ投入) を使う
 - ベンチマーク同士で共有したい部品 (クライアントスレッドの起動と開始同期、CPU割当て、レイテンシ集計、結果出力など) は、2つ目のベンチマークを作る時点で共通化する。今回のスコープでは先回りして作らない

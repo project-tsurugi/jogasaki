@@ -177,6 +177,28 @@ TEST(remote_execution_block_test, rejects_multiple_remote_processes_for_one_exec
     // Without remote metadata or an explicit override, both ordinary SQL processes are valid.
     EXPECT_TRUE(dist::validate_remote_plan(plan, nullptr).empty());
 }
+TEST(remote_execution_block_test, common_preparation_requires_processor_and_relation_map) {
+    using namespace executor::process;
+    auto processor = std::make_shared<processor_info>();
+    auto relations = std::make_shared<relation_io_map>();
+    EXPECT_THROW((void)prepare_process({}, relations), std::logic_error);
+    EXPECT_THROW((void)prepare_process(processor, {}), std::logic_error);
+    EXPECT_THROW((void)prepare_process({}, {}), std::logic_error);
+}
+TEST(remote_execution_block_test, common_preparation_requires_variables_and_blocks_together) {
+    using namespace executor::process;
+    relation::graph_type graph{};
+    yugawara::compiled_info info{};
+    auto variables = std::make_shared<impl::variables_info_list>();
+    auto blocks = std::make_shared<impl::block_indices>();
+    EXPECT_THROW((void)prepare_processor(graph, info, nullptr, variables, {}), std::logic_error);
+    EXPECT_THROW((void)prepare_processor(graph, info, nullptr, {}, blocks), std::logic_error);
+    auto processor = prepare_processor(graph, info, nullptr, variables, blocks);
+    ASSERT_TRUE(processor);
+    EXPECT_EQ(variables.get(), std::addressof(processor->vars_info_list()));
+    EXPECT_EQ(blocks.get(), std::addressof(processor->block_indices()));
+    EXPECT_EQ(std::addressof(graph), std::addressof(processor->relations()));
+}
 TEST(remote_execution_block_test, common_preparation_initializes_once_before_activation) {
     using namespace executor::process;
     auto process = prepare_process(std::make_shared<processor_info>(), std::make_shared<relation_io_map>());

@@ -292,6 +292,9 @@ simple-benchmark (`project-tsurugi/simple-benchmark`、以下sbench) のCBで問
 - `--connection`、`--session_timeout`、`--session_shutdown`、`--auto_inc` はスクリプトの互換のため受け付けるが無視する
 - コマンドによって既定値が異なるオプション (`--operations_per_tx` はinsert/updateが1、select/deleteが0。`--scan_range` はselectが1、deleteが0) は、未指定を表す値を既定値にしてコマンドごとに解決する
 - エンジンの設定 (`--thread_count` など) は共通部品のフラグを使い、既定値はjogasaki::configurationのまま変えない (CBのサーバーの既定設定に近づけるため)
+- `--epoch_duration` (共通部品のフラグ、単位us) の既定値を3000とする。sbenchが動くtsurugidbの既定 (tsurugi.ini) が3000usであるのに対し、shirakami自体の既定は40msで、コミット完了待ちのレイテンシがこれに引っ張られるため
+  - jogasakiは開発用のkvs起動時に `location` しか渡さないため、`--epoch_duration` を指定した場合は共通部品でsharksfinのDBを開いてjogasakiに貸し出す (`api::create_database(cfg, handle)`)。終了時のcloseも共通部品が行う
+  - service_cli/service_benchmarkの既定値は0 (kvsの既定値を使う) のままとする
 - `--client_spin` (既定true) でクライアントの応答待ちをビジーループにする。nsbench独自
 
 #### テーブルと処理

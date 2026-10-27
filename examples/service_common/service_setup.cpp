@@ -24,6 +24,7 @@
 #include <tateyama/api/configuration.h>
 
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/commit_response.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/storage_data.h>
@@ -55,6 +56,7 @@ DEFINE_int64(scan_block_size, 100, "max records processed by scan operator befor
 DEFINE_int64(scan_yield_interval, 1, "max time (ms) processed by scan operator before yielding to other tasks");  //NOLINT
 DEFINE_int64(scan_default_parallel, 4, "max parallel execution count of scan tasks");  //NOLINT
 DEFINE_int64(max_result_set_writers, 64, "max number of result set writers");  //NOLINT
+DEFINE_string(commit_response, "", "default commit response: accepted, available, stored or propagated. Empty to use the default (stored)");  //NOLINT
 DEFINE_int64(epoch_duration, 0, "epoch duration (us) of the kvs. Specify 0 to use the kvs default (40000us for shirakami)");  //NOLINT
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_bool(builtin_tables, false, "register built-in test tables (T0, T1, T2, ...) and benchmark tables (TPC-C like)");  //NOLINT
@@ -104,6 +106,24 @@ bool fill_configuration(configuration& cfg) {
     cfg.scan_yield_interval(FLAGS_scan_yield_interval);
     cfg.scan_default_parallel(FLAGS_scan_default_parallel);
     cfg.max_result_set_writers(FLAGS_max_result_set_writers);
+    if (! FLAGS_commit_response.empty()) {
+        bool found = false;
+        for(auto k : {
+            commit_response_kind::accepted,
+            commit_response_kind::available,
+            commit_response_kind::stored,
+            commit_response_kind::propagated,
+        }) {
+            if (FLAGS_commit_response == to_string_view(k)) {
+                cfg.default_commit_response(k);
+                found = true;
+            }
+        }
+        if (! found) {
+            LOG(ERROR) << "invalid --commit_response: " << FLAGS_commit_response;
+            return false;
+        }
+    }
     if((FLAGS_prepare_data > 0 || ! FLAGS_load_from.empty()) && ! FLAGS_builtin_tables) {
         LOG(ERROR) << "--prepare_data and --load_from require --builtin_tables";
         return false;

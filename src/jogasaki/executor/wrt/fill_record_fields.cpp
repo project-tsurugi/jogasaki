@@ -428,8 +428,8 @@ primary_target create_primary_target(
 
 std::vector<secondary_target> create_secondary_targets(
     yugawara::storage::index const& idx,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta
+    maybe_shared_ptr<meta::record_meta> const& key_meta,
+    maybe_shared_ptr<meta::record_meta> const& value_meta
 ) {
     std::vector<secondary_target> ret{};
     auto indices = utils::collect_secondary_indices(idx);

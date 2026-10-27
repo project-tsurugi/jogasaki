@@ -117,8 +117,9 @@ bool bridge::start(framework::environment& env) {
         auto adapter = env.resource_repository().find<tateyama::grpc::distributed_query::service_adapter>();
         if (!adapter) {
             LOG_LP(ERROR) << "distributed query remote service adapter is unavailable";
-            db_->stop();
-            started_ = false;
+            if (db_->stop() == status::ok) {
+                started_ = false;
+            }
             return false;
         }
         remote_service_adapter_ = adapter;

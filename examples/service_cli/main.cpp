@@ -25,6 +25,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -56,6 +57,7 @@ DEFINE_bool(timestamp, true, "print timestamp for each output line");  //NOLINT
 DEFINE_bool(raw, false, "print raw result set data");  //NOLINT
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
 DEFINE_string(history_file, "", "specify the command history file name. Defaults to $HOME/.service_cli_history");  //NOLINT
+DEFINE_int64(prompt_wait, 1000, "max duration (ms) to wait for the sessions that received the input before showing the next prompt in interactive mode. Results that arrive later are printed asynchronously. Specify 0 to wait forever");  //NOLINT
 DEFINE_int32(exit_on_idle, -1, "Exit the program if user leaves the command line idle. Specify the duration in second, or -1 not to exit.");  //NOLINT
 
 namespace tateyama::service_cli {
@@ -166,6 +168,7 @@ private:
     std::map<std::string, std::unique_ptr<session>> sessions_{};
     std::size_t next_session_id_{1};
     std::chrono::milliseconds wait_timeout_{};
+    std::set<std::string> submitted_{};
     bool interactive_{};
     bool exit_{};
     bool halt_{};
@@ -271,6 +274,9 @@ private:
                         wait_session(s);
                     }
                     s.submit_statement(item.text_);
+                    if (interactive_) {
+                        submitted_.emplace(item.session_);
+                    }
                     break;
                 }
                 case input_item::kind::sleep:
@@ -291,6 +297,9 @@ private:
                         wait_session(s);
                     }
                     s.submit_expect_error();
+                    if (interactive_) {
+                        submitted_.emplace(item.session_);
+                    }
                     break;
                 }
                 case input_item::kind::unknown_directive:
@@ -335,6 +344,29 @@ private:
         }
     }
 
+    // wait for the sessions that received the input so that the prompt follows the results.
+    // Gives up after --prompt_wait so that the console is available even if the session is blocked (e.g. waiting for
+    // other transactions)
+    void wait_submitted() {
+        using clock = std::chrono::steady_clock;
+        auto deadline = clock::now() + std::chrono::milliseconds{FLAGS_prompt_wait};
+        for(auto&& name : submitted_) {
+            auto it = sessions_.find(name);
+            if (it == sessions_.end()) {
+                continue;
+            }
+            if (FLAGS_prompt_wait == 0) {
+                it->second->wait_idle(std::chrono::milliseconds{0});
+                continue;
+            }
+            auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - clock::now());
+            if (remaining.count() <= 0 || ! it->second->wait_idle(remaining)) {
+                break;
+            }
+        }
+        submitted_.clear();
+    }
+
     void run_interactive() {
         using clock = std::chrono::steady_clock;
         std::atomic<clock::time_point> last_interacted{clock::now()};
@@ -371,6 +403,7 @@ private:
                 linenoiseHistorySave(history.c_str());
             }
             process(parser_.feed(line));
+            wait_submitted();
         }
         if (! halt_) {
             wait_all();

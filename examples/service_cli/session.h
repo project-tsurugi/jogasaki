@@ -59,6 +59,9 @@ struct session_settings {
     /// @brief whether to print the raw result set data
     bool raw_{};  //NOLINT
 
+    /// @brief whether to print messages for transactions started/ended implicitly (same as tgsql display.implicit)
+    bool display_implicit_{true};  //NOLINT
+
     /// @brief the number of unexpected errors
     std::atomic<std::size_t> errors_{};  //NOLINT
 };

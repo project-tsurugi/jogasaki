@@ -28,6 +28,8 @@
 #include <yugawara/variable/configurable_provider.h>
 
 #include <jogasaki/dist/symbol_locations.h>
+#include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
+#include <jogasaki/dist/remote_catalog_information.h>
 
 namespace jogasaki::testing {
 namespace {
@@ -136,4 +138,26 @@ TEST(symbol_locations_test, missing_remote_placement_is_rejected) {
     EXPECT_THROW((symbol_locations{snapshot, registry}), std::invalid_argument);
 }
 } // namespace
+TEST(snapshot_remote_catalog_fetcher_test, enumerates_without_recursive_provider_lookup) {
+    auto storage = std::make_shared<non_reentrant_storage>();
+    auto table = storage->add_table({"sales", {{"sale_number", takatori::type::int8{}}}});
+    auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
+    schemas->add(yugawara::schema::declaration{std::nullopt, "public", storage});
+    auto catalog = std::make_shared<yugawara::schema::catalog>("branch", std::nullopt, schemas);
+    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
+        dist::remote_catalog_snapshot::catalogs_type{catalog},
+        dist::remote_catalog_snapshot::locations_type{{table.get(), "worker"}});
+    dist::snapshot_remote_catalog_fetcher fetcher{snapshot};
+    auto references = fetcher.references();
+    ASSERT_EQ(1U, references.size());
+    EXPECT_EQ("branch", references.front().catalog_name);
+    EXPECT_EQ("worker", references.front().remote_server_name);
+    dist::remote_catalog_information output{};
+    std::string diagnostic{};
+    ASSERT_EQ(status::ok, fetcher.fetch(references.front(), {}, {}, output, diagnostic)) << diagnostic;
+    ASSERT_EQ(1U, output.tables.size());
+    EXPECT_EQ("sales", output.tables.front().name);
+    EXPECT_FALSE(storage->callback_active);
+}
+
 } // namespace jogasaki::testing

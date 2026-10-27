@@ -664,6 +664,11 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
                                                                cancellation_check const& is_cancelled,
                                                                result_sink const& sink,
                                                                record_sink const& records) {
+    auto& database = api::impl::get_impl(*database_);
+    [[maybe_unused]] auto inprocess_requests = database.requests_inprocess();
+    if (database.stop_requested()) {
+        return {false, {}, "database is stopping", remote_error::unavailable};
+    }
     if (is_cancelled && is_cancelled()) {
         return {false, {}, "remote execution was cancelled before decoding", remote_error::cancelled};
     }
@@ -684,7 +689,8 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
         return {false,
                 {},
                 std::move(graph.error),
-                resolver.unsupported_column() ? remote_error::unsupported : remote_error::not_found};
+                graph.invalid_request ? remote_error::invalid_request
+                                      : (resolver.unsupported_column() ? remote_error::unsupported : remote_error::not_found)};
     }
 
     auto compiled = compile_remote_execution_graph(*graph.graph);

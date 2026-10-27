@@ -148,4 +148,56 @@ TEST(remote_record_stream_test, cancellation_and_failed_sink_stop_output) {
     EXPECT_EQ(status::request_canceled, reader.accept(message.SerializeAsString(), [](auto) { return status::request_canceled; }));
     EXPECT_EQ(status::request_canceled, reader.accept(message.SerializeAsString(), [](auto) { return status::ok; }));
 }
+
+TEST(remote_record_stream_test, rejects_missing_sender_and_invalid_limits) {
+    EXPECT_THROW((void)dist::remote_record_stream_writer({}, 12), std::invalid_argument);
+    auto send = [](auto const&) { return status::ok; };
+    EXPECT_THROW((void)dist::remote_record_stream_writer(send, 0), std::invalid_argument);
+    EXPECT_THROW((void)dist::remote_record_stream_writer(send, dist::remote_message_limit + 1), std::invalid_argument);
+}
+TEST(remote_record_stream_test, sender_failure_is_sticky_across_all_entry_points) {
+    std::size_t calls{};
+    dist::remote_record_stream_writer writer{[&](auto const&) { ++calls; return status::err_io_error; }};
+    ASSERT_EQ(status::ok, writer.append(row(205)));
+    EXPECT_EQ(status::err_io_error, writer.flush());
+    EXPECT_EQ(status::err_io_error, writer.append(row(308)));
+    EXPECT_EQ(status::err_io_error, writer.flush());
+    EXPECT_EQ(status::err_io_error, writer.finish());
+    EXPECT_EQ(1, calls);
+}
+TEST(remote_record_stream_test, cancellation_during_append_is_sticky_and_does_not_send) {
+    std::size_t calls{};
+    dist::remote_record_stream_writer writer{[&](auto const&) { ++calls; return status::ok; }, 12, [] { return true; }};
+    EXPECT_EQ(status::request_canceled, writer.append(row(205)));
+    EXPECT_EQ(status::request_canceled, writer.flush());
+    EXPECT_EQ(status::request_canceled, writer.finish());
+    EXPECT_EQ(0, calls);
+}
+TEST(remote_record_stream_test, reader_callback_failure_stops_remaining_rows_and_later_batches) {
+    auto meta = int_meta();
+    dist::remote_record_stream_reader reader{meta};
+    batch message{};
+    for (auto value : {101, 205, 308}) message.add_record_list(row(value));
+    std::vector<std::string> delivered{};
+    EXPECT_EQ(status::err_io_error, reader.accept(message.SerializeAsString(), [&](auto value) {
+        delivered.emplace_back(value);
+        return delivered.size() == 2 ? status::err_io_error : status::ok;
+    }));
+    EXPECT_EQ((std::vector<std::string>{row(101), row(205)}), delivered);
+    message.set_sequence_number(1);
+    EXPECT_EQ(status::err_io_error, reader.accept(message.SerializeAsString(), [&](auto) {
+        ADD_FAILURE() << "failed reader must not deliver another row";
+        return status::ok;
+    }));
+}
+TEST(remote_record_stream_test, reader_rejects_missing_callback_before_delivery_and_keeps_error) {
+    auto meta = int_meta();
+    dist::remote_record_stream_reader reader{meta}; batch message{}; message.add_record_list(row(205));
+    EXPECT_EQ(status::err_invalid_argument, reader.accept(message.SerializeAsString(), {}));
+    EXPECT_FALSE(reader.diagnostic().empty());
+    EXPECT_EQ(status::err_invalid_argument, reader.accept(message.SerializeAsString(), [](auto) {
+        ADD_FAILURE() << "failed reader must not deliver rows"; return status::ok;
+    }));
+}
+
 }

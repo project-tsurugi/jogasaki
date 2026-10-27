@@ -33,6 +33,7 @@
 
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/commit_response.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
@@ -428,6 +429,30 @@ TEST_F(remote_bridge_lifecycle_test, missing_adapter_failure_can_retry_and_shutd
     EXPECT_EQ(grpc::StatusCode::UNIMPLEMENTED, catalog_status().error_code());
     EXPECT_EQ(grpc::StatusCode::UNIMPLEMENTED, process_status().error_code());
     ASSERT_TRUE(resource_->start(*env_));
+    EXPECT_TRUE(catalog_status().ok());
+    EXPECT_EQ(grpc::StatusCode::INVALID_ARGUMENT, process_status().error_code());
+}
+TEST_F(remote_bridge_lifecycle_test, missing_adapter_stop_failure_is_retried_on_shutdown) {
+    ASSERT_FALSE(resource_->start(*env_));
+    ASSERT_NE(nullptr, resource_->database());
+    auto& database = impl::get_impl(*resource_->database());
+    auto pending_request = database.requests_inprocess();
+    EXPECT_EQ(2U, database.requests_inprocess().count());
+    // Retain a request reference so the missing-adapter cleanup takes the stop timeout path.
+    EXPECT_FALSE(resource_->start(*env_));
+    EXPECT_NE(nullptr, database.task_scheduler());
+    pending_request.reset();
+    EXPECT_EQ(1U, database.requests_inprocess().count());
+
+    ASSERT_TRUE(resource_->shutdown(*env_));
+    EXPECT_EQ(nullptr, database.task_scheduler());
+    if (database.task_scheduler()) {
+        EXPECT_EQ(status::ok, database.stop());
+    }
+
+    add_listener();
+    ASSERT_TRUE(resource_->start(*env_));
+    ASSERT_TRUE(listener_->start(*env_));
     EXPECT_TRUE(catalog_status().ok());
     EXPECT_EQ(grpc::StatusCode::INVALID_ARGUMENT, process_status().error_code());
 }

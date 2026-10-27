@@ -88,7 +88,7 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
 
 #### service_client
 
-- 配置: `examples/common` に静的ライブラリを作り、各ツールからリンクする。`mock/` の `common` ライブラリ (`jogasaki-common-utils`) はテスト用のため使わない
+- 配置: `examples/service_common` に静的ライブラリを作り、各ツールからリンクする。`examples/common` の `utils.cpp` (データのロード・ダンプ) もこのライブラリに含める。`examples/common` に置かないのは、他のCLI (aggregate_cli、join_cliなど) が `../common/*.cpp` をGLOBで取り込んでおり、コンパイルエラーやgflagsの多重定義になるため。`mock/` の `common` ライブラリ (`jogasaki-common-utils`) はテスト用のため使わない
 - 1つのservice_clientオブジェクトは1つのsession_idを持ち、送るリクエストにそれを付ける
 - 設計上の制約
   - 出力しない、スレッドを作らない、セッションやトランザクションの一覧を持たない
@@ -251,7 +251,7 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
 段階ごとにコミット/PRを分ける。
 
 1. 共通部品とservice_cliの最小限の修正
-   - `examples/common` の静的ライブラリ (service_client、共通のgflags/起動処理、テーブル準備とデータ投入) を作成する
+   - `examples/service_common` の静的ライブラリ (service_client、共通のgflags/起動処理、テーブル準備とデータ投入) を作成する
    - service_cliの不具合 (テーブル登録、`ExecuteResult` の処理、日付・時刻パラメーターでのabort、応答待ちのタイムアウト) をservice_clientを使って修正する。この時点ではまだ旧形式のコマンドのまま
 2. service_benchmarkの共通部品への移行
    - service_clientに移行し、上記の合格基準で移行前後のスループットを比較する

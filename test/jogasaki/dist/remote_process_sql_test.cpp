@@ -766,4 +766,90 @@ TEST_F(remote_process_sql_test, transport_status_mapping_preserves_failure_categ
     }
 }
 
+
+TEST(remote_sql_error_test, rejects_duplicate_envelope_fields_and_duplicate_sql_detail) {
+    proto::sql::response::Error error{};
+    error.set_code(proto::sql::error::EVALUATION_EXCEPTION);
+    error.set_detail("division failed");
+    auto original = sql_failure(error);
+    for (int duplicate = 0; duplicate != 3; ++duplicate) {
+        SCOPED_TRACE(duplicate);
+        auto bytes = original.error_details();
+        {
+            google::protobuf::io::StringOutputStream stream{&bytes};
+            google::protobuf::io::CodedOutputStream out{&stream};
+            using wire_format = google::protobuf::internal::WireFormatLite;
+            if (duplicate == 0) wire_format::WriteEnum(1, 2, &out);
+            if (duplicate == 1) wire_format::WriteString(2, error.detail(), &out);
+            if (duplicate == 2) {
+                google::protobuf::Any detail{};
+                detail.set_type_url("type.googleapis.com/jogasaki.proto.sql.response.Error");
+                detail.set_value(error.SerializeAsString());
+                wire_format::WriteBytes(3, detail.SerializeAsString(), &out);
+            }
+        }
+        bool protocol_error{};
+        EXPECT_FALSE(dist::deserialize_remote_sql_error(bytes, 2, error.detail(), protocol_error));
+    }
+}
+TEST(remote_sql_error_test, ignores_unrelated_detail_and_restores_sql_status) {
+    proto::sql::response::Error error{};
+    error.set_code(proto::sql::error::EVALUATION_EXCEPTION);
+    error.set_detail("division failed");
+    auto original = sql_failure(error);
+    std::string bytes{};
+    {
+        google::protobuf::io::StringOutputStream stream{&bytes};
+        google::protobuf::io::CodedOutputStream out{&stream};
+        google::protobuf::Any unrelated{};
+        unrelated.set_type_url("type.googleapis.com/example.Trace");
+        unrelated.set_value("trace");
+        google::protobuf::internal::WireFormatLite::WriteBytes(3, unrelated.SerializeAsString(), &out);
+    }
+    bytes += original.error_details();
+    bool protocol_error{};
+    auto decoded = dist::deserialize_remote_sql_error(bytes, 2, error.detail(), protocol_error);
+    ASSERT_TRUE(decoded);
+    EXPECT_FALSE(protocol_error);
+    auto restored = dist::restore_remote_sql_error(*decoded);
+    EXPECT_EQ(error_code::evaluation_exception, restored->code());
+    EXPECT_EQ(status::err_expression_evaluation_failure, restored->status());
+    EXPECT_EQ(error.detail(), restored->message());
+}
+
+
+TEST_F(remote_process_sql_test, many_result_messages_deliver_every_row) {
+    service_.raw = [this](std::string_view payload, auto* writer) {
+        auto result = service_.handler(payload);
+        if (!result.success) return grpc::Status{grpc::StatusCode::INTERNAL, result.error};
+        for (std::uint64_t sequence = 0; sequence != 200; ++sequence) {
+            if (!write_message(writer, sequence, result.payload)) return grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
+        }
+        return grpc::Status::OK;
+    };
+    std::vector<mock::basic_record> rows{};
+    query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+    ASSERT_EQ(400U, rows.size());
+    EXPECT_EQ(10, rows.front().get_value<std::int64_t>(0));
+    EXPECT_EQ(20, rows.back().get_value<std::int64_t>(0));
+}
+TEST_F(remote_process_sql_test, invalid_record_during_many_messages_completes_cleanup) {
+    service_.raw = [this](std::string_view payload, auto* writer) {
+        auto result = service_.handler(payload);
+        if (!result.success) return grpc::Status{grpc::StatusCode::INTERNAL, result.error};
+        for (std::uint64_t sequence = 0; sequence != 200; ++sequence) {
+            if (sequence == 30) {
+                wire::RemoteProcessResult invalid{};
+                invalid.set_sequence_number(sequence);
+                invalid.add_record_list(std::string(1, '\0'));
+                if (!writer->Write(invalid)) return grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
+            } else if (!write_message(writer, sequence, result.payload)) {
+                return grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
+            }
+        }
+        return grpc::Status::OK;
+    };
+    expect_remote_termination(false);
+}
+
 }

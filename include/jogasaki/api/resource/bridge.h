@@ -112,6 +112,7 @@ private:
     std::shared_ptr<dist::remote_process_handler> remote_process_handler_{};
     std::shared_ptr<dist::local_catalog_handler> catalog_handler_{};
     bool started_{false};
+    bool remote_enabled_{false};
 
 };
 

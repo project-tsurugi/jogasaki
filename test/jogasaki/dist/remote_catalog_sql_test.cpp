@@ -160,7 +160,24 @@ TEST_F(remote_catalog_sql_test, prepared_statement_resolves_with_original_snapsh
     ASSERT_TRUE(statement);
     EXPECT_EQ(0U, api::impl::get_impl(*statement).body()->mirrors()->mutable_storage_operation().storages().size());
     EXPECT_EQ(0, a_.calls);
-    EXPECT_EQ(original.lock(), api::impl::get_impl(*statement).body()->mirrors()->remote_catalogs());
+    auto captured = api::impl::get_impl(*statement).body()->mirrors()->remote_catalogs();
+    EXPECT_EQ(original.lock(), captured);
+    ASSERT_TRUE(captured);
+    std::shared_ptr<yugawara::schema::declaration const> schema{};
+    for (auto const& catalog : captured->catalogs()) {
+        if (auto found = catalog->schema_provider().find("schema_a")) {
+            schema = std::move(found);
+            break;
+        }
+    }
+    ASSERT_TRUE(schema);
+    auto table = schema->storage_provider().find_table("T");
+    ASSERT_TRUE(table);
+    auto* placement = captured->remote_server(*table);
+    ASSERT_NE(nullptr, placement);
+    EXPECT_EQ("worker_a", *placement);
+    ASSERT_TRUE(captured->remote_definition(*table));
+    EXPECT_TRUE(captured->remote_definition(*table)->remote_definition_id.has_value());
     EXPECT_NE(manager->snapshot(), api::impl::get_impl(*statement).body()->mirrors()->remote_catalogs());
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
     ASSERT_FALSE(original.expired());

@@ -69,7 +69,18 @@ bool bridge::setup(framework::environment& env) {
         return true;
     }
     cfg_ = convert_config(*env.configuration());
-    return cfg_ != nullptr;
+    if (!cfg_) {
+        return false;
+    }
+    remote_enabled_ = false;
+    try {
+        auto remote = env.configuration()->get_section("distributed_query_remote");
+        remote_enabled_ = remote && remote->get<bool>("enabled").value_or(false);
+    } catch (std::exception const& e) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_remote.enabled: " << e.what();
+        return false;
+    }
+    return true;
 }
 
 static void borrow_relay_service(framework::environment& env) {
@@ -99,6 +110,11 @@ bool bridge::start(framework::environment& env) {
         return true;
     }
 
+    if (started_) {
+        LOG_LP(ERROR) << "database is already started; complete shutdown before restarting";
+        return false;
+    }
+
     borrow_relay_service(env);
 
     if (! db_) {
@@ -112,8 +128,7 @@ bool bridge::start(framework::environment& env) {
 
     auto ret = db_->start() == status::ok;
     started_ = ret;
-    auto remote = env.configuration()->get_section("distributed_query_remote");
-    if (ret && remote != nullptr && remote->get<bool>("enabled").value_or(false)) {
+    if (ret && remote_enabled_) {
         auto adapter = env.resource_repository().find<tateyama::grpc::distributed_query::service_adapter>();
         if (!adapter) {
             LOG_LP(ERROR) << "distributed query remote service adapter is unavailable";

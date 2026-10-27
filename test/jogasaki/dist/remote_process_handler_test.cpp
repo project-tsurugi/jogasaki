@@ -22,6 +22,13 @@
 #include <thread>
 #include <gtest/gtest.h>
 
+#include <takatori/relation/scan.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/plan/forward.h>
+#include <yugawara/binding/factory.h>
+#include <jogasaki/dist/remote_execution_graph_compiler.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/field_types.h>
 #include <takatori/type/character.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
@@ -1219,6 +1226,216 @@ TEST_F(remote_process_handler_test, cancels_before_execution) {
     auto response = handler.execute(dist::serialize_remote_execution_block_proto(scan_block()), [] { return true; });
     EXPECT_FALSE(response.success);
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, response.error_kind);
+}
+
+
+TEST_F(remote_process_handler_test, rejects_unknown_scalar_operator_as_invalid_request) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    auto block = scan_block();
+    block.values = {0, 1};
+    block.stream_variables = {0, 1};
+    block.result_value_id = 1;
+    block.scalar_expressions = {
+        {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
+        {1, dist::remote_scalar_expression_kind::unary, "invalid_operator", {}, {}, {}, {}, {0}},
+    };
+    dist::remote_operator project{};
+    project.operator_id = 1;
+    project.kind = dist::remote_operator_kind::project;
+    project.input_value_id = 0;
+    project.output_value_id = 1;
+    project.project_columns = {{1, 1}};
+    auto offer = block.operators.back();
+    offer.operator_id = 2;
+    offer.input_value_id = 1;
+    offer.offer->columns[0].source_variable_id = 1;
+    block.operators = {block.operators.front(), project, offer};
+    dist::remote_process_handler handler{*db_};
+    auto response = handler(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_FALSE(response.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+    EXPECT_NE(std::string::npos, response.error.find("unary operator"));
+}
+TEST_F(remote_process_handler_test, rejects_find_with_ignored_scan_options) {
+    dist::remote_process_handler handler{*db_};
+    for (int option = 0; option != 3; ++option) {
+        SCOPED_TRACE(option);
+        auto block = scan_block();
+        auto& source = *block.operators.front().source;
+        block.operators.front().kind = dist::remote_operator_kind::find;
+        if (option == 0) source.limit = 0;
+        if (option == 1) source.lower_endpoint_kind = dist::remote_endpoint_kind::inclusive;
+        if (option == 2) source.upper_endpoint_kind = dist::remote_endpoint_kind::exclusive;
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(response.success);
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+        EXPECT_NE(std::string::npos, response.error.find("find operator"));
+    }
+}
+TEST_F(remote_process_handler_test, rejects_unbound_scan_endpoint_with_keys) {
+    auto block = scan_block();
+    block.scalar_expressions = {{7, dist::remote_scalar_expression_kind::immediate}};
+    block.scalar_expressions[0].type_payload = dist::encode_remote_type(takatori::type::int8{});
+    block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(takatori::value::int8{205});
+    block.operators.front().source->lower_key_count = 1;
+    block.operators.front().source->lower_key_expression_ids = {7};
+    dist::remote_process_handler handler{*db_};
+    auto response = handler(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_FALSE(response.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+    EXPECT_NE(std::string::npos, response.error.find("unbound scan endpoint"));
+}
+
+
+TEST_F(remote_process_handler_test, holds_database_request_reference_until_execution_returns) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto& database = api::impl::get_impl(*db_);
+    EXPECT_EQ(1U, database.requests_inprocess().count());
+    dist::remote_process_handler handler{*db_};
+    bool called{};
+    auto response = handler.execute_records(dist::serialize_remote_execution_block_proto(scan_block()), {},
+        [&](auto const&) {
+            called = true;
+            EXPECT_EQ(2U, database.requests_inprocess().count());
+            return true;
+        });
+    EXPECT_TRUE(response.success) << response.error;
+    EXPECT_TRUE(called);
+    EXPECT_EQ(1U, database.requests_inprocess().count());
+    auto invalid = handler("not protobuf");
+    EXPECT_FALSE(invalid.success);
+    EXPECT_EQ(1U, database.requests_inprocess().count());
+    auto cancelled = handler.execute({}, [] { return true; });
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::cancelled, cancelled.error_kind);
+    EXPECT_EQ(1U, database.requests_inprocess().count());
+}
+TEST_F(remote_process_handler_test, rejects_execution_after_database_stop) {
+    dist::remote_process_handler handler{*db_};
+    ASSERT_EQ(status::ok, db_->stop());
+    auto response = handler("not protobuf");
+    EXPECT_FALSE(response.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::unavailable, response.error_kind);
+    EXPECT_EQ(status::ok, db_->start());
+}
+
+
+TEST_F(remote_process_handler_test, executes_find_and_bounded_scan_keys) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (101), (205), (309)");
+    dist::remote_process_handler handler{*db_};
+    for (bool find : {false, true}) {
+        auto block = scan_block();
+        block.scalar_expressions = {{7, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions[0].type_payload = dist::encode_remote_type(takatori::type::int8{});
+        block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(takatori::value::int8{205});
+        auto& source = *block.operators.front().source;
+        if (find) {
+            block.operators.front().kind = dist::remote_operator_kind::find;
+            source.find_key_count = 1;
+            source.find_key_expression_ids = {7};
+        } else {
+            source.lower_key_count = 1;
+            source.upper_key_count = 1;
+            source.lower_endpoint_kind = dist::remote_endpoint_kind::prefixed_inclusive;
+            source.upper_endpoint_kind = dist::remote_endpoint_kind::prefixed_inclusive;
+            source.lower_key_expression_ids = {7};
+            source.upper_key_expression_ids = {7};
+        }
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        ASSERT_TRUE(response.success) << response.error;
+        std::string error{};
+        auto result = dist::deserialize_remote_execution_result(response.payload, error);
+        ASSERT_TRUE(result) << error;
+        ASSERT_EQ(1U, result->rows.size());
+        ASSERT_EQ(1U, result->rows.front().size());
+        EXPECT_EQ(205, result->rows.front().front());
+        if (!find) {
+            source.upper_endpoint_kind = dist::remote_endpoint_kind::prefixed_exclusive;
+            auto excluded = handler(dist::serialize_remote_execution_block_proto(block));
+            ASSERT_TRUE(excluded.success) << excluded.error;
+            auto empty = dist::deserialize_remote_execution_result(excluded.payload, error);
+            ASSERT_TRUE(empty) << error;
+            EXPECT_TRUE(empty->rows.empty());
+        }
+        if (find) {
+            source.find_key_count = 2;
+            source.find_key_expression_ids = {7, 7};
+        } else {
+            source.lower_key_count = 2;
+            source.lower_key_expression_ids = {7, 7};
+        }
+        auto excessive_keys = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(excessive_keys.success);
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, excessive_keys.error_kind);
+        EXPECT_NE(std::string::npos, excessive_keys.error.find("storage key column"));
+    }
+}
+
+
+TEST_F(remote_process_handler_test, creator_schema_order_and_nullability_reach_worker_results) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY, C1 BIGINT)");
+    execute_statement("INSERT INTO T VALUES (205, 18000), (309, NULL)");
+    auto storage = db_impl()->tables();
+    auto table = storage->find_table("T");
+    auto index = storage->find_index("T");
+    ASSERT_TRUE(table);
+    ASSERT_TRUE(index);
+    yugawara::binding::factory bindings{};
+    auto first = bindings.stream_variable();
+    auto second = bindings.stream_variable();
+    auto output_first = bindings.exchange_column();
+    auto output_second = bindings.exchange_column();
+    takatori::plan::forward forward{output_first, output_second};
+    takatori::relation::graph_type graph{};
+    auto& scan = graph.insert(takatori::relation::scan{bindings(*index),
+        {{bindings(table->columns()[0]), first}, {bindings(table->columns()[1]), second}}, {}, {}});
+    auto& offer = graph.insert(takatori::relation::step::offer{bindings.exchange(forward),
+        {{second, output_second}, {first, output_first}}});
+    scan.output() >> offer.input();
+    auto compiled = dist::compile_remote_execution_graph(graph);
+    ASSERT_TRUE(compiled) << compiled.error;
+    auto int8 = utils::type_for(takatori::type::int8{});
+    meta::record_meta meta{std::vector<meta::field_type>{int8, int8}, boost::dynamic_bitset<std::uint64_t>{2, 2}};
+    meta::variable_order order{meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>, forward.columns()};
+    auto block = dist::create_remote_execution_block(graph, compiled.compiled_info.get(), &meta, &order);
+    ASSERT_TRUE(block);
+    ASSERT_EQ(2U, block->result_schema.size());
+    EXPECT_FALSE(block->result_schema[0].nullable);
+    EXPECT_TRUE(block->result_schema[1].nullable);
+    dist::remote_process_handler handler{*db_};
+    auto response = handler(dist::serialize_remote_execution_block_proto(*block));
+    ASSERT_TRUE(response.success) << response.error;
+    std::string error{};
+    auto result = dist::deserialize_remote_execution_result(response.payload, error);
+    ASSERT_TRUE(result) << error;
+    ASSERT_EQ(2U, result->rows.size());
+    EXPECT_EQ((std::vector<std::optional<std::int64_t>>{205, 18000}), result->rows[0]);
+    EXPECT_EQ((std::vector<std::optional<std::int64_t>>{309, std::nullopt}), result->rows[1]);
+    meta::record_meta wrong_width{std::vector<meta::field_type>{int8}, boost::dynamic_bitset<std::uint64_t>{1, 0}};
+    EXPECT_FALSE(dist::create_remote_execution_block(graph, compiled.compiled_info.get(), &wrong_width, &order));
+}
+
+
+TEST_F(remote_process_handler_test, rejects_unexecutable_scan_endpoint_before_transaction) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    auto before = db_impl()->transaction_count();
+    dist::remote_process_handler handler{*db_};
+    for (auto kind : {dist::remote_endpoint_kind::inclusive, dist::remote_endpoint_kind::exclusive}) {
+        auto block = scan_block();
+        block.scalar_expressions = {{7, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions[0].type_payload = dist::encode_remote_type(takatori::type::int8{});
+        block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(takatori::value::int8{205});
+        auto& source = *block.operators.front().source;
+        source.lower_key_count = 1;
+        source.lower_key_expression_ids = {7};
+        source.lower_endpoint_kind = kind;
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(response.success);
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::unsupported, response.error_kind);
+        EXPECT_NE(std::string::npos, response.error.find("scan endpoint"));
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
 }
 
 } // namespace jogasaki::testing

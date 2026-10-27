@@ -45,6 +45,7 @@
 
 #include <tateyama/proto/distributed_query/remote_execution_block.pb.h>
 
+#include <jogasaki/proto/distributed_query/remote_execution_block.pb.h>
 #include <jogasaki/dist/remote_execution_block.h>
 #include <jogasaki/dist/remote_type_codec.h>
 #include <jogasaki/dist/remote_catalog_provider.h>
@@ -575,6 +576,12 @@ TEST(remote_execution_block_test, creates_find_source_payload) {
     EXPECT_EQ(dist::remote_endpoint_kind::unbound, source.lower_endpoint_kind);
     EXPECT_EQ(dist::remote_endpoint_kind::unbound, source.upper_endpoint_kind);
     EXPECT_FALSE(source.limit);
+    auto decoded = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(*block));
+    ASSERT_TRUE(decoded) << decoded.error;
+    ASSERT_TRUE(decoded.block->operators[0].source);
+    EXPECT_EQ(dist::remote_endpoint_kind::unbound, decoded.block->operators[0].source->lower_endpoint_kind);
+    EXPECT_EQ(dist::remote_endpoint_kind::unbound, decoded.block->operators[0].source->upper_endpoint_kind);
+    EXPECT_FALSE(decoded.block->operators[0].source->limit);
 }
 
 TEST(remote_execution_block_test, rebuilds_takatori_graph) {
@@ -700,5 +707,25 @@ TEST(remote_execution_block_test, rejects_non_graph) {
 }
 
 } // namespace
+
+
+TEST(remote_execution_result_test, rejects_version_legacy_rows_and_duplicate_columns) {
+    for (int sample = 0; sample != 3; ++sample) {
+        SCOPED_TRACE(sample);
+        jogasaki::proto::distributed_query::RemoteExecutionResult message{};
+        message.set_version(sample == 0 ? 1 : 2);
+        if (sample == 1) message.add_rows();
+        if (sample == 2) {
+            for (int i = 0; i != 2; ++i) {
+                auto* column = message.mutable_schema()->add_columns();
+                column->set_column_id(1055);
+                column->set_type_payload(dist::encode_remote_type(type::int8{}));
+            }
+        }
+        std::string error{};
+        EXPECT_FALSE(dist::deserialize_remote_execution_result(message.SerializeAsString(), error));
+        EXPECT_FALSE(error.empty());
+    }
+}
 
 } // namespace jogasaki::testing

@@ -97,4 +97,29 @@ TEST_F(serial_task_scheduler_test, multiple_tasks) {
     ASSERT_TRUE(pt1);
 }
 
+TEST_F(serial_task_scheduler_test, stop_discards_both_queues_and_releases_captures_before_reuse) {
+    serial_task_scheduler scheduler{};
+    job_context job{};
+    request_context request{};
+    request.job(maybe_shared_ptr{&job});
+    auto token = std::make_shared<int>(42);
+    std::weak_ptr<int> retained = token;
+    int executed{};
+    auto task = std::make_shared<test_task>([&, token] { (void)token; ++executed; });
+    scheduler.schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, &request, task});
+    scheduler.schedule_conditional_task(conditional_task{&request,
+        [token] { return true; }, [&] { ++executed; }});
+    task.reset(); token.reset();
+    EXPECT_FALSE(retained.expired());
+    scheduler.stop();
+    EXPECT_TRUE(retained.expired());
+    scheduler.wait_for_progress(job.id());
+    EXPECT_EQ(0, executed);
+    scheduler.schedule_task(flat_task{task_enum_tag<flat_task_kind::wrapped>, &request,
+        std::make_shared<test_task>([&] { ++executed; })});
+    scheduler.wait_for_progress(job.id());
+    EXPECT_EQ(1, executed);
+    scheduler.stop();
+}
+
 }

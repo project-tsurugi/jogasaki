@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include <sharksfin/api.h>
+
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/configuration.h>
@@ -57,6 +59,7 @@ public:
     /**
      * @brief create and start the database and sql service
      * @details the database location is taken from the flags. If it's "TMP", temporary directory is created.
+     * If --epoch_duration is specified, kvs is opened by this object with the option and borrowed by the database.
      * @return false if the database failed to start
      */
     bool start(std::shared_ptr<configuration> cfg);
@@ -78,7 +81,10 @@ private:
     std::shared_ptr<api::database> db_{};
     std::shared_ptr<api::impl::service> service_{};
     temporary_folder temporary_{};
+    sharksfin::DatabaseHandle kvs_{};
     bool started_{};
+
+    void close_kvs();
 };
 
 /**

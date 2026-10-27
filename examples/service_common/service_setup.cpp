@@ -18,6 +18,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <sharksfin/DatabaseOptions.h>
+#include <sharksfin/api.h>
 #include <takatori/util/downcast.h>
 #include <tateyama/api/configuration.h>
 
@@ -53,6 +55,7 @@ DEFINE_int64(scan_block_size, 100, "max records processed by scan operator befor
 DEFINE_int64(scan_yield_interval, 1, "max time (ms) processed by scan operator before yielding to other tasks");  //NOLINT
 DEFINE_int64(scan_default_parallel, 4, "max parallel execution count of scan tasks");  //NOLINT
 DEFINE_int64(max_result_set_writers, 64, "max number of result set writers");  //NOLINT
+DEFINE_int64(epoch_duration, 0, "epoch duration (us) of the kvs. Specify 0 to use the kvs default (40000us for shirakami)");  //NOLINT
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_bool(builtin_tables, false, "register built-in test tables (T0, T1, T2, ...) and benchmark tables (TPC-C like)");  //NOLINT
 DEFINE_string(load_from, "", "specify the generated db file directory to load initial data. Requires --builtin_tables.");  //NOLINT
@@ -120,13 +123,28 @@ bool service_environment::start(std::shared_ptr<configuration> cfg) {
         cfg->db_location(std::string(FLAGS_location));
     }
     cfg->skip_smv_check(true);  // skip strict version check for internal use
-    db_ = std::shared_ptr{api::create_database(cfg)};
+    if (FLAGS_epoch_duration > 0) {
+        // jogasaki opens kvs only with the location, so open it here to pass other options
+        sharksfin::DatabaseOptions options{};
+        options.attribute("location", cfg->db_location());
+        options.attribute("epoch_duration", std::to_string(FLAGS_epoch_duration));
+        if (auto rc = sharksfin::database_open(options, nullptr, &kvs_); rc != sharksfin::StatusCode::OK) {
+            LOG(ERROR) << "failed to open kvs: " << rc;
+            kvs_ = nullptr;
+            temporary_.clean();
+            return false;
+        }
+        db_ = std::shared_ptr{api::create_database(cfg, kvs_)};
+    } else {
+        db_ = std::shared_ptr{api::create_database(cfg)};
+    }
     auto c = std::make_shared<tateyama::api::configuration::whole>("");
     service_ = std::make_shared<api::impl::service>(c, db_.get());
     if (auto rc = db_->start(); rc != status::ok) {
         LOG(ERROR) << "failed to start database: " << rc;
         db_.reset();
         service_.reset();
+        close_kvs();
         temporary_.clean();
         return false;
     }
@@ -141,7 +159,20 @@ void service_environment::stop() {
     }
     service_.reset();
     db_.reset();
+    close_kvs();
     temporary_.clean();
+}
+
+void service_environment::close_kvs() {
+    if (kvs_ == nullptr) {
+        return;
+    }
+    // the database borrows the kvs handle, so the owner closes it
+    if (auto rc = sharksfin::database_close(kvs_); rc != sharksfin::StatusCode::OK) {
+        LOG(ERROR) << "failed to close kvs: " << rc;
+    }
+    sharksfin::database_dispose(kvs_);
+    kvs_ = nullptr;
 }
 
 bool setup_builtin_tables(api::database& db) {

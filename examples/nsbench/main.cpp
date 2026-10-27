@@ -737,7 +737,11 @@ extern "C" int main(int argc, char* argv[]) {
         "          delete, delete-mt, noptx, noptx-st\n"
         "Multiple commands are executed in order on the same database, e.g. `nsbench prepare insert update`.");
     // suppress engine info logs mixed into the results by default
-    jogasaki::common_cli::set_flag_defaults({{"minloglevel", "1"}});
+    // epoch duration is same as the default of tsurugidb (tsurugi.ini) where sbench runs. Shirakami default is 40ms.
+    jogasaki::common_cli::set_flag_defaults({
+        {"minloglevel", "1"},
+        {"epoch_duration", "3000"},
+    });
     auto converted = tateyama::nsbench::convert_arguments(argc, argv);
     std::vector<char*> args{};
     for(auto&& a : converted) {

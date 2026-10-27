@@ -57,6 +57,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/storage_utils.h>
 #include <jogasaki/utils/validate_any_type.h>
 
 namespace jogasaki::executor::wrt {
@@ -431,28 +432,11 @@ std::vector<secondary_target> create_secondary_targets(
     maybe_shared_ptr<meta::record_meta> value_meta
 ) {
     std::vector<secondary_target> ret{};
-    auto cnt = 0;
-    idx.table().owner()->each_table_index(idx.table(),
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ++cnt;
-        }
-    );
-    ret.reserve(cnt);
-    idx.table().owner()->each_table_index(idx.table(),
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ret.emplace_back(
-                *entry,
-                key_meta,
-                value_meta
-            );
-        }
-    );
+    auto indices = utils::collect_secondary_indices(idx);
+    ret.reserve(indices.size());
+    for (auto const& entry : indices) {
+        ret.emplace_back(*entry, idx, key_meta, value_meta);
+    }
     return ret;
 }
 

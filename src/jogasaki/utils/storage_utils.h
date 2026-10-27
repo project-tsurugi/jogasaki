@@ -16,7 +16,10 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
+#include <vector>
 
+#include <yugawara/storage/index.h>
 #include <yugawara/storage/table.h>
 
 namespace jogasaki::utils {
@@ -27,6 +30,16 @@ namespace jogasaki::utils {
  * @return the number of indices including primary and secondary defined for the given table
  */
 std::size_t index_count(yugawara::storage::table const& table);
+
+/**
+ * @brief collect secondary index references in provider enumeration order
+ * @details Retains the indices for preparation outside the provider callback.
+ * This does not provide a metadata snapshot across concurrent DDL operations.
+ * @param primary the primary index of the table
+ * @return secondary indices, excluding primary
+ */
+std::vector<std::shared_ptr<yugawara::storage::index const>> collect_secondary_indices(
+    yugawara::storage::index const& primary);
 
 }
 

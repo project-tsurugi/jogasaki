@@ -146,20 +146,19 @@ status secondary_target::encode_remove(
 
 secondary_target::field_mapping_type secondary_target::create_fields(
     yugawara::storage::index const& idx,
+    yugawara::storage::index const& primary,
     maybe_shared_ptr<meta::record_meta> const& primary_key_meta,
     maybe_shared_ptr<meta::record_meta> const& primary_value_meta
 ) {
     auto& table = idx.table();
-    auto primary = table.owner()->find_primary_index(table);
-    if(!(primary != nullptr)) throw_exception(std::logic_error{""});
     secondary_target::field_mapping_type ret{};
     ret.reserve(table.columns().size());
     for(auto&& k : idx.keys()) {
         bool found = false;
-        for(std::size_t i=0, n=primary->keys().size(); i<n; ++i) {
+        for(std::size_t i=0, n=primary.keys().size(); i<n; ++i) {
             // compare by calling column() in order to ignore the sort direction
             // that is not relevant to find the corresponding column in the primary index
-            if(primary->keys().at(i).column() == k.column()) {
+            if(primary.keys().at(i).column() == k.column()) {
                 auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                     kvs::spec_key_ascending : kvs::spec_key_descending;
                 ret.emplace_back(
@@ -175,8 +174,8 @@ secondary_target::field_mapping_type secondary_target::create_fields(
             }
         }
         if(found) continue;
-        for(std::size_t i=0, n=primary->values().size(); i<n; ++i) {
-            if(primary->values().at(i) == k.column()) {
+        for(std::size_t i=0, n=primary.values().size(); i<n; ++i) {
+            if(primary.values().at(i) == k.column()) {
                 auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                     kvs::spec_key_ascending : kvs::spec_key_descending;
                 ret.emplace_back(

@@ -435,7 +435,10 @@ bool session::end_transaction(bool commit, std::vector<std::string>& lines, std:
         report_error(res, lines);
         return false;
     }
-    lines.emplace_back(std::string{commit ? "transaction commit finished" : "transaction rollback finished"} + std::string{suffix} + ".");
+    if (suffix.empty() || settings_.display_implicit_) {
+        // non-empty suffix means the transaction is ended implicitly
+        lines.emplace_back(std::string{commit ? "transaction commit finished" : "transaction rollback finished"} + std::string{suffix} + ".");
+    }
     return true;
 }
 
@@ -532,8 +535,10 @@ bool session::run_in_transaction(
             tx_implicit_ = true;
             tx_active_ = true;
         }
-        lines.emplace_back("start transaction implicitly. type=" +
-            std::string{transaction_kind_name(settings_.implicit_options_.kind_)} + " transaction_id=" + id);
+        if (settings_.display_implicit_) {
+            lines.emplace_back("start transaction implicitly. type=" +
+                std::string{transaction_kind_name(settings_.implicit_options_.kind_)} + " transaction_id=" + id);
+        }
         implicit = true;
     }
     bool success = execute_prepared(lines, stmt, query, parameters);

@@ -198,6 +198,8 @@ CLIはリッチな機能、benchmarkは低オーバーヘッドを求めるが�
   - `\prepare <name> [<var>:<型> ...] AS <SQL>;` で文をprepareする。型名はSQLの型名 (`INT`, `BIGINT`, `DOUBLE`, `VARCHAR`, `DECIMAL`, `DATE` など) で書く
   - `\execute <name> [<var>=<値> ...];` でprepare済みの文を実行する。`NULL` を指定できる
 - 生のバイト列の表示は起動オプション `--raw` で切り替える (`\set` は実装しない)
+- 暗黙のトランザクション開始・終了のメッセージは起動オプション `--display_implicit=false` で抑制する (tgsqlのクライアント変数 `display.implicit` に相当)
+- 各行の時刻表示は既定でオフとし、`--timestamp` で有効にする
 
 #### 出力とエラー
 

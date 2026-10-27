@@ -53,7 +53,8 @@ DEFINE_string(write_preserve, "", "comma separated table names to write preserve
 DEFINE_bool(auto_commit, false, "commit after each statement even in explicitly started transaction");  //NOLINT
 DEFINE_bool(stop_on_error, false, "stop processing the script on error");  //NOLINT
 DEFINE_int64(wait_timeout, 60000, "timeout (ms) waiting for a session to complete in script mode. Specify 0 to wait forever");  //NOLINT
-DEFINE_bool(timestamp, true, "print timestamp for each output line");  //NOLINT
+DEFINE_bool(timestamp, false, "print timestamp for each output line");  //NOLINT
+DEFINE_bool(display_implicit, true, "print messages for transactions started or ended implicitly (same as tgsql client variable display.implicit)");  //NOLINT
 DEFINE_bool(raw, false, "print raw result set data");  //NOLINT
 DEFINE_bool(test_build, false, "To verify build of this executable");  //NOLINT
 DEFINE_string(history_file, "", "specify the command history file name. Defaults to $HOME/.service_cli_history");  //NOLINT
@@ -126,6 +127,7 @@ public:
         }
         settings_.auto_commit_ = FLAGS_auto_commit;
         settings_.raw_ = FLAGS_raw;
+        settings_.display_implicit_ = FLAGS_display_implicit;
         wait_timeout_ = std::chrono::milliseconds{FLAGS_wait_timeout};
         interactive_ = FLAGS_input_file.empty() && ::isatty(STDIN_FILENO) != 0;
         settings_.echo_ = ! interactive_;

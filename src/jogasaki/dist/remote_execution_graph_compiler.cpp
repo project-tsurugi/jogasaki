@@ -19,6 +19,7 @@
 #include <utility>
 
 #include <takatori/relation/expression.h>
+#include <takatori/relation/scan.h>
 #include <takatori/relation/expression_kind.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/binary_operator.h>
@@ -79,6 +80,16 @@ namespace jogasaki::dist {
 remote_execution_graph_compile_result compile_remote_execution_graph(takatori::relation::graph_type const& graph) {
     takatori::relation::expression const* terminal{};
     for (auto const& expression : graph) {
+        if (expression.kind() == takatori::relation::expression_kind::scan) {
+            auto const& scan = takatori::util::unsafe_downcast<takatori::relation::scan>(expression);
+            auto unsupported = [](takatori::relation::endpoint_kind kind) {
+                return kind == takatori::relation::endpoint_kind::inclusive ||
+                       kind == takatori::relation::endpoint_kind::exclusive;
+            };
+            if (unsupported(scan.lower().kind()) || unsupported(scan.upper().kind())) {
+                return {{}, {}, "scan endpoint is outside remote execution SQL support", true};
+            }
+        }
         if (expression.kind() == takatori::relation::expression_kind::offer) {
             if (terminal != nullptr) {
                 return {{}, {}, "remote graph has multiple offer operators"};

@@ -79,6 +79,7 @@ struct remote_execution_graph_build_result {
     // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
     std::unique_ptr<takatori::relation::graph_type> graph{};
     std::string error{};
+    bool invalid_request{};
     // NOLINTEND(misc-non-private-member-variables-in-classes)
 
     [[nodiscard]] explicit operator bool() const noexcept {

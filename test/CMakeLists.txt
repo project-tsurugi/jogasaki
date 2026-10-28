@@ -188,3 +188,7 @@ if(ENABLE_DISTRIBUTED_QUERY_FIXTURES)
     target_compile_definitions(remote_process_handler_test PRIVATE ENABLE_DISTRIBUTED_QUERY_FIXTURES)
     target_compile_definitions(remote_process_sql_test PRIVATE ENABLE_DISTRIBUTED_QUERY_FIXTURES)
 endif()
+
+if(ENABLE_DISTRIBUTED_QUERY_TEST_METADATA)
+    target_compile_definitions(distributed_query_test_metadata_test PRIVATE ENABLE_DISTRIBUTED_QUERY_TEST_METADATA)
+endif()

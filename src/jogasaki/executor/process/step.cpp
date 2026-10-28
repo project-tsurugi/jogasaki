@@ -117,6 +117,10 @@ model::step_kind step::kind() const noexcept {
     return model::step_kind::process;
 }
 
+std::shared_ptr<processor_info> const& step::info() const noexcept {
+    return info_;
+}
+
 std::size_t step::partitions() const noexcept {
     if (info_->details().has_scan_operator() ||
         info_->details().has_find_operator() ||

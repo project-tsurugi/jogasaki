@@ -117,6 +117,14 @@ cmake --build . --target install
 ctest -V
 ```
 
+When running tests built with `-DCMAKE_BUILD_TYPE=Debug` (sanitizers are enabled by default, see `-DENABLE_SANITIZER` above), set the following environment variables as CI does. `LSAN_OPTIONS` suppresses known leak reports from third party libraries (e.g. libnuma), which would otherwise make the test process fail at exit even if all test cases passed. `ASAN_OPTIONS` enables detection of stack-use-after-return.
+
+```sh
+export LSAN_OPTIONS=suppressions=<jogasaki source directory>/etc/lsan/suppress.txt
+export ASAN_OPTIONS=detect_stack_use_after_return=true
+ctest -V
+```
+
 ### generate documents
 
 ```sh

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <cfenv>
+#include <cmath>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -493,16 +494,12 @@ void test_verify_constants() {
     if constexpr(max_integral_float_convertible_to_int_source<IntKind, FloatKind> != std::numeric_limits<runtime_type<IntKind>>::max()) {
         auto x = next_int_representable(max_integral_float_convertible_to_int<IntKind, FloatKind>);
         EXPECT_LT(0, x);
-        std::feclearexcept(FE_ALL_EXCEPT);
-        auto y = static_cast<runtime_type<IntKind>>(x);
-#ifndef NDEBUG
-        // what we want to verify here is something bad happens as we go over the max limit, but the following
-        // check doesn't reliably work on Release/RelWithDebInfo builds, so just do it on Debug build.
-        EXPECT_TRUE(std::fetestexcept(FE_INVALID)) << std::fetestexcept(FE_ALL_EXCEPT);
-        EXPECT_GT(0, y);
-#endif
-        // Even on release builds, you can manually verify the round-trip is failing by the message below
-        std::cerr << "next int representable " << FloatKind << " x=" << x << " casted back to " << IntKind << " y=" << y << std::endl;
+        // verify the next value goes over the int max, i.e. x >= 2^(value bits of int).
+        // We compare in the float type since casting out-of-range float to int is undefined behavior and
+        // the result (or FE_INVALID) is not reliable on optimized builds. 2^n is exactly representable in float.
+        auto limit = std::ldexp(static_cast<runtime_type<FloatKind>>(1), std::numeric_limits<runtime_type<IntKind>>::digits);
+        EXPECT_LE(limit, x);
+        std::cerr << "next int representable " << FloatKind << " x=" << x << " is out of range of " << IntKind << std::endl;
     }
     {
         auto c = min_integral_float_convertible_to_int_source<IntKind, FloatKind>;

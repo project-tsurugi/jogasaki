@@ -145,10 +145,8 @@ TEST_F(blob_session_container_test, reinitialize_after_dispose) {
 
     EXPECT_TRUE(container);
     EXPECT_TRUE(second_session != nullptr);
-#ifndef NDEBUG
-    // on release builds, this can be equal due to optimization
-    EXPECT_TRUE(second_session != first_session);
-#endif
+    // we don't compare second_session with first_session - neither the address nor the session id is guaranteed
+    // to differ from the disposed one
 }
 
 }

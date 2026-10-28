@@ -22,10 +22,17 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#ifdef ENABLE_DISTRIBUTED_QUERY_TEST_METADATA
+#include <vector>
+#endif
 
 #include <takatori/type/character.h>
 #include <takatori/type/data.h>
 #include <takatori/type/decimal.h>
+#ifdef ENABLE_DISTRIBUTED_QUERY_TEST_METADATA
+#include <takatori/type/int.h>
+#include <takatori/util/clone_tag.h>
+#endif
 #include <takatori/type/octet.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/maybe_shared_ptr.h>
@@ -78,6 +85,43 @@ model::statement_kind create_table::kind() const noexcept {
 }
 
 
+#ifdef ENABLE_DISTRIBUTED_QUERY_TEST_METADATA
+// C1-only fixture. Keep normal DDL serialization, storage creation and recovery.
+// Copy the declarations rather than modifying a reusable prepared statement.
+static std::shared_ptr<yugawara::storage::index const> c1_test_primary_index(
+    yugawara::storage::index const& primary
+) {
+    namespace ys = yugawara::storage;
+    auto const& table = primary.table();
+    auto const& columns = table.columns();
+    if (table.simple_name() != "C1_DUMMY_T" || primary.simple_name() != "C1_DUMMY_T" ||
+        table.definition_id() || primary.definition_id() || columns.size() != 4 || primary.keys().size() != 1) {
+        return {};
+    }
+    if (columns[0].simple_name() != "C0" || columns[0].type() != takatori::type::int8{} ||
+        columns[0].criteria().nullity().nullable() ||
+        columns[1].simple_name() != "C1" || columns[1].type() != takatori::type::character{takatori::type::varying, 40} ||
+        !columns[1].criteria().nullity().nullable() ||
+        columns[2].simple_name() != "C2" || columns[2].type() != takatori::type::decimal{10, 2} ||
+        !columns[2].criteria().nullity().nullable() ||
+        columns[3].simple_name() != "C3" || columns[3].type() != takatori::type::int8{} ||
+        !columns[3].criteria().nullity().nullable() ||
+        std::addressof(primary.keys()[0].column()) != std::addressof(columns[0])) {
+        return {};
+    }
+    auto copy = std::make_shared<ys::table>(takatori::util::clone_tag, table);
+    copy->definition_id(8101);
+    std::vector<ys::index::key> keys{};
+    keys.emplace_back(copy->columns()[0], primary.keys()[0].direction());
+    std::vector<ys::index::column_ref> values{};
+    for (std::size_t position = 1; position < copy->columns().size(); ++position) {
+        values.emplace_back(copy->columns()[position]);
+    }
+    return std::make_shared<ys::index>(9101, std::move(copy), std::string{primary.simple_name()},
+        std::move(keys), std::move(values), primary.features());
+}
+#endif
+
 bool create_table::operator()(request_context& context) const {
     assert_with_exception(context.storage_provider());
     auto& provider = *context.storage_provider();
@@ -129,6 +173,12 @@ bool create_table::operator()(request_context& context) const {
     if(! utils::validate_index_key_type(context, *i)) {
         return false;
     }
+
+#ifdef ENABLE_DISTRIBUTED_QUERY_TEST_METADATA
+    if (auto fixture = c1_test_primary_index(*i)) {
+        i = std::move(fixture);
+    }
+#endif
 
     // Creating sequence can possibly hit cc engine error (esp. with occ),
     // so do it first so that we can exit early in case of errors.

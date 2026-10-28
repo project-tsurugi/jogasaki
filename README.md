@@ -105,6 +105,47 @@ available options:
   * `-DTRACY_ENABLE=ON` - enable tracy profiler for multi-thread debugging. See section below.
   * `-DLIKWID_ENABLE=ON` - enable LIKWID for performance metrics. See section below.
 
+### C1 test metadata
+
+`ENABLE_DISTRIBUTED_QUERY_TEST_METADATA` defaults to `OFF`. When enabled, this
+integration-test fixture assigns table definition ID `8101` and primary index
+definition ID `9101` only to the following parsed table definition:
+
+```sql
+CREATE TABLE C1_DUMMY_T (
+    C0 BIGINT PRIMARY KEY,
+    C1 VARCHAR(40),
+    C2 DECIMAL(10,2),
+    C3 BIGINT
+);
+```
+
+The nullable columns, types, lengths, scale, names, and primary key must match.
+Other tables, including the same name with a different definition, follow normal
+DDL behavior. The prepared declaration is not modified; a fixture declaration is
+serialized by the normal CREATE TABLE path. The IDs and rows are recovered by
+normal restart processing. This option does not bypass remote definition-ID
+validation or provide remote query results.
+
+For C1 with a standard Bootstrap server, also enable
+`ENABLE_DISTRIBUTED_QUERY_FIXTURES`, provide a coordinator catalog fixture for
+`worker_schema.C1_DUMMY_T` with `definition_id=8101` and
+`index_definition_id=9101`, and leave
+`JOGASAKI_DQ_REMOTE_EXECUTION_SERVER` unset. Use a readonly transaction to query
+`worker_schema.C1_DUMMY_T`; use `C1_DUMMY_T` for the coordinator's local table.
+The metadata option is for isolated integration tests, not production builds.
+
+Run `test/integration/distributed_query_lifecycle.py` with `--prefix`, `--server`,
+`--tgctl`, `--tgsql`, and `--work-dir` pointing to the normal Bootstrap programs,
+SQL client, install prefix, and a private output directory. It creates the test
+catalog and tables, runs C1-01 through C1-06, checks normal shutdown and remaining
+listeners, and preserves configuration, SQL/server/shutdown logs and result JSON.
+No modified Bootstrap executable is required. The Linux test host needs `ss`.
+
+C1-06 deliberately fails a result comparison to verify cleanup after a test
+failure; it does not test detection of an engine defect. The original comparison
+failure stays recorded separately from successful cleanup.
+
 ### install
 
 ```sh
@@ -208,4 +249,3 @@ Running jogasaki with likwid-perfctr command will show you the performance count
 ## License
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-

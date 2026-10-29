@@ -44,6 +44,7 @@
 #include <takatori/plan/process.h>
 #include <takatori/plan/step.h>
 #include <takatori/plan/step_kind.h>
+#include <takatori/relation/details/row_slice.h>
 #include <takatori/relation/emit.h>
 #include <takatori/relation/expression.h>
 #include <takatori/relation/expression_kind.h>
@@ -52,6 +53,7 @@
 #include <takatori/relation/join_find.h>
 #include <takatori/relation/join_scan.h>
 #include <takatori/relation/scan.h>
+#include <takatori/relation/scan_direction.h>
 #include <takatori/relation/sort_direction.h>
 #include <takatori/relation/step/offer.h>
 #include <takatori/relation/write_kind.h>
@@ -229,6 +231,47 @@ static auth::action_set from(takatori::relation::write_kind kind) {
     std::abort();
 }
 
+std::optional<std::size_t> row_slice_to_limit(takatori::relation::details::row_slice const& slice) {
+    if(auto&& start = slice.start(); ! start.is_absent()) {
+        if(auto value = start.immediate_if(); ! value || *value != 0) {
+            throw_exception(plan_exception(create_error_info(
+                error_code::unsupported_runtime_feature_exception,
+                "Compiling statement resulted in unsupported row slice with start position.",
+                status::err_unsupported
+            )));
+        }
+    }
+    auto&& count = slice.count();
+    if(count.is_absent()) {
+        return std::nullopt;
+    }
+    if(auto value = count.immediate_if()) {
+        return *value;
+    }
+    throw_exception(plan_exception(create_error_info(
+        error_code::unsupported_runtime_feature_exception,
+        "Compiling statement resulted in unsupported row slice with variable row count.",
+        status::err_unsupported
+    )));
+}
+
+void validate_scan(takatori::relation::scan const& scan) {
+    if(scan.row_slice()) {
+        throw_exception(plan_exception(create_error_info(
+            error_code::unsupported_runtime_feature_exception,
+            "Compiling statement resulted in unsupported scan operator with row slice.",
+            status::err_unsupported
+        )));
+    }
+    if(scan.direction() == takatori::relation::scan_direction::backward) {
+        throw_exception(plan_exception(create_error_info(
+            error_code::unsupported_runtime_feature_exception,
+            "Compiling statement resulted in unsupported scan operator with backward direction.",
+            status::err_unsupported
+        )));
+    }
+}
+
 void preprocess(
     takatori::plan::process const& process,
     compiled_info const& info,
@@ -319,14 +362,17 @@ void preprocess(
             case takatori::relation::expression_kind::aggregate_group:
                 container->work_level().set_minimum(statement_work_level_kind::aggregate);
                 break;
-            case takatori::relation::expression_kind::scan:
+            case takatori::relation::expression_kind::scan: {
+                auto& s = unsafe_downcast<takatori::relation::scan>(op);
+                validate_scan(s);
                 add_table_to_storage_list(
-                    unsafe_downcast<takatori::relation::scan>(op).source(),
+                    s.source(),
                     container,
                     auth::action_set{auth::action_kind::select}
                 );
-                container->work_level().set_minimum(statement_work_level_kind::infinity);                container->work_level().set_minimum(statement_work_level_kind::infinity);
+                container->work_level().set_minimum(statement_work_level_kind::infinity);
                 break;
+            }
             default:
                 break;
     }
@@ -817,7 +863,7 @@ executor::exchange::forward::step create(
     );
     return executor::exchange::forward::step{
         std::move(meta),
-        forward.limit(),
+        row_slice_to_limit(forward.row_slice()),
         std::move(column_order)};
 }
 
@@ -877,7 +923,7 @@ executor::exchange::group::step create(
             std::move(key_indices),
             std::move(sort_key_indices),
             std::move(sort_ordering),
-            group.limit()
+            row_slice_to_limit(group.row_slice())
         ),
         std::move(input_order),
         std::move(output_order)

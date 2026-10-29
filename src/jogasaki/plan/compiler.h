@@ -15,8 +15,10 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <exception>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -24,6 +26,8 @@
 #include <takatori/plan/forward.h>
 #include <takatori/plan/group.h>
 #include <takatori/plan/process.h>
+#include <takatori/relation/details/row_slice.h>
+#include <takatori/relation/scan.h>
 #include <takatori/statement/statement.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/compiled_info.h>
@@ -49,6 +53,22 @@ using yugawara::compiled_info;
 
 // for testing
 namespace impl {
+
+/**
+ * @brief converts the row slice to the record limit supported by the runtime
+ * @param slice the row slice to convert
+ * @return the max number of records
+ * @return empty if the number of records is not limited
+ * @throws plan_exception if the row slice has the start position other than 0, or has a variable row count
+ */
+[[nodiscard]] std::optional<std::size_t> row_slice_to_limit(takatori::relation::details::row_slice const& slice);
+
+/**
+ * @brief validates the scan operator is supported by the runtime
+ * @param scan the scan operator to validate
+ * @throws plan_exception if the scan has the row slice or the backward scan direction
+ */
+void validate_scan(takatori::relation::scan const& scan);
 
 void preprocess(
     takatori::plan::process const& process,

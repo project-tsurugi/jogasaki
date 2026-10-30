@@ -42,9 +42,6 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/conv/assignment.h>
-#include <jogasaki/executor/expr/details/cast_evaluation.h>
-#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/write_existing_context.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -62,9 +59,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
-#include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "context_helper.h"
@@ -126,59 +121,10 @@ status update_record(
         auto const source = f.source_external_
             ? host_variables
             : input_variables.ref(f.source_region_id_);
-        if (source.is_null(f.source_nullity_offset_) && ! f.nullable_) {
-            set_error_context(
-                ctx,
-                error_code::not_null_constraint_violation_exception,
-                string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                status::err_integrity_constraint_violation);
-            return status::err_integrity_constraint_violation;
-        }
         auto target = f.key_ ? extracted_key_record : extracted_value_record;
-        if(! f.requires_conversion_) {
-            utils::copy_nullable_field(
-                f.target_ftype_,
-                target,
-                f.target_offset_,
-                f.target_nullity_offset_,
-                source,
-                f.source_offset_,
-                f.source_nullity_offset_
-            );
-            continue;
+        if (auto st = f.assignment_.apply(source, target, ctx, resource); st != status::ok) {
+            return st;
         }
-        data::any a{};
-        utils::copy_nullable_field_as_any(
-            f.source_ftype_,
-            source,
-            f.source_offset_,
-            f.source_nullity_offset_,
-            a,
-            nullptr // varlen data is owned by the source record
-        );
-
-        // To clean up varlen data resource in data::any, we rely on upper layer that does clean up
-        // on evey process invocation. Otherwise, we have to copy the result of conversion and
-        // lifo resource is not convenient to copy the result when caller and callee use the same resource.
-        data::any converted{};
-        if(auto res = conv::conduct_assignment_conversion(
-               *f.source_type_,
-               *f.target_type_,
-               a,
-               converted,
-               ctx,
-               resource
-           );
-           res != status::ok) {
-            return res;
-        }
-        utils::copy_nullable_field(
-            f.target_ftype_,
-            target,
-            f.target_offset_,
-            f.target_nullity_offset_,
-            converted
-        );
     }
     return status::ok;
 }

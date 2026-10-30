@@ -26,8 +26,6 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/executor/conv/assignment.h>
-#include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/region_id.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
@@ -42,6 +40,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/value_operations/record_assignment.h>
 
 #include "write_kind.h"
 #include "write_existing_context.h"
@@ -86,33 +85,18 @@ struct cache_align update_field {
         bool key,
         region_id source_region_id
     ) :
-        source_type_(std::addressof(source_type)),
-        target_type_(std::addressof(target_type)),
-        source_offset_(source_offset),
-        source_nullity_offset_(source_nullity_offset),
-        target_offset_(target_offset),
-        target_nullity_offset_(target_nullity_offset),
-        nullable_(nullable),
+        assignment_(value_operations::prepared_record_assignment::prepare(
+            source_type, target_type,
+            {source_offset, source_nullity_offset}, {target_offset, target_nullity_offset}, nullable)),
         source_external_(source_external),
         key_(key),
-        source_region_id_(source_region_id),
-        source_ftype_(utils::type_for(source_type)),
-        target_ftype_(utils::type_for(target_type)),
-        requires_conversion_(conv::to_require_conversion(source_type, target_type))
+        source_region_id_(source_region_id)
     {}
-    takatori::type::data const* source_type_{};  //NOLINT
-    takatori::type::data const* target_type_{};  //NOLINT
-    std::size_t source_offset_{};  //NOLINT
-    std::size_t source_nullity_offset_{};  //NOLINT
-    std::size_t target_offset_{};  //NOLINT
-    std::size_t target_nullity_offset_{};  //NOLINT
-    bool nullable_{};  //NOLINT
-    bool source_external_{};  //NOLINT
-    bool key_{}; //NOLINT
-    region_id source_region_id_{}; //NOLINT
-    meta::field_type source_ftype_{};  //NOLINT
-    meta::field_type target_ftype_{};  //NOLINT
-    bool requires_conversion_{};  //NOLINT
+    value_operations::prepared_record_assignment assignment_; // NOLINT
+    bool source_external_{}; // NOLINT
+    bool key_{}; // NOLINT
+    region_id source_region_id_{}; // NOLINT
+
 };
 
 }  // namespace details

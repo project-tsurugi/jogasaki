@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,7 @@ static inline status encode(bool nullable, data::any const& data,
     meta::field_type const& type, jogasaki::kvs::coding_spec const & spec, jogasaki::kvs::writable_stream & results) {
     jogasaki::status s{};
     kvs::coding_context ctx{};
+    ctx.coding_for_write(true);
     if (nullable) {
         s = jogasaki::kvs::encode_nullable(data, type, spec, ctx, results);
     } else {

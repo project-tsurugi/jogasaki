@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -160,7 +160,11 @@ TEST_F(serializer_test, ser_string) {
                 tateyama::proto::kvs::data::Value v2{};
                 v1.set_character_value(answer);
                 test(is_key, col, v1, v2);
-                EXPECT_EQ(v2.character_value(), answer);
+                auto expected = answer;
+                if (!is_vary && length > answer.size()) {
+                    expected.append(std::string(length - answer.size(), '\x20'));
+                }
+                EXPECT_EQ(v2.character_value(), expected);
             }
         }
     }

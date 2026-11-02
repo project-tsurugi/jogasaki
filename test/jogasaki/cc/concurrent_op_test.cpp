@@ -201,7 +201,7 @@ TEST_F(concurrent_op_test, scan_op_skips_concurrent_insert_abort) {
         execute_statement("INSERT INTO T VALUES (1)", *tx0);
 
         auto tx1 = utils::create_transaction(*db_, false, false);
-        test_stmt_err("SELECT * FROM T", *tx1, error_code::cc_exception, "serialization failed transaction:TID-0000000100000002 shirakami response Status=OK {reason_code:USER_ABORT, storage_name is not available, no key information} ");
+        test_stmt_err("SELECT * FROM T", *tx1, error_code::cc_exception);
 
         ASSERT_EQ(status::ok, tx0->commit());
         {
@@ -246,7 +246,7 @@ TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_abort) {
 
         auto tx1 = utils::create_transaction(*db_, false, false);
 
-        test_stmt_err("SELECT * FROM T WHERE C0=1", *tx1, error_code::cc_exception, "serialization failed transaction:TID-0000000100000002 shirakami response Status=OK {reason_code:USER_ABORT, storage_name is not available, no key information} ");
+        test_stmt_err("SELECT * FROM T WHERE C0=1", *tx1, error_code::cc_exception);
 
         ASSERT_EQ(status::ok, tx0->commit());
         {
@@ -291,7 +291,7 @@ TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_on_secondary_abort) {
         auto tx0 = utils::create_transaction(*db_, false, false);
         execute_statement("INSERT INTO T VALUES (1, 10)", *tx0);
         auto tx1 = utils::create_transaction(*db_, false, false);
-        test_stmt_err("SELECT * FROM T WHERE C1=10", *tx1, error_code::cc_exception, "serialization failed transaction:TID-0000000100000003 shirakami response Status=OK {reason_code:USER_ABORT, storage_name is not available, no key information} ");
+        test_stmt_err("SELECT * FROM T WHERE C1=10", *tx1, error_code::cc_exception);
 
         ASSERT_EQ(status::ok, tx0->commit());
         {

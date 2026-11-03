@@ -51,7 +51,8 @@ def listeners(ports):
 
 def healthy(node):
     assert node.process and node.process.poll() is None, node.name
-    # Coordinator has no registered gRPC service in this role configuration.
+    if node.coordinator:
+        assert not listeners([node.grpc_port]), (node.name, node.grpc_port)
     for port in [node.sql_port] + ([node.grpc_port] if node.remote else []):
         with socket.socket() as channel:
             channel.settimeout(1)
@@ -106,6 +107,16 @@ def stop(node, stops):
     return evidence
 
 
+def stop_started(nodes, result):
+    for node in nodes:
+        if node.process is None:
+            continue
+        try:
+            stop(node, result['stops'])
+        except BaseException as error:
+            result['cleanupErrors'].append(str(error))
+
+
 def select(coordinator):
     remote = rows(coordinator.sql(REMOTE_SQL, readonly=True))
     local = rows(coordinator.sql(LOCAL_SQL))
@@ -126,8 +137,8 @@ def main():
     args.work_dir.mkdir(parents=True, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix='c1-', dir=args.work_dir))
     (root / 'catalog.json').write_text(json.dumps(fixture(), indent=2))
-    worker = Node(root, 'worker', args, None, remote=True)
-    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True)
+    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True)
+    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True, minimal_roles=True)
     nodes = [coordinator, worker]
     ports = [port for node in nodes for port in (node.sql_port, node.grpc_port)]
     result = {'status': 'running', 'scenarios': [], 'stops': [], 'cleanupErrors': []}
@@ -164,8 +175,12 @@ def main():
         coordinator.start()
         actual = rows(coordinator.sql(REMOTE_SQL, readonly=True))
         assert actual == REMOTE_ROWS, actual
+        first_stop = len(result['stops'])
         try:
-            assert len(actual) == 3, 'intentional expected row count 3; actual 2'
+            try:
+                assert len(actual) == 3, 'intentional expected row count 3; actual 2'
+            finally:
+                stop_started(nodes, result)
         except AssertionError as error:
             negative = {'status': 'failed', 'intentional': True,
                         'purpose': 'verify_cleanup_after_result_comparison_failure',
@@ -173,8 +188,10 @@ def main():
                         'expectedRows': 3, 'actualRows': len(actual)}
         else:
             raise AssertionError('negative control did not fail')
-        negative['coordinatorStop'] = stop(coordinator, result['stops'])
-        negative['workerStop'] = stop(worker, result['stops'])
+        assert not result['cleanupErrors'], result['cleanupErrors']
+        coordinator_stop, worker_stop = result['stops'][first_stop:]
+        negative['coordinatorStop'] = coordinator_stop
+        negative['workerStop'] = worker_stop
         (root / 'negative-control.json').write_text(json.dumps(negative, indent=2))
         record('C1-06', negative)
         result['status'] = 'passed'
@@ -185,12 +202,7 @@ def main():
         result.update(status='failed', error=str(error), traceback=traceback.format_exc())
         print(result['traceback'], flush=True)
     finally:
-        for node in nodes:
-            if node.process is not None:
-                try:
-                    stop(node, result['stops'])
-                except BaseException as error:
-                    result['cleanupErrors'].append(str(error))
+        stop_started(nodes, result)
         result['finalListeners'] = listeners(ports)
         if result['cleanupErrors'] or result['finalListeners']:
             result['status'] = 'failed'

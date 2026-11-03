@@ -373,8 +373,8 @@ template <class Source>
             result.upper_key_expression_ids.emplace_back(*id);
         }
     }
-    if (source.limit()) {
-        result.limit = source.limit();
+    if (auto count = source.row_slice().count().immediate_if()) {
+        result.limit = *count;
     }
     return result;
 }
@@ -394,10 +394,20 @@ template <class Source>
 [[nodiscard]] static bool create_operator_payload(relation::expression const& expression, remote_operator& op,
                                                   block_builder_context& context) {
     switch (expression.kind()) {
-        case relation::expression_kind::scan:
-            op.source = create_source_payload(dynamic_cast<relation::scan const&>(expression), context);
+        case relation::expression_kind::scan: {
+            auto const& scan = dynamic_cast<relation::scan const&>(expression);
+            auto const& start = scan.row_slice().start();
+            auto const& count = scan.row_slice().count();
+            auto start_value = start.immediate_if();
+            if (scan.direction() == relation::scan_direction::backward ||
+                (!start.is_absent() && (!start_value || *start_value != 0)) ||
+                (!count.is_absent() && !count.immediate_if())) {
+                return false;
+            }
+            op.source = create_source_payload(scan, context);
             return op.source->lower_key_expression_ids.size() == op.source->lower_key_count &&
                    op.source->upper_key_expression_ids.size() == op.source->upper_key_count;
+        }
         case relation::expression_kind::find:
             op.source = create_source_payload(dynamic_cast<relation::find const&>(expression), context);
             return op.source->find_key_expression_ids.size() == op.source->find_key_count;

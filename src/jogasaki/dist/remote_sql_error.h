@@ -38,7 +38,8 @@ inline std::string serialize_remote_sql_error(error::error_info const& info) {
 }
 // The SQL wire contract carries a public error code, not the worker's internal status.
 inline std::shared_ptr<error::error_info> restore_remote_sql_error(proto::sql::response::Error const& remote) {
-    auto code = api::impl::map_error(remote.code());
+    auto code = proto::sql::error::Code_IsValid(remote.code())
+                    ? api::impl::map_error(remote.code()) : error_code::sql_execution_exception;
     auto st = status::err_unknown;
     switch (code) {
         case error_code::evaluation_exception:
@@ -135,7 +136,7 @@ private:
             return false;
         }
         result_.emplace();
-        return result_->ParseFromString(detail.value()) && proto::sql::error::Code_IsValid(result_->code()) &&
+        return result_->ParseFromString(detail.value()) &&
                result_->code() != proto::sql::error::CODE_UNSPECIFIED;
     }
     bool read_field(google::protobuf::io::CodedInputStream& in, std::uint32_t tag) {

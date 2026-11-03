@@ -18,9 +18,15 @@
 
 #include <tateyama/grpc/distributed_query/service_adapter.h>
 
+#include <jogasaki/status.h>
+
 namespace jogasaki::api { class database; }
 
 namespace jogasaki::dist {
+
+/** @brief Classify a failed RTX creation without synthesizing SQL error details. */
+[[nodiscard]] tateyama::grpc::distributed_query::remote_process_error_kind
+classify_remote_rtx_start_failure(status result, bool stopping) noexcept;
 
 /**
  * @brief execute a distributed-query process against this database and return encoded records.

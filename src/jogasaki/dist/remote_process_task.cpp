@@ -26,6 +26,7 @@
 #include <optional>
 #include <stdexcept>
 #include <thread>
+#include <glog/logging.h>
 #include <grpcpp/client_context.h>
 
 #include <takatori/util/downcast.h>
@@ -49,6 +50,7 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/step.h>
 
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/conditional_task.h>
 #include <jogasaki/scheduler/flat_task.h>
@@ -126,6 +128,8 @@ public:
         if (auto limit = timeout()) {
             context.set_deadline(std::chrono::system_clock::now() + *limit);
         }
+        static std::atomic_uint64_t sequence{};
+        execution_id_ = std::to_string(job) + "-" + std::to_string(++sequence);
         transport = std::thread{[this, channel = std::move(channel), payload = std::move(payload), job] {
             receive(channel, payload, job);
         }};
@@ -134,12 +138,19 @@ public:
     [[nodiscard]] std::deque<std::string> take_results() { return results.take(); }
     bool completed() const noexcept { return done.load(std::memory_order_acquire); }
     bool has_results() { return !results.empty(); }
+    enum class local_failure { none, request_size, response_shape, exception };
+    local_failure failure() const noexcept { return failure_; }
+    std::string const& diagnostic() const noexcept { return diagnostic_; }
+    std::string const& execution_id() const noexcept { return execution_id_; }
     grpc::Status const& status() const noexcept { return final_status; }
 
 private:
     grpc::ClientContext context{};
     remote_result_queue results{};
     grpc::Status final_status{};
+    local_failure failure_{};
+    std::string diagnostic_{};
+    std::string execution_id_{};
     std::atomic_bool done{};
     std::thread transport{};
     void receive(std::shared_ptr<grpc::Channel> const& channel, std::string const& payload, std::size_t job) {
@@ -152,11 +163,11 @@ private:
             metadata->mutable_protocol_version()->set_major(1);
             metadata->mutable_protocol_version()->set_minor(0);
             metadata->set_coordinator_job_id(std::to_string(job));
-            static std::atomic_uint64_t sequence{};
-            metadata->set_remote_execution_id(std::to_string(job) + "-" + std::to_string(++sequence));
+            metadata->set_remote_execution_id(execution_id_);
             metadata->set_attempt_number(1);
-            if (request.ByteSizeLong() > std::size_t{64} * 1024U * 1024U) {
-                final_status = {grpc::StatusCode::RESOURCE_EXHAUSTED, "remote request exceeds 64 MiB"};
+            if (auto bytes = request.ByteSizeLong(); bytes > std::size_t{64} * 1024U * 1024U) {
+                failure_ = local_failure::request_size;
+                diagnostic_ = "serialized request bytes:" + std::to_string(bytes);
             } else {
                 auto stub = wire::DistributedQueryService::NewStub(channel);
                 auto reader = stub->ExecuteRemoteProcess(&context, request);
@@ -176,21 +187,19 @@ private:
                         break;
                     }
                 }
-                auto final = reader->Finish();
-                if (final_status.ok()) {
-                    if (invalid) {
-                        final_status = {grpc::StatusCode::DATA_LOSS, "invalid remote response sequence or size"};
-                    } else {
-                        final_status = final;
-                    }
+                final_status = reader->Finish();
+                if (invalid) {
+                    failure_ = local_failure::response_shape;
+                    diagnostic_ = "invalid remote response sequence or size";
                 }
             }
         } catch (std::exception const& e) {
             context.TryCancel();
-            final_status = {grpc::StatusCode::INTERNAL, e.what()};
+            failure_ = local_failure::exception;
+            diagnostic_ = e.what();
         } catch (...) {
             context.TryCancel();
-            final_status = {grpc::StatusCode::INTERNAL, "remote transport threw an unknown exception"};
+            failure_ = local_failure::exception;
         }
         done.store(true, std::memory_order_release);
     }
@@ -260,20 +269,20 @@ private:
         std::string error{};
         wire::RemoteProcessResult result{};
         if (!result.ParseFromString(payload)) {
-            return fail(status::err_invalid_argument, "invalid remote result");
+            return invalid_result("invalid remote result envelope");
         }
         // The output schema comes from the request's execution block, not from a result envelope.
         // Validate the complete batch before publishing any row to the downstream exchange.
         data::small_record_store checked{meta_};
         for (auto const& row : result.record_list()) {
             if (!decode_remote_record(row, *meta_, checked.ref(), error)) {
-                return fail(status::err_invalid_argument, error);
+                return invalid_result(error);
             }
         }
         for (auto const& row : result.record_list()) {
             data::small_record_store record{meta_};
             if (!decode_remote_record(row, *meta_, record.ref(), error)) {
-                return fail(status::err_invalid_argument, error);
+                return invalid_result(error);
             }
             if (!writer_) {
                 writer_ = task_context_->downstream_writer(0);
@@ -287,7 +296,35 @@ private:
         }
         return std::nullopt;
     }
+    model::task_result invalid_result(std::string_view reason) {
+        LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+                     << " server:" << server_ << " internal_code:INVALID_REMOTE_RESULT reason:" << reason;
+        return fail(status::err_invalid_state,
+                    "[distributed-query] failed to decode remote result record", error_code::internal_exception);
+    }
     model::task_result complete_rpc() {
+        using local_failure = rpc_state::local_failure;
+        auto diagnose = [&](std::string_view code) {
+            LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+                         << " server:" << server_ << " internal_code:" << code
+                         << " reason:" << state_->diagnostic();
+        };
+        switch (state_->failure()) {
+            case local_failure::request_size:
+                diagnose("REMOTE_REQUEST_TOO_LARGE");
+                return fail(status::err_resource_limit_reached,
+                            "[distributed-query] remote request exceeds RPC message size limit");
+            case local_failure::response_shape:
+                diagnose("INVALID_REMOTE_RESULT");
+                return fail(status::err_invalid_state,
+                            "[distributed-query] invalid remote response sequence or size", error_code::internal_exception);
+            case local_failure::exception:
+                diagnose("REMOTE_TRANSPORT_EXCEPTION");
+                return fail(status::err_unknown,
+                            "[distributed-query] unexpected remote transport error", error_code::internal_exception);
+            case local_failure::none:
+                break;
+        }
         // Rows of earlier messages may already be downstream; a failed status fails the whole request.
         if (!state_->status().ok()) {
             bool protocol_error{};
@@ -295,6 +332,10 @@ private:
                     deserialize_remote_sql_error(state_->status().error_details(), state_->status().error_code(),
                                                  state_->status().error_message(), protocol_error)) {
                 state_->cancel();
+                if (!proto::sql::error::Code_IsValid(remote->code())) {
+                    LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+                                 << " server:" << server_ << " unknown_sql_code:" << static_cast<int>(remote->code());
+                }
                 error::set_error_info(*context(), restore_remote_sql_error(*remote));
                 return finish();
             }
@@ -306,6 +347,10 @@ private:
                                   client_cancelled_.load(std::memory_order_acquire)
                               ? status::request_canceled
                               : execution_status(state_->status());
+            if (status == status::err_time_out) {
+                return fail(status, "[distributed-query] ExecuteRemoteProcess timed out",
+                            error_code::sql_request_timeout_exception);
+            }
             return fail(status, state_->status().error_message());
         }
         return finish();
@@ -360,38 +405,42 @@ private:
     request_cancel_kind cancel_kind_{request_cancel_kind::scan};
     std::atomic_bool client_cancelled_{};
 };
+class failed_remote_process_task final : public executor::common::task {
+public:
+    failed_remote_process_task(request_context& context, executor::process::step& step, std::string message, error_code code, status result)
+        : executor::common::task(&context, &step), message_(std::move(message)), code_(code), result_(result) {}
+    model::task_result operator()() override {
+        error::set_error_info(*context(), create_error_info(code_, message_, result_));
+        executor::common::complete_dag_task(*context(), step()->id(), id());
+        return model::task_result::complete;
+    }
+    [[nodiscard]] model::task_transaction_kind transaction_capability() override {
+        return model::task_transaction_kind::in_transaction;
+    }
+
+private:
+    std::string message_{};
+    error_code code_;
+    status result_;
+};
 } // namespace
 std::shared_ptr<model::task> make_remote_process_task(request_context& context, executor::process::step& step,
                                                       executor::process::processor_info const& info,
                                                       std::string server) {
+    if (!context.transaction() || !context.transaction()->option() ||
+        !context.transaction()->option()->readonly()) {
+        return std::make_shared<failed_remote_process_task>(
+            context, step, "[distributed-query] execution requires an RTX",
+            error_code::restricted_operation_exception, status::err_illegal_operation);
+    }
     try {
-        if (!context.transaction() || !context.transaction()->option() ||
-            !context.transaction()->option()->readonly()) {
-            throw std::invalid_argument("remote catalog queries require a readonly transaction");
-        }
         if (step.io_info()->output_count() != 1 || step.io_exchange_map()->output_count() != 1) {
             throw std::invalid_argument("remote process requires exactly one output");
         }
         return std::make_shared<remote_process_task>(context, step, info, std::move(server));
     } catch (std::exception const& e) {
-        class failed_task final : public executor::common::task {
-        public:
-            failed_task(request_context& context, executor::process::step& step, std::string message)
-                : executor::common::task(&context, &step), message_(std::move(message)) {}
-            model::task_result operator()() override {
-                error::set_error_info(*context(), create_error_info(error_code::sql_execution_exception, message_,
-                                                                    status::err_unsupported));
-                executor::common::complete_dag_task(*context(), step()->id(), id());
-                return model::task_result::complete;
-            }
-            [[nodiscard]] model::task_transaction_kind transaction_capability() override {
-                return model::task_transaction_kind::in_transaction;
-            }
-
-        private:
-            std::string message_{};
-        };
-        return std::make_shared<failed_task>(context, step, e.what());
+        return std::make_shared<failed_remote_process_task>(context, step, e.what(),
+                                                            error_code::sql_execution_exception, status::err_unsupported);
     }
 }
 } // namespace jogasaki::dist

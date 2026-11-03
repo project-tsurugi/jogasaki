@@ -391,7 +391,7 @@ TEST_F(remote_process_sql_test, response_sequence_gap_fails_sql) {
     service_.sequence_offset = 1;
     auto tx = utils::create_transaction(*db_, true, false); status st{};
     builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).run();
-    EXPECT_EQ(status::err_invalid_argument, st);
+    EXPECT_EQ(status::err_invalid_state, st);
 }
 TEST_F(remote_process_sql_test, response_sequence_duplicate_fails_sql) {
     service_.raw = [this](std::string_view payload, auto* writer) {
@@ -402,7 +402,7 @@ TEST_F(remote_process_sql_test, response_sequence_duplicate_fails_sql) {
     };
     auto tx = utils::create_transaction(*db_, true, false); status st{};
     builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).run();
-    EXPECT_EQ(status::err_invalid_argument, st);
+    EXPECT_EQ(status::err_invalid_state, st);
 }
 TEST_F(remote_process_sql_test, ok_without_result_message_returns_no_rows) {
     service_.raw = [](std::string_view, auto*) { return grpc::Status::OK; };
@@ -428,7 +428,7 @@ TEST_F(remote_process_sql_test, invalid_record_between_messages_fails_sql) {
     };
     auto tx = utils::create_transaction(*db_, true, false); status st{};
     builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).run();
-    EXPECT_EQ(status::err_invalid_argument, st);
+    EXPECT_EQ(status::err_invalid_state, st);
 }
 TEST_F(remote_process_sql_test, error_after_partial_results_fails_whole_sql) {
     service_.raw = [this](std::string_view payload, auto* writer) {
@@ -576,6 +576,21 @@ TEST_F(remote_process_sql_test, rpc_deadline_fails_sql_and_releases_resources) {
     status result{};
     builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
     EXPECT_EQ(status::err_time_out, result);
+    std::shared_ptr<api::error_info> info{};
+    ASSERT_EQ(status::ok, tx->error_info(info));
+    ASSERT_TRUE(info);
+    EXPECT_EQ(error_code::sql_request_timeout_exception, info->code());
+}
+TEST_F(remote_process_sql_test, occ_is_rejected_before_remote_execution) {
+    auto tx = utils::create_transaction(*db_, false, false);
+    status result{};
+    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    EXPECT_EQ(status::err_illegal_operation, result);
+    std::shared_ptr<api::error_info> info{};
+    ASSERT_EQ(status::ok, tx->error_info(info));
+    ASSERT_TRUE(info);
+    EXPECT_EQ(error_code::restricted_operation_exception, info->code());
+    EXPECT_EQ(0, service_.calls.load());
 }
 TEST_F(remote_process_sql_test, sql_error_preserves_code_detail_and_supplemental_text) {
     proto::sql::response::Error remote{};
@@ -591,6 +606,34 @@ TEST_F(remote_process_sql_test, sql_error_preserves_code_detail_and_supplemental
     ASSERT_EQ(status::ok, tx->error_info(info));
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::value_evaluation_exception, info->code());
+    EXPECT_EQ(remote.detail(), info->message());
+    EXPECT_EQ(remote.supplemental_text(), info->supplemental_text());
+}
+TEST_F(remote_process_sql_test, worker_precondition_failure_returns_sql_execution_exception) {
+    service_.failure = grpc::StatusCode::FAILED_PRECONDITION;
+    auto tx = utils::create_transaction(*db_, true, false);
+    status result{};
+    std::shared_ptr<error::error_info> info{};
+    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx)
+        .expect_error(true).st(result).error(info).run();
+    EXPECT_EQ(status::err_unknown, result);
+    ASSERT_TRUE(info);
+    EXPECT_EQ(error_code::sql_execution_exception, info->code());
+}
+TEST_F(remote_process_sql_test, unknown_worker_sql_code_preserves_details) {
+    proto::sql::response::Error remote{};
+    remote.set_code(static_cast<proto::sql::error::Code>(60000));
+    remote.set_detail("worker error from a newer version");
+    remote.set_supplemental_text(R"({"additional_text":"worker diagnostic"})");
+    service_.injected_status = sql_failure(remote);
+    auto tx = utils::create_transaction(*db_, true, false);
+    status result{};
+    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    EXPECT_EQ(status::err_unknown, result);
+    std::shared_ptr<api::error_info> info{};
+    ASSERT_EQ(status::ok, tx->error_info(info));
+    ASSERT_TRUE(info);
+    EXPECT_EQ(error_code::sql_execution_exception, info->code());
     EXPECT_EQ(remote.detail(), info->message());
     EXPECT_EQ(remote.supplemental_text(), info->supplemental_text());
 }

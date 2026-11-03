@@ -149,6 +149,16 @@ public:
     }
     void TearDown() override { if (db_) db_teardown(); }
 };
+TEST(remote_rtx_start_failure_test, classifies_start_failure_by_cause) {
+    using kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    EXPECT_EQ(kind::resource_exhausted, dist::classify_remote_rtx_start_failure(status::err_resource_limit_reached, false));
+    EXPECT_EQ(kind::unavailable, dist::classify_remote_rtx_start_failure(status::err_time_out, false));
+    EXPECT_EQ(kind::cancelled, dist::classify_remote_rtx_start_failure(status::request_canceled, false));
+    EXPECT_EQ(kind::unavailable, dist::classify_remote_rtx_start_failure(status::err_invalid_state, true));
+    EXPECT_EQ(kind::internal, dist::classify_remote_rtx_start_failure(status::err_invalid_state, false));
+    EXPECT_EQ(kind::internal, dist::classify_remote_rtx_start_failure(status::err_unknown, false));
+}
+
 TEST_F(remote_process_handler_test, releases_transaction_registration_after_success_for_all_entry_points) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (205)");
@@ -219,7 +229,7 @@ TEST_F(remote_process_handler_test, rejects_missing_worker_definition_without_na
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(scan_block()));
     EXPECT_FALSE(response.success);
-    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, response.error_kind);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::failed_precondition, response.error_kind);
 }
 
 TEST_F(remote_process_handler_test, resolves_identity_and_rejects_mismatched_column_metadata) {
@@ -228,17 +238,18 @@ TEST_F(remote_process_handler_test, resolves_identity_and_rejects_mismatched_col
     dist::remote_process_handler handler{*db_};
     auto valid = scan_block();
     ASSERT_TRUE(handler(dist::serialize_remote_execution_block_proto(valid)).success);
-    auto check = [&](dist::remote_execution_block const& block) {
+    using error_kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    auto check = [&](dist::remote_execution_block const& block, error_kind expected = error_kind::not_found) {
         auto response = handler(dist::serialize_remote_execution_block_proto(block));
         EXPECT_FALSE(response.success);
-        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, response.error_kind);
+        EXPECT_EQ(expected, response.error_kind);
     };
     auto different_id = valid;
     different_id.operators[0].source->definition_id = 1258;
-    check(different_id);
+    check(different_id, error_kind::failed_precondition);
     auto different_name = valid;
     different_name.operators[0].source->index_name = "other";
-    check(different_name);
+    check(different_name, error_kind::failed_precondition);
     auto out_of_range = valid;
     out_of_range.operators[0].source->columns[0].column_index = 1;
     check(out_of_range);
@@ -258,7 +269,7 @@ TEST_F(remote_process_handler_test, rejects_recreated_same_name_and_duplicate_de
     dist::remote_process_handler handler{*db_};
     auto stale = handler(dist::serialize_remote_execution_block_proto(old));
     EXPECT_FALSE(stale.success);
-    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, stale.error_kind);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::failed_precondition, stale.error_kind);
     auto current = old;
     current.operators[0].source->definition_id = 1258;
     ASSERT_TRUE(handler(dist::serialize_remote_execution_block_proto(current)).success);
@@ -268,7 +279,7 @@ TEST_F(remote_process_handler_test, rejects_recreated_same_name_and_duplicate_de
     db_impl()->tables()->add_index(std::move(duplicate));
     auto ambiguous = handler(dist::serialize_remote_execution_block_proto(current));
     EXPECT_FALSE(ambiguous.success);
-    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::not_found, ambiguous.error_kind);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::failed_precondition, ambiguous.error_kind);
 }
 
 TEST_F(remote_process_handler_test, accepts_definition_id_zero) {

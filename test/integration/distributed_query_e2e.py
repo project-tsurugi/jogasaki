@@ -23,7 +23,7 @@ def rows(output):
 
 
 class Node:
-    def __init__(self, root, name, args, worker_grpc, coordinator=False, remote=False):
+    def __init__(self, root, name, args, worker_grpc, coordinator=False, remote=False, minimal_roles=False):
         self.root = root / name
         self.root.mkdir()
         (self.root / 'pid').mkdir()
@@ -32,6 +32,7 @@ class Node:
         self.worker_grpc = worker_grpc or self.grpc_port
         self.coordinator, self.remote = coordinator, remote
         self.catalog_enabled = args.catalog_routing
+        self.minimal_roles = minimal_roles
         self.process = None
         self.log = None
         self.generation = 0
@@ -40,6 +41,14 @@ class Node:
         self.generation += 1
         identity = re.sub('-+', '-', re.sub('[^a-z0-9-]', '-', f'dq-e2e-{self.root.parent.name}-{self.name}')).strip('-')
         self.config = self.root / 'tsurugi.ini'
+        client_config = f"""[distributed_query_client]
+name=worker
+uri=dns:///127.0.0.1:{self.worker_grpc}
+catalog_source={'fixture' if self.coordinator and self.catalog_enabled else 'disabled'}
+fixture_path={self.root.parent / 'catalog.json' if self.coordinator and self.catalog_enabled else ''}
+"""
+        if self.minimal_roles and not self.coordinator:
+            client_config = ''
         self.config.write_text(f'''[system]
 instance_id={identity}
 pid_directory={self.root / 'pid'}
@@ -70,7 +79,7 @@ enabled=false
 enabled=false
 session_store={self.root / 'blob'}
 [grpc_server]
-enabled=true
+enabled={str(self.remote or not self.minimal_roles).lower()}
 listen_address=127.0.0.1:{self.grpc_port}
 endpoint=dns:///127.0.0.1:{self.grpc_port}
 secure=false
@@ -78,12 +87,7 @@ secure=false
 enabled={str(self.coordinator).lower()}
 [distributed_query_remote]
 enabled={str(self.remote).lower()}
-[distributed_query_client]
-name=worker
-uri=dns:///127.0.0.1:{self.worker_grpc}
-catalog_source={'fixture' if self.coordinator and self.catalog_enabled else 'disabled'}
-fixture_path={self.root.parent / 'catalog.json' if self.coordinator and self.catalog_enabled else ''}
-[glog]
+{client_config}[glog]
 logtostderr=true
 ''')
         environment = os.environ.copy()

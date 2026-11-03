@@ -364,8 +364,11 @@ private:
                 }
                 relation::scan::endpoint lower{std::move(*lower_keys), *endpoint_kind(source.lower_endpoint_kind)};
                 relation::scan::endpoint upper{std::move(*upper_keys), *endpoint_kind(source.upper_endpoint_kind)};
+                auto slice = source.limit
+                    ? relation::scan::row_slice_type{{}, *source.limit}
+                    : relation::scan::row_slice_type{};
                 return std::make_unique<relation::scan>(*storage, std::move(*mappings), std::move(lower),
-                                                        std::move(upper), source.limit);
+                                                        std::move(upper), relation::scan::direction_type{}, slice);
             }
             case remote_operator_kind::find: {
                 auto const& source = *op.source;

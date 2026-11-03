@@ -76,6 +76,24 @@
 
 namespace jogasaki::dist {
 
+tateyama::grpc::distributed_query::remote_process_error_kind
+classify_remote_rtx_start_failure(status result, bool stopping) noexcept {
+    using kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    switch (result) {
+        case status::err_resource_limit_reached:
+            return kind::resource_exhausted;
+        case status::err_time_out:
+            // The worker failed to start its RTX. The RPC deadline itself may still be active.
+            return kind::unavailable;
+        case status::request_canceled:
+            return kind::cancelled;
+        case status::err_invalid_state:
+            return stopping ? kind::unavailable : kind::internal;
+        default:
+            return kind::internal;
+    }
+}
+
 namespace {
 
 namespace scalar = takatori::scalar;
@@ -341,6 +359,7 @@ public:
 
     std::optional<takatori::descriptor::relation> resolve_storage(remote_source const&) const override {
         if (!index_) {
+            catalog_mismatch_ = true;
             return {};
         }
         return bindings_.index(*index_);
@@ -348,7 +367,11 @@ public:
 
     std::optional<takatori::descriptor::variable> resolve_storage_column(
         remote_source const&, remote_source_column const& reference) const override {
-        if (!index_ || !reference.column_index || *reference.column_index >= index_->table().columns().size()) {
+        if (!index_) {
+            catalog_mismatch_ = true;
+            return {};
+        }
+        if (!reference.column_index || *reference.column_index >= index_->table().columns().size()) {
             return {};
         }
         auto const& column = index_->table().columns()[*reference.column_index];
@@ -371,7 +394,11 @@ public:
 
     std::optional<takatori::descriptor::variable> resolve_storage_key_column(
         remote_source const&, std::size_t position) const override {
-        if (!index_ || position >= index_->keys().size()) {
+        if (!index_) {
+            catalog_mismatch_ = true;
+            return {};
+        }
+        if (position >= index_->keys().size()) {
             return {};
         }
         return bindings_.table_column(index_->keys()[position].column());
@@ -425,6 +452,8 @@ public:
         return std::make_shared<type::int8>();
     }
 
+    [[nodiscard]] bool catalog_mismatch() const noexcept { return catalog_mismatch_; }
+
     [[nodiscard]] bool unsupported_column() const noexcept { return unsupported_column_; }
 
     [[nodiscard]] takatori::plan::forward const& output() const noexcept { return *output_; }
@@ -465,6 +494,7 @@ private:
     std::uint64_t relation_id_{};
     std::unordered_map<std::uint64_t, std::size_t> column_positions_{};
     mutable bool unsupported_column_{};
+    mutable bool catalog_mismatch_{};
 };
 
 } // namespace
@@ -519,7 +549,8 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
     api::transaction_option option{transaction_type_kind::rtx};
     option.scan_parallel(1);
     if (auto st = database.create_transaction_internal(transaction, option); st != status::ok) {
-        return {false, {}, "failed to create remote RTX", remote_error::unavailable};
+        return {false, {}, "failed to create remote RTX (" + std::string{to_string_view(st)} + ")",
+                classify_remote_rtx_start_failure(st, database.stop_requested())};
     }
     transaction_abort_guard abort_guard{database, transaction};
 
@@ -686,6 +717,9 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
     catalog_graph_resolver resolver{*database_, *decoded.block};
     auto graph = build_remote_execution_graph(*decoded.block, resolver);
     if (!graph) {
+        if (!graph.invalid_request && resolver.catalog_mismatch()) {
+            return {false, {}, "remote index definition does not match worker catalog", remote_error::failed_precondition};
+        }
         return {false,
                 {},
                 std::move(graph.error),

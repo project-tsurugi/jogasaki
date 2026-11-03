@@ -274,7 +274,8 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
         {{bindings(table->columns()[0]), c0}},
         std::move(lower),
         {},
-        25,
+        {},
+        {{}, 25},
     });
     auto& filter = graph.insert(relation::filter{scalar::compare{
         scalar::comparison_operator::greater,
@@ -420,6 +421,9 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     ASSERT_TRUE(zero) << zero.error;
     EXPECT_EQ(std::optional<std::uint64_t>{0}, zero.block->operators.front().source->definition_id);
     EXPECT_EQ(std::optional<std::uint32_t>{0}, zero.block->operators.front().source->columns[0].column_index);
+    scan.row_slice() = relation::scan::row_slice_type{1, 25};
+    EXPECT_FALSE(dist::create_remote_execution_block(graph));
+
 }
 
 TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {

@@ -295,6 +295,66 @@ TEST_F(join_scan_test, left_outer_condition_filtered) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
+TEST_F(join_scan_test, left_outer_condition_multiple_rows) {
+    // regression test for issue #1610
+    // Multiple rows are found by range scan and some of them do not satisfy the condition.
+    // With left_outer, only the rows satisfying the condition are emitted, and a null-padded row
+    // is emitted only once when no row satisfies the condition.
+    auto setup = prepare_indices(
+        {"T1", {
+            {"C0", t::int4(), nullity{false}},
+            {"C1", t::int4(), nullity{false}},
+            {"C2", t::int4(), nullity{false}},
+        }},
+        {0, 1}, {}
+    );
+    auto input_match = create_nullable_record<kind::int4, kind::int4>(1, 200);
+    auto input_no_match = create_nullable_record<kind::int4, kind::int4>(1, 999);
+    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+    scan_endpoint_spec upper{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+    // condition: C2 == (second input column)
+    auto in1 = in[1];
+    auto& target = add_join_scan_node(setup, lower, upper, false,
+        [in1](auto const& dests) {
+            return std::make_unique<compare>(
+                comparison_operator::equal,
+                varref{dests[2]},
+                varref{in1}
+            );
+        });
+    auto down = add_downstream_record_verifier(destinations(target.columns()));
+
+    put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 100), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 20, 200), *db_);
+    put_row(setup, create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 30, 300), *db_);
+
+    auto tx = wrap(db_->create_transaction());
+    auto ex = make_join_scan_executor(
+        up, target, *setup.primary_idx, nullptr, down,
+        get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+        nullptr, relation::join_kind::left_outer
+    );
+
+    std::vector<basic_record> result{};
+    down.set_body([&]() {
+        result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
+    });
+
+    set_variables(ex.variables_list_[0], in, input_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 20, 200)), result[0]);
+
+    set_variables(ex.variables_list_[0], in, input_no_match.ref());
+    ASSERT_TRUE(static_cast<bool>(ex.op_(*ex.ctx_)));
+    ex.ctx_->release();
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(std::nullopt, std::nullopt, std::nullopt)), result[1]);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
 TEST_F(join_scan_test, composite_key_primary) {
     // PK=(C0,C1); scan C0=1 with prefixed_inclusive returns all rows where C0=1.
     auto setup = prepare_indices(

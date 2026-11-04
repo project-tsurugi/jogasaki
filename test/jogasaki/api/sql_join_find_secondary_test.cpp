@@ -197,6 +197,28 @@ TEST_F(sql_join_find_secondary_test, left_outer_desc) {
     run_left_outer("DESC");
 }
 
+TEST_F(sql_join_find_secondary_test, left_outer_with_condition) {
+    // regression test for issue #1610 - right records not satisfying the join condition
+    // should not produce null-padded records if another right record matches
+    execute_statement("CREATE TABLE t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (1),(2),(3)");
+    execute_statement("CREATE TABLE t1 (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i1 on t1(c1)");
+    execute_statement("INSERT INTO t1 VALUES (10, 1),(11, 1),(12, 1),(20, 2),(21, 2)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 left outer join t1 on t0.c0=t1.c1 and t1.c0 <> 11 and t1.c0 < 20";
+    EXPECT_TRUE(has_join_find(query));
+    EXPECT_TRUE(uses_secondary(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(4, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 1)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 12, 1)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(2, std::nullopt, std::nullopt)), result[2]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(3, std::nullopt, std::nullopt)), result[3]);
+}
+
 TEST_F(sql_join_find_secondary_test, composite_key_asc_asc) {
     run_composite_index("ASC", "ASC");
 }

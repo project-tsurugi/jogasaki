@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -344,8 +344,18 @@ public:
                 }
                 return operation_status_kind::ok;
             }
+            if (ctx.sending_null_padded_) {
+                // the null-padded record is the last one sent for the left record, so just re-try downstream call here
+                if (auto call_st = call_downstream(ctx, context); ! call_st) {
+                    return call_st;
+                }
+                ctx.sending_null_padded_ = false;
+                return operation_status_kind::ok;
+            }
             goto resume_calling_child;  //NOLINT
         }
+        ctx.sent_match_ = false;
+        ctx.sending_null_padded_ = false;
         {
             context_helper helper{ctx.task_context()};
             expr::evaluator_context ectx{
@@ -410,7 +420,7 @@ public:
             return operation_status_kind::ok;
         }
         // inner or left_outer join
-        if(ctx.matched_ || join_kind_ == join_kind::left_outer) {
+        if(ctx.matched_) {
             do {
                 if (condition_) {
                     // newly create c instead of re-using ectx since errors in ectx might have bad impact //TODO resolve this
@@ -427,27 +437,34 @@ public:
                         return operation_status_kind::aborted;
                     }
                     if(! r.template to<bool>()) {
-                        if(join_kind_ != join_kind::left_outer) {
-                            // inner join: skip record
-                            continue;
-                        }
-                        // left outer join: nullify output variables and send record downstream
-                        nullify_output_variables(ctx.variables().ref());
+                        // the right record does not satisfy the join condition - skip it.
+                        // For left outer join, null-padded record is sent later only if no right record matches.
+                        continue;
                     }
                 }
+                ctx.sent_match_ = true;
 resume_calling_child:
                 if (auto call_st = call_downstream(ctx, context); ! call_st) {
                     return call_st;
                 }
                 // clean output variables for next record just in case
                 nullify_output_variables(ctx.variables().ref());
-            } while (ctx.matched_ && ctx.matcher_->next(*ctx.req_context()));
+            } while (ctx.matcher_->next(*ctx.req_context()));
         }
         // normally `res` is not_found here indicating there are no more records to process
         if(auto res = ctx.matcher_->result(); res != status::ok && res != status::not_found) {
             // on error, error info is already filled in the request context so just finish the operator
             ctx.abort();
             return operation_status_kind::aborted;
+        }
+        if(join_kind_ == join_kind::left_outer && ! ctx.sent_match_) {
+            // no right record matches the left record - send null-padded record once
+            nullify_output_variables(ctx.variables().ref());
+            ctx.sending_null_padded_ = true;
+            if (auto call_st = call_downstream(ctx, context); ! call_st) {
+                return call_st;
+            }
+            ctx.sending_null_padded_ = false;
         }
         return operation_status_kind::ok;
     }

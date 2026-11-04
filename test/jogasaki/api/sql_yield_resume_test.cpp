@@ -375,6 +375,81 @@ TEST_F(sql_yield_resume_test, join_find) {
     );
 }
 
+TEST_F(sql_yield_resume_test, join_scan_left_outer_null_padded) {
+    // verify that join_scan correctly resumes left outer join after downstream yield
+    // while sending a null-padded record (issue #1610).
+    // plan: scan(L) -> join_scan(R on L.C1=R.C0, condition R.C2=1) -> apply(TVF)
+    // L is scanned in primary key order, so the first record sent to apply is the null-padded one for L.C0=1,
+    // because no right records for L.C1=10 satisfy the condition. The blocking TVF yields on that record.
+    // After resume, the null-padded record must not be sent again and the right records for the
+    // next left records must be processed normally.
+    execute_statement("CREATE TABLE L (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE R (C0 INT, C1 INT, C2 INT, PRIMARY KEY(C0, C1))");
+    execute_statement("INSERT INTO L VALUES (1, 10), (2, 20), (3, 30)");
+    execute_statement("INSERT INTO R VALUES (10, 1, 0), (10, 2, 0), (20, 1, 1), (20, 2, 0), (20, 3, 1)");
+
+    run_yield_propagation_test(
+        "SELECT S.C0, S.C1, tvf.c1, tvf.c2 "
+        "FROM (SELECT L.C0, R.C1 FROM L LEFT JOIN R ON L.C1 = R.C0 AND R.C2 = 1) S "
+        "CROSS APPLY mock_table_func_blocking(S.C0) AS tvf",
+        {"join_scan"},
+        {
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(1, std::nullopt, 1, 100),
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 1, 1, 100),
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 3, 1, 100),
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(3, std::nullopt, 1, 100),
+        }
+    );
+}
+
+TEST_F(sql_yield_resume_test, join_scan_left_outer_condition) {
+    // verify that join_scan correctly resumes left outer join after downstream yield
+    // while sending a right record satisfying the condition (issue #1610).
+    // plan: scan(L) -> join_scan(R on L.C1=R.C0, condition R.C2=1) -> apply(TVF)
+    // For L.C0=1, the first right record (10, 1) is skipped by the condition and the second one (10, 2)
+    // is sent to apply, which yields. After resume, the operator must remember that a right record has been sent
+    // and must not send a null-padded record for L.C0=1.
+    execute_statement("CREATE TABLE L (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE R (C0 INT, C1 INT, C2 INT, PRIMARY KEY(C0, C1))");
+    execute_statement("INSERT INTO L VALUES (1, 10), (2, 20)");
+    execute_statement("INSERT INTO R VALUES (10, 1, 0), (10, 2, 1), (10, 3, 0), (20, 1, 0)");
+
+    run_yield_propagation_test(
+        "SELECT S.C0, S.C1, tvf.c1, tvf.c2 "
+        "FROM (SELECT L.C0, R.C1 FROM L LEFT JOIN R ON L.C1 = R.C0 AND R.C2 = 1) S "
+        "CROSS APPLY mock_table_func_blocking(S.C0) AS tvf",
+        {"join_scan"},
+        {
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(1, 2, 1, 100),
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, std::nullopt, 1, 100),
+        }
+    );
+}
+
+TEST_F(sql_yield_resume_test, join_find_left_outer_null_padded) {
+    // verify that join_find correctly resumes left outer join after downstream yield
+    // while sending a null-padded record (issue #1610).
+    // plan: scan(L) -> join_find(R on L.C1=R.C0, condition R.C1=1) -> apply(TVF)
+    // The right record for L.C0=1 does not satisfy the condition, so the first record sent to apply
+    // is the null-padded one, on which the blocking TVF yields.
+    execute_statement("CREATE TABLE L (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE R (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO L VALUES (1, 10), (2, 20), (3, 30)");
+    execute_statement("INSERT INTO R VALUES (10, 0), (20, 1)");
+
+    run_yield_propagation_test(
+        "SELECT S.C0, S.C1, tvf.c1, tvf.c2 "
+        "FROM (SELECT L.C0, R.C0 AS C1 FROM L LEFT JOIN R ON L.C1 = R.C0 AND R.C1 = 1) S "
+        "CROSS APPLY mock_table_func_blocking(S.C0) AS tvf",
+        {"join_find"},
+        {
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(1, std::nullopt, 1, 100),
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 20, 1, 100),
+            create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(3, std::nullopt, 1, 100),
+        }
+    );
+}
+
 TEST_F(sql_yield_resume_test, take_group_and_flatten) {
     // verify that take_group and flatten correctly propagate yield from a downstream apply operator.
     // plan: scan(T) -> offer(C1) -> group-exchange -> take_group -> flatten -> apply(TVF)

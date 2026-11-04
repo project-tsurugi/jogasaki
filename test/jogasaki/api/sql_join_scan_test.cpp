@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -194,6 +194,53 @@ TEST_F(sql_join_scan_test, outer_join_with_condition_on_right_column_null) {
         execute_query(query, result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, std::nullopt, std::nullopt)), result[0]);
+    }
+}
+
+TEST_F(sql_join_scan_test, outer_join_with_condition_multiple_records) {
+    // regression test for issue #1610 - left outer join sends a null-padded record
+    // only if no right records satisfy the join condition
+    execute_statement("create table L (C0 INT, C1 INT)");
+    execute_statement("create table R (C0 INT, C1 INT, C2 INT, PRIMARY KEY(C0, C1))");
+    execute_statement("INSERT INTO L (C0, C1) VALUES (1, 10), (2, 20), (3, 30)");
+    execute_statement("INSERT INTO R (C0, C1, C2) VALUES (10, 1, 1), (10, 2, 2), (10, 3, 1), (20, 1, 2), (20, 2, 3)");
+    {
+        auto query = "SELECT L.C0, R.C1 FROM L LEFT JOIN R ON L.C1=R.C0 AND R.C2 = 1";
+        EXPECT_TRUE(has_join_scan(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        // L.C0=1: two of three right records satisfy the condition
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 3)), result[1]);
+        // L.C0=2: no right records satisfy the condition
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, std::nullopt)), result[2]);
+        // L.C0=3: no right records match the key
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, std::nullopt)), result[3]);
+    }
+}
+
+TEST_F(sql_join_scan_test, outer_join_with_condition_on_both_columns_multiple_records) {
+    // regression test for issue #1610 - e.g. joining with a master table which has validity periods
+    // R.C1 and R.C2 represent the start (inclusive) and end (exclusive) of the period
+    execute_statement("create table L (C0 INT, C1 INT, C2 INT)");
+    execute_statement("create table R (C0 INT, C1 INT, C2 INT, PRIMARY KEY(C0, C1))");
+    execute_statement("INSERT INTO L (C0, C1, C2) VALUES (1, 10, 5), (2, 20, 5), (3, 30, 5)");
+    execute_statement("INSERT INTO R (C0, C1, C2) VALUES (10, 0, 4), (10, 4, 9), (20, 0, 9)");
+    {
+        auto query = "SELECT L.C0, R.C1 FROM L LEFT JOIN R ON L.C1=R.C0 AND R.C1 <= L.C2 AND L.C2 < R.C2";
+        EXPECT_TRUE(has_join_scan(query));
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        // L.C0=1: only the newer period contains L.C2
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, 4)), result[0]);
+        // L.C0=2: single period
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 0)), result[1]);
+        // L.C0=3: no right records match the key
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, std::nullopt)), result[2]);
     }
 }
 

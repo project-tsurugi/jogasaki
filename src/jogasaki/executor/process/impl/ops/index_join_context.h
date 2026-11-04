@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,6 +102,10 @@ private:
 
     // frame variables for yield
     bool matched_{};
+    // true if at least one right record satisfying the join condition has been sent downstream for the current left record
+    bool sent_match_{};
+    // true if the null-padded record for left outer join is being sent downstream
+    bool sending_null_padded_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

@@ -21,9 +21,11 @@ status execute_create_foreign_catalog(
     create_foreign_catalog_command const& command,
     remote_catalog_manager& catalogs,
     remote_server_channel_manager const& channels,
-    std::string& diagnostic
+    std::string& diagnostic,
+    std::shared_ptr<error::error_info>* failure
 ) {
     diagnostic.clear();
+    if (failure) failure->reset();
     auto const& reference = command.reference;
     if (!catalogs.entries()) {
         diagnostic = "remote catalog manager is not available";
@@ -52,8 +54,10 @@ status execute_create_foreign_catalog(
         diagnostic = "remote catalog already exists: " + reference.catalog_name;
         return status::err_already_exists;
     }
-    auto st = catalogs.create(reference, channels, diagnostic);
-    if (st == status::err_invalid_argument) {
+    std::shared_ptr<error::error_info> local_failure{};
+    auto* failure_out = failure ? failure : &local_failure;
+    auto st = catalogs.create(reference, channels, diagnostic, failure_out);
+    if (st == status::err_invalid_argument && !*failure_out) {
         // A reservation is not a published catalog: do not report a conditional success
         // while another fetch could still fail.
         if (!catalogs.find_catalog(reference.catalog_name)) {

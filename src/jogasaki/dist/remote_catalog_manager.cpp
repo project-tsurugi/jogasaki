@@ -47,6 +47,7 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/finally.h>
 
@@ -635,8 +636,10 @@ status remote_catalog_manager::create(remote_catalog_reference const& reference,
 }
 
 status remote_catalog_manager::create(remote_catalog_reference const& reference,
-                                      remote_server_channel_manager const& channel_manager, std::string& diagnostic) {
+                                      remote_server_channel_manager const& channel_manager, std::string& diagnostic,
+                                      std::shared_ptr<error::error_info>* failure) {
     diagnostic.clear();
+    if (failure) failure->reset();
     bool name_reserved = false;
     // Construct the guard before reserving: even formatting a failure diagnostic may throw.
     utils::finally release_name{[this, &reference, &name_reserved] {
@@ -687,14 +690,30 @@ status remote_catalog_manager::create(remote_catalog_reference const& reference,
             diagnostic = "GetRemoteCatalog client is not implemented";
             st = status::err_not_implemented;
         } else if (auto rc = fetcher_->fetch(reference, channel, std::chrono::system_clock::now() + fetch_timeout_,
-                                             info, diagnostic);
+                                             info, diagnostic, failure);
                    rc != status::ok) {
             diagnostic = "remote catalog fetch failed (" + std::string{to_string_view(rc)} + "): " + diagnostic;
-            st = status::err_unknown;
+            st = rc;
+            if (failure && !*failure) {
+                auto code = rc == status::err_unsupported ? error_code::unsupported_runtime_feature_exception
+                          : rc == status::err_invalid_state || rc == status::err_data_corruption
+                              ? error_code::internal_exception : error_code::sql_execution_exception;
+                auto message = rc == status::err_unsupported ? "[distributed-query] unsupported remote catalog definition"
+                             : rc == status::err_invalid_state || rc == status::err_data_corruption
+                                 ? "[distributed-query] invalid remote catalog definition"
+                                 : "[distributed-query] remote catalog retrieval failed";
+                *failure = create_error_info(code, message, st);
+            }
         } else if (auto error = validate(info); !error.empty()) {
             // resolve: semantic validation
             diagnostic = "invalid remote catalog: " + error;
-            st = status::err_unknown;
+            LOG_LP(INFO) << "GetRemoteCatalog server:" << reference.remote_server_name
+                         << " internal_code:INVALID_REMOTE_CATALOG reason:" << error;
+            st = status::err_invalid_state;
+            if (failure) {
+                *failure = create_error_info(error_code::internal_exception,
+                    "[distributed-query] invalid remote catalog definition", st);
+            }
         } else if (auto reserved = reserve_function_ids(info, lease, diagnostic); reserved != status::ok) {
             // resolve: coordinator-side definition IDs
             st = reserved;

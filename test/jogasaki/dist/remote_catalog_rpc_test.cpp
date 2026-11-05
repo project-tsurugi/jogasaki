@@ -93,6 +93,7 @@ public:
     std::shared_ptr<dq::remote_catalog_handler> handler{};
     std::atomic<stream_mode> mode{stream_mode::normal};
     std::atomic_int calls{};
+    grpc::StatusCode failure{grpc::StatusCode::OK};
     std::atomic_int execution_calls{};
 
     grpc::Status ExecuteRemoteProcess(grpc::ServerContext*, wire::RemoteProcessRequest const*,
@@ -116,6 +117,9 @@ public:
         if (mode == stream_mode::wait_for_deadline) {
             while (!context->IsCancelled()) std::this_thread::sleep_for(std::chrono::milliseconds{1});
             return {grpc::StatusCode::CANCELLED, "deadline reached"};
+        }
+        if (failure != grpc::StatusCode::OK) {
+            return {failure, "injected catalog failure"};
         }
         auto result = (*handler)();
         if (!result.success) {
@@ -591,6 +595,54 @@ TEST_F(remote_catalog_rpc_test, deadline_failure_releases_catalog_name_for_retry
     remote_.mode = stream_mode::normal;
     ASSERT_EQ(status::ok, timed.create({"retry", "worker"}, db_impl()->remote_server_channels(), diagnostic)) << diagnostic;
     EXPECT_TRUE(timed.find_catalog("retry"));
+}
+
+
+TEST_F(remote_catalog_rpc_test, all_rpc_statuses_survive_manager_and_do_not_publish) {
+    for (auto [wire_status, expected] : {
+            std::pair{grpc::StatusCode::CANCELLED, status::err_io_error},
+            {grpc::StatusCode::UNKNOWN, status::err_unknown},
+            {grpc::StatusCode::INVALID_ARGUMENT, status::err_invalid_argument},
+            {grpc::StatusCode::DEADLINE_EXCEEDED, status::err_time_out},
+            {grpc::StatusCode::NOT_FOUND, status::err_not_found},
+            {grpc::StatusCode::ALREADY_EXISTS, status::err_unknown},
+            {grpc::StatusCode::PERMISSION_DENIED, status::err_unknown},
+            {grpc::StatusCode::RESOURCE_EXHAUSTED, status::err_resource_limit_reached},
+            {grpc::StatusCode::FAILED_PRECONDITION, status::err_unknown},
+            {grpc::StatusCode::ABORTED, status::err_unknown},
+            {grpc::StatusCode::OUT_OF_RANGE, status::err_unknown},
+            {grpc::StatusCode::UNIMPLEMENTED, status::err_unsupported},
+            {grpc::StatusCode::INTERNAL, status::err_unknown},
+            {grpc::StatusCode::UNAVAILABLE, status::err_io_error},
+            {grpc::StatusCode::DATA_LOSS, status::err_invalid_state},
+            {grpc::StatusCode::UNAUTHENTICATED, status::err_unknown}}) {
+        SCOPED_TRACE(static_cast<int>(wire_status));
+        remote_.failure = wire_status;
+        std::string diagnostic{};
+        auto before = manager()->snapshot();
+        std::shared_ptr<error::error_info> failure{};
+        EXPECT_EQ(expected, dist::execute_create_foreign_catalog(
+            {{"status_test", "worker"}, false, false}, *manager(),
+            db_impl()->remote_server_channels(), diagnostic, &failure));
+        ASSERT_TRUE(failure);
+        auto expected_code = error_code::sql_execution_exception;
+        if (wire_status == grpc::StatusCode::DEADLINE_EXCEEDED) {
+            expected_code = error_code::sql_request_timeout_exception;
+        } else if (wire_status == grpc::StatusCode::UNIMPLEMENTED) {
+            expected_code = error_code::unsupported_runtime_feature_exception;
+        } else if (wire_status == grpc::StatusCode::INTERNAL || wire_status == grpc::StatusCode::DATA_LOSS) {
+            expected_code = error_code::internal_exception;
+        }
+        EXPECT_EQ(expected_code, failure->code());
+        EXPECT_EQ(expected, failure->status());
+        EXPECT_NE(std::string::npos, diagnostic.find("[distributed-query] GetRemoteCatalog"));
+        EXPECT_EQ(before, manager()->snapshot());
+        EXPECT_FALSE(manager()->find_catalog("status_test"));
+        EXPECT_EQ(0U, db_impl()->remote_function_ids()->reserved_count());
+    }
+    remote_.failure = grpc::StatusCode::OK;
+    std::string diagnostic{};
+    EXPECT_EQ(status::ok, create("status_test", diagnostic));
 }
 
 }  // namespace jogasaki::testing

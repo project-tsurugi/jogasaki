@@ -33,6 +33,7 @@
 #include <jogasaki/dist/remote_function_id_registry.h>
 #include <jogasaki/dist/remote_server_channel_manager.h>
 #include <jogasaki/status.h>
+#include <jogasaki/error/error_info.h>
 
 namespace jogasaki::dist {
 
@@ -79,7 +80,8 @@ public:
         std::shared_ptr<grpc::Channel> const& channel,
         std::chrono::system_clock::time_point deadline,
         remote_catalog_information& result,
-        std::string& diagnostic) = 0;
+        std::string& diagnostic,
+        std::shared_ptr<error::error_info>* failure = nullptr) = 0;
 };
 
 /**
@@ -122,7 +124,8 @@ public:
     status create(
         remote_catalog_reference const& reference,
         remote_server_channel_manager const& channel_manager,
-        std::string& diagnostic);
+        std::string& diagnostic,
+        std::shared_ptr<error::error_info>* failure = nullptr);
 
     status drop(std::string_view catalog_name);
 

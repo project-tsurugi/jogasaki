@@ -239,7 +239,7 @@ TEST_F(remote_process_handler_test, resolves_identity_and_rejects_mismatched_col
     auto valid = scan_block();
     ASSERT_TRUE(handler(dist::serialize_remote_execution_block_proto(valid)).success);
     using error_kind = tateyama::grpc::distributed_query::remote_process_error_kind;
-    auto check = [&](dist::remote_execution_block const& block, error_kind expected = error_kind::not_found) {
+    auto check = [&](dist::remote_execution_block const& block, error_kind expected = error_kind::failed_precondition) {
         auto response = handler(dist::serialize_remote_execution_block_proto(block));
         EXPECT_FALSE(response.success);
         EXPECT_EQ(expected, response.error_kind);

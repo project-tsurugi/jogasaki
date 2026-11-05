@@ -156,7 +156,7 @@ def main():
         worker.remote = False
         restart(worker)
         failed = query(coordinator, REMOTE_SQL,
-                       error_pattern=r'failed to connect to all addresses',
+                       error_pattern=r'ExecuteRemoteProcess failed: remote server unavailable',
                        expected_code='SQL-02000')
         assert failed['rows'] == [], failed
         for node in nodes:

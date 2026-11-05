@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "rpc_remote_catalog_fetcher.h"
+#include "remote_rpc_error.h"
 
 #include <atomic>
 #include <cstdint>
@@ -26,6 +27,7 @@
 
 #include <jogasaki/dist/remote_catalog_decoder.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/logging_helper.h>
 
 namespace jogasaki::dist {
@@ -36,29 +38,6 @@ namespace wire = ::tateyama::grpc::proto;
 
 } // namespace
 
-[[nodiscard]] static status catalog_status(grpc::StatusCode code) noexcept {
-    switch (code) {
-        case grpc::StatusCode::DEADLINE_EXCEEDED:
-            return status::err_time_out;
-        case grpc::StatusCode::UNAVAILABLE:
-            return status::err_io_error;
-        case grpc::StatusCode::CANCELLED:
-            return status::err_io_error;
-        case grpc::StatusCode::UNIMPLEMENTED:
-            return status::err_unsupported;
-        case grpc::StatusCode::RESOURCE_EXHAUSTED:
-            return status::err_resource_limit_reached;
-        case grpc::StatusCode::INVALID_ARGUMENT:
-            return status::err_invalid_argument;
-        case grpc::StatusCode::FAILED_PRECONDITION:
-            return status::err_invalid_state;
-        case grpc::StatusCode::DATA_LOSS:
-            return status::err_data_corruption;
-        default:
-            return status::err_unknown;
-    }
-}
-
 [[nodiscard]] static std::string next_request_id(remote_catalog_reference const& reference) {
     static std::atomic_uint64_t sequence{};
     return "catalog-" + reference.catalog_name + "-" + std::to_string(++sequence);
@@ -67,10 +46,17 @@ namespace wire = ::tateyama::grpc::proto;
 status rpc_remote_catalog_fetcher::fetch(remote_catalog_reference const& reference,
                                          std::shared_ptr<grpc::Channel> const& channel,
                                          std::chrono::system_clock::time_point deadline,
-                                         remote_catalog_information& result, std::string& diagnostic) {
+                                         remote_catalog_information& result, std::string& diagnostic,
+                                         std::shared_ptr<error::error_info>* failure) {
+    if (failure) failure->reset();
     if (!channel) {
-        diagnostic = "no channel for remote server " + reference.remote_server_name;
-        return status::err_invalid_argument;
+        diagnostic = "[distributed-query] remote server channel not found";
+        if (failure) {
+            *failure = create_error_info(error_code::sql_execution_exception, diagnostic, status::err_not_found);
+        }
+        LOG_LP(INFO) << "GetRemoteCatalog server:" << reference.remote_server_name
+                     << " internal_code:REMOTE_CHANNEL_NOT_FOUND";
+        return status::err_not_found;
     }
     auto started = std::chrono::steady_clock::now();
     wire::RemoteCatalogRequest request{};
@@ -101,7 +87,12 @@ status rpc_remote_catalog_fetcher::fetch(remote_catalog_reference const& referen
         final = reader->Finish();
     } catch (std::exception const& e) {
         assembler.reset();
-        diagnostic = std::string{"GetRemoteCatalog failed: "} + e.what();
+        LOG_LP(INFO) << "GetRemoteCatalog server:" << reference.remote_server_name
+                     << " internal_code:REMOTE_TRANSPORT_EXCEPTION reason:" << e.what();
+        diagnostic = "[distributed-query] unexpected remote transport error";
+        if (failure) {
+            *failure = create_error_info(error_code::internal_exception, diagnostic, status::err_unknown);
+        }
         return status::err_unknown;
     }
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
@@ -109,23 +100,46 @@ status rpc_remote_catalog_fetcher::fetch(remote_catalog_reference const& referen
     auto bytes = assembler.bytes();
     status rc = status::ok;
     if (wire_status != status::ok) {
-        rc = wire_status;
-        diagnostic = "GetRemoteCatalog stream violated the wire contract: " + wire_error;
+        rc = wire_status == status::err_data_corruption ? status::err_invalid_state : wire_status;
+        LOG_LP(INFO) << "GetRemoteCatalog server:" << reference.remote_server_name
+                     << " internal_code:INVALID_REMOTE_CATALOG reason:" << wire_error;
+        diagnostic = "[distributed-query] invalid remote catalog definition";
     } else if (!final.ok()) {
         assembler.reset();
-        rc = catalog_status(final.error_code());
-        diagnostic = "GetRemoteCatalog failed with gRPC status " + std::to_string(final.error_code()) + ": " +
-                     final.error_message();
+        auto mapped = classify_remote_rpc_error(final.error_code());
+        rc = mapped.result;
+        diagnostic = remote_rpc_message("GetRemoteCatalog", mapped);
+        if (failure) {
+            *failure = create_error_info(mapped.code, diagnostic, rc);
+        }
     } else {
         remote_catalog_information decoded{};
         rc = assembler.finish(decoded, diagnostic);
+        if (rc == status::err_data_corruption || rc == status::err_unsupported) {
+            LOG_LP(INFO) << "GetRemoteCatalog server:" << reference.remote_server_name
+                         << " internal_code:" << (rc == status::err_unsupported
+                              ? "UNSUPPORTED_REMOTE_CATALOG" : "INVALID_REMOTE_CATALOG")
+                         << " reason:" << diagnostic;
+            diagnostic = rc == status::err_unsupported ? "[distributed-query] unsupported remote catalog definition"
+                                                       : "[distributed-query] invalid remote catalog definition";
+            if (rc == status::err_data_corruption) {
+                rc = status::err_invalid_state;
+            }
+        }
         if (rc == status::ok) {
             result = std::move(decoded);
         }
     }
+    if (failure && !*failure && rc != status::ok) {
+        auto code = rc == status::err_unsupported ? error_code::unsupported_runtime_feature_exception
+                    : rc == status::err_invalid_state ? error_code::internal_exception
+                                                     : error_code::sql_execution_exception;
+        *failure = create_error_info(code, diagnostic, rc);
+    }
     LOG_LP(INFO) << "GetRemoteCatalog request_id:" << metadata->request_id() << " catalog:" << reference.catalog_name
                  << " server:" << reference.remote_server_name << " status:" << rc
-                 << " grpc_status:" << final.error_code() << " fragments:" << (rc == status::ok ? fragments : 0)
+                 << " grpc_status:" << final.error_code() << " grpc_message:" << final.error_message()
+                 << " fragments:" << (rc == status::ok ? fragments : 0)
                  << " response_bytes:" << (rc == status::ok ? bytes : 0) << " request_bytes:" << request.ByteSizeLong()
                  << " elapsed_ms:" << elapsed.count() << (rc == status::ok ? "" : " reason:" + diagnostic);
     return rc;

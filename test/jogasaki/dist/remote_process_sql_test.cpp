@@ -55,6 +55,7 @@
 #include <jogasaki/dist/remote_record_stream.h>
 #include <jogasaki/dist/remote_server_configuration.h>
 #include <jogasaki/dist/remote_sql_error.h>
+#include <jogasaki/dist/remote_rpc_error.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -443,7 +444,8 @@ TEST_F(remote_process_sql_test, error_after_partial_results_fails_whole_sql) {
     builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
     EXPECT_EQ(status::err_unknown, st);
     ASSERT_TRUE(info);
-    EXPECT_EQ("worker failed after partial result", info->message());
+    EXPECT_EQ(error_code::internal_exception, info->code());
+    EXPECT_EQ("[distributed-query] ExecuteRemoteProcess failed: RPC internal error", info->message());
 }
 TEST_F(remote_process_sql_test, single_worker_blocked_remote_stream_does_not_block_other_sql) {
     unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
@@ -679,7 +681,7 @@ TEST_F(remote_process_sql_test, malformed_sql_status_details_fall_back_to_transp
     std::shared_ptr<api::error_info> info{};
     ASSERT_EQ(status::ok, tx->error_info(info));
     ASSERT_TRUE(info);
-    EXPECT_EQ("original transport error", info->message());
+    EXPECT_EQ("[distributed-query] ExecuteRemoteProcess failed: unclassified RPC error", info->message());
 }
 TEST_F(remote_process_sql_test, find_and_group_downstream_use_remote_rows) {
     std::vector<mock::basic_record> rows{};
@@ -792,20 +794,69 @@ TEST_F(remote_process_sql_test, completion_releases_tasks_and_flows_on_rpc_timeo
 
 
 TEST_F(remote_process_sql_test, transport_status_mapping_preserves_failure_category) {
-    for (auto [transport, expected] : {
-            std::pair{grpc::StatusCode::UNAVAILABLE, status::err_io_error},
-            std::pair{grpc::StatusCode::RESOURCE_EXHAUSTED, status::err_resource_limit_reached},
-            std::pair{grpc::StatusCode::INVALID_ARGUMENT, status::err_invalid_argument},
-            std::pair{grpc::StatusCode::DATA_LOSS, status::err_invalid_argument},
-            std::pair{grpc::StatusCode::UNIMPLEMENTED, status::err_unsupported},
-            std::pair{grpc::StatusCode::NOT_FOUND, status::err_not_found},
-            std::pair{grpc::StatusCode::INTERNAL, status::err_unknown}}) {
-        SCOPED_TRACE(static_cast<int>(transport));
-        service_.failure = transport;
+    struct expected_failure {
+        grpc::StatusCode transport;
+        status internal;
+        error_code sql;
+        std::string_view reason;
+    };
+    for (auto const& expected : {
+            expected_failure{grpc::StatusCode::CANCELLED, status::err_io_error,
+                             error_code::sql_execution_exception, "was cancelled"},
+            {grpc::StatusCode::UNKNOWN, status::err_unknown,
+             error_code::sql_execution_exception, "failed: unclassified RPC error"},
+            {grpc::StatusCode::INVALID_ARGUMENT, status::err_invalid_argument,
+             error_code::sql_execution_exception, "failed: invalid RPC request"},
+            {grpc::StatusCode::DEADLINE_EXCEEDED, status::err_time_out,
+             error_code::sql_request_timeout_exception, "timed out"},
+            {grpc::StatusCode::NOT_FOUND, status::err_not_found,
+             error_code::sql_execution_exception, "failed: remote RPC target not found"},
+            {grpc::StatusCode::ALREADY_EXISTS, status::err_unknown,
+             error_code::sql_execution_exception, "failed: remote RPC target already exists"},
+            {grpc::StatusCode::PERMISSION_DENIED, status::err_unknown,
+             error_code::sql_execution_exception, "failed: remote RPC permission denied"},
+            {grpc::StatusCode::RESOURCE_EXHAUSTED, status::err_resource_limit_reached,
+             error_code::sql_execution_exception, "failed: resource exhausted"},
+            {grpc::StatusCode::FAILED_PRECONDITION, status::err_unknown,
+             error_code::sql_execution_exception, "failed: remote precondition not satisfied"},
+            {grpc::StatusCode::ABORTED, status::err_unknown,
+             error_code::sql_execution_exception, "was aborted"},
+            {grpc::StatusCode::OUT_OF_RANGE, status::err_unknown,
+             error_code::sql_execution_exception, "failed: RPC reported an out-of-range error"},
+            {grpc::StatusCode::UNIMPLEMENTED, status::err_unsupported,
+             error_code::unsupported_runtime_feature_exception, "failed: unsupported feature"},
+            {grpc::StatusCode::INTERNAL, status::err_unknown,
+             error_code::internal_exception, "failed: RPC internal error"},
+            {grpc::StatusCode::UNAVAILABLE, status::err_io_error,
+             error_code::sql_execution_exception, "failed: remote server unavailable"},
+            {grpc::StatusCode::DATA_LOSS, status::err_invalid_state,
+             error_code::internal_exception, "failed: RPC reported data loss"},
+            {grpc::StatusCode::UNAUTHENTICATED, status::err_unknown,
+             error_code::sql_execution_exception, "failed: remote RPC authentication failed"}}) {
+        SCOPED_TRACE(static_cast<int>(expected.transport));
+        service_.failure = expected.transport;
         auto tx = utils::create_transaction(*db_, true, false);
         status actual{};
-        builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(actual).run();
-        EXPECT_EQ(expected, actual);
+        std::shared_ptr<error::error_info> info{};
+        builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx)
+            .expect_error(true).st(actual).error(info).run();
+        EXPECT_EQ(expected.internal, actual);
+        ASSERT_TRUE(info);
+        EXPECT_EQ(expected.sql, info->code());
+        EXPECT_EQ(std::string{"[distributed-query] ExecuteRemoteProcess "} + std::string{expected.reason}, info->message());
+    }
+}
+
+TEST(remote_rpc_error_test, success_and_unknown_status_mapping) {
+    auto success = dist::classify_remote_rpc_error(grpc::StatusCode::OK);
+    EXPECT_EQ(status::ok, success.result);
+    EXPECT_EQ(error_code::none, success.code);
+    for (auto value : {-1, 99}) {
+        auto failure = dist::classify_remote_rpc_error(static_cast<grpc::StatusCode>(value));
+        EXPECT_EQ(status::err_unknown, failure.result);
+        EXPECT_EQ(error_code::sql_execution_exception, failure.code);
+        EXPECT_EQ("[distributed-query] GetRemoteCatalog failed: unclassified RPC error",
+                  dist::remote_rpc_message("GetRemoteCatalog", failure));
     }
 }
 

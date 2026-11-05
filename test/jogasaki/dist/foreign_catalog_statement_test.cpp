@@ -49,9 +49,11 @@ public:
     std::atomic_size_t calls{};
     std::function<void()> before_fetch{};
     status result{status::ok};
+    std::shared_ptr<error::error_info> remote_failure{};
     status fetch(dist::remote_catalog_reference const&, std::shared_ptr<grpc::Channel> const&,
         std::chrono::system_clock::time_point, dist::remote_catalog_information& out,
-        std::string& diagnostic) override {
+        std::string& diagnostic, std::shared_ptr<error::error_info>* failure = nullptr) override {
+        if (failure) *failure = remote_failure;
         ++calls;
         if (before_fetch) before_fetch();
         if (result != status::ok) {
@@ -164,11 +166,33 @@ TEST_F(foreign_catalog_statement_test, failed_fetch_reports_diagnostic_and_does_
     auto request = context();
     executor::common::create_foreign_catalog create{{{"remote", "worker"}, false, false}};
     scheduler_.schedule(create, *request);
-    EXPECT_EQ(status::err_unknown, request->status_code());
+    EXPECT_EQ(status::err_io_error, request->status_code());
     ASSERT_TRUE(request->error_info());
     EXPECT_EQ(error_code::sql_execution_exception, request->error_info()->code());
-    EXPECT_NE(std::string::npos, request->error_info()->message().find("catalog fetch failed"));
+    EXPECT_EQ("[distributed-query] remote catalog retrieval failed", request->error_info()->message());
     EXPECT_FALSE(catalogs_->find_catalog("remote"));
+}
+
+TEST_F(foreign_catalog_statement_test, fetch_sql_error_survives_statement_scheduler) {
+    for (auto [result, code] : {
+            std::pair{status::err_time_out, error_code::sql_request_timeout_exception},
+            {status::err_unsupported, error_code::unsupported_runtime_feature_exception},
+            {status::err_unknown, error_code::internal_exception},
+            {status::err_invalid_state, error_code::internal_exception},
+            {status::err_invalid_argument, error_code::sql_execution_exception},
+            {status::err_not_found, error_code::sql_execution_exception}}) {
+        SCOPED_TRACE(code);
+        fetcher_->result = result;
+        fetcher_->remote_failure = std::make_shared<error::error_info>(code, "RPC diagnostic", result, "");
+        auto request = context();
+        executor::common::create_foreign_catalog create{{{"remote", "worker"}, false, false}};
+        scheduler_.schedule(create, *request);
+        EXPECT_EQ(result, request->status_code());
+        ASSERT_TRUE(request->error_info());
+        EXPECT_EQ(code, request->error_info()->code());
+        EXPECT_EQ("RPC diagnostic", request->error_info()->message());
+        EXPECT_FALSE(catalogs_->find_catalog("remote"));
+    }
 }
 
 TEST_F(foreign_catalog_statement_test, unavailable_runtime_is_reported_in_context) {

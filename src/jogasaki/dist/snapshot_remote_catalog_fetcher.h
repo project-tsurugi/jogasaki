@@ -44,7 +44,8 @@ public:
         std::shared_ptr<grpc::Channel> const& channel,
         std::chrono::system_clock::time_point deadline,
         remote_catalog_information& result,
-        std::string& diagnostic) override;
+        std::string& diagnostic,
+        std::shared_ptr<error::error_info>* failure = nullptr) override;
 
     /**
      * @brief references of the catalogs whose tables are all placed on one server, in snapshot order.

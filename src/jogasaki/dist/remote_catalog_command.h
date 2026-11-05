@@ -62,7 +62,8 @@ struct drop_foreign_catalog_command {
     create_foreign_catalog_command const& command,
     remote_catalog_manager& catalogs,
     remote_server_channel_manager const& channels,
-    std::string& diagnostic);
+    std::string& diagnostic,
+    std::shared_ptr<error::error_info>* failure = nullptr);
 
 /**
  * @brief executes DROP FOREIGN CATALOG against the runtime registry.

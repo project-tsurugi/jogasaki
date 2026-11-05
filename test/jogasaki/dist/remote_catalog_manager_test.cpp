@@ -59,7 +59,7 @@ public:
     remote_catalog_information info{};
     std::function<void()> before_fetch{};
     status fetch(remote_catalog_reference const&, std::shared_ptr<grpc::Channel> const&,
-        std::chrono::system_clock::time_point deadline, remote_catalog_information& out, std::string&) override {
+        std::chrono::system_clock::time_point deadline, remote_catalog_information& out, std::string&, std::shared_ptr<error::error_info>* = nullptr) override {
         ++calls;
         EXPECT_GT(deadline, std::chrono::system_clock::now());
         if (before_fetch) before_fetch();
@@ -638,7 +638,7 @@ TEST_F(remote_catalog_manager_test, malformed_table_index_and_schema_metadata_pr
         auto before = manager.snapshot();
         fetcher->info = valid;
         entry.edit(fetcher->info);
-        EXPECT_EQ(status::err_unknown, manager.create({"invalid", "worker"}, channels, diagnostic));
+        EXPECT_EQ(status::err_invalid_state, manager.create({"invalid", "worker"}, channels, diagnostic));
         EXPECT_NE(std::string::npos, diagnostic.find(entry.diagnostic)) << diagnostic;
         EXPECT_EQ(before, manager.snapshot());
         EXPECT_EQ(existing, manager.find_catalog("existing"));
@@ -834,7 +834,7 @@ TEST_F(remote_catalog_manager_test, unresolved_function_ids_reject_whole_catalog
             fetcher->info.functions.push_back(invalid);
             fetcher->info.schemas[0].functions.push_back(valid.functions.size());
         }
-        EXPECT_EQ(status::err_unknown, manager.create({"candidate", "worker"}, channels, diagnostic));
+        EXPECT_EQ(status::err_invalid_state, manager.create({"candidate", "worker"}, channels, diagnostic));
         EXPECT_NE(std::string::npos, diagnostic.find(aggregate
             ? "unresolved remote definition ID of aggregate function: unresolved"
             : "unresolved remote definition ID of function: unresolved"));

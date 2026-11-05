@@ -39,7 +39,7 @@ public:
      * @return status::ok, or the failure mapped from the gRPC status
      * (err_time_out for DEADLINE_EXCEEDED, err_io_error for UNAVAILABLE or CANCELLED, err_unsupported for
      * UNIMPLEMENTED, err_resource_limit_reached for RESOURCE_EXHAUSTED, err_invalid_argument for INVALID_ARGUMENT,
-     * err_invalid_state for FAILED_PRECONDITION, err_data_corruption for DATA_LOSS, err_unknown otherwise),
+     * err_not_found for NOT_FOUND, err_invalid_state for DATA_LOSS, err_unknown otherwise),
      * or the status of a wire contract violation detected here
      */
     [[nodiscard]] status fetch(
@@ -47,7 +47,8 @@ public:
         std::shared_ptr<grpc::Channel> const& channel,
         std::chrono::system_clock::time_point deadline,
         remote_catalog_information& result,
-        std::string& diagnostic) override;
+        std::string& diagnostic,
+        std::shared_ptr<error::error_info>* failure = nullptr) override;
 };
 
 }  // namespace jogasaki::dist

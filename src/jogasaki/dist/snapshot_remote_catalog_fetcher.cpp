@@ -63,7 +63,8 @@ snapshot_remote_catalog_fetcher::snapshot_remote_catalog_fetcher(
 status snapshot_remote_catalog_fetcher::fetch(remote_catalog_reference const& reference,
                                               std::shared_ptr<grpc::Channel> const&,
                                               std::chrono::system_clock::time_point, remote_catalog_information& result,
-                                              std::string& diagnostic) {
+                                              std::string& diagnostic, std::shared_ptr<error::error_info>* failure) {
+    if (failure) failure->reset();
     if (source_) {
         for (auto const& catalog : source_->catalogs()) {
             if (!catalog || catalog->name() != reference.catalog_name) {

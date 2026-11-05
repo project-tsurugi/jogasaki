@@ -113,7 +113,7 @@ class fixed_fetcher final : public remote_catalog_fetcher {
 public:
     explicit fixed_fetcher(remote_catalog_information info) : info_(std::move(info)) {}
     status fetch(remote_catalog_reference const&, std::shared_ptr<grpc::Channel> const&,
-        std::chrono::system_clock::time_point, remote_catalog_information& out, std::string&) override {
+        std::chrono::system_clock::time_point, remote_catalog_information& out, std::string&, std::shared_ptr<error::error_info>* = nullptr) override {
         out = info_;
         return status::ok;
     }

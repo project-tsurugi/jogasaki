@@ -555,6 +555,9 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
     transaction_abort_guard abort_guard{database, transaction};
 
     while (!transaction->is_ready()) {
+        if (database.stop_requested()) {
+            return {false, {}, "database is stopping", remote_error::unavailable};
+        }
         if (is_cancelled && is_cancelled()) {
             return {false, {}, "remote RTX start was cancelled", remote_error::cancelled};
         }
@@ -724,7 +727,7 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
                 {},
                 std::move(graph.error),
                 graph.invalid_request ? remote_error::invalid_request
-                                      : (resolver.unsupported_column() ? remote_error::unsupported : remote_error::not_found)};
+                                      : (resolver.unsupported_column() ? remote_error::unsupported : remote_error::failed_precondition)};
     }
 
     auto compiled = compile_remote_execution_graph(*graph.graph);

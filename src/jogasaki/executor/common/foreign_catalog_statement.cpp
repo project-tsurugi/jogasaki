@@ -57,7 +57,12 @@ bool create_foreign_catalog::operator()(request_context& context) const {
             "remote catalog manager or channels are not available");
     }
     std::string diagnostic{};
-    auto result = dist::execute_create_foreign_catalog(command_, *catalogs, *channels, diagnostic);
+    std::shared_ptr<error::error_info> failure{};
+    auto result = dist::execute_create_foreign_catalog(command_, *catalogs, *channels, diagnostic, &failure);
+    if (failure && result != status::ok) {
+        error::set_error_info(context, failure);
+        return false;
+    }
     return report_catalog_result(context, result, diagnostic);
 }
 

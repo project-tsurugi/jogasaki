@@ -21,6 +21,7 @@
 #include <ostream>
 #include <type_traits>
 #include <vector>
+
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
@@ -80,11 +81,11 @@ public:
         field_type_traits<field_type_kind::decimal>::alignment,
         field_type_traits<field_type_kind::character>::alignment,
         field_type_traits<field_type_kind::octet>::alignment,
-//        field_type_traits<field_type_kind::bit>::alignment,
+        field_type_traits<field_type_kind::bit>::alignment,
         field_type_traits<field_type_kind::date>::alignment,
         field_type_traits<field_type_kind::time_of_day>::alignment,
         field_type_traits<field_type_kind::time_point>::alignment,
-//        field_type_traits<field_type_kind::time_interval>::alignment,
+        field_type_traits<field_type_kind::time_interval>::alignment,
 //        field_type_traits<field_type_kind::array>::alignment,
 //        field_type_traits<field_type_kind::record>::alignment,
        field_type_traits<field_type_kind::unknown>::alignment,

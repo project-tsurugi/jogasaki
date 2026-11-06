@@ -152,7 +152,10 @@ target_link_libraries(api
 
 if (NOT INSTALL_API_ONLY)
 add_subdirectory(src)
-add_subdirectory(mock)
+# mock provides libraries only for tests and examples
+if(BUILD_TESTS OR BUILD_EXAMPLES)
+    add_subdirectory(mock)
+endif()
 if(BUILD_TESTS)
     add_subdirectory(test)
 endif()

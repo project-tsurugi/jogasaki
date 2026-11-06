@@ -221,7 +221,7 @@ session::session(
 ) :
     name_(std::move(name)),
     session_id_(session_id),
-    client_(std::move(service), session_id, {jogasaki::common_cli::wait_kind::sleep, {}}),
+    client_(std::move(service), session_id, {jogasaki::common_cli::wait_kind::block, {}}),
     settings_(settings),
     out_(out),
     thread_([this]() { run(); })

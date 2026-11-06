@@ -17,12 +17,14 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <emmintrin.h>
 #include <functional>
 #include <ios>
 #include <memory>
+#include <mutex>
 #include <ratio>
 #include <regex>
 #include <string>
@@ -283,6 +285,33 @@ public:
         return true;
     }
 
+    /**
+     * @brief wait for the response completion by blocking on condition variable (not occupying the core)
+     * @param dur the timeout duration. Zero means waiting forever.
+     * @return true if the response completed, false if timed out
+     */
+    template <class Rep = std::int64_t, class Period = std::milli>
+    bool wait_completion_blocking(std::chrono::duration<Rep, Period> dur = std::chrono::milliseconds{2000}) {
+        if (completed_) {
+            return true;
+        }
+        // register the waiter before checking completion so that notify_completion() never misses it
+        ++blocking_waiters_;
+        bool ret{};
+        {
+            std::unique_lock lk{completion_mutex_};
+            auto pred = [this]() { return completed_.load(); };
+            if (dur.count() == 0) {
+                completion_cv_.wait(lk, pred);
+                ret = true;
+            } else {
+                ret = completion_cv_.wait_for(lk, dur, pred);
+            }
+        }
+        --blocking_waiters_;
+        return ret;
+    }
+
     [[nodiscard]] bool all_released() const noexcept;
 
     [[nodiscard]] bool check_cancel() const override;
@@ -296,6 +325,9 @@ public:
     std::shared_ptr<test_channel> channel_{};  //NOLINT
     std::string message_{};  //NOLINT
     std::atomic_bool completed_{};  //NOLINT
+    std::atomic_size_t blocking_waiters_{};  //NOLINT
+    std::mutex completion_mutex_{};  //NOLINT
+    std::condition_variable completion_cv_{};  //NOLINT
     std::size_t released_{};  //NOLINT
     std::function<void(std::string_view)> on_write_{}; //NOLINT
     std::size_t session_id_{};  //NOLINT
@@ -303,6 +335,9 @@ public:
     std::atomic_bool cancel_requested_{};  //NOLINT
     std::vector<std::unique_ptr<blob_info>> blobs_{};
     bool privileged_{true};
+
+private:
+    void notify_completion();
 };
 
 }  // namespace tateyama::api::server::mock

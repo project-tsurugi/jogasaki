@@ -96,7 +96,7 @@ status test_channel::release(writer&) {
 
 status test_response::body(std::string_view body) {
     body_.assign(body);
-    completed_ = true;
+    notify_completion();
     return status::ok;
 }
 
@@ -107,7 +107,18 @@ status test_response::body_head(std::string_view body_head) {
 
 void test_response::error(proto::diagnostics::Record const& record) {
     error_ = record;
+    notify_completion();
+}
+
+void test_response::notify_completion() {
     completed_ = true;
+    // skip locking when no one is blocking (e.g. busy waiting client) to keep the completion cheap
+    if (blocking_waiters_ > 0) {
+        {
+            std::unique_lock lk{completion_mutex_};
+        }
+        completion_cv_.notify_all();
+    }
 }
 
 status test_response::acquire_channel(

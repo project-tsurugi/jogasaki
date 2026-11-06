@@ -70,7 +70,7 @@ DEFINE_bool(without_pk, false, "prepare: create tables without primary key (--wi
 DEFINE_int64(id_coefficient, 10000000, "id range assigned to each thread of -st commands (idCoefficient system property of sbench)");  //NOLINT
 
 // options specific to nsbench
-DEFINE_bool(client_spin, true, "client threads wait for the responses with busy loop. Specify false to sleep while waiting.");  //NOLINT
+DEFINE_bool(client_spin, true, "client threads wait for the responses with busy loop. Specify false to block on condition variable while waiting.");  //NOLINT
 
 namespace tateyama::nsbench {
 
@@ -242,7 +242,7 @@ private:
     }
 
     service_client create_client() {
-        auto kind = FLAGS_client_spin ? jogasaki::common_cli::wait_kind::spin : jogasaki::common_cli::wait_kind::sleep;
+        auto kind = FLAGS_client_spin ? jogasaki::common_cli::wait_kind::spin : jogasaki::common_cli::wait_kind::block;
         return {env_.service(), next_session_id_++, {kind, std::chrono::milliseconds{0}}};
     }
 

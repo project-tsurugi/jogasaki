@@ -295,7 +295,7 @@ simple-benchmark (`project-tsurugi/simple-benchmark`、以下sbench) のCBで問
 - `--epoch_duration` (共通部品のフラグ、単位us) の既定値を3000とする。sbenchが動くtsurugidbの既定 (tsurugi.ini) が3000usであるのに対し、shirakami自体の既定は40msで、コミット完了待ちのレイテンシがこれに引っ張られるため
   - jogasakiは開発用のkvs起動時に `location` しか渡さないため、`--epoch_duration` を指定した場合は共通部品でsharksfinのDBを開いてjogasakiに貸し出す (`api::create_database(cfg, handle)`)。終了時のcloseも共通部品が行う
   - service_cli/service_benchmarkの既定値は0 (kvsの既定値を使う) のままとする
-- `--client_spin` (既定true) でクライアントの応答待ちをビジーループにする。nsbench独自
+- `--client_spin` (既定true) でクライアントの応答待ちをビジーループにする。falseの場合は条件変数で待ち、応答の完了時に起こされる (CPUを占有しない)。nsbench独自
 
 #### テーブルと処理
 

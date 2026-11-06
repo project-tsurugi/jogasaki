@@ -45,15 +45,15 @@ namespace jogasaki::common_cli {
 enum class wait_kind {
     /// @brief busy loop - lowest latency, occupies the core while waiting
     spin,
-    /// @brief poll with sleep - releases the core while waiting
-    sleep,
+    /// @brief block on condition variable until the completion is notified - releases the core while waiting
+    block,
 };
 
 /**
  * @brief policy for waiting the response completion
  */
 struct wait_policy {
-    wait_kind kind_{wait_kind::sleep};  //NOLINT
+    wait_kind kind_{wait_kind::block};  //NOLINT
 
     /// @brief timeout duration. Zero means waiting forever.
     std::chrono::milliseconds timeout_{};  //NOLINT

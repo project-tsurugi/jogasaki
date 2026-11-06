@@ -15,7 +15,6 @@
  */
 #include "service_client.h"
 
-#include <thread>
 #include <utility>
 
 #include <tateyama/api/server/mock/request_response.h>
@@ -114,17 +113,7 @@ call_result service_client::send(
             completed = res->wait_completion(policy_.timeout_);
         }
     } else {
-        auto begin = std::chrono::steady_clock::now();
-        while(true) {
-            if (res->completed()) {
-                completed = true;
-                break;
-            }
-            if (policy_.timeout_.count() != 0 && std::chrono::steady_clock::now() - begin > policy_.timeout_) {
-                break;
-            }
-            std::this_thread::sleep_for(100us);
-        }
+        completed = res->wait_completion_blocking(policy_.timeout_);
     }
     if (! completed) {
         return error_result(sql::error::Code::CODE_UNSPECIFIED, "response timed out");

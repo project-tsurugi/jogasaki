@@ -70,7 +70,8 @@ public:
     void do_rtx_range_test(
         int default_parallel,
         std::shared_ptr<api::transaction_option> opt,
-        std::function<void(std::vector<std::shared_ptr<impl::scan_range>> const&)> const& check
+        std::function<void(std::vector<std::shared_ptr<impl::scan_range>> const&)> const& check,
+        std::function<void(relation::scan&)> const& modify = {}
     ) {
         auto cfg = std::make_shared<configuration>();
         cfg->scan_default_parallel(default_parallel);
@@ -102,6 +103,9 @@ public:
             ), ek::prefixed_exclusive)
         );
 
+        if(modify) {
+            modify(target);
+        }
         auto down = add_downstream_record_verifier(destinations(target.columns()));
         target.output() >> down.input();
         create_processor_info();
@@ -114,6 +118,52 @@ public:
         io_exchange_map exchange_map{};
         operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
         check(builder.create_scan_ranges(target));
+    }
+
+    /**
+     * @brief run full scan with the row count on the table prepared by prepare_single_col_pk_table()
+     * @param count the row count set to the scan node
+     * @param use_iscan whether to use iscan
+     * @param yield whether to configure the scan to yield on each record
+     * @return the result rows from the scan
+     */
+    std::vector<basic_record> run_limited_scan(std::size_t count, bool use_iscan, bool yield = false) {
+        if(yield) {
+            auto cfg = std::make_shared<configuration>();
+            cfg->scan_block_size(1);
+            cfg->scan_yield_interval(0);
+            global::config_pool(cfg);
+        }
+        auto setup = prepare_single_col_pk_table();
+        insert_endpoint_test_rows(setup);
+        auto& target = add_scan_node(setup);
+        target.row_slice() = relation::scan::row_slice_type{{}, count};
+        scan_use_iscan_ = use_iscan;
+        auto down = add_downstream_record_verifier(destinations(target.columns()));
+        auto tx = wrap(db_->create_transaction());
+        auto ex = make_scan_executor(target, setup, false, down, tx);
+        EXPECT_EQ(count, ex.op_.limit());
+        EXPECT_EQ(use_iscan, ex.op_.use_iscan());
+        std::vector<basic_record> result{};
+        down.set_body([&]() {
+            result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
+        });
+        std::size_t yield_count = 0;
+        while(true) {
+            auto st = ex.op_(ex.ctx_);
+            if(st.kind() != operation_status_kind::yield) {
+                EXPECT_TRUE(static_cast<bool>(st));
+                break;
+            }
+            ++yield_count;
+        }
+        if(yield) {
+            EXPECT_LT(0, yield_count);
+            global::config_pool(std::make_shared<configuration>());
+        }
+        ex.ctx_.release();
+        EXPECT_EQ(status::ok, tx->commit());
+        return result;
     }
 
     /**
@@ -896,6 +946,106 @@ TEST_F(scan_test, reversed_bounds) {
     ex.ctx_.release();
     ASSERT_EQ(0, result.size());
     ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(scan_test, limit_legacy) {
+    // tsurugi-issues#1589 - the scan stops when it reaches the row count
+    auto result = run_limited_scan(2, false);
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+}
+
+TEST_F(scan_test, limit_iscan) {
+    // tsurugi-issues#1589 - the scan stops when it reaches the row count
+    auto result = run_limited_scan(2, true);
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+}
+
+TEST_F(scan_test, limit_one_legacy) {
+    auto result = run_limited_scan(1, false);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+}
+
+TEST_F(scan_test, limit_one_iscan) {
+    auto result = run_limited_scan(1, true);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+}
+
+TEST_F(scan_test, limit_zero_legacy) {
+    // the scan with zero row count outputs nothing
+    auto result = run_limited_scan(0, false);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(scan_test, limit_zero_iscan) {
+    // the scan with zero row count outputs nothing
+    auto result = run_limited_scan(0, true);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(scan_test, limit_exceeding_rows_legacy) {
+    auto result = run_limited_scan(10, false);
+    ASSERT_EQ(4, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(40, 4)), result[3]);
+}
+
+TEST_F(scan_test, limit_exceeding_rows_iscan) {
+    auto result = run_limited_scan(10, true);
+    ASSERT_EQ(4, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(40, 4)), result[3]);
+}
+
+TEST_F(scan_test, limit_with_yield_legacy) {
+    // the row count is kept across yields
+    auto result = run_limited_scan(3, false, true);
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[2]);
+}
+
+TEST_F(scan_test, limit_with_yield_iscan) {
+    // the row count is kept across yields
+    auto result = run_limited_scan(3, true, true);
+    ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[2]);
+}
+
+TEST_F(scan_test, scan_info_rtx_parallel_with_row_slice) {
+    // tsurugi-issues#1589 - the scan with row count is not split
+    do_rtx_range_test(
+        4,
+        std::make_shared<api::transaction_option>(transaction_type_kind::rtx),
+        [](auto const& ranges) {
+            ASSERT_EQ(1, ranges.size());
+            EXPECT_EQ(ranges[0]->begin().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+            EXPECT_EQ(ranges[0]->end().endpointkind(), kvs::end_point_kind::prefixed_exclusive);
+        },
+        [](relation::scan& target) {
+            target.row_slice() = relation::scan::row_slice_type{{}, 10};
+        });
+}
+
+TEST_F(scan_test, scan_info_rtx_parallel_with_direction) {
+    // tsurugi-issues#1589 - the scan with direction is not split to keep its order
+    do_rtx_range_test(
+        4,
+        std::make_shared<api::transaction_option>(transaction_type_kind::rtx),
+        [](auto const& ranges) {
+            ASSERT_EQ(1, ranges.size());
+        },
+        [](relation::scan& target) {
+            target.direction() = relation::scan_direction::forward;
+        });
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

@@ -256,13 +256,8 @@ std::optional<std::size_t> row_slice_to_limit(takatori::relation::details::row_s
 }
 
 void validate_scan(takatori::relation::scan const& scan) {
-    if(scan.row_slice()) {
-        throw_exception(plan_exception(create_error_info(
-            error_code::unsupported_runtime_feature_exception,
-            "Compiling statement resulted in unsupported scan operator with row slice.",
-            status::err_unsupported
-        )));
-    }
+    // only immediate row count without start position is supported (otherwise row_slice_to_limit() throws)
+    (void) row_slice_to_limit(scan.row_slice());
     if(scan.direction() == takatori::relation::scan_direction::backward) {
         throw_exception(plan_exception(create_error_info(
             error_code::unsupported_runtime_feature_exception,
@@ -753,12 +748,14 @@ static status prepare(
         yugawara::runtime_feature::aggregate_exchange,
 //        yugawara::runtime_feature::broadcast_join_scan,
         yugawara::runtime_feature::always_inline_scalar_local_variables,
-//        yugawara::runtime_feature::scan_limit,
 //        yugawara::runtime_feature::ordered_scan,
 //        yugawara::runtime_feature::ordered_forward,
 //        yugawara::runtime_feature::backward_scan,
     };
 
+    if(cfg && cfg->enable_scan_limit()) {
+        runtime_features.insert(yugawara::runtime_feature::scan_limit);
+    }
     if(cfg && cfg->enable_index_join()) {
         runtime_features.insert(yugawara::runtime_feature::index_join);
     }
@@ -789,11 +786,9 @@ static status prepare(
             yugawara::restricted_feature::statement_rename_column,
             yugawara::restricted_feature::statement_rename_index,
             yugawara::restricted_feature::statement_rename_table,
-            // scan direction and row slice are not respected by scan yet
-            yugawara::restricted_feature::relation_scan_direction_forward,
+            // backward scan, and row slice with start position or variable row count are not supported by scan yet
             yugawara::restricted_feature::relation_scan_direction_backward,
             yugawara::restricted_feature::relation_scan_row_slice_start,
-            yugawara::restricted_feature::relation_scan_row_slice_count,
             yugawara::restricted_feature::relation_scan_row_slice_variable,
             // forward ordering is not respected, and only immediate row count is supported for row slice of exchanges
             yugawara::restricted_feature::exchange_forward_ordering,

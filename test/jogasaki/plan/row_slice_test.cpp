@@ -100,8 +100,14 @@ TEST_F(row_slice_test, scan_supported) {
 }
 
 TEST_F(row_slice_test, scan_with_row_slice) {
-    expect_unsupported([&] { impl::validate_scan(create_scan({}, row_slice{{}, 10})); });
+    // immediate row count is supported (tsurugi-issues#1589 R2)
+    EXPECT_NO_THROW(impl::validate_scan(create_scan({}, row_slice{{}, 10})));
+    EXPECT_NO_THROW(impl::validate_scan(create_scan(scan_direction::forward, row_slice{{}, 10})));
+    EXPECT_NO_THROW(impl::validate_scan(create_scan({}, row_slice{{}, 0})));
+    // start position and variable row count are not supported
     expect_unsupported([&] { impl::validate_scan(create_scan({}, row_slice{1, {}})); });
+    expect_unsupported([&] { impl::validate_scan(create_scan({}, row_slice{1, 10})); });
+    expect_unsupported([&] { impl::validate_scan(create_scan({}, row_slice{{}, bindings_.stream_variable("c")})); });
 }
 
 TEST_F(row_slice_test, scan_backward) {

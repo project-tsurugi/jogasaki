@@ -43,6 +43,23 @@ enum class end_point_kind : std::uint32_t {
     prefixed_exclusive,
 };
 
+/**
+ * @brief options for content scan
+ */
+struct scan_options {
+    /**
+     * @brief whether the scan is done in reverse order (from end to begin)
+     */
+    bool reverse_{false};
+
+    /**
+     * @brief whether to use the legacy scan implementation of the transaction engine
+     * @details false requests the iterator based scan (iscan). This is a hint and the transaction engine
+     * without multiple scan implementations ignores it.
+     */
+    bool legacy_scan_{true};
+};
+
 enum class put_option : std::uint32_t {
     /**
      * @brief to update the existing entry, or create new one if the entry doesn't exist.
@@ -129,6 +146,28 @@ public:
         std::size_t limit = 0,
         bool reverse = false
     );
+    /**
+     * @brief scan the storage with given key conditions and scan options
+     * @param tx transaction used for the scan
+     * @param begin_key the begin key
+     * @param begin_kind endpoint of the begin key
+     * @param end_key the end key
+     * @param end_kind endpoint of the end key
+     * @param options the scan options
+     * @param it[out] iterator for the scan result
+     * @return status::ok if the operation is successful
+     * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
+     * @return otherwise, other status code
+     * @note this function just prepares iterator without starting scan, so status::not_found is not returned.
+     */
+    [[nodiscard]] status content_scan(
+        transaction& tx,
+        std::string_view begin_key, end_point_kind begin_kind,
+        std::string_view end_key, end_point_kind end_kind,
+        scan_options const& options,
+        std::unique_ptr<iterator>& it
+    );
+
     /**
      * @brief get the value for the given key
      * @param tx transaction used for the point query

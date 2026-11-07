@@ -50,8 +50,11 @@ using takatori::util::string_builder;
 
 static std::pair <maybe_shared_ptr<meta::record_meta>, accessor::record_ref>
 read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, data::aligned_buffer &buf,
-    std::string_view storage_name, std::string_view data, memory::lifo_paged_memory_resource *resource) {
-    auto idx = find_storage(tables, storage_name);
+    std::optional<std::string> const& index_name, std::string_view data, memory::lifo_paged_memory_resource *resource) {
+    if (! index_name) {
+        return {};
+    }
+    auto idx = find_storage(tables, *index_name);
     if(! idx) {
         // Storage name is not available somehow. Return empty metadata and let caller handle this case.
         return {};
@@ -85,10 +88,12 @@ static void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorL
             assert_with_exception(locator->kind() == sharksfin::ErrorLocatorKind::storage_key, locator->kind());
             auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);  //NOLINT
             data::aligned_buffer buf{default_record_buffer_size};
-            auto stg = loc->storage().has_value() ? loc->storage().value() : "";
+            // The locator carries the physical storage key, not the logical index name.
+            auto name = loc->storage().has_value() ?
+                global::storage_manager()->get_index_name(*loc->storage()) : std::nullopt;
             ss << "location={key:";
             if (loc->key().has_value()) {
-                auto [meta, ref] = read_key_as_record_ref(tables, buf, stg, loc->key().value(), resource);
+                auto [meta, ref] = read_key_as_record_ref(tables, buf, name, loc->key().value(), resource);
                 if (meta) {
                     ss << ref << *meta;
                 } else {
@@ -102,7 +107,6 @@ static void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorL
             ss << " index:";
             if (loc->storage().has_value()) {
                 auto stg_key = loc->storage().value();
-                auto name = global::storage_manager()->get_index_name(stg_key);
                 if (name.has_value()) {
                     ss << *name;
                 } else {

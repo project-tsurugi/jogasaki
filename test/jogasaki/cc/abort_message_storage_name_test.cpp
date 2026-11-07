@@ -20,20 +20,29 @@
  *
  * Since issue #1380, the KVS storage key is a binary surrogate ID (not the table name).
  * When a serialization failure occurs and sharksfin provides a StorageKeyErrorLocator,
- * the abort message currently includes the raw binary key as "storage:<binary>".
- * After the fix the message should instead contain "index:<index_name>".
+ * the abort message must resolve the logical index name before decoding the key.
+ * These tests verify both the decoded key and the index label.
  */
 
 #include <atomic>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include <gtest/gtest.h>
+#include <sharksfin/CallResult.h>
+#include <sharksfin/ErrorLocator.h>
 
 #include <jogasaki/api/error_info.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/utils/abort_error.h>
+#include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "../api/api_test_base.h"
 
@@ -92,12 +101,13 @@ public:
  * The error message should contain "index:T0" (human-readable index name),
  * NOT a raw binary surrogate ID.
  */
-TEST_F(abort_message_storage_name_test, ltx_write_conflict_shows_index_name) {
+TEST_F(abort_message_storage_name_test, ltx_write_conflict_shows_key_and_index_name) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2)");
 
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     auto tx2 = utils::create_transaction(*db_, false, true, {"T0"});
+    auto failed_tx = db_impl()->find_transaction(*tx2);
 
     execute_statement("UPDATE T0 SET C1=10 WHERE C0=1", *tx1);
     execute_statement("UPDATE T0 SET C1=20 WHERE C0=1", *tx2);
@@ -116,10 +126,24 @@ TEST_F(abort_message_storage_name_test, ltx_write_conflict_shows_index_name) {
     std::string msg{err_info->message()};
     std::cerr << "abort message: " << msg << std::endl;
 
-    // The message must mention the human-readable index name "T0", not a raw binary key.
-    // Pre-fix this assertion FAILS because the message says "storage:<binary>" instead.
-    EXPECT_TRUE(msg.find("index:T0") != std::string::npos)
-        << "Expected message to contain 'index:T0' but got: " << msg;
+    // Both the decoded key and the human-readable index name must be shown.
+    EXPECT_NE(std::string::npos, msg.find("location={key:(0:int4*)[1] index:T0}")) << msg;
+
+    // An unavailable definition must retain the binary key instead of guessing a schema.
+    request_context context{
+        {}, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, failed_tx};
+    context.storage_provider(std::make_shared<yugawara::storage::configurable_provider>());
+    auto result = failed_tx->recent_call_result();
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result->location());
+    ASSERT_EQ(sharksfin::ErrorLocatorKind::storage_key, result->location()->kind());
+    auto const& locator = static_cast<sharksfin::StorageKeyErrorLocator const&>(*result->location());
+    ASSERT_TRUE(locator.key());
+    std::ostringstream expected{};
+    expected << "location={key:" << utils::binary_printer{locator.key()->data(), locator.key()->size()}
+             << " index:T0}";
+    auto fallback_message = utils::create_abort_message(context);
+    EXPECT_NE(std::string::npos, fallback_message.find(expected.str())) << fallback_message;
 }
 /**
  * @brief Verify that abort messages show the secondary index name.
@@ -134,7 +158,7 @@ TEST_F(abort_message_storage_name_test, ltx_write_conflict_shows_index_name) {
  *
  * Expected: the abort message contains "index:I0".
  */
-TEST_F(abort_message_storage_name_test, occ_read_conflict_on_secondary_shows_index_name) {
+TEST_F(abort_message_storage_name_test, occ_read_conflict_on_secondary_shows_key_and_index_name) {
     execute_statement("CREATE INDEX I0 ON T0 (C1)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 100)");
 
@@ -157,8 +181,50 @@ TEST_F(abort_message_storage_name_test, occ_read_conflict_on_secondary_shows_ind
     std::string msg{err_info->message()};
     std::cerr << "abort message: " << msg << std::endl;
 
-    EXPECT_TRUE(msg.find("index:I0") != std::string::npos)
-        << "Expected message to contain 'index:I0' but got: " << msg;
+    EXPECT_NE(std::string::npos, msg.find("location={key:(0:int4*)[100] index:I0}")) << msg;
+}
+
+
+TEST_F(abort_message_storage_name_test, ltx_conflict_decodes_composite_character_key) {
+    execute_statement("CREATE TABLE T1 (C0 VARCHAR(100) NOT NULL, C1 INT NOT NULL, V INT, PRIMARY KEY(C0, C1))");
+    execute_statement("INSERT INTO T1 VALUES ('key-with-more-than-sixteen-characters', 205, 1)");
+    auto tx1 = utils::create_transaction(*db_, false, true, {"T1"});
+    auto tx2 = utils::create_transaction(*db_, false, true, {"T1"});
+    execute_statement("UPDATE T1 SET V=10 WHERE C0='key-with-more-than-sixteen-characters' AND C1=205", *tx1);
+    execute_statement("UPDATE T1 SET V=20 WHERE C0='key-with-more-than-sixteen-characters' AND C1=205", *tx2);
+    ASSERT_EQ(status::ok, tx1->commit());
+    std::shared_ptr<api::error_info> info{};
+    ASSERT_EQ(status::err_serialization_failure, commit_and_get_error(tx2, info));
+    ASSERT_TRUE(info);
+    std::string message{info->message()};
+    EXPECT_NE(std::string::npos, message.find("[key-with-more-than-sixteen-characters] (1:int4*)[205] index:T1}")) << message;
+}
+
+TEST_F(abort_message_storage_name_test, occ_conflict_decodes_null_secondary_key) {
+    execute_statement("CREATE INDEX I0 ON T0 (C1)");
+    execute_statement("INSERT INTO T0 VALUES (205, NULL)");
+    auto tx = utils::create_transaction(*db_, false, false);
+    // Read I0 directly so the NULL secondary key enters the OCC read set.
+    // SQL IS NULL selects a primary-index scan in this case.
+    auto index = utils::get_storage_by_index_name("I0");
+    ASSERT_TRUE(index);
+    auto context = db_impl()->find_transaction(*tx);
+    std::unique_ptr<kvs::iterator> it{};
+    ASSERT_EQ(status::ok, index->content_scan(*context->object(), {}, kvs::end_point_kind::unbound,
+        {}, kvs::end_point_kind::unbound, it));
+    ASSERT_EQ(status::ok, it->next());
+    std::string_view key{};
+    std::string_view value{};
+    ASSERT_EQ(status::ok, it->read_key(key));
+    // Reading the value registers the existing entry for OCC verification.
+    ASSERT_EQ(status::ok, it->read_value(value));
+    it.reset();
+    execute_statement("UPDATE T0 SET C1=100 WHERE C0=205");
+    std::shared_ptr<api::error_info> info{};
+    ASSERT_EQ(status::err_serialization_failure, commit_and_get_error(tx, info));
+    ASSERT_TRUE(info);
+    std::string message{info->message()};
+    EXPECT_NE(std::string::npos, message.find("location={key:(0:int4*)[-] index:I0}")) << message;
 }
 
 }  // namespace jogasaki::testing

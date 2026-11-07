@@ -219,9 +219,11 @@ TEST_P(sql_scan_limit_test, deleted_rows_in_same_transaction) {
 }
 
 TEST_P(sql_scan_limit_test, insert_select_with_limit) {
-    // the statement with write operations (iscan is not used for it, see tsurugi-issues#1491)
+    // the statement with write operations is compiled without scan_limit (see tsurugi-issues#1491)
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
     insert_rows(10);
+    EXPECT_FALSE(has_scan_with_count("INSERT INTO t SELECT c0 + 100, c1 FROM t ORDER BY c0 LIMIT 3"));
+    EXPECT_FALSE(has_scan_with_count("INSERT INTO t SELECT c0 + 100, c1 FROM t LIMIT 3"));
     execute_statement("INSERT INTO t SELECT c0 + 100, c1 FROM t ORDER BY c0 LIMIT 3");
     EXPECT_EQ(
         (std::vector<std::int32_t>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 101, 102}),
@@ -235,6 +237,19 @@ TEST_P(sql_scan_limit_test, insert_select_into_same_table_head) {
     insert_rows(3);
     execute_statement("INSERT INTO t SELECT c0 + 1000, c1 FROM t LIMIT 5");
     EXPECT_EQ((std::vector<std::int32_t>{0, 1, 2, 1000, 1001, 1002}), query_c0("SELECT c0 FROM t ORDER BY c0"));
+}
+
+TEST_P(sql_scan_limit_test, insert_select_into_tombstones_ahead) {
+    // regression test for Halloween problem (tsurugi-issues#1491, #1492)
+    // inserting into the tombstones ahead of the scan cursor must not be picked up by the scan
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+    // keep the long transaction open to prevent tombstones from being garbage-collected
+    auto gc_block = utils::create_transaction(*db_, false, true);
+    execute_statement("INSERT INTO t VALUES (0, 0), (5, 0), (10, 0), (15, 0), (20, 0)");
+    execute_statement("DELETE FROM t WHERE c0 = 5 OR c0 = 15");
+    execute_statement("INSERT INTO t SELECT c0 + 5, c1 FROM t LIMIT 3");
+    EXPECT_EQ((std::vector<std::int32_t>{0, 5, 10, 15, 20, 25}), query_c0("SELECT c0 FROM t ORDER BY c0"));
+    ASSERT_EQ(status::ok, gc_block->abort());
 }
 
 }  // namespace jogasaki::testing

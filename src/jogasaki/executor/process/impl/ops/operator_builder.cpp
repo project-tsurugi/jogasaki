@@ -175,7 +175,10 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
     bool use_iscan = false;
     switch(global::config_pool()->scan_impl()) {
         case scan_impl_kind::automatic:
-            // iscan is used only for the scan with row count, which can finish before reading the whole range
+            // iscan is used only for the scan with row count, which can finish before reading the whole range.
+            // Such scan appears only in the statement without write operations (see plan::compiler), so this
+            // need not care about Halloween problem, to which iscan is more sensitive than legacy scan
+            // (tsurugi-issues#1491).
             use_iscan = limit.has_value();
             break;
         case scan_impl_kind::legacy: use_iscan = false; break;

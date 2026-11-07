@@ -15,14 +15,19 @@
  */
 #include "flow.h"
 
+#include <cstdlib>
 #include <functional>
 #include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <utility>
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/maybe_shared_ptr.h>
-
+#include <jogasaki/dist/remote_catalog_provider.h>
+#include <jogasaki/dist/remote_process_execution_block_shape.h>
+#include <jogasaki/dist/remote_process_task.h>
+#include <jogasaki/dist/remote_routing.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/exchange/flow.h>
 #include <jogasaki/executor/exchange/shuffle/flow.h>
@@ -47,9 +52,45 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/scan_parallel_enabled.h>
 
+#include <takatori/relation/find.h>
+#include <takatori/relation/scan.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/binding/extract.h>
+#include <yugawara/storage/index.h>
+
 namespace jogasaki::executor::process {
 
 using takatori::util::unsafe_downcast;
+
+#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
+
+static std::optional<std::string> select_remote_execution_server(request_context const& context, processor_info const& info) {
+    // Placement captured from the compiler's operation locations; the catalog is not searched again.
+    if (auto const& captured = info.captured_location()) {
+        if (captured->empty() || context.remote_worker() || !context.configuration()->distributed_query_coordinator_enabled()) {
+            return {};
+        }
+        return captured;
+    }
+    auto catalog_server = dist::remote_server(info.relations(), context.remote_catalogs().get());
+    auto* override_server = std::getenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
+    auto* server = catalog_server ? catalog_server->c_str() : override_server;
+    if (!server || *server == '\0' || context.remote_worker() || !context.configuration()->distributed_query_coordinator_enabled()) {
+        return {};
+    }
+    // Catalog routes are validated when constructing the remote task; do not fall back to local execution.
+    if (catalog_server) return catalog_server;
+    auto const& transaction = context.transaction();
+    if (!transaction || !transaction->option() || !transaction->option()->readonly()
+        || !dist::is_remote_process_execution_block_shape(info.relations())) {
+        return {};
+    }
+    return std::string{server};
+}
+
+#endif
+
 
 flow::flow(
     request_context *context,
@@ -90,6 +131,17 @@ std::size_t flow::check_empty_input_and_calculate_partitions() {
 }
 
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
+#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
+    if (auto server = select_remote_execution_server(*context_, *info_)) {
+        try {
+            tasks_.emplace_back(dist::make_remote_process_task(*context_, *step_, *info_, *server));
+            return tasks_;
+        } catch (std::exception const& e) {
+            error::set_error_info(*context_, create_error_info(error_code::sql_execution_exception, e.what(), status::err_unsupported));
+            return {};
+        }
+    }
+#endif
     std::shared_ptr<impl::processor> proc{};
     try {
         proc = std::make_shared<impl::processor>(

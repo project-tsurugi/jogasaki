@@ -33,6 +33,15 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
 
+namespace tateyama::grpc::distributed_query {
+class service_adapter;
+}
+
+namespace jogasaki::dist {
+class local_catalog_handler;
+class remote_process_handler;
+}
+
 namespace jogasaki::api::resource {
 
 using tateyama::api::server::request;
@@ -96,9 +105,14 @@ public:
      */
     [[nodiscard]] std::string_view label() const noexcept override;
 private:
+    void unregister_remote_handlers();
+    std::weak_ptr<tateyama::grpc::distributed_query::service_adapter> remote_service_adapter_{};
     std::shared_ptr<jogasaki::api::database> db_;  // to use incomplete object, do not add {} after var. name.
     std::shared_ptr<jogasaki::configuration> cfg_{};
+    std::shared_ptr<dist::remote_process_handler> remote_process_handler_{};
+    std::shared_ptr<dist::local_catalog_handler> catalog_handler_{};
     bool started_{false};
+    bool remote_enabled_{false};
 
 };
 

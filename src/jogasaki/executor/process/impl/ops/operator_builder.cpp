@@ -495,8 +495,6 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     // need to fix this if we integrate host variables into variables_view
     executor::process::impl::variables_view empty{};
 
-    auto& table        = secondary_or_primary_index.table();
-    auto primary       = table.owner()->find_primary_index(table);
     std::size_t blen{};
     std::size_t elen{};
     std::unique_ptr<data::aligned_buffer> key_begin = std::make_unique<data::aligned_buffer>();

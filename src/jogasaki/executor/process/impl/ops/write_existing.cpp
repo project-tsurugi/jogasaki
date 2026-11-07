@@ -61,6 +61,7 @@
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/storage_utils.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
@@ -492,57 +493,18 @@ create_secondary_targets_and_key_update_list(
     yugawara::storage::index const& idx,
     sequence_view<write_existing::column const> columns
 ) {
-    auto& table = idx.table();
-    auto& primary = *table.owner()->find_primary_index(table);
-    auto key_meta = index::create_meta(primary, true);
-    auto value_meta = index::create_meta(primary, false);
-    std::vector<index::secondary_target> ret_l{};
-    write_existing::bool_list_type ret_r{};
-    std::size_t count{};
-    table.owner()->each_table_index(table,
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ++count;
-        }
-    );
-    ret_l.reserve(count);
-    ret_r.resize(count);
-    std::size_t i = 0;
-    table.owner()->each_table_index(table,
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ret_l.emplace_back(
-                *entry,
-                key_meta,
-                value_meta
-            );
-            ret_r[i] = overwraps(entry->keys(), columns);
-            ++i;
-        }
-    );
-    return {ret_l, ret_r};
-}
-
-static std::vector<index::secondary_target> create_secondary_targets(
-    yugawara::storage::index const& idx,
-    sequence_view<write_existing::column const> columns
-) {
-    auto [tgts, updates] = create_secondary_targets_and_key_update_list(idx, columns);
-    (void) updates;
-    return tgts;
-}
-
-static write_existing::bool_list_type create_secondary_key_updated(
-    yugawara::storage::index const& idx,
-    sequence_view<write_existing::column const> columns
-) {
-    auto [tgts, updates] = create_secondary_targets_and_key_update_list(idx, columns);
-    (void) tgts;
-    return updates;
+    auto key_meta = index::create_meta(idx, true);
+    auto value_meta = index::create_meta(idx, false);
+    auto indices = utils::collect_secondary_indices(idx);
+    std::vector<index::secondary_target> targets{};
+    write_existing::bool_list_type updated{};
+    targets.reserve(indices.size());
+    updated.reserve(indices.size());
+    for (auto const& entry : indices) {
+        targets.emplace_back(*entry, idx, key_meta, value_meta);
+        updated.push_back(overwraps(entry->keys(), columns));
+    }
+    return {std::move(targets), std::move(updated)};
 }
 
 write_existing::write_existing(
@@ -554,28 +516,22 @@ write_existing::write_existing(
     sequence_view<key const> keys,
     sequence_view<column const> columns
 ) :
-    write_existing(
-        index,
-        info,
-        block_index,
-        kind,
-        index::primary_target{
-            idx,
-            keys,
-            info.vars_info_list()[block_index]
-        },
-        create_update_fields(
-            idx,
-            keys,
-            columns,
-            info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr,
-            info.vars_info_list()[block_index],
-            info.compiled_info()
-        ),
-        create_secondary_targets(idx, columns),
-        create_secondary_key_updated(idx, columns)
-    )
-{}
+    record_operator(index, info, block_index),
+    kind_(kind),
+    primary_(idx, keys, info.vars_info_list()[block_index]),
+    updates_(create_update_fields(
+        idx,
+        keys,
+        columns,
+        info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr,
+        info.vars_info_list()[block_index],
+        info.compiled_info()))
+{
+    primary_key_updated_ = updates_key(updates_);
+    auto [targets, updated] = create_secondary_targets_and_key_update_list(idx, columns);
+    secondaries_ = std::move(targets);
+    secondary_key_updated_ = std::move(updated);
+}
 
 write_existing::write_existing(
     operator_base::operator_index_type index,

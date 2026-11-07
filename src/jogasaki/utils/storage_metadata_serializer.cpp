@@ -316,15 +316,16 @@ static ::jogasaki::proto::metadata::storage::Direction from(yugawara::storage::s
     std::abort();
 }
 
-static ::jogasaki::proto::metadata::storage::IndexFeature from(yugawara::storage::index_feature f) {
+// returns the persistent form of the feature, or nullopt if the feature is not persistent
+static std::optional<::jogasaki::proto::metadata::storage::IndexFeature> from(yugawara::storage::index_feature f) {
     switch(f) {
         case yugawara::storage::index_feature::primary: return ::jogasaki::proto::metadata::storage::IndexFeature::PRIMARY;
         case yugawara::storage::index_feature::find: return ::jogasaki::proto::metadata::storage::IndexFeature::FIND;
         case yugawara::storage::index_feature::scan: return ::jogasaki::proto::metadata::storage::IndexFeature::SCAN;
         case yugawara::storage::index_feature::unique: return ::jogasaki::proto::metadata::storage::IndexFeature::UNIQUE;
         case yugawara::storage::index_feature::unique_constraint: return ::jogasaki::proto::metadata::storage::IndexFeature::UNIQUE_CONSTRAINT;
+        default: return std::nullopt;
     }
-    std::abort();
 }
 
 static void serialize_index(
@@ -361,7 +362,9 @@ static void serialize_index(
 
     auto* features = idef.mutable_index_features();
     for(auto&& f : idx.features()) {
-        features->Add(from(f));
+        if(auto feature = from(f)) {
+            features->Add(*feature);
+        }
     }
 }
 

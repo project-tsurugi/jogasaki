@@ -38,12 +38,23 @@
 #include <jogasaki/status.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/convert_any.h>
+#include <jogasaki/data/convert_value.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
+static kvs::end_point_kind with_inclusivity(kvs::end_point_kind kind, bool inclusive) {
+    using k = kvs::end_point_kind;
+    if (kind == k::prefixed_inclusive || kind == k::prefixed_exclusive) {
+        return inclusive ? k::prefixed_inclusive : k::prefixed_exclusive;
+    }
+    return inclusive ? k::inclusive : k::exclusive;
+}
+
 namespace {
+enum class comparison_bound { equality, lower, upper };
+}  // namespace
+
 
 /**
  * @brief encode one side (begin or end) of the secondary index scan key into a buffer
@@ -63,10 +74,13 @@ namespace {
  * @return status::err_type_mismatch if the type of the evaluated value does not match the expected type
  * `context` (if available) is filled with error info. when this erorr is returned.
  */
-status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
+static status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
     expr::evaluator_context& ectx,
     request_context* context,
     std::vector<search_key_field_info> const& fields,
+    comparison_bound bound,
+    std::size_t trailing_index,
+    kvs::end_point_kind& endpoint_kind,
     bool side_unbound,
     bool trailing_nullable,
     kvs::coding_spec trailing_spec,
@@ -79,13 +93,16 @@ status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
     length = 0;
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `out`, extend it and retry
         kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
-        for (auto const& field : fields) {
+        for (std::size_t i = 0; i < fields.size(); ++i) {
+            auto const& field = fields[i];
             auto a = field.evaluator_(ectx, input_variables, &resource);
             if (a.error()) {
                 VLOG_LP(log_error) << "evaluation error: " << a.to<expr::error>();
                 return status::err_expression_evaluation_failure;
             }
-            if (! utils::convert_any(a, field.type_)) {
+            auto converted = field.conversion_.apply(a);
+            using ordering = data::value_conversion::ordering;
+            if (converted.order == ordering::unsupported) {
                 std::stringstream ss{};
                 ss << "unsupported type conversion to:" << field.type_ << " from:" << type_name(a);
                 VLOG_LP(log_error) << ss.str();
@@ -95,6 +112,17 @@ status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
                 }
                 return status::err_type_mismatch;
             }
+            if (converted.order != ordering::exact) {
+                // Equality-prefix fields cannot be rounded. Only the trailing range bound can.
+                if (bound == comparison_bound::equality || i != trailing_index) {
+                    return status::err_integrity_constraint_violation;
+                }
+                bool inclusive = bound == comparison_bound::lower
+                    ? converted.order == ordering::rounded_up || converted.order == ordering::below_minimum
+                    : converted.order == ordering::rounded_down || converted.order == ordering::above_maximum;
+                endpoint_kind = with_inclusivity(endpoint_kind, inclusive);
+            }
+            a = converted.value;
             if (a.empty()) {
                 // creating search key with null value makes no sense because it does not match any entry
                 return status::err_integrity_constraint_violation;
@@ -132,8 +160,6 @@ status encode_scan_side(  //NOLINT(readability-function-cognitive-complexity)
     return status::ok;
 }
 
-}  // namespace
-
 status encode_key(
     expr::evaluator_context& ectx,
     std::vector<details::search_key_field_info> const& keys,
@@ -144,7 +170,8 @@ status encode_key(
     request_context* context
 ) {
     kvs::coding_spec unused{};
-    return encode_scan_side(ectx, context, keys, false, false, unused,
+    auto unused_kind = kvs::end_point_kind::inclusive;
+    return encode_scan_side(ectx, context, keys, comparison_bound::equality, 0, unused_kind, false, false, unused,
         input_variables, resource, out, length);
 }
 
@@ -208,12 +235,14 @@ status encode_scan_keys(
     begin_kind_out = begin_unbound && trailing_nullable ? kvs::end_point_kind::prefixed_inclusive : raw_begin_kind;
     end_kind_out = end_unbound && trailing_nullable ? kvs::end_point_kind::prefixed_inclusive : raw_end_kind;
 
-    if (auto res = encode_scan_side(ectx, context, begin_fields, begin_unbound,
+    if (auto res = encode_scan_side(ectx, context, begin_fields,
+            swap ? comparison_bound::upper : comparison_bound::lower, n_total - 1, begin_kind_out, begin_unbound,
             trailing_nullable, trailing_field.spec_, input_variables, resource,
             key_begin, blen); res != status::ok) {
         return res;
     }
-    return encode_scan_side(ectx, context, end_fields, end_unbound,
+    return encode_scan_side(ectx, context, end_fields,
+        swap ? comparison_bound::lower : comparison_bound::upper, n_total - 1, end_kind_out, end_unbound,
         trailing_nullable, trailing_field.spec_, input_variables, resource,
         key_end, elen);
 }

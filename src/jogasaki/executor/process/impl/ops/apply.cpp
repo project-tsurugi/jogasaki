@@ -48,7 +48,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/lazy_checkpoint_holder.h>
 
@@ -326,8 +326,7 @@ bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
         }
 
         // Use pre-computed field information to copy the value
-        utils::copy_nullable_field(
-            field.type_,
+        field.operations_.copy_nullable(
             ref,
             field.value_offset_,
             field.nullity_offset_,
@@ -358,7 +357,7 @@ std::vector<details::apply_field> apply::create_fields(
         auto const& var = col.variable();
         auto info = var_info.at(var);
         fields.emplace_back(details::apply_field{
-            utils::type_for(cinfo, var),
+            data::field_operations::for_type(utils::type_for(cinfo, var)),
             info.value_offset(),
             info.nullity_offset(),
             col.position()

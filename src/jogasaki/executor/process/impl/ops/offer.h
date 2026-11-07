@@ -30,6 +30,7 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/executor/conv/record_assignment.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -43,17 +44,8 @@ using takatori::util::sequence_view;
 namespace details {
 
 struct cache_align offer_field {
-    meta::field_type type_{};
-    meta::field_type source_ftype_{};
-    std::size_t source_offset_{};
-    std::size_t target_offset_{};
-    std::size_t source_nullity_offset_{};
-    std::size_t target_nullity_offset_{};
-    bool nullable_{};
-    takatori::type::data const* source_type_{};
-    takatori::type::data const* target_type_{};
-    bool requires_conversion_{};
-    region_id source_region_id_{};
+    conv::record_assignment assignment_;
+    region_id source_region_id_;
 };
 
 }

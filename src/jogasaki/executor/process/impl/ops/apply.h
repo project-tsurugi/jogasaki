@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/data/field_operations.h>
 
 #include <cstddef>
 #include <memory>
@@ -48,7 +49,7 @@ namespace details {
  * @details contains pre-computed field metadata to avoid repeated lookups.
  */
 struct apply_field {
-    meta::field_type type_{};
+    data::field_operations operations_{};
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};
     std::size_t pos_{};

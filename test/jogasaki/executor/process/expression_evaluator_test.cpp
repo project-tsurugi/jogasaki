@@ -704,7 +704,9 @@ TEST_F(expression_evaluator_test, to_triple) {
     auto i64max = std::numeric_limits<std::int64_t>::max();
     EXPECT_EQ(i64max, details::triple_from_int(i64max));
     auto i64min = std::numeric_limits<std::int64_t>::min();
-    EXPECT_EQ(i64min, details::triple_from_int(i64min));
+    // Construct the expected magnitude explicitly: triple(int64_t) itself negates INT64_MIN.
+    auto expected = takatori::decimal::triple{-1, 0, std::uint64_t{1} << 63U, 0};
+    EXPECT_EQ(expected, details::triple_from_int(i64min));
 }
 
 TEST_F(expression_evaluator_test, triple_to_double) {

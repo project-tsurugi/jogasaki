@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "write_statement.h"
+#include <jogasaki/executor/conv/record_assignment.h>
 
 #include <cstdint>
 #include <cstring>
@@ -75,7 +76,7 @@
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
@@ -86,17 +87,16 @@ using jogasaki::executor::process::impl::ops::write_kind;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-static status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
+status write_statement::create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
     wrt::write_context& wctx,
-    write_statement::tuple const& t,
+    prepared_fields const& prepared,
     std::vector<wrt::write_field> const& fields,
-    compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
-    executor::process::impl::variable_table const* host_variables,
     data::small_record_store& out
 ) {
-    for (auto&& f: fields) {
+    for (std::size_t i = 0; i < fields.size(); ++i) {
+        auto const& f = fields[i];
         if (f.index_ == npos) {
             // value not specified for the field use default value or null
             if(auto res = fill_default_value(f, ctx, resource, out); res != status::ok) {
@@ -104,15 +104,11 @@ static status create_record_from_tuple(  //NOLINT(readability-function-cognitive
             }
             continue;
         }
-        auto& expr = t.elements()[f.index_];
-        auto& source_type = info.type_of(expr);
-        expr::evaluator eval{expr, info, host_variables};
+        auto const& value = prepared[i].value();
         executor::process::impl::variables_view empty{};
         if (auto res = wrt::fill_evaluated_value(
-                eval,
-                source_type,
-                wrt::value_input_conversion_kind::assignment,
-                f,
+                value.evaluator,
+                value.assignment,
                 ctx,
                 wctx.blob_session_container_,
                 empty,
@@ -149,7 +145,30 @@ write_statement::write_statement(
         wrt::create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
         wrt::create_secondary_targets(*idx_, key_meta_, value_meta_)
     ))
-{}
+{
+    tuples_.reserve(wrt_->tuples().size());
+    for (auto const& tuple : wrt_->tuples()) {
+        tuples_.push_back({prepare_fields(tuple, key_fields_), prepare_fields(tuple, value_fields_)});
+    }
+}
+
+write_statement::prepared_fields write_statement::prepare_fields(tuple const& tuple,
+    std::vector<wrt::write_field> const& fields) const {
+    prepared_fields result;
+    result.reserve(fields.size());
+    for (auto const& field : fields) {
+        if (field.index_ == npos) {
+            result.emplace_back(std::nullopt);
+            continue;
+        }
+        auto const& expression = tuple.elements()[field.index_];
+        result.emplace_back(prepared_value{
+            expr::evaluator{expression, info_, host_variables_},
+            conv::record_assignment::prepare_value(info_.type_of(expression), *field.target_type_, field.type_,
+                {field.offset_, field.nullity_offset_}, field.nullable_, conv::conversion_kind::assignment)});
+    }
+    return result;
+}
 
 model::statement_kind write_statement::kind() const noexcept {
     return model::statement_kind::write;
@@ -178,16 +197,14 @@ bool write_statement::process(request_context& context) {
         *db,
         resource_); // currently common::write uses the same resource for building mirror and executing runtime
 
-    for(auto&& tuple: wrt_->tuples()) {
+    for (auto const& tuple : tuples_) {
         utils::checkpoint_holder cph(resource_);
         if(auto res = create_record_from_tuple(
             context,
             wctx,
-            tuple,
+            tuple.keys,
             key_fields_,
-            info_,
             *resource_,
-            host_variables_,
             wctx.key_store_
         ); res != status::ok) {
             return false;
@@ -195,11 +212,9 @@ bool write_statement::process(request_context& context) {
         if(auto res = create_record_from_tuple(
             context,
             wctx,
-            tuple,
+            tuple.values,
             value_fields_,
-            info_,
             *resource_,
-            host_variables_,
             wctx.value_store_
         ); res != status::ok) {
             return false;

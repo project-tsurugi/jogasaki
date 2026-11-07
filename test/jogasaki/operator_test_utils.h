@@ -58,7 +58,7 @@
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs_test_utils.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::executor::process::impl::ops {
@@ -652,8 +652,7 @@ public:
         auto const& src_meta = *in.meta_;
         for (std::size_t i = 0; i < in.vars_.size(); ++i) {
             auto const& vi = info.at(in.vars_[i]);
-            utils::copy_nullable_field(
-                src_meta.at(i),
+            ::jogasaki::data::field_operations::for_type(src_meta.at(i)).copy_nullable(
                 dst, vi.value_offset(), vi.nullity_offset(),
                 src, src_meta.value_offset(i), src_meta.nullity_offset(i),
                 &verifier_varlen_resource_);
@@ -686,8 +685,7 @@ public:
         jogasaki::mock::basic_record rec{out_meta};
         for (std::size_t i = 0; i < vars.size(); ++i) {
             auto const& vi = info.at(vars[i]);
-            utils::copy_nullable_field(
-                types[i],
+            ::jogasaki::data::field_operations::for_type(types[i]).copy_nullable(
                 rec.ref(), out_meta->value_offset(i), out_meta->nullity_offset(i),
                 src, vi.value_offset(), vi.nullity_offset(),
                 &verifier_varlen_resource_);
@@ -943,8 +941,7 @@ public:
         auto const& src_meta = *src.record_meta();
         for (std::size_t j = 0; j < col_indices.size(); ++j) {
             auto i = col_indices[j];
-            utils::copy_nullable_field(
-                all_types[i],
+            ::jogasaki::data::field_operations::for_type(all_types[i]).copy_nullable(
                 rec.ref(), out_meta->value_offset(j), out_meta->nullity_offset(j),
                 src.ref(), src_meta.value_offset(i), src_meta.nullity_offset(i),
                 &varlen_resource_);

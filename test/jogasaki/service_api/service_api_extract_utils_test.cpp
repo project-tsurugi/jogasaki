@@ -103,7 +103,7 @@ TEST_F(service_api_test, extract_sql) {
         utils::deserialize(s, req);
 
         std::shared_ptr<std::string> sql_text{};
-        std::shared_ptr<error::error_info> err_info{};
+        std::shared_ptr<jogasaki::error::error_info> err_info{};
         std::string tx_id{};
 
         ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
@@ -125,7 +125,7 @@ TEST_F(service_api_test, extract_sql) {
         utils::deserialize(s, req);
 
         std::shared_ptr<std::string> sql_text{};
-        std::shared_ptr<error::error_info> err_info{};
+        std::shared_ptr<jogasaki::error::error_info> err_info{};
         std::string tx_id{};
         ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
@@ -153,7 +153,7 @@ TEST_F(service_api_test, extract_prepared_sql) {
         utils::deserialize(s, req);
 
         std::shared_ptr<std::string> sql_text{};
-        std::shared_ptr<error::error_info> err_info{};
+        std::shared_ptr<jogasaki::error::error_info> err_info{};
         std::string tx_id{};
         ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
@@ -177,7 +177,7 @@ TEST_F(service_api_test, extract_prepared_sql) {
         utils::deserialize(s, req);
 
         std::shared_ptr<std::string> sql_text{};
-        std::shared_ptr<error::error_info> err_info{};
+        std::shared_ptr<jogasaki::error::error_info> err_info{};
         std::string tx_id{};
         ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
@@ -200,7 +200,7 @@ TEST_F(service_api_test, extract_sql_error) {
 
     std::shared_ptr<std::string> sql_text{};
     std::string tx_id{};
-    std::shared_ptr<error::error_info> err_info{};
+    std::shared_ptr<jogasaki::error::error_info> err_info{};
     ASSERT_TRUE(! extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(err_info);
     EXPECT_EQ(error_code::request_failure_exception, err_info->code());
@@ -225,7 +225,7 @@ TEST_F(service_api_test, extract_sql_failing_to_fetch_tx_id) {
     utils::deserialize(s, req);
 
     std::shared_ptr<std::string> sql_text{};
-    std::shared_ptr<error::error_info> err_info{};
+    std::shared_ptr<jogasaki::error::error_info> err_info{};
     std::string tx_id{};
     ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(sql_text);
@@ -255,7 +255,7 @@ TEST_F(service_api_test, fail_to_extract_sql_on_different_session) {
     utils::deserialize(s, req);
 
     std::shared_ptr<std::string> sql_text{};
-    std::shared_ptr<error::error_info> err_info{};
+    std::shared_ptr<jogasaki::error::error_info> err_info{};
     std::string tx_id{};
     ASSERT_TRUE(! extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(err_info);
@@ -286,7 +286,7 @@ TEST_F(service_api_test, fail_to_extract_tx_on_different_session) {
     utils::deserialize(s, req);
 
     std::shared_ptr<std::string> sql_text{};
-    std::shared_ptr<error::error_info> err_info{};
+    std::shared_ptr<jogasaki::error::error_info> err_info{};
     std::string tx_id{};
     ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(! err_info);

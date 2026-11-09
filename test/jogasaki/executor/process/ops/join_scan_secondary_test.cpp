@@ -335,7 +335,7 @@ TEST_F(join_scan_secondary_test, semi_join) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -390,7 +390,7 @@ TEST_F(join_scan_secondary_test, anti_join) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -448,7 +448,7 @@ TEST_F(join_scan_secondary_test, semi_join_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -499,7 +499,7 @@ TEST_F(join_scan_secondary_test, anti_join_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 

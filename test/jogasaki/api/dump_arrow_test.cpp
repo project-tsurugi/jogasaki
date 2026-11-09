@@ -122,7 +122,7 @@ public:
             maybe_shared_ptr{&stmt},
             maybe_shared_ptr{&ch},
             path,
-            [&](status st, std::shared_ptr<error::error_info> info){
+            [&](status st, std::shared_ptr<jogasaki::error::error_info> info){
                 s = st;
                 message = (info ? info->message() : "");
                 run.store(true);

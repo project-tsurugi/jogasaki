@@ -488,7 +488,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 10);
     auto [up, in] = add_upstream_record_provider(input.record_meta());
     auto& target = add_join_find_node(setup, {0}, {in[0]}, false,
-        [&](auto const&) {
+        [&, &in = in](auto const&) {
             return std::make_unique<compare>(
                 comparison_operator::equal, varref{in[1]}, varref{p0});
         });
@@ -588,7 +588,7 @@ TEST_F(join_find_test, semi_join_primary) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         // right-side vars must be null (semi join must not project them)
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, std::nullopt)),
             get_variables(ex.variables_list_[0], out_vars));
@@ -638,7 +638,7 @@ TEST_F(join_find_test, anti_join_primary) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -687,7 +687,7 @@ TEST_F(join_find_test, semi_join_secondary) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -736,7 +736,7 @@ TEST_F(join_find_test, anti_join_secondary) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -789,7 +789,7 @@ TEST_F(join_find_test, semi_join_primary_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -836,7 +836,7 @@ TEST_F(join_find_test, anti_join_primary_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 

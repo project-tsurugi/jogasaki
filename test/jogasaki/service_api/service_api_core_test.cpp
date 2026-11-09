@@ -279,7 +279,7 @@ TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
         GTEST_SKIP() << "jogasaki-memory causes problem accessing from multiple threads";
     }
     execute_statement("create table T0 (C0 bigint primary key, C1 double)");
-    std::shared_ptr<error::error_info> p{};
+    std::shared_ptr<jogasaki::error::error_info> p{};
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
 
     static constexpr std::size_t num_thread = 5;

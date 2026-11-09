@@ -122,7 +122,7 @@ TEST_F(join_scan_test, host_variable_with_condition_expr) {
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper, false,
-        [&](auto const&) {
+        [&, &in = in](auto const&) {
             return std::make_unique<compare>(
                 comparison_operator::equal, varref{in[0]}, varref{p0});
         });
@@ -565,7 +565,7 @@ TEST_F(join_scan_test, semi_join) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -619,7 +619,7 @@ TEST_F(join_scan_test, anti_join) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -676,7 +676,7 @@ TEST_F(join_scan_test, semi_join_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -726,7 +726,7 @@ TEST_F(join_scan_test, anti_join_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&]() {
+    down.set_body([&, &in = in]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 

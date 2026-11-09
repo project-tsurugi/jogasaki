@@ -424,8 +424,9 @@ TEST_F(operation_location_compiler_test, unsupported_remote_type_has_prepare_dia
         return std::make_shared<probing_locations const>(observed,
             dist::operation_locations::location_id_set_type{0}, false, &result, true);
     });
+    // Filter before LIMIT to keep the cast in the worker process.
     EXPECT_EQ(status::err_unsupported,
-        plan::prepare("SELECT CAST(C0 AS TINYINT) FROM T0 LIMIT 1", ctx_));
+        plan::prepare("SELECT C0 FROM T0 WHERE CAST(C0 AS TINYINT) > 0 LIMIT 1", ctx_));
     ASSERT_TRUE(ctx_.error_info());
     EXPECT_NE(std::string::npos, message().find("unsupported remote execution type")) << message();
 }

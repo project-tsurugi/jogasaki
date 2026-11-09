@@ -204,7 +204,8 @@ TEST_F(service_api_test, cancel_take_flat) {
     execute_statement("insert into t0 values (0)");
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
-    test_cancel_statement("select c0 from t0 limit 1", tx_handle);
+    // the filter keeps the limit as forward exchange (i.e. take_flat), otherwise the limit is absorbed into the scan
+    test_cancel_statement("select c0 from t0 where c0 >= 0 limit 1", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
     test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }

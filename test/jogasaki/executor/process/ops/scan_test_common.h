@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -64,6 +65,7 @@
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/operator_test_utils.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/transaction_context.h>
@@ -116,11 +118,13 @@ public:
             std::unique_ptr<kvs::storage> secondary_stg,
             transaction_context* tx_raw,
             memory::lifo_paged_memory_resource* resource,
-            memory::lifo_paged_memory_resource* varlen_resource
+            memory::lifo_paged_memory_resource* varlen_resource,
+            std::optional<std::size_t> limit = std::nullopt,
+            bool use_iscan = false
         ) :
             range_{std::move(range_arg)},
             op_{0, p_info, 0, primary_idx, columns, secondary_idx,
-                std::move(downstream)},
+                std::move(downstream), limit, use_iscan},
             variables_list_{},
             task_ctx_{{}, {}, {}, range_},
             ctx_{&task_ctx_, variables_view{variables_list_, 0}, std::move(primary_stg), std::move(secondary_stg),
@@ -134,6 +138,12 @@ public:
         scan_executor(scan_executor&&) = delete;
         scan_executor& operator=(scan_executor&&) = delete;
     };
+
+    /**
+     * @brief whether the scan operator created by make_scan_executor() uses iscan
+     * @details the row count of the scan operator is taken from the row slice of the scan node.
+     */
+    bool scan_use_iscan_{false};
 
     void SetUp() override {
         kvs_db_setup();
@@ -259,7 +269,9 @@ public:
             std::move(secondary_stg),
             tx.get(),
             request_context_.request_resource(),
-            &varlen_resource_
+            &varlen_resource_,
+            plan::impl::row_slice_to_limit(target.row_slice()),
+            scan_use_iscan_
         };
     }
 

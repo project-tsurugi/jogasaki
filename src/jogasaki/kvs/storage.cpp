@@ -17,6 +17,7 @@
 
 #include <memory>
 
+#include <sharksfin/ScanOptions.h>
 #include <sharksfin/Slice.h>
 #include <sharksfin/StatusCode.h>
 #include <sharksfin/api.h>
@@ -123,6 +124,31 @@ status storage::content_scan(transaction &tx,
         sharksfin::Slice(end_key), kind(end_kind), &handle,
         limit,
         reverse
+    );
+    if(res == sharksfin::StatusCode::OK) {
+        it = std::make_unique<iterator>(handle);
+        return status::ok;
+    }
+    return resolve(res);
+}
+
+status storage::content_scan(transaction &tx,
+    std::string_view begin_key, end_point_kind begin_kind,
+    std::string_view end_key, end_point_kind end_kind,
+    scan_options const& options,
+    std::unique_ptr<iterator>& it
+) {
+    sharksfin::ScanOptions opts{};
+    opts.reverse(options.reverse_);
+    opts.legacy_scan(options.legacy_scan_);
+    sharksfin::IteratorHandle handle{};
+    auto res = sharksfin::content_scan_with_options(
+        tx.handle(),
+        handle_,
+        sharksfin::Slice(begin_key), kind(begin_kind),
+        sharksfin::Slice(end_key), kind(end_kind),
+        opts,
+        &handle
     );
     if(res == sharksfin::StatusCode::OK) {
         it = std::make_unique<iterator>(handle);

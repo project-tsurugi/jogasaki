@@ -75,7 +75,9 @@ scan::scan(
     std::vector<index::field_info> key_fields,
     std::vector<index::field_info> value_fields,
     std::vector<details::secondary_index_field_info> secondary_key_fields,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    std::optional<std::size_t> limit,
+    bool use_iscan
 ) :
     record_operator(index, info, block_index),
     use_secondary_(! secondary_storage_name.empty()),
@@ -87,7 +89,9 @@ scan::scan(
         std::move(key_fields),
         std::move(value_fields),
         std::move(secondary_key_fields)
-    )
+    ),
+    limit_(limit),
+    use_iscan_(use_iscan)
 {}
 
 scan::scan(
@@ -97,7 +101,9 @@ scan::scan(
     yugawara::storage::index const& primary_idx,
     sequence_view<column const> columns,
     yugawara::storage::index const* secondary_idx,
-    std::unique_ptr<operator_base> downstream
+    std::unique_ptr<operator_base> downstream,
+    std::optional<std::size_t> limit,
+    bool use_iscan
 ) :
     scan(
         index,
@@ -108,7 +114,9 @@ scan::scan(
         index::create_fields(primary_idx, columns, info.vars_info_list()[block_index], true, true),
         index::create_fields(primary_idx, columns, info.vars_info_list()[block_index], false, true),
         create_secondary_key_fields(secondary_idx),
-        std::move(downstream)
+        std::move(downstream),
+        limit,
+        use_iscan
     )
 {}
 
@@ -149,8 +157,8 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
         ctx.state(context_state::running_operator_body);
     }
     if(ctx.it_ == nullptr){
-        if (ctx.range_->is_empty()){
-            // range keys contain null. Nothing should match.
+        if (ctx.range_->is_empty() || (limit_ && *limit_ == 0)){
+            // range keys contain null, or the row count is zero. Nothing should match.
             finish(context);
             return operation_status_kind::ok;
         }
@@ -204,6 +212,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 handle_kvs_errors(*ctx.req_context(), st);
                 break;
             }
+            ++ctx.record_count_;
         }
         if (downstream_) {
             ctx.state(context_state::calling_child);
@@ -218,6 +227,11 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return operation_status_kind::aborted;
             }
             ctx.state(context_state::running_operator_body);
+        }
+        if (limit_ && *limit_ <= ctx.record_count_) {
+            // reached the row count of the scan - finish normally
+            st = status::not_found;
+            break;
         }
         if (scan_block_size != 0 && scan_block_size <= loop_count ){
             loop_count = 0;
@@ -273,12 +287,15 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     const auto& begin = range->begin();
     const auto& end = range->end();
     auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
+    kvs::scan_options options{};
+    options.legacy_scan_ = ! use_iscan_;
     if(auto res = stg.content_scan(
             tx,
             begin.key(),
             begin.endpointkind(),
             end.key(),
             end.endpointkind(),
+            options,
             ctx.it_
         ); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
@@ -288,6 +305,14 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     return status::ok;
 }
 
+
+std::optional<std::size_t> scan::limit() const noexcept {
+    return limit_;
+}
+
+bool scan::use_iscan() const noexcept {
+    return use_iscan_;
+}
 
 void scan::close(scan_context& ctx) {
     ctx.it_.reset();

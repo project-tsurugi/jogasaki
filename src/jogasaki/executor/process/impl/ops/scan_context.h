@@ -78,6 +78,7 @@ private:
     transaction_context* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
     std::size_t yield_count_{};
+    std::size_t record_count_{};
     impl::scan_range const* range_{};
     kvs::transaction* strand_{};
     utils::lazy_checkpoint_holder cp_{};

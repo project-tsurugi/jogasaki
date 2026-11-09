@@ -15,6 +15,7 @@
  */
 #include "compiler.h"
 
+#include <algorithm>
 #include <any>
 #include <cstdint>
 #include <cstdlib>
@@ -256,13 +257,8 @@ std::optional<std::size_t> row_slice_to_limit(takatori::relation::details::row_s
 }
 
 void validate_scan(takatori::relation::scan const& scan) {
-    if(scan.row_slice()) {
-        throw_exception(plan_exception(create_error_info(
-            error_code::unsupported_runtime_feature_exception,
-            "Compiling statement resulted in unsupported scan operator with row slice.",
-            status::err_unsupported
-        )));
-    }
+    // only immediate row count without start position is supported (otherwise row_slice_to_limit() throws)
+    (void) row_slice_to_limit(scan.row_slice());
     if(scan.direction() == takatori::relation::scan_direction::backward) {
         throw_exception(plan_exception(create_error_info(
             error_code::unsupported_runtime_feature_exception,
@@ -458,6 +454,21 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
     }
     container->host_variable_info(create_host_variable_info(provider, info));
     return {status::ok, container};
+}
+
+/**
+ * @brief returns whether the analyzed statement writes to tables via relational operators
+ * @details INSERT ... SELECT, UPDATE and DELETE statements are analyzed into execution plans with write operators.
+ */
+static bool has_write_operator(mizugaki::analyzer::sql_analyzer_result& r) {
+    using result_kind = mizugaki::analyzer::sql_analyzer_result_kind;
+    if(r.kind() != result_kind::execution_plan) {
+        return false;
+    }
+    auto& graph = r.element<result_kind::execution_plan>();
+    return std::any_of(graph.begin(), graph.end(), [](auto&& e) {
+        return e.kind() == takatori::relation::expression_kind::write;
+    });
 }
 
 template <mizugaki::analyzer::sql_analyzer_result_kind Kind>
@@ -753,12 +764,19 @@ static status prepare(
         yugawara::runtime_feature::aggregate_exchange,
 //        yugawara::runtime_feature::broadcast_join_scan,
         yugawara::runtime_feature::always_inline_scalar_local_variables,
-//        yugawara::runtime_feature::scan_limit,
 //        yugawara::runtime_feature::ordered_scan,
 //        yugawara::runtime_feature::ordered_forward,
 //        yugawara::runtime_feature::backward_scan,
     };
 
+    // TOP-N runtime features are not given for statements with write operations because they remove exchanges
+    // between scan and write, and the scan can read rows written by the statement itself
+    // (Halloween problem, tsurugi-issues#1491, #1492). This is the only place to care about the problem
+    // for TOP-N optimizations - the scan with row count or direction appears only in the statements without writes.
+    bool const allow_topn_features = ! has_write_operator(analysis);
+    if(cfg && cfg->enable_scan_limit() && allow_topn_features) {
+        runtime_features.insert(yugawara::runtime_feature::scan_limit);
+    }
     if(cfg && cfg->enable_index_join()) {
         runtime_features.insert(yugawara::runtime_feature::index_join);
     }
@@ -789,11 +807,9 @@ static status prepare(
             yugawara::restricted_feature::statement_rename_column,
             yugawara::restricted_feature::statement_rename_index,
             yugawara::restricted_feature::statement_rename_table,
-            // scan direction and row slice are not respected by scan yet
-            yugawara::restricted_feature::relation_scan_direction_forward,
+            // backward scan, and row slice with start position or variable row count are not supported by scan yet
             yugawara::restricted_feature::relation_scan_direction_backward,
             yugawara::restricted_feature::relation_scan_row_slice_start,
-            yugawara::restricted_feature::relation_scan_row_slice_count,
             yugawara::restricted_feature::relation_scan_row_slice_variable,
             // forward ordering is not respected, and only immediate row count is supported for row slice of exchanges
             yugawara::restricted_feature::exchange_forward_ordering,

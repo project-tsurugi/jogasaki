@@ -58,6 +58,8 @@
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/plan/compiler.h>
+#include <jogasaki/scan_impl_kind.h>
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/from_endpoint.h>
@@ -169,6 +171,19 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
     auto primary = table.owner()->find_primary_index(table);
     validate_endpoint(node);
     scan_ranges_ = create_scan_ranges(node);
+    auto limit = plan::impl::row_slice_to_limit(node.row_slice());
+    bool use_iscan = false;
+    switch(global::config_pool()->scan_impl()) {
+        case scan_impl_kind::automatic:
+            // iscan is used only for the scan with row count, which can finish before reading the whole range.
+            // Such scan appears only in the statement without write operations (see plan::compiler), so this
+            // need not care about Halloween problem, to which iscan is more sensitive than legacy scan
+            // (tsurugi-issues#1491).
+            use_iscan = limit.has_value();
+            break;
+        case scan_impl_kind::legacy: use_iscan = false; break;
+        case scan_impl_kind::iscan: use_iscan = true; break;
+    }
     return std::make_unique<scan>(
         index_++,
         *info_,
@@ -176,7 +191,9 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
         *primary,
         node.columns(),
         *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
-        std::move(downstream)
+        std::move(downstream),
+        limit,
+        use_iscan
     );
 }
 
@@ -533,7 +550,9 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     auto [rtx_parallel_scan_enabled, scan_parallel_count] = utils::scan_parallel_enabled(*request_context_->transaction());
     const auto option = request_context_->transaction()->option();
     const bool is_rtx = option && option->readonly();
-    if (rtx_parallel_scan_enabled && scan_parallel_count > 1 && is_rtx && !is_empty) {
+    // the scan with row count or direction must not be split, so that it honors the count and its order
+    const bool splittable = ! node.row_slice() && ! node.direction().has_value();
+    if (rtx_parallel_scan_enabled && scan_parallel_count > 1 && is_rtx && !is_empty && splittable) {
         std::unique_ptr<kvs::storage> stg{};
         std::unique_ptr<dist::key_distribution> distribution{};
         if(global::config_pool()->key_distribution() == key_distribution_kind::uniform) {

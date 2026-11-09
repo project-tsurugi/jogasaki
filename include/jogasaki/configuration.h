@@ -25,6 +25,7 @@
 
 #include "commit_response.h"
 #include "key_distribution_kind.h"
+#include "scan_impl_kind.h"
 
 namespace jogasaki {
 
@@ -604,6 +605,28 @@ public:
         enable_truncate_ = arg;
     }
 
+    /**
+     * @brief whether the scan operator honors the row count of the scan (runtime_feature::scan_limit)
+     */
+    [[nodiscard]] bool enable_scan_limit() const noexcept {
+        return enable_scan_limit_;
+    }
+
+    void enable_scan_limit(bool arg) noexcept {
+        enable_scan_limit_ = arg;
+    }
+
+    /**
+     * @brief the implementation of the transaction engine scan used by the scan operator
+     */
+    [[nodiscard]] scan_impl_kind scan_impl() const noexcept {
+        return scan_impl_;
+    }
+
+    void scan_impl(scan_impl_kind arg) noexcept {
+        scan_impl_ = arg;
+    }
+
     [[nodiscard]] std::string_view grpc_server_endpoint() const noexcept {
         return grpc_server_endpoint_;
     }
@@ -713,6 +736,8 @@ public:
         print_non_default(secure);
         print_non_default(enable_disjunction_range_hinting);
         print_non_default(enable_truncate);
+        print_non_default(enable_scan_limit);
+        print_non_default(scan_impl);
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
         print_non_default(udf_pass_mock_tag);
@@ -791,6 +816,8 @@ private:
     std::vector<bool> secure_values_{false};
     bool enable_disjunction_range_hinting_ = true;
     bool enable_truncate_ = true;
+    bool enable_scan_limit_ = true;
+    scan_impl_kind scan_impl_{scan_impl_kind::automatic};
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;
     bool udf_pass_mock_tag_ = false;

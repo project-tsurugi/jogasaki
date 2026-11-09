@@ -15,7 +15,9 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -69,6 +71,8 @@ public:
      * @param key_fields field offset information for keys
      * @param value_fields field offset information for values
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
+     * @param limit the max number of records passed to the downstream, or nullopt if there is no limit
+     * @param use_iscan whether to use the iterator based scan (iscan) of the transaction engine
      */
     scan(
         operator_index_type index,
@@ -79,7 +83,9 @@ public:
         std::vector<index::field_info> key_fields,
         std::vector<index::field_info> value_fields,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
-        std::unique_ptr<operator_base> downstream = nullptr
+        std::unique_ptr<operator_base> downstream = nullptr,
+        std::optional<std::size_t> limit = std::nullopt,
+        bool use_iscan = false
     );
 
     /**
@@ -91,6 +97,8 @@ public:
      * @param columns takatori scan column information
      * @param secondary_idx the secondary index used to find the primary key.
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
+     * @param limit the max number of records passed to the downstream, or nullopt if there is no limit
+     * @param use_iscan whether to use the iterator based scan (iscan) of the transaction engine
      */
     scan(
         operator_index_type index,
@@ -99,7 +107,9 @@ public:
         yugawara::storage::index const& primary_idx,
         sequence_view<column const> columns,
         yugawara::storage::index const* secondary_idx,
-        std::unique_ptr<operator_base> downstream
+        std::unique_ptr<operator_base> downstream,
+        std::optional<std::size_t> limit = std::nullopt,
+        bool use_iscan = false
     );
 
     /**
@@ -145,12 +155,25 @@ public:
      */
     void dump() const noexcept;
 
+    /**
+     * @brief accessor for the max number of records passed to the downstream
+     * @return the limit, or nullopt if there is no limit
+     */
+    [[nodiscard]] std::optional<std::size_t> limit() const noexcept;
+
+    /**
+     * @brief accessor for the flag whether the iterator based scan (iscan) is used
+     */
+    [[nodiscard]] bool use_iscan() const noexcept;
+
 private:
     bool use_secondary_{};
     std::string storage_name_{};
     std::string secondary_storage_name_{};
     std::unique_ptr<operator_base> downstream_{};
     index_field_mapper field_mapper_{};
+    std::optional<std::size_t> limit_{};
+    bool use_iscan_{};
 
     [[nodiscard]] status open(scan_context& ctx);
     void close(scan_context& ctx);

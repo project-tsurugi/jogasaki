@@ -179,7 +179,8 @@ public:
 TEST_F(filter_test, simple) {
     // c1 == c2 + 1
     auto input_pass = create_nullable_record<kind::int8, kind::int8, kind::int8>(1, 11, 10);
-    auto [up, in] = add_upstream_record_provider(input_pass.record_meta());
+    auto up = add_upstream_record_provider(input_pass.record_meta());
+    auto& in = up.in();
 
     auto& flt = emplace_operator<relation::filter>(std::make_unique<compare>(
         comparison_operator::equal,
@@ -208,11 +209,12 @@ TEST_F(filter_test, simple) {
 TEST_F(filter_test, cross_region_reads_upstream_variables) {
     // Graph: take_flat(2 cols) → buffer(1) → filter(in[1] == in[0] + 1) → offer
     auto input_pass = create_nullable_record<kind::int8, kind::int8>(10, 11);
-    auto [up_ref, in] = add_upstream_record_provider(input_pass.record_meta());
-    auto& up = up_ref.get();
+    auto up = add_upstream_record_provider(input_pass.record_meta());
+    auto& in = up.in();
+    relation::step::take_flat& up_node = up;
 
     auto& buf_node = emplace_operator<relation::buffer>(1);
-    up.output() >> buf_node.input();
+    up_node.output() >> buf_node.input();
 
     auto& flt = emplace_operator<relation::filter>(std::make_unique<compare>(
         comparison_operator::equal,
@@ -225,7 +227,7 @@ TEST_F(filter_test, cross_region_reads_upstream_variables) {
 
     create_processor_info(nullptr, true);
 
-    auto const take_block_idx   = processor_info_->block_indices().at(&up);
+    auto const take_block_idx   = processor_info_->block_indices().at(&up_node);
     auto const filter_block_idx = processor_info_->block_indices().at(&flt);
     ASSERT_NE(take_block_idx, filter_block_idx);
 

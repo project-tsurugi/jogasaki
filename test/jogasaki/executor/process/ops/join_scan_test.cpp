@@ -59,7 +59,8 @@ TEST_F(join_scan_test, simple) {
         {0, 1}, {}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 2);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper);
@@ -118,11 +119,12 @@ TEST_F(join_scan_test, host_variable_with_condition_expr) {
     host_variables.store().set(host_variable_record.ref());
 
     auto input = create_nullable_record<kind::int4, kind::int4>(10, 10);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper, false,
-        [&, &in = in](auto const&) {
+        [&](auto const&) {
             return std::make_unique<compare>(
                 comparison_operator::equal, varref{in[0]}, varref{p0});
         });
@@ -165,7 +167,8 @@ TEST_F(join_scan_test, multiple_types) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4>(20);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper);
@@ -209,7 +212,8 @@ TEST_F(join_scan_test, left_outer) {
     );
     auto input_match    = create_nullable_record<kind::int4, kind::int4>(10, 10);
     auto input_no_match = create_nullable_record<kind::int4, kind::int4>(30, 30);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper);
@@ -259,7 +263,8 @@ TEST_F(join_scan_test, left_outer_condition_filtered) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 1);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     // condition: C1 == 999 is false for the inserted row (C1=100)
@@ -310,7 +315,8 @@ TEST_F(join_scan_test, left_outer_condition_multiple_rows) {
     );
     auto input_match = create_nullable_record<kind::int4, kind::int4>(1, 200);
     auto input_no_match = create_nullable_record<kind::int4, kind::int4>(1, 999);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     // condition: C2 == (second input column)
@@ -366,7 +372,8 @@ TEST_F(join_scan_test, composite_key_primary) {
         {0, 1}, {}
     );
     auto input = create_nullable_record<kind::int4>(1);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper);
@@ -420,7 +427,8 @@ TEST_F(join_scan_test, full_scan) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 300), *db_);
 
     auto dummy = create_nullable_record<kind::int4>(0);
-    auto [up, in] = add_upstream_record_provider(dummy.record_meta());
+    auto up = add_upstream_record_provider(dummy.record_meta());
+    auto& in = up.in();
     auto& target = add_join_scan_node(setup, {}, {});
     auto down = add_downstream_record_verifier(destinations(target.columns()));
 
@@ -463,7 +471,8 @@ TEST_F(join_scan_test, full_scan_explicit_unbound) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 300), *db_);
 
     auto dummy = create_nullable_record<kind::int4>(0);
-    auto [up, in] = add_upstream_record_provider(dummy.record_meta());
+    auto up = add_upstream_record_provider(dummy.record_meta());
+    auto& in = up.in();
     auto& target = add_join_scan_node(
         setup, scan_endpoint_spec::unbound(), scan_endpoint_spec::unbound());
     auto down = add_downstream_record_verifier(destinations(target.columns()));
@@ -507,7 +516,8 @@ TEST_F(join_scan_test, reversed_bounds) {
     put_row(setup, create_nullable_record<kind::int4, kind::int4>(30, 300), *db_);
 
     auto input = create_nullable_record<kind::int4, kind::int4>(30, 10);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper);
@@ -543,7 +553,8 @@ TEST_F(join_scan_test, semi_join) {
     );
     auto input_match    = create_nullable_record<kind::int4, kind::int4>(1, 1);
     auto input_no_match = create_nullable_record<kind::int4, kind::int4>(5, 5);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper);
@@ -565,7 +576,7 @@ TEST_F(join_scan_test, semi_join) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&, &in = in]() {
+    down.set_body([&]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -597,7 +608,8 @@ TEST_F(join_scan_test, anti_join) {
     );
     auto input_match    = create_nullable_record<kind::int4, kind::int4>(1, 1);
     auto input_no_match = create_nullable_record<kind::int4, kind::int4>(5, 5);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     auto& target = add_join_scan_node(setup, lower, upper);
@@ -619,7 +631,7 @@ TEST_F(join_scan_test, anti_join) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&, &in = in]() {
+    down.set_body([&]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -649,7 +661,8 @@ TEST_F(join_scan_test, semi_join_condition_filtered) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 1);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     // condition: C1 == 999; always false because the row has C1=100
@@ -676,7 +689,7 @@ TEST_F(join_scan_test, semi_join_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&, &in = in]() {
+    down.set_body([&]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 
@@ -699,7 +712,8 @@ TEST_F(join_scan_test, anti_join_condition_filtered) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 1);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
     scan_endpoint_spec upper{{0}, {in[1]}, relation::endpoint_kind::prefixed_inclusive};
     // condition: C1 == 999; always false because the row has C1=100
@@ -726,7 +740,7 @@ TEST_F(join_scan_test, anti_join_condition_filtered) {
     );
 
     std::vector<basic_record> result{};
-    down.set_body([&, &in = in]() {
+    down.set_body([&]() {
         result.emplace_back(get_variables(ex.variables_list_[0], in.vars_));
     });
 

@@ -293,20 +293,46 @@ public:
     };
 
     /**
+     * @brief Upstream record provider returned by add_upstream_record_provider().
+     *
+     * Implicitly converts to the upstream operator node so that it can be passed
+     * directly where the upstream node is expected.  The stream variables and
+     * record_meta are available via in().
+     */
+    class upstream_record_provider {
+    public:
+        upstream_record_provider(
+            relation::step::take_flat& op,
+            input_definition in
+        ) : op_{std::addressof(op)}, in_{std::move(in)} {}
+
+        /// @brief Return the upstream operator node.
+        operator relation::step::take_flat&() const noexcept { return *op_; }  //NOLINT(google-explicit-constructor)
+
+        /// @brief Return the stream variables and record_meta of this provider.
+        [[nodiscard]] input_definition const& in() const noexcept { return in_; }
+
+    private:
+        relation::step::take_flat* op_;
+        input_definition in_;
+    };
+
+    /**
      * @brief Add an upstream record provider using a shared record_meta.
      *
      * Field types are extracted from the meta and bound to the take_flat stream
-     * variables.  The meta is stored in the returned input_definition so that
+     * variables.  The meta is stored in the returned object so that
      * set_variables() can interpret a record_ref of the same layout.
      *
      * @code
-     *   auto [up, in] = add_upstream_record_provider(input.record_meta());
+     *   auto up = add_upstream_record_provider(input.record_meta());
+     *   auto& in = up.in();
      * @endcode
      *
      * @param meta_ptr shared_ptr to the record_meta for the upstream record layout
-     * @return pair of (take_flat reference-wrapper, input_definition carrying meta_ptr)
+     * @return upstream_record_provider wrapping the take_flat node, its variables and meta_ptr
      */
-    std::pair<std::reference_wrapper<relation::step::take_flat>, input_definition>
+    upstream_record_provider
     add_upstream_record_provider(maybe_shared_ptr<meta::record_meta> const& meta_ptr) {
         auto const& meta = *meta_ptr;
         std::size_t const n = meta.field_count();

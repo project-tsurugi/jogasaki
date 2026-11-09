@@ -124,8 +124,8 @@ public:
      *     variables and task_ctx remain valid.
      *
      * @param prj  the project relation node whose columns define the operator
-     * @param up   the upstream take_flat node (pass the reference-wrapper from
-     *             add_upstream_record_provider directly; implicit conversion applies)
+     * @param up   the upstream take_flat node (the object returned by
+     *             add_upstream_record_provider converts implicitly)
      * @param down downstream verifier sink (take() is called here)
      * @return newly constructed project_executor
      */
@@ -146,7 +146,8 @@ public:
 
 TEST_F(project_test, simple) {
     auto input = create_nullable_record<kind::int8, kind::int8, kind::int8>(1, 11, 10);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto out = create_output_variables(2);
 
     using column = relation::project::column;
@@ -175,7 +176,8 @@ TEST_F(project_test, text) {
         text{&resource_, "A23456789012345678901234567890"},
         text{&resource_, "B23456789012345678901234567890"},
         text{&resource_, "C23456789012345678901234567890"});
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto out = create_output_variables(1);
 
     using column = relation::project::column;

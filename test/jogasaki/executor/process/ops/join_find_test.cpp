@@ -339,7 +339,8 @@ public:
             {0}, {1, 2}, {first_dir, second_dir}
         );
         auto input = create_nullable_record<kind::int4, kind::int4>(1, 2);
-        auto [up, in] = add_upstream_record_provider(input.record_meta());
+        auto up = add_upstream_record_provider(input.record_meta());
+        auto& in = up.in();
         auto& target = add_join_find_node(setup, {1, 2}, {in[0], in[1]}, true);
         auto verifier_vars = in.vars_;
         auto out_vars = destinations(target.columns());
@@ -393,7 +394,8 @@ TEST_F(join_find_test, simple) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 10);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {0}, {in[0]});
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -432,7 +434,8 @@ TEST_F(join_find_test, secondary_index) {
         {0}, {1}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(2, 20);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {1}, {in[1]}, true);
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -486,7 +489,8 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     host_variables.store().set(host_variable_record.ref());
 
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 10);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {0}, {in[0]}, false,
         [&](auto const&) {
             return std::make_unique<compare>(
@@ -528,7 +532,8 @@ TEST_F(join_find_test, multiple_types) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4>(20);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {0}, {in[0]});
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -570,7 +575,8 @@ TEST_F(join_find_test, semi_join_primary) {
     );
     auto input_match    = create_nullable_record<kind::int4>(1);
     auto input_no_match = create_nullable_record<kind::int4>(5);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {0}, {in[0]});
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -620,7 +626,8 @@ TEST_F(join_find_test, anti_join_primary) {
     );
     auto input_match    = create_nullable_record<kind::int4>(1);
     auto input_no_match = create_nullable_record<kind::int4>(5);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {0}, {in[0]});
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -667,7 +674,8 @@ TEST_F(join_find_test, semi_join_secondary) {
     );
     auto input_match    = create_nullable_record<kind::int4, kind::int4>(0, 2);
     auto input_no_match = create_nullable_record<kind::int4, kind::int4>(0, 5);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {1}, {in[1]}, true);
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -716,7 +724,8 @@ TEST_F(join_find_test, anti_join_secondary) {
     );
     auto input_match    = create_nullable_record<kind::int4, kind::int4>(0, 2);
     auto input_no_match = create_nullable_record<kind::int4, kind::int4>(0, 5);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {1}, {in[1]}, true);
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -764,7 +773,8 @@ TEST_F(join_find_test, semi_join_primary_condition_filtered) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4>(1);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     // condition: C1 == 999; always false because the row has C1=100
     auto& target = add_join_find_node(setup, {0}, {in[0]}, false,
         [](auto const& dests) {
@@ -811,7 +821,8 @@ TEST_F(join_find_test, anti_join_primary_condition_filtered) {
         {0}, {}
     );
     auto input = create_nullable_record<kind::int4>(1);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     // condition: C1 == 999; always false because the row has C1=100
     auto& target = add_join_find_node(setup, {0}, {in[0]}, false,
         [](auto const& dests) {
@@ -861,7 +872,8 @@ TEST_F(join_find_test, left_outer) {
     );
     auto input_match    = create_nullable_record<kind::int4>(10);
     auto input_no_match = create_nullable_record<kind::int4>(30);
-    auto [up, in] = add_upstream_record_provider(input_match.record_meta());
+    auto up = add_upstream_record_provider(input_match.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {0}, {in[0]});
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -907,7 +919,8 @@ TEST_F(join_find_test, left_outer_condition_filtered) {
     );
 
     auto input = create_nullable_record<kind::int4>(1);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     // condition: C1 == 999 is false for the inserted row (C1=100)
     auto& target = add_join_find_node(setup, {0}, {in[0]}, false,
         [](auto const& dests) {
@@ -952,7 +965,8 @@ TEST_F(join_find_test, composite_key_primary) {
         {0, 1}, {}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(1, 10);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {0, 1}, {in[0], in[1]});
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());
@@ -991,7 +1005,8 @@ TEST_F(join_find_test, secondary_index_desc) {
         {0}, {1}, {desc}
     );
     auto input = create_nullable_record<kind::int4, kind::int4>(2, 20);
-    auto [up, in] = add_upstream_record_provider(input.record_meta());
+    auto up = add_upstream_record_provider(input.record_meta());
+    auto& in = up.in();
     auto& target = add_join_find_node(setup, {1}, {in[1]}, true);
     auto verifier_vars = in.vars_;
     auto out_vars = destinations(target.columns());

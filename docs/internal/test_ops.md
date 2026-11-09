@@ -442,13 +442,16 @@ auto& prj = emplace_operator<relation::project>(
 
 ### `add_upstream_record_provider` と `input_definition`
 
-`add_upstream_record_provider(meta_ptr)` は `take_flat` を上流に追加し、各列の変数を `variable_map_` に登録する。返り値は `(take_flat&, input_definition)` のペアで、`input_definition` には stream variables のリストと `record_meta` が入っている。
+`add_upstream_record_provider(meta_ptr)` は `take_flat` を上流に追加し、各列の変数を `variable_map_` に登録する。返り値は `upstream_record_provider` で、上流ノード（`take_flat&`）へ暗黙変換できる。stream variables のリストと `record_meta` を持つ `input_definition` は `in()` で取り出す。
 
 ```cpp
-auto [up, in] = add_upstream_record_provider(input.record_meta());
+auto up = add_upstream_record_provider(input.record_meta());
+auto& in = up.in();
 // in[0], in[1], ... が stream variables
 // in.meta_ が record_meta（set_variables() に渡す）
 ```
+
+構造化束縛（`auto [up, in] = ...`）にしないのは、C++17 では構造化束縛をラムダでキャプチャできず、clang 15 以前ではコンパイルエラーになるため。
 
 `record_meta()` の戻り値型は `maybe_shared_ptr<record_meta>`（`takatori::util::maybe_shared_ptr`）であり、`std::shared_ptr` への暗黙変換はない。`add_upstream_record_provider` のパラメータも `maybe_shared_ptr<record_meta>` で受け取る。
 

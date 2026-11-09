@@ -171,7 +171,8 @@ public:
         // write key values directly into the block after the executor is built.
         auto input = create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(
             0, 0, 0, 0);
-        auto [up_ref, in] = add_upstream_record_provider(input.record_meta());
+        auto up = add_upstream_record_provider(input.record_meta());
+        auto& in = up.in();
 
         // Lower endpoint uses slots [0..n_lower-1]; upper uses slots [2..2+n_upper-1].
         scan_endpoint_spec lower_spec;
@@ -195,7 +196,7 @@ public:
         auto down = add_downstream_record_verifier(destinations(target.columns()));
         auto tx = wrap(db_->create_transaction());
         auto ex = make_join_scan_executor(
-            up_ref.get(), target,
+            up, target,
             *setup.primary_idx, setup.secondary_idx.get(), down,
             get_storage(*db_, setup.primary_idx->simple_name()),
             get_storage(*db_, setup.secondary_idx->simple_name()),
@@ -262,7 +263,8 @@ public:
         );
 
         auto input = create_nullable_record<kind::int4, kind::int4>(1, 2);
-        auto [up, in] = add_upstream_record_provider(input.record_meta());
+        auto up = add_upstream_record_provider(input.record_meta());
+        auto& in = up.in();
 
         // Exact range: both lower and upper specify (C1=1, C2=2) with prefixed_inclusive.
         // Reusing in[0] and in[1] for both endpoints is valid: each is a separate varref

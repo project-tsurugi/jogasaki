@@ -180,7 +180,7 @@ public:
      *          TODO: save iteration state in join_context to support proper yield resume.
      * @param ctx the join context for state management
      * @param context the task context
-     * @return ok, yield, or aborted
+     * @return ok, yield, aborted, or early_stop
      */
     operation_status call_downstream(
         join_context<iterator>& ctx,
@@ -193,7 +193,8 @@ public:
                 ctx.abort();
                 return operation_status_kind::aborted;
             }
-            if (st.kind() == operation_status_kind::ok) {
+            if (st.kind() == operation_status_kind::ok || st.kind() == operation_status_kind::early_stop) {
+                // early_stop is returned to the caller, which leaves the join loops
                 ctx.state(context_state::running_operator_body);
             }
             return st;

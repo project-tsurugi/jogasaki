@@ -250,6 +250,11 @@ resume_calling_child:
                         return operation_status_kind::aborted;
                     }
                     ctx.state(context_state::running_operator_body);
+                    if (st.kind() == operation_status_kind::early_stop) {
+                        // the downstream requires no more records - finish normally leaving the rest of the input
+                        finish(context);
+                        return operation_status_kind::ok;
+                    }
                 }
                 for(auto&& in : inputs) {
                     in.reset_values();

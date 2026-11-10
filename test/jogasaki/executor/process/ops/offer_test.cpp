@@ -212,7 +212,7 @@ TEST_F(offer_test, simple) {
     vars_ref.set_null(map.at(c1).nullity_offset(), false);
     vars_ref.set_value<std::int64_t>(map.at(c2).value_offset(), 2);
     vars_ref.set_null(map.at(c2).nullity_offset(), false);
-    s(ctx);
+    EXPECT_EQ(operation_status_kind::ok, s(ctx).kind());
     auto internal_cols_ref = ctx.store().ref();
     EXPECT_EQ(1.0, internal_cols_ref.get_value<double>(meta->value_offset(0)));
     EXPECT_EQ(0, internal_cols_ref.get_value<std::int32_t>(meta->value_offset(1)));
@@ -225,10 +225,15 @@ TEST_F(offer_test, simple) {
 
     vars_ref.set_value<std::int32_t>(map.at(c0).value_offset(), 3);
     vars_ref.set_null(map.at(c0).nullity_offset(), false);
-    s(ctx);
+    EXPECT_EQ(operation_status_kind::ok, s(ctx).kind());
     ASSERT_EQ(2, writer->size());
     test_record exp2{create_nullable_record<kind::float8, kind::int4, kind::int8>(1.0, 3, 2)};
     EXPECT_EQ(exp2, records[1]);
+
+    // the writer requires no more records - the offer requests the upstream to stop early (tsurugi-issues#1589)
+    writer->satisfied_at(3);
+    EXPECT_EQ(operation_status_kind::early_stop, s(ctx).kind());
+    ASSERT_EQ(3, writer->size());
 }
 
 }

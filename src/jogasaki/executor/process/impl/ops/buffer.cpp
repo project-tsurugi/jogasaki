@@ -73,6 +73,10 @@ operation_status buffer::operator()(buffer_context& ctx, abstract::task_context*
         if (st.kind() == operation_status_kind::yield) {
             return operation_status_kind::yield;
         }
+        // early_stop from a downstream is treated same as ok, and this continues to pass records to all downstreams.
+        // It is correct to pass all records to every downstream, and the current compiler does not generate the plan
+        // which has a forward exchange with row count under buffer in the same process (the row count is placed
+        // before the buffer), so this does not propagate early_stop to the upstream for simplicity.
         if (st.kind() == operation_status_kind::aborted) {
             ctx.abort();
             return operation_status_kind::aborted;

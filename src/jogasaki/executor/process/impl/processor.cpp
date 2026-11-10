@@ -85,6 +85,7 @@ abstract::status processor::run(abstract::task_context *context) {
     switch(status.kind()) {
         case ops::operation_status_kind::ok:
         case ops::operation_status_kind::aborted:
+        case ops::operation_status_kind::early_stop:
             return abstract::status::completed;
         case ops::operation_status_kind::yield:
             return abstract::status::to_yield;

@@ -31,12 +31,15 @@ public:
     }
     operation_status process_record(abstract::task_context* context) override {
         f_();
-        return {};
+        return result_ ? result_() : operation_status{};
     }
     [[nodiscard]] operator_kind kind() const noexcept override {
         return operator_kind::unknown;
     }
     std::function<void(void)> f_{}; //NOLINT
+
+    /// @brief the status returned to the upstream for each record (ok if empty)
+    std::function<operation_status(void)> result_{}; //NOLINT
 
     void finish(abstract::task_context*) override {}
 };

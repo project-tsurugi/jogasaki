@@ -227,6 +227,11 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return operation_status_kind::aborted;
             }
             ctx.state(context_state::running_operator_body);
+            if(st2.kind() == operation_status_kind::early_stop) {
+                // the downstream requires no more records (e.g. forward with row count) - finish normally
+                st = status::not_found;
+                break;
+            }
         }
         if (limit_ && *limit_ <= ctx.record_count_) {
             // reached the row count of the scan - finish normally

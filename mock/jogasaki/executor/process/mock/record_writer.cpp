@@ -55,6 +55,9 @@ io::write_result basic_record_writer::write(accessor::record_ref rec) {
         ++pos_;
     }
     ++write_count_;
+    if (satisfied_at_ != npos && write_count_ >= satisfied_at_) {
+        return io::write_result::satisfied;
+    }
     return io::write_result::ok;
 }
 

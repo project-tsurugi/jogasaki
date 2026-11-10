@@ -234,6 +234,13 @@ resume_calling_child:
                 return operation_status_kind::aborted;
             }
             ctx.state(context_state::running_operator_body);
+            if (st.kind() == operation_status_kind::early_stop) {
+                // no more records are required, so skip the rest of the stream (and the null row of OUTER APPLY)
+                ctx.cp_.reset();
+                ctx.stream_->close();
+                ctx.stream_.reset();
+                return operation_status_kind::early_stop;
+            }
         }
     }
 
@@ -255,6 +262,13 @@ resume_calling_child_with_outer_null:
                 return operation_status_kind::aborted;
             }
             ctx.state(context_state::running_operator_body);
+            if (st.kind() == operation_status_kind::early_stop) {
+                // no more records are required, so skip the rest of the stream (and the null row of OUTER APPLY)
+                ctx.cp_.reset();
+                ctx.stream_->close();
+                ctx.stream_.reset();
+                return operation_status_kind::early_stop;
+            }
         }
     }
     ctx.cp_.reset();

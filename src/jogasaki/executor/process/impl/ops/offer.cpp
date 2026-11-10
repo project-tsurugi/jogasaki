@@ -131,7 +131,8 @@ operation_status offer::operator()(offer_context& ctx) {
     if (! ctx.writer_) {
         ctx.writer_ = ctx.task_context().downstream_writer(writer_index_);
     }
-    if(ctx.writer_->write(target) == io::write_result::error) {
+    auto res = ctx.writer_->write(target);
+    if(res == io::write_result::error) {
         set_error_context(
             *ctx.req_context(),
             error_code::sql_execution_exception,
@@ -140,6 +141,10 @@ operation_status offer::operator()(offer_context& ctx) {
         );
         ctx.abort();
         return operation_status_kind::aborted;
+    }
+    if(res == io::write_result::satisfied) {
+        // the downstream exchange requires no more records (e.g. forward with row count) - stop the upstream early
+        return operation_status_kind::early_stop;
     }
     return operation_status_kind::ok;
 }

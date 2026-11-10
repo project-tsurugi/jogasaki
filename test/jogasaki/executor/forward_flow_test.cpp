@@ -21,6 +21,8 @@
 
 #include <jogasaki/executor/exchange/forward/flow.h>
 #include <jogasaki/executor/exchange/forward/forward_info.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/executor/io/record_writer.h>
@@ -77,6 +79,62 @@ TEST_F(forward_flow_test, limit_over_partitions_set_up_separately) {
     f.setup_partitions(1);
     ASSERT_EQ(2, f.sink_count());
     EXPECT_EQ(3, write_and_count(f, 5));
+}
+
+TEST_F(forward_flow_test, satisfied_at_row_count) {
+    // tsurugi-issues#1589 - the writer tells the upstream to stop early when the records of the count are written
+    flow f{create_info(3), nullptr, nullptr};
+    f.setup_partitions(2);
+    auto rec = mock::create_nullable_record<kind::int4>(1);
+    auto& w0 = f.sink_at(0).acquire_writer();
+    auto& w1 = f.sink_at(1).acquire_writer();
+    EXPECT_EQ(io::write_result::ok, w0.write(rec.ref()));
+    EXPECT_EQ(io::write_result::ok, w1.write(rec.ref()));
+    EXPECT_EQ(io::write_result::satisfied, w0.write(rec.ref()));
+    // the records after the count are dropped
+    EXPECT_EQ(io::write_result::satisfied, w1.write(rec.ref()));
+    EXPECT_EQ(io::write_result::satisfied, w0.write(rec.ref()));
+    w0.flush();
+    w0.release();
+    w1.flush();
+    w1.release();
+}
+
+TEST_F(forward_flow_test, satisfied_with_zero_row_count) {
+    flow f{create_info(0), nullptr, nullptr};
+    f.setup_partitions(1);
+    EXPECT_EQ(0, write_and_count(f, 3));
+    flow f2{create_info(0), nullptr, nullptr};
+    f2.setup_partitions(1);
+    auto rec = mock::create_nullable_record<kind::int4>(1);
+    auto& w = f2.sink_at(0).acquire_writer();
+    EXPECT_EQ(io::write_result::satisfied, w.write(rec.ref()));
+    w.release();
+}
+
+TEST_F(forward_flow_test, early_stop_disabled) {
+    // with dev_enable_early_stop=false, the writer drops the records after the count without telling the upstream
+    auto cfg = std::make_shared<configuration>();
+    cfg->enable_early_stop(false);
+    global::config_pool(cfg);
+    flow f{create_info(1), nullptr, nullptr};
+    f.setup_partitions(1);
+    auto rec = mock::create_nullable_record<kind::int4>(1);
+    auto& w = f.sink_at(0).acquire_writer();
+    EXPECT_EQ(io::write_result::ok, w.write(rec.ref()));
+    EXPECT_EQ(io::write_result::ok, w.write(rec.ref()));
+    w.release();
+    global::config_pool(std::make_shared<configuration>());
+    EXPECT_EQ(1, write_and_count(f, 0));
+}
+
+TEST_F(forward_flow_test, no_row_count) {
+    flow f{std::make_shared<forward_info>(mock::create_nullable_record<kind::int4>(0).record_meta()), nullptr, nullptr};
+    f.setup_partitions(1);
+    auto rec = mock::create_nullable_record<kind::int4>(1);
+    auto& w = f.sink_at(0).acquire_writer();
+    EXPECT_EQ(io::write_result::ok, w.write(rec.ref()));
+    w.release();
 }
 
 }  // namespace jogasaki::executor::exchange::forward

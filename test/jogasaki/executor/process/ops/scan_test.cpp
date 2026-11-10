@@ -166,6 +166,48 @@ public:
         return result;
     }
 
+    // runs the scan without row count, whose downstream returns early_stop when it receives `stop_at` records
+    std::vector<basic_record> run_early_stopped_scan(std::size_t stop_at, bool use_iscan, bool yield = false) {
+        if(yield) {
+            auto cfg = std::make_shared<configuration>();
+            cfg->scan_block_size(1);
+            cfg->scan_yield_interval(0);
+            global::config_pool(cfg);
+        }
+        auto setup = prepare_single_col_pk_table();
+        insert_endpoint_test_rows(setup);
+        auto& target = add_scan_node(setup);
+        scan_use_iscan_ = use_iscan;
+        auto down = add_downstream_record_verifier(destinations(target.columns()));
+        auto tx = wrap(db_->create_transaction());
+        auto ex = make_scan_executor(target, setup, false, down, tx);
+        EXPECT_FALSE(ex.op_.limit().has_value());
+        std::vector<basic_record> result{};
+        down.set_body([&]() {
+            result.emplace_back(get_variables(ex.variables_list_[0], destinations(target.columns())));
+        });
+        down.set_result([&]() -> operation_status {
+            if(result.size() >= stop_at) {
+                return operation_status_kind::early_stop;
+            }
+            return operation_status_kind::ok;
+        });
+        while(true) {
+            auto st = ex.op_(ex.ctx_);
+            if(st.kind() != operation_status_kind::yield) {
+                // the scan finishes normally
+                EXPECT_EQ(operation_status_kind::ok, st.kind());
+                break;
+            }
+        }
+        if(yield) {
+            global::config_pool(std::make_shared<configuration>());
+        }
+        ex.ctx_.release();
+        EXPECT_EQ(status::ok, tx->commit());
+        return result;
+    }
+
     /**
      * @brief Create a two-column table with a single int4 primary key (C0) and an int4 value (C1).
      * @return the table_setup for the created table and primary index.
@@ -1017,6 +1059,34 @@ TEST_F(scan_test, limit_with_yield_iscan) {
     ASSERT_EQ(3, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[2]);
+}
+
+TEST_F(scan_test, early_stop_legacy) {
+    // tsurugi-issues#1589 - the scan stops when the downstream returns early_stop
+    auto result = run_early_stopped_scan(2, false);
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+}
+
+TEST_F(scan_test, early_stop_iscan) {
+    // tsurugi-issues#1589 - the scan stops when the downstream returns early_stop
+    auto result = run_early_stopped_scan(2, true);
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
+}
+
+TEST_F(scan_test, early_stop_on_first_record) {
+    auto result = run_early_stopped_scan(1, true);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[0]);
+}
+
+TEST_F(scan_test, early_stop_with_yield) {
+    auto result = run_early_stopped_scan(3, true, true);
+    ASSERT_EQ(3, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(30, 3)), result[2]);
 }
 

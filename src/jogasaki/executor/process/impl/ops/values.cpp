@@ -88,7 +88,7 @@ operation_status values::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
-operation_status values::operator()(values_context& ctx, abstract::task_context* context) {
+operation_status values::operator()(values_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
@@ -138,6 +138,10 @@ operation_status values::operator()(values_context& ctx, abstract::task_context*
                 return operation_status_kind::aborted;
             }
             ctx.state(context_state::running_operator_body);
+            if (st.kind() == operation_status_kind::early_stop) {
+                // no more records are required - finish normally
+                break;
+            }
         }
         ++ctx.current_row_;
     }

@@ -40,6 +40,14 @@ enum class operation_status_kind {
      * @brief the operation yield
      */
     yield,
+
+    /**
+     * @brief the operation completed normally, and the downstream requires no more records
+     * @details the upstream operators stop processing (e.g. leave their loops) and finish normally
+     * without errors. This is returned when the forward exchange with row count has received the records of the
+     * count (early stop).
+     */
+    early_stop,
 };
 
 /**
@@ -53,6 +61,7 @@ constexpr inline std::string_view to_string_view(operation_status_kind value) no
         case operation_status_kind::ok: return "ok"sv;
         case operation_status_kind::aborted: return "aborted"sv;
         case operation_status_kind::yield: return "yield"sv;
+        case operation_status_kind::early_stop: return "early_stop"sv;
     }
     std::abort();
 }
@@ -104,8 +113,12 @@ public:
     }
 
     /**
-     * @brief accessor to request context
-     * @return the request context
+     * @brief returns whether the operation completed normally and the caller can continue processing
+     * @details this is not whether the operation succeeded without errors. On false (i.e. aborted, yield or
+     * early_stop), the caller should stop processing in the operator (e.g. leave its loops) and return this status
+     * to its upstream.
+     * @return true if the status is operation_status_kind::ok
+     * @return false otherwise
      */
     [[nodiscard]] constexpr operator bool() noexcept {  //NOLINT
         return kind_ == operation_status_kind::ok;

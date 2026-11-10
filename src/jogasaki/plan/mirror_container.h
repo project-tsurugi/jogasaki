@@ -110,12 +110,29 @@ public:
      */
     [[nodiscard]] storage::storage_operation const& storage_operation() const noexcept;
 
+    /**
+     * @brief returns whether the statement writes to tables via relational operators (e.g. INSERT ... SELECT)
+     * @details this is for the whole statement, not for each process
+     */
+    [[nodiscard]] bool has_write_operations() const noexcept {
+        return has_write_operations_;
+    }
+
+    /**
+     * @brief sets whether the statement writes to tables via relational operators
+     * @param arg the flag value
+     */
+    void has_write_operations(bool arg) noexcept {
+        has_write_operations_ = arg;
+    }
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
     std::shared_ptr<meta::external_record_meta> external_writer_meta_{};
     statement_work_level work_level_{};
     storage::storage_operation storage_operation_{};
+    bool has_write_operations_{};
 };
 
 } // namespace jogasaki::plan

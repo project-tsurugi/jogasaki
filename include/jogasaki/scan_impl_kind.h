@@ -28,8 +28,8 @@ namespace jogasaki {
 enum class scan_impl_kind : std::int32_t {
     /**
      * @brief choose automatically
-     * @details iterator based scan is used for the scan with row count in the statement without write operations,
-     * and the legacy scan is used otherwise.
+     * @details iterator based scan is used for the statement without write operations, and the legacy scan is used
+     * for the statement with write operations.
      */
     automatic = 0,
 

@@ -128,6 +128,23 @@ public:
         return option_;
     }
 
+    /**
+     * @brief sets whether the statement being prepared writes to tables via relational operators
+     * @param arg the flag value
+     */
+    void statement_has_write_operations(bool arg) noexcept {
+        statement_has_write_operations_ = arg;
+    }
+
+    /**
+     * @brief returns whether the statement being prepared writes to tables via relational operators
+     * @details this is available only while preparing the statement, and is kept in the prepared statement
+     * (mirror_container::has_write_operations()) for later use
+     */
+    [[nodiscard]] bool statement_has_write_operations() const noexcept {
+        return statement_has_write_operations_;
+    }
+
 private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};
@@ -139,6 +156,7 @@ private:
     std::shared_ptr<std::string> sql_text_{};
     std::shared_ptr<error::error_info> error_info_{};
     compile_option option_{};
+    bool statement_has_write_operations_{};
 
 };
 

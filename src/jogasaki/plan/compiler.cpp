@@ -625,6 +625,7 @@ static status create_prepared_statement(
     auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
     auto [mirror_status, mirror] = preprocess_mirror(s, provider, result.info(), ctx);
     if (mirror_status != status::ok) { return mirror_status; }
+    mirror->has_write_operations(ctx.statement_has_write_operations());
     check_blob_relay_availability(*s, result.info());
     out = std::make_shared<plan::prepared_statement>(
         s,
@@ -771,9 +772,13 @@ static status prepare(
 
     // TOP-N runtime features are not given for statements with write operations because they remove exchanges
     // between scan and write, and the scan can read rows written by the statement itself
-    // (Halloween problem, tsurugi-issues#1491, #1492). This is the only place to care about the problem
-    // for TOP-N optimizations - the scan with row count or direction appears only in the statements without writes.
-    bool const allow_topn_features = ! has_write_operator(analysis);
+    // (Halloween problem, tsurugi-issues#1491, #1492). This is the only place to judge the problem
+    // for TOP-N optimizations - the scan with row count or direction appears only in the statements without writes,
+    // and the result is passed to the executor (mirror_container::has_write_operations()) not to use iscan, which is
+    // more sensitive to the problem, for such statements.
+    bool const has_write_operations = has_write_operator(analysis);
+    ctx.statement_has_write_operations(has_write_operations);
+    bool const allow_topn_features = ! has_write_operations;
     if(cfg && cfg->enable_scan_limit() && allow_topn_features) {
         runtime_features.insert(yugawara::runtime_feature::scan_limit);
     }
@@ -863,6 +868,7 @@ executor::process::step create(
         mirror.second,
         host_variables
     );
+    pinfo->statement_has_write_operations(mirrors->has_write_operations());
 
     yugawara::binding::factory bindings{};
     std::unordered_map<takatori::descriptor::relation, std::size_t> inputs{};

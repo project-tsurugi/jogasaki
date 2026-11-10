@@ -107,6 +107,21 @@ public:
         return host_variables_;
     }
 
+    /**
+     * @brief returns whether the statement (not only this process) writes to tables via relational operators
+     */
+    [[nodiscard]] bool statement_has_write_operations() const noexcept {
+        return statement_has_write_operations_;
+    }
+
+    /**
+     * @brief sets whether the statement (not only this process) writes to tables via relational operators
+     * @param arg the flag value
+     */
+    void statement_has_write_operations(bool arg) noexcept {
+        statement_has_write_operations_ = arg;
+    }
+
 private:
     relation::graph_type const* relations_{};
     yugawara::compiled_info info_{};
@@ -114,6 +129,7 @@ private:
     maybe_shared_ptr<impl::block_indices const> block_indices_{};
     processor_details details_{};
     variable_table const* host_variables_{};
+    bool statement_has_write_operations_{};
 
     processor_details create_details();
 };

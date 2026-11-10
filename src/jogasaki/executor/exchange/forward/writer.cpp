@@ -43,18 +43,18 @@ writer::writer(
     partition_(std::move(partition))
 {}
 
-bool writer::write(accessor::record_ref rec) {
+io::write_result writer::write(accessor::record_ref rec) {
     if(write_count_ && info_->limit().has_value()) {
         auto cnt = write_count_->load();
         auto limit = info_->limit().value();
         do {
             if(cnt >= limit) {
-                return true;
+                return io::write_result::ok;
             }
         } while(! write_count_->compare_exchange_weak(cnt, cnt+1));
     }
     partition_->push(rec);
-    return true;
+    return io::write_result::ok;
 }
 
 void writer::flush() {

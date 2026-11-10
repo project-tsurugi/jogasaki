@@ -33,10 +33,10 @@ result_store_channel_writer::result_store_channel_writer(result_store_channel& p
     index_(index)
 {}
 
-bool result_store_channel_writer::write(accessor::record_ref rec) {
+executor::io::write_result result_store_channel_writer::write(accessor::record_ref rec) {
     auto& st = parent_->store().partition(index_);
     st.append(rec);
-    return true;
+    return executor::io::write_result::ok;
 }
 
 std::size_t result_store_channel_writer::index() const noexcept {

@@ -104,7 +104,7 @@ operation_status emit::operator()(emit_context &ctx) {
         ctx.abort();
         return operation_status_kind::aborted;
     }
-    if(! writer->write(target)) {
+    if(writer->write(target) == io::write_result::error) {
         // possibly writer error due to buffer overflow
         // TODO retrieve the exact reason from writer and construct error message based on it
         set_error_context(

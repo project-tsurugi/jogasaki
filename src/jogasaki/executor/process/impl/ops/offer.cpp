@@ -131,7 +131,7 @@ operation_status offer::operator()(offer_context& ctx) {
     if (! ctx.writer_) {
         ctx.writer_ = ctx.task_context().downstream_writer(writer_index_);
     }
-    if(! ctx.writer_->write(target)) {
+    if(ctx.writer_->write(target) == io::write_result::error) {
         set_error_context(
             *ctx.req_context(),
             error_code::sql_execution_exception,

@@ -55,7 +55,7 @@ public:
      * @return true if flushed
      * @return false otherwise
      */
-    bool write(accessor::record_ref rec) override;
+    executor::io::write_result write(accessor::record_ref rec) override;
 
     /**
      * @brief flush the writer

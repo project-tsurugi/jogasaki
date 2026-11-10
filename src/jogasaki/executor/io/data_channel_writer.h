@@ -70,7 +70,7 @@ public:
      * @return true if the write operation succeeded
      * @return false if the write operation failed (e.g., LOB reference tag generation failed)
      */
-    bool write(accessor::record_ref rec) override;
+    io::write_result write(accessor::record_ref rec) override;
 
     /**
      * @brief flush the buffer

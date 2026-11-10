@@ -26,9 +26,9 @@ namespace jogasaki::executor::process {
 
 using takatori::util::maybe_shared_ptr;
 
-bool result_store_writer::write(accessor::record_ref rec) {
+io::write_result result_store_writer::write(accessor::record_ref rec) {
     store_->append(rec);
-    return true;
+    return io::write_result::ok;
 }
 
 void result_store_writer::flush() {

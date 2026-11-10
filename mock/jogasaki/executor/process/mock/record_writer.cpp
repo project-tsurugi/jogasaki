@@ -44,7 +44,7 @@ basic_record_writer::basic_record_writer(
     records_.reserve(capacity);
 }
 
-bool basic_record_writer::write(accessor::record_ref rec) {
+io::write_result basic_record_writer::write(accessor::record_ref rec) {
     record_type r{rec, meta_, resource_.get()};
     if (capacity_ == npos || records_.size() < capacity_) {
         auto& x = records_.emplace_back(r);
@@ -55,7 +55,7 @@ bool basic_record_writer::write(accessor::record_ref rec) {
         ++pos_;
     }
     ++write_count_;
-    return true;
+    return io::write_result::ok;
 }
 
 void basic_record_writer::flush() {

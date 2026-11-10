@@ -79,7 +79,7 @@ public:
      * @brief write record and store internal storage as basic_record.
      * The record_meta passed to constructor is used to convert the input ref to basic_record.
      */
-    bool write(accessor::record_ref rec) override;
+    io::write_result write(accessor::record_ref rec) override;
 
     void flush() override;
 

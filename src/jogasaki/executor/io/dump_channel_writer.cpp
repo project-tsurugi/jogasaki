@@ -65,7 +65,7 @@ std::string dump_channel_writer::create_file_name(std::string_view prefix, dump_
         (cfg.file_format_ == dump_file_format_kind::arrow ? ".arrow" : ".parquet");
 }
 
-bool dump_channel_writer::write(accessor::record_ref rec) {
+io::write_result dump_channel_writer::write(accessor::record_ref rec) {
     if (! file_writer_) {
         auto fn = create_file_name(parent_->prefix(), cfg_);
         boost::filesystem::path p(std::string{parent_->directory()});
@@ -84,7 +84,7 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
         }
         if (! file_writer_) {
             VLOG_LP(log_error) << "dump file creation failed on path " << p.string();
-            return false;
+            return io::write_result::error;
         }
 
         constexpr static std::size_t max_row_groups_per_file = 16;
@@ -98,14 +98,14 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
         }
     }
     if(auto res = file_writer_->write(rec); ! res) {
-        return false;
+        return io::write_result::error;
     }
 
     if(max_recs_per_file_ != 0 && file_writer_->write_count() >= max_recs_per_file_) {
         // max records of file reached, close current and move to next file
         flush();
     }
-    return true;
+    return io::write_result::ok;
 }
 
 void dump_channel_writer::write_file_path(std::string_view path) {

@@ -41,7 +41,7 @@ public:
         std::shared_ptr<input_partition> partition
     );
 
-    bool write(accessor::record_ref rec) override;
+    io::write_result write(accessor::record_ref rec) override;
 
     void flush() override;
 

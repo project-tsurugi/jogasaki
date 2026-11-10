@@ -74,7 +74,7 @@ public:
     /**
      * @brief write query output record
      */
-    bool write(accessor::record_ref rec) override;
+    io::write_result write(accessor::record_ref rec) override;
 
     /**
      * @brief flush the buffer

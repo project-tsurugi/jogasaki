@@ -61,8 +61,8 @@ public:
     /**
      * @brief write output record
      */
-    bool write(accessor::record_ref) override {
-        return true;
+    io::write_result write(accessor::record_ref) override {
+        return io::write_result::ok;
     }
 
     /**

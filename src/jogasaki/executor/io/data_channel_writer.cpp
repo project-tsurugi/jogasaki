@@ -50,11 +50,11 @@ namespace jogasaki::executor::io {
 #define check_writer_rc(arg) \
     if(auto return_value = (arg); return_value != status::ok) { \
         log_exit; \
-        return false; \
+        return io::write_result::error; \
     }
 //NOLINTEND
 
-bool data_channel_writer::write(accessor::record_ref rec) {
+io::write_result data_channel_writer::write(accessor::record_ref rec) {
     log_entry << "this:" << this << " record_size:" << rec.size();
     auto n = meta_->field_count();
     check_writer_rc(value_writer_->write_row_begin(n));
@@ -112,7 +112,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                         lob.object_id()
                     );
                     if (! reference_tag) {
-                        return false;
+                        return io::write_result::error;
                     }
                     check_writer_rc(value_writer_->write_blob(
                         static_cast<std::uint64_t>(lob.provider()),
@@ -128,7 +128,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                         lob.object_id()
                     );
                     if (! reference_tag) {
-                        return false;
+                        return io::write_result::error;
                     }
                     check_writer_rc(value_writer_->write_clob(
                         static_cast<std::uint64_t>(lob.provider()),
@@ -148,7 +148,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
         writer_->commit();
     }
     log_exit << "this:" << this;
-    return true;
+    return io::write_result::ok;
 }
 
 void data_channel_writer::flush() {

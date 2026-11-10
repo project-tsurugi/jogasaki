@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -319,6 +319,55 @@ TEST_F(sql_like_escape_test, all_column) {
     accessor::text expected_text(res);
     EXPECT_EQ((create_nullable_record<kind::character>(expected_text)), result[0]);
     execute_statement("drop table t1");
+}
+
+TEST_F(sql_like_escape_test, wildcards_match_complete_utf8_characters) {
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO t VALUES (1)");
+    struct test_case {
+        std::string_view expression;
+        bool expected;
+    };
+    for (auto const& [expression, expected] : {
+             test_case{"'あ' LIKE '%__%'", false},
+             test_case{"'あ' LIKE '%__'", false},
+             test_case{"'あい' LIKE '%_'", true},
+             test_case{"'あい' LIKE '%い'", true},
+             test_case{"'aあ' LIKE '%あ'", true},
+             test_case{"CAST('a' AS CHAR(3)) LIKE 'a__'", true},
+             test_case{"'aあb' LIKE 'a_b'", true},
+             test_case{"'あい' LIKE '%_%_%'", true},
+             test_case{"'あ' LIKE '%%'", true},
+             test_case{"'😀' LIKE '_'", true},
+             test_case{"'😀' LIKE '__'", false},
+             test_case{"'' LIKE '%_'", false},
+             test_case{"'' LIKE '%'", true},
+             test_case{"'abc' LIKE '%bc'", true},
+             test_case{"'_あ' LIKE '字_あ' ESCAPE '字'", true},
+             test_case{"'%あ' LIKE '字%あ' ESCAPE '字'", true},
+             test_case{"'あ' LIKE '字_' ESCAPE '字'", false},
+             test_case{"'あ' LIKE '字%' ESCAPE '字'", false},
+         }) {
+        SCOPED_TRACE(expression);
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT " + std::string{expression} + " FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::boolean>(expected)), result[0]);
+    }
+}
+
+TEST_F(sql_like_escape_test, truncated_utf8_is_null) {
+    execute_statement("CREATE TABLE t (c0 VARCHAR)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character}};
+    auto ps = api::create_parameter_set();
+    ps->set_character("p0", "a\xE2\x82");
+    execute_statement("INSERT INTO t VALUES (:p0)", variables, *ps);
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c0 LIKE 'a%', 'abc' LIKE c0 FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::boolean, kind::boolean>(std::nullopt, std::nullopt)), result[0]);
 }
 
 TEST_F(sql_like_escape_test, invalid_utf8_input) {

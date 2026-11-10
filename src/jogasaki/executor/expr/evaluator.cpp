@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -773,150 +773,64 @@ static bool starts_with(std::string_view str, std::string_view prefix) {
     return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
 }
 
-[[nodiscard]] static bool match_literal_token(std::string_view input, std::size_t& input_index,
-    token const& tok, std::size_t& pattern_index, std::size_t& backtrack_input_index,
-    std::size_t& backtrack_pattern_index) {
-    if (starts_with(input.substr(input_index), tok.get_value())) {
-        input_index += tok.get_value().size();
-        ++pattern_index;
-        return true;
-    }
-    if (backtrack_pattern_index != std::string::npos) {
-        ++backtrack_input_index;
-        input_index   = backtrack_input_index;
-        pattern_index = backtrack_pattern_index + 1;
-        return true;
-    }
-    return false;
-}
-[[nodiscard]] static bool match_wildcard_one_token(std::string_view input, std::size_t& input_index,
-    std::size_t& pattern_index, std::size_t& backtrack_input_index,
-    std::size_t& backtrack_pattern_index) {
-    if (input_index < input.size()) {
-        std::size_t char_size = utils::get_byte(utils::detect_next_encoding(input, input_index));
-        if (input_index + char_size <= input.size()) {
-            input_index += char_size;
-            ++pattern_index;
-            return true;
-        }
+[[nodiscard]] static bool advance_like_character(std::string_view input, std::size_t& index) {
+    auto size = utils::get_byte(utils::detect_next_encoding(input, index));
+    if (size == 0) {
         return false;
     }
-    if (backtrack_pattern_index != std::string::npos) {
-        ++backtrack_input_index;
-        input_index   = backtrack_input_index;
-        pattern_index = backtrack_pattern_index + 1;
-        return true;
-    }
-    return false;
+    index += size;
+    return true;
 }
-static void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_index,
-    std::size_t& backtrack_pattern_index, std::size_t& backtrack_input_index) {
-    backtrack_pattern_index = pattern_index;
-    backtrack_input_index   = input_index;
-    ++pattern_index;
-}
+
 /**
- * @brief Match the input string with the given LIKE-style pattern.
- *
- * This function checks whether the given input string matches a pattern
- * expressed as a sequence of tokens.
- * The pattern can include:
- *
- *   - literal tokens: must match exactly.
- *   - wildcard_one (`_`): matches exactly one character (UTF-8 aware).
- *   - wildcard_any (`%`): matches zero or more characters (greedy).
- *
- * Matching is **greedy with backtracking**, meaning:
- *
- *   - When encountering a `wildcard_any` token (`%`), the algorithm
- *     initially assumes it matches zero characters (non-consuming match).
- *   - If later matching fails, the algorithm *backtracks* to this
- *     `wildcard_any` position and attempts to consume one more character,
- *     retrying the rest of the pattern.
- *   - This continues until a successful match is found or all possibilities
- *     are exhausted.
- *
- *   Example:
- *  - Input:   "abcde"
- *  - Pattern: "a%de"
- *
- *  a -> matches 'a' (literal)
- *       input_index += tok.value.size()(1)
- *       ++pattern_index(1)
- *  % -> (wildcard_any)
- *       backtrack_pattern_index = pattern_index(1);
- *       backtrack_input_index   = input_index(1);
- *       ++pattern_i(2);
- *  d -> not match  "bcde"
- *        ++backtrack_input_index(2);
- *        input_index   = backtrack_input_index(1)
- *        pattern_index = backtrack_pattern_index(1) + 1;
- *  d -> not match  "cde"
- *        ++backtrack_input_index(3);
- *        input_index   = backtrack_input_index(3)
- *        pattern_index = backtrack_pattern_index(1) + 1;
- *  d  -> match  "de"
- *        input_index += tok.value.size()(4);
- *        ++pattern_index(3);
- *  e  -> match  "e"
- *        input_index += tok.value.size()(5)
- *        ++pattern_index(4)
- *  input_index(5) == input.size(5) -> true
- *
- *
- * @param input   The UTF-8 encoded input string to be matched.
- * @param pattern A sequence of token objects representing the pattern.
- * @return true if the input matches the pattern; false otherwise.
+ * @brief Match a UTF-8 string against a tokenized LIKE pattern.
+ * @details Try the most recent '%' with zero characters first. On a mismatch,
+ * retry the suffix after extending that match by one complete character.
  */
 static bool match_like_pattern(std::string_view input, std::vector<token> const& pattern) {
     std::size_t pattern_index = 0;
-    std::size_t input_index   = 0;
-
+    std::size_t input_index = 0;
     std::size_t backtrack_pattern_index = std::string::npos;
-    std::size_t backtrack_input_index   = std::string::npos;
+    std::size_t backtrack_input_index = 0;
 
-    while (input_index <= input.size()) {
-        if (pattern_index < pattern.size()) {
-            token const& tok = pattern[pattern_index];
+    for (;;) {
+        if (pattern_index == pattern.size()) {
+            if (input_index == input.size()) {
+                return true;
+            }
+        } else {
+            auto const& tok = pattern[pattern_index];
             switch (tok.get_kind()) {
                 case token::kind::literal:
-                    if (!match_literal_token(input, input_index, tok, pattern_index,
-                            backtrack_input_index, backtrack_pattern_index)) {
-                        return false;
+                    if (starts_with(input.substr(input_index), tok.get_value())) {
+                        input_index += tok.get_value().size();
+                        ++pattern_index;
+                        continue;
                     }
                     break;
                 case token::kind::wildcard_one:
-                    if (!match_wildcard_one_token(input, input_index, pattern_index,
-                            backtrack_input_index, backtrack_pattern_index)) {
-                        return false;
+                    if (advance_like_character(input, input_index)) {
+                        ++pattern_index;
+                        continue;
                     }
                     break;
                 case token::kind::wildcard_any:
-                    match_wildcard_any_token(
-                        pattern_index, input_index, backtrack_pattern_index, backtrack_input_index);
-                    break;
-            }
-            // Digest all patterns
-        } else {
-            if (input_index == input.size()) { return true; }
-            // input 'a' and pattern '%' reaches here
-            if (backtrack_pattern_index != std::string::npos) {
-                ++backtrack_input_index;
-                input_index   = backtrack_input_index;
-                pattern_index = backtrack_pattern_index + 1;
-                // input 'abcde' and pattern 'abc' reaches here
-            } else {
-                // not match and no backtrace
-                return false;
+                    ++pattern_index;
+                    if (pattern_index == pattern.size()) {
+                        return true;
+                    }
+                    backtrack_pattern_index = pattern_index;
+                    backtrack_input_index = input_index;
+                    continue;
             }
         }
+        if (backtrack_pattern_index == std::string::npos ||
+            !advance_like_character(input, backtrack_input_index)) {
+            return false;
+        }
+        input_index = backtrack_input_index;
+        pattern_index = backtrack_pattern_index;
     }
-    // input 'abc' and pattern 'abc%%%' reaches here
-    while (pattern_index < pattern.size() &&
-           pattern[pattern_index].get_kind() == token::kind::wildcard_any) {
-        ++pattern_index;
-    }
-    return pattern_index == pattern.size();
 }
 
 any engine::operator()(takatori::scalar::match const& match) {

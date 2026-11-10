@@ -44,7 +44,8 @@ flow::flow(
 ) :
     info_(std::move(info)),
     context_(context),
-    owner_(owner)
+    owner_(owner),
+    write_count_(info_ && info_->limit().has_value() ? std::make_shared<std::atomic_size_t>(0) : nullptr)
 {}
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
@@ -54,17 +55,16 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
 
 void flow::setup_partitions(std::size_t partitions) {
     // additional sinks/sources for requested partitions
+    // setup_partitions() can be called more than once (e.g. for each upstream process), and the row count is shared
+    // by the sinks created by all the calls because it is for the whole input of this exchange
     std::vector<std::shared_ptr<input_partition>> shared_partitions{};
-    std::shared_ptr<std::atomic_size_t> write_count{
-        info_->limit().has_value() ? std::make_shared<std::atomic_size_t>(0) : nullptr
-    };
     shared_partitions.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         shared_partitions.emplace_back(std::make_shared<input_partition>(info_));
     }
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(
-            std::make_unique<forward::sink>(info_, context_, write_count, shared_partitions[i])
+            std::make_unique<forward::sink>(info_, context_, write_count_, shared_partitions[i])
         );
     }
     for(std::size_t i=0; i < partitions; ++i) {

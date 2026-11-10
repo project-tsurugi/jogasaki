@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <memory>
 #include <vector>
@@ -93,6 +94,9 @@ private:
     std::deque<std::unique_ptr<forward::source>> sources_{}; // use deque to avoid relocation
     request_context* context_{};
     step* owner_{};
+
+    // the number of records written to this exchange, shared by all sinks (nullptr if the row count is not limited)
+    std::shared_ptr<std::atomic_size_t> write_count_{};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

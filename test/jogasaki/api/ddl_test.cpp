@@ -55,6 +55,7 @@
 #include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
+#include <jogasaki/plan/compile_option.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
@@ -114,6 +115,38 @@ public:
 };
 
 using namespace std::string_view_literals;
+
+TEST_F(ddl_test, foreign_catalog_ddl_is_restricted) {
+    for (bool text_only_explain : {false, true}) {
+        SCOPED_TRACE(text_only_explain);
+        plan::compile_option option{};
+        option.explain_by_text_only(text_only_explain);
+        for (auto sql : {
+                 "CREATE FOREIGN CATALOG remote_catalog SERVER remote_server",
+                 "CREATE FOREIGN CATALOG IF NOT EXISTS remote_catalog SERVER IF EXISTS remote_server",
+                 "DROP FOREIGN CATALOG remote_catalog",
+                 "DROP FOREIGN CATALOG IF EXISTS remote_catalog",
+             }) {
+            SCOPED_TRACE(sql);
+            api::statement_handle prepared{};
+            std::unordered_map<std::string, api::field_type_kind> variables{};
+            std::shared_ptr<error::error_info> error{};
+            EXPECT_EQ(status::err_compiler_error,
+                get_impl(*db_).prepare(sql, variables, prepared, error, option));
+            ASSERT_TRUE(error);
+            EXPECT_EQ(error_code::unsupported_compiler_feature_exception, error->code());
+        }
+    }
+}
+
+TEST_F(ddl_test, catalog_and_server_remain_available_as_identifiers) {
+    execute_statement("CREATE TABLE catalog (server BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO catalog VALUES (1)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT server FROM catalog", result);
+    ASSERT_EQ(1U, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]);
+}
 
 TEST_F(ddl_test, simple_create_table) {
     execute_statement( "CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)");

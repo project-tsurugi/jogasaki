@@ -794,6 +794,12 @@ static status prepare(
         c_options.enable_disjunction_range_hinting() = cfg->enable_disjunction_range_hinting();
     }
 
+    // Reject foreign catalog DDL until runtime support is available, including text-only EXPLAIN.
+    c_options.restricted_features() += {
+        yugawara::restricted_feature::statement_create_foreign_catalog,
+        yugawara::restricted_feature::statement_drop_foreign_catalog,
+    };
+
     // restricted features - jogasaki does not implement yet
     if(! ctx.option().explain_by_text_only()) {
         c_options.restricted_features() += {

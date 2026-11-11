@@ -103,7 +103,7 @@ process_locations_result capture_process_locations(takatori::plan::graph_type co
         } catch (std::invalid_argument const& e) {
             return {{}, "unsupported remote type or literal in remote execution: " + std::string{e.what()}};
         }
-        entity.emplace(&process, process_location{std::move(server)});
+        entity.emplace(&process, process_location{std::move(server), id});
     }
     return {std::make_shared<process_locations const>(std::move(entity)), {}};
 }

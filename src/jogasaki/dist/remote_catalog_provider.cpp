@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <memory>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -43,6 +44,22 @@ remote_catalog_snapshot::definitions_type const& remote_catalog_snapshot::defini
 std::string const* remote_catalog_snapshot::remote_server(yugawara::storage::table const& table) const noexcept {
     auto it = locations_.find(&table);
     return it == locations_.end() ? nullptr : &it->second;
+}
+
+std::shared_ptr<yugawara::schema::catalog const>
+remote_catalog_snapshot::catalog_for(yugawara::storage::table const& table) const {
+    for (auto const& catalog : catalogs_) {
+        bool owns_table = false;
+        catalog->schema_provider().each([&](auto const& schema) {
+            if (table.owner().get() == std::addressof(schema->storage_provider())) {
+                owns_table = true;
+            }
+        });
+        if (owns_table) {
+            return catalog;
+        }
+    }
+    return {};
 }
 
 remote_declaration_identity const*

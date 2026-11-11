@@ -203,6 +203,13 @@ static void add_table_to_storage_list(
                 error_code::unsupported_compiler_feature_exception,
                 "Writing remote tables is not supported.", status::err_unsupported)));
         }
+        auto catalog = catalogs->catalog_for(table);
+        if (!catalog) {
+            throw_exception(plan_exception(create_error_info(
+                error_code::internal_exception,
+                "Remote table has no owning catalog.", status::err_invalid_state)));
+        }
+        container->add_remote_catalog_dependency(catalog);
         // Remote declarations have no physical storage entry on the coordinator.
         return;
     }

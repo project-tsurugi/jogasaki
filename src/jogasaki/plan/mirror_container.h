@@ -15,9 +15,11 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <takatori/plan/process.h>
 
@@ -148,6 +150,18 @@ public:
         return remote_catalogs_;
     }
 
+    // Keep only registrations actually used by this plan, independently of the full snapshot.
+    void add_remote_catalog_dependency(std::shared_ptr<yugawara::schema::catalog const> const& catalog) {
+        if (std::find(remote_catalog_dependencies_.begin(), remote_catalog_dependencies_.end(), catalog)
+            == remote_catalog_dependencies_.end()) {
+            remote_catalog_dependencies_.push_back(catalog);
+        }
+    }
+    [[nodiscard]] std::vector<std::shared_ptr<yugawara::schema::catalog const>> const&
+    remote_catalog_dependencies() const noexcept {
+        return remote_catalog_dependencies_;
+    }
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
@@ -157,6 +171,7 @@ private:
     bool has_write_operations_{};
     std::shared_ptr<dist::process_locations const> process_locations_{};
     std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
+    std::vector<std::shared_ptr<yugawara::schema::catalog const>> remote_catalog_dependencies_{};
 };
 
 } // namespace jogasaki::plan

@@ -53,6 +53,7 @@ fixture_path={self.root.parent / 'catalog.json' if self.coordinator and self.cat
 """
         if self.minimal_roles and not self.coordinator:
             client_config = ''
+        sql_settings = ''.join(f'{key}={value}\n' for key, value in getattr(self, 'sql_settings', {}).items())
         self.config.write_text(f'''[system]
 instance_id={identity}
 pid_directory={self.root / 'pid'}
@@ -61,7 +62,7 @@ thread_pool_size=2
 scan_default_parallel=1
 default_partitions=1
 enable_hybrid_scheduler=false
-[ipc_endpoint]
+{sql_settings}[ipc_endpoint]
 database_name={identity}
 threads=2
 datachannel_buffer_size=2

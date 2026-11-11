@@ -57,7 +57,7 @@ def healthy(node):
         with socket.socket() as channel:
             channel.settimeout(1)
             assert channel.connect_ex(('127.0.0.1', port)) == 0, (node.name, port)
-    actual = rows(node.sql('SELECT 1 AS READY'))
+    actual = rows(node.sql('SELECT 1 AS "READY"'))
     assert actual == [{'READY': 1}], actual
     return {'pid': node.process.pid, 'rows': actual,
             'listeners': listeners([node.sql_port, node.grpc_port])}

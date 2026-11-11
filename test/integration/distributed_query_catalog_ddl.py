@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Exercise formal foreign catalog DDL through SQL on two Bootstrap processes."""
 import argparse
+import configparser
 import getpass
 import json
 import re
 import socket
+import subprocess
 import tempfile
 import time
 import traceback
@@ -150,9 +152,73 @@ def main():
             sql('DROP FOREIGN CATALOG c1_e1')
         case('E1-06-fetch-failure-and-retry', fetch_failure)
 
+        def rollback():
+            sql('CREATE TABLE E1_ROLLBACK_PROBE(C0 BIGINT PRIMARY KEY)')
+
+            def transaction(name, ddl, value):
+                script = coordinator.root / f'{name}.sql'
+                script.write_text(f'BEGIN TRANSACTION;\n{ddl};\n'
+                                  f'INSERT INTO E1_ROLLBACK_PROBE VALUES ({value});\n'
+                                  f'SELECT C0 FROM E1_ROLLBACK_PROBE WHERE C0={value};\n'
+                                  'ROLLBACK;\n')
+                output = subprocess.run(
+                    [str(args.tgsql), '--no-auth', '--connection',
+                     f'tcp://127.0.0.1:{coordinator.sql_port}', '--transaction', 'manual',
+                     '--no-auto-commit', '--script', str(script)],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30, text=True)
+                (coordinator.root / f'{name}.log').write_text(output.stdout)
+                assert output.returncode == 0, output.stdout
+                assert not re.search(r'\bERROR\b|Exception', output.stdout), output.stdout
+                assert output.stdout.count('transaction started. option=') == 1, output.stdout
+                assert output.stdout.count('transaction rollback finished.') == 1, output.stdout
+                assert rows(output.stdout) == [{'C0': value}], output.stdout
+                result['sql'].append({'script': script.read_text(), 'output': output.stdout,
+                                      'transaction': 'OCC', 'completion': 'ROLLBACK'})
+                assert rows(coordinator.sql('SELECT C0 FROM E1_ROLLBACK_PROBE')) == []
+
+            transaction('create-rollback', 'CREATE FOREIGN CATALOG rb_e1 SERVER worker', 1)
+            sql('CREATE FOREIGN CATALOG rb_e1 SERVER worker',
+                error_name='TARGET_ALREADY_EXISTS_EXCEPTION')
+            transaction('drop-rollback', 'DROP FOREIGN CATALOG rb_e1', 2)
+            sql('DROP FOREIGN CATALOG rb_e1', 'SQL-02014')
+            sql('INSERT INTO E1_ROLLBACK_PROBE VALUES (3)')
+            assert rows(coordinator.sql('SELECT C0 FROM E1_ROLLBACK_PROBE')) == [{'C0': 3}]
+            sql('DROP TABLE E1_ROLLBACK_PROBE')
+        case('E1-08-rollback-independent-registration', rollback)
+
+        def identifier_setting(enabled):
+            stop(coordinator, result['stops'])
+            coordinator.sql_settings = {'lowercase_regular_identifiers': str(enabled).lower()}
+            start_node(coordinator)
+            healthy(coordinator)
+            ini = coordinator.config.read_text()
+            settings = configparser.ConfigParser(interpolation=None)
+            settings.read_string(ini)
+            assert settings.getboolean('sql', 'lowercase_regular_identifiers') is enabled
+            assert re.search(r'\(dev_lowercase_regular_identifiers\)\s+' + str(enabled).lower() + r'\b',
+                             coordinator.log_path.read_text()), coordinator.log_path
+            result['configurationChecks'].append({'node': coordinator.name,
+                'generation': coordinator.generation, 'lowercaseRegularIdentifiers': enabled})
+            if enabled:
+                sql('CREATE FOREIGN CATALOG MiXeD SERVER WORKER')
+                sql('DROP FOREIGN CATALOG "MiXeD"', 'SQL-02014')
+                sql('DROP FOREIGN CATALOG mixed')
+            else:
+                sql('CREATE FOREIGN CATALOG MiXeD SERVER WORKER', 'SQL-02014')
+                sql('CREATE FOREIGN CATALOG MiXeD SERVER worker')
+                sql('DROP FOREIGN CATALOG mixed', 'SQL-02014')
+                sql('DROP FOREIGN CATALOG "MiXeD"')
+            sql('CREATE FOREIGN CATALOG "Keep.Mixed" SERVER "worker"')
+            sql('DROP FOREIGN CATALOG "keep.mixed"', 'SQL-02014')
+            sql('DROP FOREIGN CATALOG "Keep.Mixed"')
+            sql('CREATE FOREIGN CATALOG quoted_server SERVER "WORKER"', 'SQL-02014')
+        case('E1-09-identifier-normalization-off', lambda: identifier_setting(False))
+        case('E1-10-identifier-normalization-on', lambda: identifier_setting(True))
+
         def disabled():
             stop(coordinator, result['stops'])
             coordinator.coordinator = False
+            coordinator.sql_settings = {}
             start_node(coordinator)
             healthy(coordinator)
             sql('CREATE FOREIGN CATALOG c1_e1 SERVER worker', 'SQL-03010')

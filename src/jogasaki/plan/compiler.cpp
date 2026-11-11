@@ -59,6 +59,8 @@
 #include <takatori/relation/write_kind.h>
 #include <takatori/statement/create_index.h>
 #include <takatori/statement/create_table.h>
+#include <takatori/statement/create_foreign_catalog.h>
+#include <takatori/statement/drop_foreign_catalog.h>
 #include <takatori/statement/drop_index.h>
 #include <takatori/statement/drop_table.h>
 #include <takatori/statement/execute.h>
@@ -109,6 +111,7 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/create_index.h>
 #include <jogasaki/executor/common/create_table.h>
+#include <jogasaki/executor/common/foreign_catalog_statement.h>
 #include <jogasaki/executor/common/drop_index.h>
 #include <jogasaki/executor/common/drop_table.h>
 #include <jogasaki/executor/common/empty.h>
@@ -444,6 +447,10 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::drop_index:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
+            break;
+        case statement::statement_kind::create_foreign_catalog: [[fallthrough]];
+        case statement::statement_kind::drop_foreign_catalog:
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::empty:
@@ -937,11 +944,13 @@ static status prepare(
         c_options.enable_disjunction_range_hinting() = cfg->enable_disjunction_range_hinting();
     }
 
-    // Reject foreign catalog DDL until runtime support is available, including text-only EXPLAIN.
-    c_options.restricted_features() += {
-        yugawara::restricted_feature::statement_create_foreign_catalog,
-        yugawara::restricted_feature::statement_drop_foreign_catalog,
-    };
+    // Foreign catalog DDL requires coordinator catalog management, including text-only EXPLAIN.
+    if (!cfg || !cfg->distributed_query_coordinator_enabled()) {
+        c_options.restricted_features() += {
+            yugawara::restricted_feature::statement_create_foreign_catalog,
+            yugawara::restricted_feature::statement_drop_foreign_catalog,
+        };
+    }
 
     // restricted features - jogasaki does not implement yet
     if(! ctx.option().explain_by_text_only()) {
@@ -1397,6 +1406,25 @@ static void create_mirror_for_ddl(
             ops = std::make_shared<executor::common::truncate_table>(node);
             break;
         }
+        case statement::statement_kind::create_foreign_catalog: {
+            auto const& node = unsafe_downcast<statement::create_foreign_catalog>(*statement);
+            dist::create_foreign_catalog_command command{
+                {node.catalog_name(), node.server_name()},
+                node.options().contains(statement::create_foreign_catalog_option_kind::if_catalog_not_exists),
+                node.options().contains(statement::create_foreign_catalog_option_kind::if_server_exists),
+            };
+            ops = std::make_shared<executor::common::create_foreign_catalog>(std::move(command));
+            break;
+        }
+        case statement::statement_kind::drop_foreign_catalog: {
+            auto const& node = unsafe_downcast<statement::drop_foreign_catalog>(*statement);
+            dist::drop_foreign_catalog_command command{
+                node.catalog_name(),
+                node.options().contains(statement::drop_foreign_catalog_option_kind::if_catalog_exists),
+            };
+            ops = std::make_shared<executor::common::drop_foreign_catalog>(std::move(command));
+            break;
+        }
         default:
             throw_exception(std::logic_error{""});
     }
@@ -1564,6 +1592,10 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::drop_index:
+            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::create_foreign_catalog: [[fallthrough]];
+        case statement_kind::drop_foreign_catalog:
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::empty:

@@ -27,8 +27,8 @@ namespace jogasaki::dist {
 
 /**
  * @brief engine-side input of CREATE FOREIGN CATALOG.
- * @details Stands in for takatori::statement::create_foreign_catalog, which the compiler does not provide yet.
- * The flags correspond to if_catalog_not_exists and if_server_exists of its feature set.
+ * @details Receives the names and options from takatori::statement::create_foreign_catalog.
+ * The flags correspond to if_catalog_not_exists and if_server_exists of its option set.
  */
 struct create_foreign_catalog_command {
     remote_catalog_reference reference{};
@@ -38,7 +38,7 @@ struct create_foreign_catalog_command {
 
 /**
  * @brief engine-side input of DROP FOREIGN CATALOG.
- * @details Stands in for takatori::statement::drop_foreign_catalog. The flag corresponds to if_catalog_exists.
+ * @details Receives the catalog name and options from takatori::statement::drop_foreign_catalog. The flag corresponds to if_catalog_exists.
  */
 struct drop_foreign_catalog_command {
     std::string catalog_name{};

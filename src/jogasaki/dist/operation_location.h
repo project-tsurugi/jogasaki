@@ -53,6 +53,7 @@ public:
 /** @brief Placement of one compiled process. An empty server means the coordinator. */
 struct process_location {
     std::string server{};
+    operation_locations::location_id_type id{operation_locations::local_location_id};
 };
 
 /**

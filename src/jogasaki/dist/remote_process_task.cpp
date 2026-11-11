@@ -105,14 +105,14 @@ public:
             transport.join();
         }
     }
-    void start(std::shared_ptr<grpc::Channel> channel, std::string payload, std::size_t job) {
+    void start(std::shared_ptr<grpc::Channel> channel, std::string payload, std::size_t job, std::string server) {
         if (auto limit = timeout()) {
             context.set_deadline(std::chrono::system_clock::now() + *limit);
         }
         static std::atomic_uint64_t sequence{};
         execution_id_ = std::to_string(job) + "-" + std::to_string(++sequence);
-        transport = std::thread{[this, channel = std::move(channel), payload = std::move(payload), job] {
-            receive(channel, payload, job);
+        transport = std::thread{[this, channel = std::move(channel), payload = std::move(payload), job, server = std::move(server)] {
+            receive(channel, payload, job, server);
         }};
     }
     bool ready() { return !results.empty() || done.load(std::memory_order_acquire); }
@@ -136,7 +136,13 @@ private:
     std::string execution_id_{};
     std::atomic_bool done{};
     std::thread transport{};
-    void receive(std::shared_ptr<grpc::Channel> const& channel, std::string const& payload, std::size_t job) {
+    void receive(std::shared_ptr<grpc::Channel> const& channel, std::string const& payload, std::size_t job,
+                 std::string const& server) {
+        auto started = std::chrono::steady_clock::now();
+        std::size_t request_bytes{};
+        std::size_t response_bytes{};
+        std::size_t response_count{};
+        std::size_t row_count{};
         try {
             wire::RemoteProcessRequest request{};
             if (!request.mutable_execution_block()->ParseFromString(payload)) {
@@ -148,18 +154,26 @@ private:
             metadata->set_coordinator_job_id(std::to_string(job));
             metadata->set_remote_execution_id(execution_id_);
             metadata->set_attempt_number(1);
-            if (auto bytes = request.ByteSizeLong(); bytes > std::size_t{64} * 1024U * 1024U) {
+            request_bytes = request.ByteSizeLong();
+            if (request_bytes > std::size_t{64} * 1024U * 1024U) {
                 failure_ = local_failure::request_size;
-                diagnostic_ = "serialized request bytes:" + std::to_string(bytes);
+                diagnostic_ = "serialized request bytes:" + std::to_string(request_bytes);
             } else {
                 auto stub = wire::DistributedQueryService::NewStub(channel);
+                LOG_LP(INFO) << "distributed query rpc:ExecuteRemoteProcess event:start"
+                             << " job_id:" << job << " execution_id:" << execution_id_
+                             << " server:" << server << " attempt:1 protocol_version:1.0"
+                             << " request_bytes:" << request_bytes;
                 auto reader = stub->ExecuteRemoteProcess(&context, request);
                 wire::RemoteProcessResult response{};
                 std::uint64_t expected{};
                 bool invalid{};
                 while (reader->Read(&response)) {
-                    if (response.sequence_number() != expected++ ||
-                        response.ByteSizeLong() > std::size_t{64} * 1024U * 1024U) {
+                    auto bytes = response.ByteSizeLong();
+                    ++response_count;
+                    response_bytes += bytes;
+                    row_count += static_cast<std::size_t>(response.record_list_size());
+                    if (response.sequence_number() != expected++ || bytes > std::size_t{64} * 1024U * 1024U) {
                         invalid = true;
                         context.TryCancel();
                         break;
@@ -185,6 +199,14 @@ private:
             context.TryCancel();
             failure_ = local_failure::exception;
         }
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started);
+        LOG_LP(INFO) << "distributed query rpc:ExecuteRemoteProcess event:finish"
+                     << " job_id:" << job << " execution_id:" << execution_id_
+                     << " server:" << server << " attempt:1 protocol_version:1.0"
+                     << " request_bytes:" << request_bytes << " response_bytes:" << response_bytes
+                     << " response_count:" << response_count << " row_count:" << row_count
+                     << " elapsed_us:" << elapsed.count()
+                     << " grpc_status:" << (has_rpc_status_ ? std::to_string(final_status.error_code()) : "none");
         done.store(true, std::memory_order_release);
     }
 };
@@ -233,7 +255,7 @@ public:
             }
             auto job = context()->job()->id();
             try {
-                state_->start(std::move(channel), std::move(payload_), job);
+                state_->start(std::move(channel), std::move(payload_), job, server_);
             } catch (std::exception const& e) {
                 return fail_local(status::err_resource_limit_reached, "REMOTE_TRANSPORT_START_FAILED",
                                   "[distributed-query] failed to start remote process transport", e.what());
@@ -365,8 +387,8 @@ private:
         if (writer_) {
             auto* writer = std::exchange(writer_, nullptr);
             auto report = [&](std::string_view reason) {
-                LOG_LP(INFO) << "distributed query server:" << server_
-                             << " internal_code:REMOTE_DOWNSTREAM_FAILED reason:" << reason;
+                LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+                             << " server:" << server_ << " internal_code:REMOTE_DOWNSTREAM_FAILED reason:" << reason;
                 if (auto existing = context()->error_info(); !existing || !*existing) {
                     error::set_error_info(*context(), create_error_info(error_code::sql_execution_exception,
                         "[distributed-query] remote downstream write failed", status::err_io_error));

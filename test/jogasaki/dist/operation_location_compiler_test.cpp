@@ -18,11 +18,13 @@
 #include <cstdlib>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 #include <takatori/plan/graph.h>
 #include <takatori/plan/process.h>
@@ -43,6 +45,8 @@
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>
 
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/dist/operation_location.h>
 #include <jogasaki/dist/remote_catalog_provider.h>
@@ -278,6 +282,29 @@ TEST_F(operation_location_compiler_test, all_local_locations_prepare_and_resolve
     // Resolving uses the copy; neither extraction nor lookup is repeated.
     EXPECT_EQ(1, observed->extractions);
     EXPECT_EQ(compiled_processes().size(), observed->queried.size());
+}
+
+TEST_F(operation_location_compiler_test, explain_reports_captured_process_locations) {
+    ctx_.operation_locations(extractor(std::make_shared<probe>(), {0}));
+    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM T0", ctx_)) << message();
+    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
+
+    api::impl::database database{};
+    api::impl::executable_statement executable{ctx_.executable_statement(), {}, {}};
+    std::ostringstream output{};
+    ASSERT_EQ(status::ok, database.explain(executable, output));
+    auto const json = nlohmann::json::parse(output.str());
+    auto const& steps = json.at("execution_plan");
+    std::size_t placed{};
+    for (auto const& step : steps) {
+        if (step.contains("location_id")) {
+            EXPECT_EQ(0U, step.at("location_id"));
+            EXPECT_EQ("local", step.at("location_name"));
+            ++placed;
+        }
+    }
+    EXPECT_GT(placed, 0U);
+    EXPECT_EQ(compiled_processes().size(), placed);
 }
 
 TEST_F(operation_location_compiler_test, remote_location_on_inline_emit_is_rejected_by_formal_branch) {

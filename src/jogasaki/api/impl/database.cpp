@@ -35,7 +35,9 @@
 #include <boost/exception/exception.hpp>
 #include <glog/logging.h>
 
+#include <takatori/plan/process.h>
 #include <takatori/serializer/json_printer.h>
+#include <takatori/serializer/object_acceptor.h>
 #include <takatori/serializer/object_scanner.h>
 #include <takatori/type/blob.h>
 #include <takatori/type/character.h>
@@ -1078,6 +1080,36 @@ static bool validate_explain_auth(
     return true;
 }
 
+namespace {
+
+class explain_location_scanner final : public yugawara::serializer::object_scanner {
+public:
+    explain_location_scanner(yugawara::serializer::object_scanner scanner, dist::process_locations const* locations)
+        : yugawara::serializer::object_scanner(std::move(scanner)), locations_(locations) {}
+
+protected:
+    void properties(takatori::plan::step const& step, takatori::serializer::object_acceptor& out) const override {
+        yugawara::serializer::object_scanner::properties(step, out);
+        if (locations_ == nullptr || step.kind() != takatori::plan::step_kind::process) {
+            return;
+        }
+        auto const& process = unsafe_downcast<takatori::plan::process>(step);
+        if (auto const* location = locations_->find(process)) {
+            out.property_begin("location_id");
+            out.unsigned_integer(location->id);
+            out.property_end();
+            out.property_begin("location_name");
+            out.string(location->server.empty() ? "local" : location->server);
+            out.property_end();
+        }
+    }
+
+private:
+    dist::process_locations const* locations_;
+};
+
+} // namespace
+
 status database::explain(
     api::executable_statement const& executable,
     std::ostream& out,
@@ -1094,10 +1126,10 @@ status database::explain(
         return status::err_illegal_operation;
     }
     auto r = unsafe_downcast<impl::executable_statement>(executable).body();
-    r->compiled_info().object_scanner()(
-        *r->statement(),
-        takatori::serializer::json_printer{ out }
-    );
+    auto const* locations = r->mirrors() ? r->mirrors()->process_locations().get() : nullptr;
+    explain_location_scanner scanner{r->compiled_info().object_scanner(), locations};
+    takatori::serializer::json_printer printer{out};
+    scanner(*r->statement(), printer);
     return status::ok;
 }
 

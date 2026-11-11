@@ -156,7 +156,7 @@ TEST_F(remote_catalog_sql_test, executable_rejects_execution_after_catalog_drop)
     ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", statement));
     auto manager = db_impl()->remote_catalogs_manager();
     ASSERT_TRUE(manager);
-    ASSERT_EQ(status::ok, manager->drop("worker_a"));
+    execute_statement("DROP FOREIGN CATALOG worker_a");
     EXPECT_FALSE(manager->find_catalog("worker_a"));
     expect_catalog_dropped(*statement);
     EXPECT_EQ(0, a_.calls);
@@ -170,7 +170,7 @@ TEST_F(remote_catalog_sql_test, prepared_statement_keeps_snapshot_but_rejects_ex
     std::weak_ptr<dist::remote_catalog_snapshot const> original = manager->snapshot();
     api::statement_handle prepared{};
     ASSERT_EQ(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", prepared));
-    ASSERT_EQ(status::ok, manager->drop("worker_a"));
+    execute_statement("DROP FOREIGN CATALOG worker_a");
     EXPECT_FALSE(manager->find_catalog("worker_a"));
     ASSERT_FALSE(original.expired());
     EXPECT_EQ(0, a_.calls);

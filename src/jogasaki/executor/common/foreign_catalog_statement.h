@@ -25,8 +25,7 @@ namespace jogasaki::executor::common {
 /**
  * @brief Runtime CREATE FOREIGN CATALOG statement.
  * @details Owns the command values and executes against the request's database-owned catalog manager.
- * @note The command is the engine input until the formal Takatori statement becomes available.
- * @todo Construct this statement from the formal CREATE IR in plan::create_mirror_for_ddl().
+ * @note Constructed from the Takatori CREATE statement in plan::create_mirror_for_ddl().
  */
 class create_foreign_catalog : public model::statement {
 public:
@@ -41,7 +40,7 @@ private:
 /**
  * @brief Runtime DROP FOREIGN CATALOG statement.
  * @details Owns the command values; errors are reported through request_context as with existing DDL.
- * @todo Construct this statement from the formal DROP IR in plan::create_mirror_for_ddl().
+ * @note Constructed from the Takatori DROP statement in plan::create_mirror_for_ddl().
  */
 class drop_foreign_catalog : public model::statement {
 public:

@@ -18,12 +18,26 @@
 #include <string>
 #include <utility>
 
+#include <tateyama/api/server/request.h>
+#include <tateyama/api/server/session_info.h>
+
 #include <jogasaki/dist/remote_catalog_command.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::executor::common {
+
+// Foreign catalog registration changes database-wide metadata, as CREATE TABLE does.
+static bool validate_catalog_auth(request_context& context) {
+    if (auto const& source = context.req_info().request_source();
+        source && source->session_info().user_type() != tateyama::api::server::user_type::administrator) {
+        set_error_context(context, error_code::permission_error,
+            "insufficient authorization for the requested operation", status::err_illegal_operation);
+        return false;
+    }
+    return true;
+}
 
 static bool report_catalog_result(request_context& context, status result, std::string const& diagnostic) {
     if (result == status::ok) {
@@ -50,6 +64,7 @@ model::statement_kind create_foreign_catalog::kind() const noexcept {
 }
 
 bool create_foreign_catalog::operator()(request_context& context) const {
+    if (!validate_catalog_auth(context)) return false;
     auto const& catalogs = context.remote_catalogs_manager();
     auto const* channels = context.remote_server_channels();
     if (!catalogs || !channels) {
@@ -74,6 +89,7 @@ model::statement_kind drop_foreign_catalog::kind() const noexcept {
 }
 
 bool drop_foreign_catalog::operator()(request_context& context) const {
+    if (!validate_catalog_auth(context)) return false;
     auto const& catalogs = context.remote_catalogs_manager();
     if (!catalogs) {
         return report_catalog_result(context, status::err_invalid_state,

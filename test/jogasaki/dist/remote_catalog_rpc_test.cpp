@@ -20,7 +20,9 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <sstream>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
@@ -50,6 +52,9 @@
 
 #include <jogasaki/api/api_test_base.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/executable_statement.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/utils/create_req_info.h>
 #include <jogasaki/dist/local_catalog_handler.h>
 #include <jogasaki/dist/remote_catalog_command.h>
 #include <jogasaki/dist/remote_catalog_decoder.h>
@@ -59,6 +64,7 @@
 #include <jogasaki/dist/rpc_remote_catalog_fetcher.h>
 #include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/plan/compile_option.h>
 #include <jogasaki/error_code.h>
 
 namespace jogasaki::testing {
@@ -260,6 +266,128 @@ protected:
             db_impl()->remote_server_channels(), diagnostic);
     }
 };
+
+TEST_F(remote_catalog_rpc_test, formal_sql_create_and_drop_use_catalog_rpc) {
+    db_impl()->config()->lowercase_regular_identifiers(true);
+    EXPECT_TRUE(manager()->entries()->empty());
+    execute_statement("CREATE FOREIGN CATALOG Remote SERVER WORKER");
+    auto catalog = manager()->find_catalog("remote");
+    ASSERT_TRUE(catalog);
+    EXPECT_FALSE(manager()->find_catalog("Remote"));
+    EXPECT_EQ(1, remote_.calls);
+    EXPECT_EQ(0, remote_.execution_calls);
+    auto schema = catalog->schema_provider().find("remote_schema");
+    ASSERT_TRUE(schema);
+    auto table = schema->storage_provider().find_table("T");
+    ASSERT_TRUE(table);
+    EXPECT_EQ(501U, manager()->snapshot()->remote_definition(*table)->remote_definition_id);
+    execute_statement("DROP FOREIGN CATALOG REMOTE");
+    EXPECT_TRUE(manager()->entries()->empty());
+    EXPECT_EQ(1, remote_.calls);
+    db_impl()->config()->lowercase_regular_identifiers(false);
+}
+
+TEST_F(remote_catalog_rpc_test, formal_sql_respects_disabled_identifier_normalization) {
+    db_impl()->config()->lowercase_regular_identifiers(false);
+    execute_statement("CREATE FOREIGN CATALOG Remote SERVER worker");
+    EXPECT_TRUE(manager()->find_catalog("Remote"));
+    EXPECT_FALSE(manager()->find_catalog("remote"));
+    execute_statement("DROP FOREIGN CATALOG Remote");
+    EXPECT_TRUE(manager()->entries()->empty());
+}
+
+TEST_F(remote_catalog_rpc_test, formal_sql_conditions_are_evaluated_at_execution) {
+    execute_statement("CREATE FOREIGN CATALOG IF NOT EXISTS remote SERVER worker");
+    execute_statement("CREATE FOREIGN CATALOG IF NOT EXISTS remote SERVER worker");
+    EXPECT_EQ(1, remote_.calls);
+    test_stmt_err("CREATE FOREIGN CATALOG remote SERVER worker", error_code::target_already_exists_exception);
+    execute_statement("CREATE FOREIGN CATALOG IF NOT EXISTS remote SERVER IF EXISTS missing");
+    execute_statement("CREATE FOREIGN CATALOG skipped SERVER IF EXISTS missing");
+    EXPECT_FALSE(manager()->find_catalog("skipped"));
+    EXPECT_EQ(1, remote_.calls);
+    test_stmt_err("CREATE FOREIGN CATALOG failed SERVER missing", error_code::target_not_found_exception);
+    EXPECT_FALSE(manager()->find_catalog("failed"));
+    api::statement_handle drop{};
+    ASSERT_EQ(status::ok, db_->prepare("DROP FOREIGN CATALOG IF EXISTS later", drop));
+    execute_statement("CREATE FOREIGN CATALOG later SERVER worker");
+    ASSERT_TRUE(manager()->find_catalog("later"));
+    execute_statement(drop);
+    EXPECT_FALSE(manager()->find_catalog("later"));
+    ASSERT_EQ(status::ok, db_->destroy_statement(drop));
+    execute_statement("DROP FOREIGN CATALOG IF EXISTS missing");
+    test_stmt_err("DROP FOREIGN CATALOG missing", error_code::target_not_found_exception);
+}
+
+TEST_F(remote_catalog_rpc_test, formal_sql_preserves_delimited_catalog_and_server_names) {
+    execute_statement("CREATE FOREIGN CATALOG \"Remote.Catalog\" SERVER \"worker\"");
+    ASSERT_TRUE(manager()->find_catalog("Remote.Catalog"));
+    EXPECT_FALSE(manager()->find_catalog("remote.catalog"));
+    execute_statement("DROP FOREIGN CATALOG \"Remote.Catalog\"");
+    EXPECT_TRUE(manager()->entries()->empty());
+    test_stmt_err("CREATE FOREIGN CATALOG other SERVER \"WORKER\"", error_code::target_not_found_exception);
+    EXPECT_FALSE(manager()->find_catalog("other"));
+    EXPECT_EQ(1, remote_.calls);
+}
+
+TEST_F(remote_catalog_rpc_test, formal_sql_rejects_qualified_names_and_drop_behaviors_during_compile) {
+    for (auto sql : {"CREATE FOREIGN CATALOG a.b SERVER worker", "CREATE FOREIGN CATALOG remote SERVER a.b",
+                     "DROP FOREIGN CATALOG a.b"}) {
+        SCOPED_TRACE(sql);
+        test_stmt_err(sql, error_code::unsupported_compiler_feature_exception);
+    }
+    for (auto sql : {"DROP FOREIGN CATALOG remote CASCADE", "DROP FOREIGN CATALOG remote RESTRICT"}) {
+        SCOPED_TRACE(sql);
+        test_stmt_err(sql, error_code::syntax_exception);
+    }
+    EXPECT_TRUE(manager()->entries()->empty());
+    EXPECT_EQ(0, remote_.calls);
+}
+
+TEST_F(remote_catalog_rpc_test, formal_sql_prepare_and_explain_have_no_registration_side_effect) {
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("CREATE FOREIGN CATALOG remote SERVER worker", prepared));
+    std::unique_ptr<api::executable_statement> statement{};
+    ASSERT_EQ(status::ok, db_->resolve(prepared, std::shared_ptr{api::create_parameter_set()}, statement));
+    EXPECT_TRUE(api::impl::get_impl(*statement).body()->is_ddl());
+    std::ostringstream explain{};
+    std::shared_ptr<error::error_info> error{};
+    EXPECT_EQ(status::ok, db_impl()->explain(*statement, explain, error, {}));
+    EXPECT_FALSE(explain.str().empty());
+    EXPECT_TRUE(manager()->entries()->empty());
+    EXPECT_EQ(0, remote_.calls);
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    plan::compile_option option{};
+    option.explain_by_text_only(true);
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    for (auto sql : {"CREATE FOREIGN CATALOG remote SERVER worker", "DROP FOREIGN CATALOG remote"}) {
+        ASSERT_EQ(status::ok, db_impl()->prepare(sql, variables, prepared, error, option));
+        ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    }
+    EXPECT_TRUE(manager()->entries()->empty());
+    EXPECT_EQ(0, remote_.calls);
+}
+
+TEST_F(remote_catalog_rpc_test, formal_sql_failed_fetch_does_not_publish_and_can_retry) {
+    remote_.failure = grpc::StatusCode::UNAVAILABLE;
+    test_stmt_err("CREATE FOREIGN CATALOG remote SERVER worker", error_code::sql_execution_exception);
+    EXPECT_TRUE(manager()->entries()->empty());
+    EXPECT_EQ(1, remote_.calls);
+    remote_.failure = grpc::StatusCode::OK;
+    execute_statement("CREATE FOREIGN CATALOG remote SERVER worker");
+    EXPECT_TRUE(manager()->find_catalog("remote"));
+    EXPECT_EQ(2, remote_.calls);
+}
+
+TEST_F(remote_catalog_rpc_test, formal_sql_requires_administrator_before_catalog_changes) {
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("CREATE FOREIGN CATALOG remote SERVER worker", info, error_code::permission_error);
+    EXPECT_TRUE(manager()->entries()->empty());
+    EXPECT_EQ(0, remote_.calls);
+    execute_statement("CREATE FOREIGN CATALOG remote SERVER worker");
+    auto original = manager()->find_catalog("remote");
+    test_stmt_err("DROP FOREIGN CATALOG remote", info, error_code::permission_error);
+    EXPECT_EQ(original, manager()->find_catalog("remote"));
+}
 
 TEST_F(remote_catalog_rpc_test, create_fetches_over_rpc_and_publishes_resolvable_catalog) {
     // Default product configuration starts empty; CREATE uses RPC without a catalog-source setting.

@@ -75,6 +75,9 @@ public:
     [[nodiscard]] locations_type const& locations() const noexcept;
     [[nodiscard]] definitions_type const& definitions() const noexcept;
     [[nodiscard]] std::string const* remote_server(yugawara::storage::table const& table) const noexcept;
+    /** @brief Finds the catalog owning a table declaration without looking up its name again. */
+    [[nodiscard]] std::shared_ptr<yugawara::schema::catalog const>
+    catalog_for(yugawara::storage::table const& table) const;
     [[nodiscard]] remote_declaration_identity const*
     remote_definition(yugawara::storage::table const& table) const noexcept;
     [[nodiscard]] remote_declaration_identity const*

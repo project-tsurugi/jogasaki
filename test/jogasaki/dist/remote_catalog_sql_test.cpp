@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 #include <atomic>
+#include <chrono>
+#include <future>
+#include <sstream>
 #include <filesystem>
 #include <fstream>
 #include <unistd.h>
@@ -26,18 +29,23 @@
 #include <jogasaki/api/api_test_base.h>
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/api/impl/executable_statement.h>
+#include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/record.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/result_set_iterator.h>
 #include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/dist/remote_catalog_provider.h>
+#include <jogasaki/data/result_store.h>
 #include <jogasaki/dist/remote_execution_block_decoder.h>
 #include <jogasaki/dist/remote_execution_result.h>
 #include <jogasaki/executor/common/foreign_catalog_statement.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/mirror_container.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/runner.h>
 
@@ -48,8 +56,17 @@ class catalog_worker : public wire::DistributedQueryService::Service {
 public:
     std::int64_t value{};
     std::atomic_int calls{};
+    std::promise<void> execution_started{};
+    std::shared_future<void> resume_execution{};
+
     grpc::Status ExecuteRemoteProcess(grpc::ServerContext*, wire::RemoteProcessRequest const* request, grpc::ServerWriter<wire::RemoteProcessResult>* writer) override {
         ++calls;
+        if (resume_execution.valid()) {
+            execution_started.set_value();
+            if (resume_execution.wait_for(std::chrono::seconds{10}) != std::future_status::ready) {
+                return {grpc::StatusCode::DEADLINE_EXCEEDED, "test did not resume execution"};
+            }
+        }
         dist::remote_execution_result result{};
         auto block = dist::decode_remote_execution_block(request->execution_block().SerializeAsString());
         if (!block) return {grpc::StatusCode::INVALID_ARGUMENT, block.error};
@@ -103,6 +120,21 @@ public:
         EXPECT_EQ(1, records.size());
         return records.empty() ? -1 : records[0].get_value<std::int64_t>(0);
     }
+    void expect_catalog_dropped(api::executable_statement& statement) {
+        auto tx = utils::create_transaction(*db_, true, false);
+        std::unique_ptr<api::result_set> results{};
+        std::shared_ptr<error::error_info> error{};
+        std::shared_ptr<request_statistics> statistics{};
+        EXPECT_EQ(status::err_not_found, executor::execute(*db_impl(), api::get_transaction_context(*tx),
+            statement, results, error, statistics, request_info{}));
+        ASSERT_TRUE(error);
+        EXPECT_EQ(error_code::target_not_found_exception, error->code());
+        EXPECT_EQ(status::err_not_found, error->status());
+        EXPECT_EQ("Foreign catalog \"worker_a\" has been dropped.", error->message());
+        std::ostringstream diagnostic{};
+        db_impl()->task_scheduler()->print_diagnostic(diagnostic);
+        EXPECT_NE(std::string::npos, diagnostic.str().find("job_count: 0"));
+    }
 protected:
     catalog_worker a_{}, b_{};
     std::unique_ptr<grpc::Server> server_a_{}, server_b_{};
@@ -119,32 +151,20 @@ TEST_F(remote_catalog_sql_test, request_factory_connects_catalog_ddl_to_database
     db_impl()->task_scheduler()->unregister_job(job_id);
 }
 
-TEST_F(remote_catalog_sql_test, executable_keeps_catalog_and_routing_after_drop) {
+TEST_F(remote_catalog_sql_test, executable_rejects_execution_after_catalog_drop) {
     std::unique_ptr<api::executable_statement> statement{};
     ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", statement));
     auto manager = db_impl()->remote_catalogs_manager();
     ASSERT_TRUE(manager);
     ASSERT_EQ(status::ok, manager->drop("worker_a"));
     EXPECT_FALSE(manager->find_catalog("worker_a"));
-    auto tx = utils::create_transaction(*db_, true, false);
-    std::unique_ptr<api::result_set> results{};
-    std::shared_ptr<error::error_info> error{};
-    std::shared_ptr<request_statistics> statistics{};
-    ASSERT_EQ(status::ok, executor::execute(*db_impl(), api::get_transaction_context(*tx),
-        *statement, results, error, statistics, request_info{}));
-    ASSERT_TRUE(results);
-    auto iterator = results->iterator();
-    ASSERT_TRUE(iterator->has_next());
-    EXPECT_EQ(101, iterator->next()->get_int8(0));
-    EXPECT_FALSE(iterator->has_next());
-    results->close();
-    ASSERT_EQ(status::ok, tx->commit());
-    EXPECT_EQ(1, a_.calls);
+    expect_catalog_dropped(*statement);
+    EXPECT_EQ(0, a_.calls);
     std::unique_ptr<api::executable_statement> later{};
     EXPECT_NE(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", later));
 }
 
-TEST_F(remote_catalog_sql_test, prepared_statement_resolves_with_original_snapshot_after_drop) {
+TEST_F(remote_catalog_sql_test, prepared_statement_keeps_snapshot_but_rejects_execution_after_drop) {
     auto manager = db_impl()->remote_catalogs_manager();
     ASSERT_TRUE(manager);
     std::weak_ptr<dist::remote_catalog_snapshot const> original = manager->snapshot();
@@ -182,12 +202,106 @@ TEST_F(remote_catalog_sql_test, prepared_statement_resolves_with_original_snapsh
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
     ASSERT_FALSE(original.expired());
 
+    expect_catalog_dropped(*statement);
+    EXPECT_EQ(0, a_.calls);
+    EXPECT_EQ(0, b_.calls);
+
+    api::statement_handle later{};
+    EXPECT_NE(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", later));
+}
+
+TEST_F(remote_catalog_sql_test, catalog_recreation_does_not_revalidate_old_prepared_statement) {
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", prepared));
+    auto manager = db_impl()->remote_catalogs_manager();
+    auto original = manager->find_catalog("worker_a");
+    ASSERT_EQ(status::ok, manager->drop("worker_a"));
+    ASSERT_EQ(status::ok, manager->create({"worker_a", "worker_a"}, db_impl()->remote_server_channels()));
+    EXPECT_NE(original, manager->find_catalog("worker_a"));
+    std::unique_ptr<api::executable_statement> statement{};
+    ASSERT_EQ(status::ok, db_->resolve(prepared, std::shared_ptr{api::create_parameter_set()}, statement));
+    expect_catalog_dropped(*statement);
+    EXPECT_EQ(0, a_.calls);
+    EXPECT_EQ(101, query("SELECT C0 FROM schema_a.T"));
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+}
+
+TEST_F(remote_catalog_sql_test, unrelated_catalog_drop_does_not_invalidate_remote_or_local_statement) {
+    execute_statement("CREATE TABLE LOCAL_T (C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO LOCAL_T VALUES (303)");
+    std::unique_ptr<api::executable_statement> remote{};
+    std::unique_ptr<api::executable_statement> local{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", remote));
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM LOCAL_T", local));
+    ASSERT_EQ(status::ok, db_impl()->remote_catalogs_manager()->drop("worker_b"));
+    for (auto* statement : {remote.get(), local.get()}) {
+        auto tx = utils::create_transaction(*db_, true, false);
+        std::unique_ptr<api::result_set> results{};
+        std::shared_ptr<error::error_info> error{};
+        std::shared_ptr<request_statistics> statistics{};
+        ASSERT_EQ(status::ok, executor::execute(*db_impl(), api::get_transaction_context(*tx),
+            *statement, results, error, statistics, request_info{}));
+        ASSERT_TRUE(results);
+        auto iterator = results->iterator();
+        ASSERT_TRUE(iterator->has_next());
+        EXPECT_EQ(statement == remote.get() ? 101 : 303, iterator->next()->get_int8(0));
+        EXPECT_FALSE(iterator->has_next());
+        results->close();
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    EXPECT_EQ(1, a_.calls);
+    EXPECT_EQ(0, b_.calls);
+}
+
+TEST_F(remote_catalog_sql_test, drop_between_execution_admission_and_rpc_does_not_cancel_execution) {
+    std::unique_ptr<api::executable_statement> statement{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", statement));
+    auto tx = utils::create_transaction(*db_, true, false);
+    auto store = std::make_unique<data::result_store>();
+    auto channel = std::make_shared<api::impl::result_store_channel>(
+        takatori::util::maybe_shared_ptr{store.get()});
+    scheduler::serial_task_scheduler scheduler{};
+    auto context = api::impl::create_request_context(*db_impl(), api::get_transaction_context(*tx),
+        channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        request_info{}, true, nullptr, &scheduler);
+    std::size_t completions{};
+    ASSERT_TRUE(executor::execute_async_on_context(*db_impl(), context,
+        takatori::util::maybe_shared_ptr{statement.get()},
+        [&](status result, std::shared_ptr<error::error_info>, std::shared_ptr<request_statistics>) {
+            EXPECT_EQ(status::ok, result);
+            ++completions;
+        }, false));
+    EXPECT_EQ(0, a_.calls);
+    EXPECT_EQ(0U, completions);
+    ASSERT_EQ(status::ok, db_impl()->remote_catalogs_manager()->drop("worker_a"));
+    scheduler.wait_for_progress(context->job()->id());
+    EXPECT_EQ(1, a_.calls);
+    EXPECT_EQ(1U, completions);
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(remote_catalog_sql_test, accepted_execution_survives_drop_but_reexecution_is_rejected) {
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", prepared));
+    std::unique_ptr<api::executable_statement> statement{};
+    ASSERT_EQ(status::ok, db_->resolve(prepared, std::shared_ptr{api::create_parameter_set()}, statement));
+    std::promise<void> resume{};
+    a_.resume_execution = resume.get_future().share();
+    auto started = a_.execution_started.get_future();
     auto tx = utils::create_transaction(*db_, true, false);
     std::unique_ptr<api::result_set> results{};
     std::shared_ptr<error::error_info> error{};
     std::shared_ptr<request_statistics> statistics{};
-    ASSERT_EQ(status::ok, executor::execute(*db_impl(), api::get_transaction_context(*tx),
-        *statement, results, error, statistics, request_info{}));
+    auto completion = std::async(std::launch::async, [&] {
+        return executor::execute(*db_impl(), api::get_transaction_context(*tx),
+            *statement, results, error, statistics, request_info{});
+    });
+    ASSERT_EQ(std::future_status::ready, started.wait_for(std::chrono::seconds{10}));
+    auto manager = db_impl()->remote_catalogs_manager();
+    ASSERT_EQ(status::ok, manager->drop("worker_a"));
+    EXPECT_FALSE(manager->find_catalog("worker_a"));
+    resume.set_value();
+    ASSERT_EQ(status::ok, completion.get());
     ASSERT_TRUE(results);
     auto iterator = results->iterator();
     ASSERT_TRUE(iterator->has_next());
@@ -196,17 +310,20 @@ TEST_F(remote_catalog_sql_test, prepared_statement_resolves_with_original_snapsh
     results->close();
     ASSERT_EQ(status::ok, tx->commit());
     EXPECT_EQ(1, a_.calls);
-    EXPECT_EQ(0, b_.calls);
 
-    api::statement_handle later{};
-    EXPECT_NE(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", later));
+    std::unique_ptr<api::executable_statement> repeated{};
+    ASSERT_EQ(status::ok, db_->resolve(prepared, std::shared_ptr{api::create_parameter_set()}, repeated));
+    expect_catalog_dropped(*repeated);
+    EXPECT_EQ(1, a_.calls);
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
 TEST_F(remote_catalog_sql_test, occ_remote_failure_completes_graph) {
     auto tx = utils::create_transaction(*db_);
     status result{};
     builder().text("SELECT C0 FROM schema_a.T").tx(*tx).expect_error(true).st(result).run();
-    EXPECT_EQ(status::err_unsupported, result);
+    // Non-RTX execution uses the existing restricted-operation error classification.
+    EXPECT_EQ(status::err_illegal_operation, result);
     EXPECT_EQ(0, a_.calls);
 }
 TEST_F(remote_catalog_sql_test, host_variables_are_rejected_before_rpc) {

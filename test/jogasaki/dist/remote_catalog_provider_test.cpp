@@ -218,6 +218,54 @@ TEST_F(remote_catalog_provider_test, fixture_preserves_explicit_zero_and_missing
     }
 }
 
+TEST_F(remote_catalog_provider_test, rejects_tableless_fixture_catalogs_without_partial_publication) {
+    if (!distributed_query_fixtures_available()) { GTEST_SKIP(); }
+    std::vector<json> invalid{};
+    auto candidate = fixture;
+    candidate["catalogs"][0]["schemas"] = json::array();
+    invalid.emplace_back(candidate);
+    candidate = fixture;
+    candidate["catalogs"][0]["schemas"][0]["tables"] = json::array();
+    invalid.emplace_back(candidate);
+    auto empty_catalog = candidate["catalogs"][0];
+    empty_catalog["name"] = "empty_catalog";
+    candidate = fixture;
+    candidate["catalogs"].push_back(empty_catalog);
+    invalid.emplace_back(candidate);
+    for (auto const& entry : invalid) {
+        SCOPED_TRACE(entry.dump());
+        fixture = entry;
+        result = std::make_shared<remote_catalog_snapshot>();
+        EXPECT_EQ(status::err_invalid_argument, load());
+        EXPECT_FALSE(result);
+        EXPECT_NE(std::string::npos, diagnostic.find("fixture catalog has no tables"));
+    }
+}
+
+TEST_F(remote_catalog_provider_test, accepts_empty_schema_when_catalog_has_a_table) {
+    if (!distributed_query_fixtures_available()) { GTEST_SKIP(); }
+    auto empty_schema = fixture["catalogs"][0]["schemas"][0];
+    empty_schema["name"] = "empty_schema";
+    empty_schema["tables"] = json::array();
+    fixture["catalogs"][0]["schemas"].push_back(empty_schema);
+    ASSERT_EQ(status::ok, load()) << diagnostic;
+    ASSERT_TRUE(result);
+    ASSERT_EQ(1U, result->catalogs().size());
+    auto const& schemas = result->catalogs().front()->schema_provider();
+    EXPECT_TRUE(schemas.find("empty_schema"));
+    auto populated = schemas.find("public");
+    ASSERT_TRUE(populated);
+    EXPECT_TRUE(populated->storage_provider().find_table("t"));
+}
+
+TEST_F(remote_catalog_provider_test, accepts_fixture_without_catalogs) {
+    if (!distributed_query_fixtures_available()) { GTEST_SKIP(); }
+    fixture["catalogs"] = json::array();
+    ASSERT_EQ(status::ok, load()) << diagnostic;
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->catalogs().empty());
+}
+
 TEST_F(remote_catalog_provider_test, rejects_invalid_metadata_atomically) {
     if (!distributed_query_fixtures_available()) { GTEST_SKIP(); }
     auto original = fixture;

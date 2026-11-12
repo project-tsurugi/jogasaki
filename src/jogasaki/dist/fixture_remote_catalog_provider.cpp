@@ -203,9 +203,15 @@ static std::shared_ptr<yugawara::schema::catalog> fixture_catalog(json const& en
     if (!entry.at("schemas").is_array()) {
         throw std::invalid_argument("schemas must be an array");
     }
+    bool has_tables{};
     for (auto const& schema : entry.at("schemas")) {
         unique(schema_names, name_of(schema, "name"));
         schemas->add(fixture_schema(schema, locations, definitions, server));
+        has_tables = has_tables || !schema.at("tables").empty();
+    }
+    // The development snapshot fetcher infers the catalog server from its tables.
+    if (!has_tables) {
+        throw std::invalid_argument("fixture catalog has no tables: " + name);
     }
     return std::make_shared<yugawara::schema::catalog>(name, std::nullopt, schemas);
 }

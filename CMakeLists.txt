@@ -103,6 +103,7 @@ find_package(fmt REQUIRED)
 find_package(altimeter REQUIRED)
 endif()
 find_package(gRPC REQUIRED)
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 # to suppress not-found warnings
 set(re2Alt_FIND_QUIETLY TRUE)

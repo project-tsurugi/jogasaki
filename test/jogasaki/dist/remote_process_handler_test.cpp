@@ -952,6 +952,103 @@ TEST_F(remote_process_handler_test, evaluates_and_returns_all_output_types) {
         EXPECT_EQ(*sample.value, *actual) << *sample.type;
     }
 }
+TEST_F(remote_process_handler_test, rejects_literals_outside_declared_length_and_precision) {
+    namespace t = takatori::type;
+    namespace v = takatori::value;
+    struct sample { std::shared_ptr<t::data const> type; std::unique_ptr<v::data> value; };
+    std::vector<sample> samples{};
+    samples.push_back({std::make_shared<t::character>(t::varying, 3), std::make_unique<v::character>("abcdef")});
+    samples.push_back({std::make_shared<t::character>(t::varying, 3), std::make_unique<v::character>("あa")});
+    samples.push_back({std::make_shared<t::octet>(t::varying, 3), std::make_unique<v::octet>("abcd")});
+    samples.push_back({std::make_shared<t::decimal>(3, 1), std::make_unique<v::decimal>("123.4")});
+    samples.push_back({std::make_shared<t::decimal>(3, 1), std::make_unique<v::decimal>("1.23")});
+    samples.push_back({std::make_shared<t::decimal>(1, std::nullopt), std::make_unique<v::decimal>("1E3")});
+    samples.push_back({std::make_shared<t::decimal>(1, std::nullopt), std::make_unique<v::decimal>("0.001")});
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10)");
+    dist::remote_process_handler handler{*db_};
+    for (auto const& sample : samples) {
+        SCOPED_TRACE(::testing::Message{} << *sample.type << ": " << *sample.value);
+        auto block = scan_block();
+        block.values = {0, 1};
+        block.stream_variables = {0, 1};
+        block.result_value_id = 1;
+        block.result_schema[0].type_payload = dist::encode_remote_type(*sample.type);
+        block.scalar_expressions = {{0, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions[0].type_payload = dist::encode_remote_type(*sample.type);
+        block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(*sample.value);
+        dist::remote_operator project{};
+        project.operator_id = 1;
+        project.kind = dist::remote_operator_kind::project;
+        project.input_value_id = 0;
+        project.output_value_id = 1;
+        project.project_columns = {{1, 0}};
+        auto offer = block.operators.back();
+        offer.operator_id = 2;
+        offer.input_value_id = 1;
+        offer.offer->columns[0].source_variable_id = 1;
+        block.operators = {block.operators.front(), project, offer};
+        auto before = db_impl()->transaction_count();
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(response.success);
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
+}
+TEST_F(remote_process_handler_test, accepts_literal_boundaries_nulls_and_exact_decimal_values) {
+    namespace t = takatori::type;
+    namespace v = takatori::value;
+    struct sample { std::shared_ptr<t::data const> type; std::unique_ptr<v::data> value; };
+    std::vector<sample> samples{};
+    samples.push_back({std::make_shared<t::character>(t::varying, 3), std::make_unique<v::character>("あ")});
+    samples.push_back({std::make_shared<t::character>(3), std::make_unique<v::character>("a")});
+    samples.push_back({std::make_shared<t::octet>(t::varying, 3), std::make_unique<v::octet>(std::string{"a\0b", 3})});
+    samples.push_back({std::make_shared<t::character>(t::varying), std::make_unique<v::character>("abcdef")});
+    samples.push_back({std::make_shared<t::decimal>(3, 1), std::make_unique<v::decimal>("99.9")});
+    samples.push_back({std::make_shared<t::decimal>(3, 1), std::make_unique<v::decimal>("-99.9")});
+    samples.push_back({std::make_shared<t::decimal>(3, 1), std::make_unique<v::decimal>("1.10")});
+    samples.push_back({std::make_shared<t::decimal>(3, 1), std::make_unique<v::decimal>("0.000")});
+    samples.push_back({std::make_shared<t::decimal>(3, 3), std::make_unique<v::decimal>("0.001")});
+    samples.push_back({std::make_shared<t::decimal>(), std::make_unique<v::decimal>("123.456")});
+    samples.push_back({std::make_shared<t::decimal>(3, std::nullopt), std::make_unique<v::decimal>("1.10")});
+    samples.push_back({std::make_shared<t::decimal>(38, 0), std::make_unique<v::decimal>("99999999999999999999999999999999999999")});
+    samples.push_back({std::make_shared<t::character>(t::varying, 3), std::make_unique<v::unknown>(v::unknown_kind::null)});
+    samples.push_back({std::make_shared<t::decimal>(3, 1), std::make_unique<v::unknown>(v::unknown_kind::null)});
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10)");
+    dist::remote_process_handler handler{*db_};
+    for (auto const& sample : samples) {
+        SCOPED_TRACE(::testing::Message{} << *sample.type << ": " << *sample.value);
+        auto block = scan_block();
+        block.values = {0, 1};
+        block.stream_variables = {0, 1};
+        block.result_value_id = 1;
+        block.result_schema[0].type_payload = dist::encode_remote_type(*sample.type);
+        block.result_schema[0].nullable = true;
+        block.scalar_expressions = {{0, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions[0].type_payload = dist::encode_remote_type(*sample.type);
+        block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(*sample.value);
+        dist::remote_operator project{};
+        project.operator_id = 1;
+        project.kind = dist::remote_operator_kind::project;
+        project.input_value_id = 0;
+        project.output_value_id = 1;
+        project.project_columns = {{1, 0}};
+        auto offer = block.operators.back();
+        offer.operator_id = 2;
+        offer.input_value_id = 1;
+        offer.offer->columns[0].source_variable_id = 1;
+        block.operators = {block.operators.front(), project, offer};
+        auto before = db_impl()->transaction_count();
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        ASSERT_TRUE(response.success) << response.error;
+        std::string diagnostic{};
+        auto result = dist::deserialize_remote_execution_result(response.payload, diagnostic);
+        ASSERT_TRUE(result) << diagnostic;
+        EXPECT_EQ(1U, result->encoded_rows.size());
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
+}
 TEST_F(remote_process_handler_test, returns_native_sql_error_details) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10)");

@@ -39,6 +39,8 @@ bool validate_any_type(data::any a, meta::field_type const& f) {
         case k::decimal: return a.type_index() == data::any::index<runtime_t<k::decimal>>;
         case k::character: return a.type_index() == data::any::index<runtime_t<k::character>>;
         case k::octet: return a.type_index() == data::any::index<runtime_t<k::octet>>;
+        case k::bit: return a.type_index() == data::any::index<runtime_t<k::bit>>;
+        case k::time_interval: return a.type_index() == data::any::index<runtime_t<k::time_interval>>;
         case k::date: return a.type_index() == data::any::index<runtime_t<k::date>>;
         case k::time_of_day: return a.type_index() == data::any::index<runtime_t<k::time_of_day>>;
         case k::time_point: return a.type_index() == data::any::index<runtime_t<k::time_point>>;

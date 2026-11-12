@@ -19,11 +19,13 @@
 #include <type_traits>
 
 #include <takatori/datetime/date.h>
+#include <takatori/datetime/datetime_interval.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 
 #include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/bit.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/lob/blob_locator.h>
 #include <jogasaki/lob/blob_reference.h>
@@ -124,6 +126,11 @@ struct field_type_traits<field_type_kind::undefined> {
     static constexpr std::size_t size = 0;
     static constexpr std::size_t alignment = 1;
 };
+
+template <>
+struct field_type_traits<field_type_kind::bit> : simple_field_type_traits<accessor::bit> {};
+template <>
+struct field_type_traits<field_type_kind::time_interval> : simple_field_type_traits<takatori::datetime::datetime_interval> {};
 
 //TODO add specialization for other types
 

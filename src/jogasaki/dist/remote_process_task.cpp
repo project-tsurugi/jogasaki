@@ -45,6 +45,7 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/common/task_completion.h>
 #include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/io/write_result.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
@@ -307,7 +308,8 @@ private:
                 return fail_local(status::err_io_error, "REMOTE_DOWNSTREAM_FAILED",
                                   "[distributed-query] remote downstream writer unavailable");
             }
-            if (!writer_->write(record.ref())) {
+            // A satisfied writer accepted the row. Drain the RPC to observe its final status.
+            if (writer_->write(record.ref()) == executor::io::write_result::error) {
                 return fail_local(status::err_io_error, "REMOTE_DOWNSTREAM_FAILED",
                                   "[distributed-query] remote downstream write failed");
             }

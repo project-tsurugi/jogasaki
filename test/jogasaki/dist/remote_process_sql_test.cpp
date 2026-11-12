@@ -335,6 +335,34 @@ TEST_F(remote_process_sql_test, streaming_worker_results_reach_existing_downstre
     EXPECT_EQ(1, service_.calls.load());
 }
 
+TEST_F(remote_process_sql_test, downstream_satisfied_write_preserves_remote_success) {
+    db_impl()->config()->enable_early_stop(true);
+    std::vector<mock::basic_record> rows{};
+    query("SELECT C0 FROM worker_schema.T LIMIT 1", rows);
+    ASSERT_EQ(1U, rows.size());
+    auto value = rows[0].get_value<std::int64_t>(0);
+    EXPECT_TRUE(value == 10 || value == 20);
+    EXPECT_EQ(1, service_.calls.load());
+}
+
+TEST_F(remote_process_sql_test, downstream_satisfied_write_does_not_hide_final_rpc_failure) {
+    db_impl()->config()->enable_early_stop(true);
+    service_.raw = [this](std::string_view payload, auto* writer) {
+        auto result = dist::remote_process_handler{*db_}(payload);
+        if (!result.success) return grpc::Status{grpc::StatusCode::INTERNAL, result.error};
+        (void) write_message(writer, 0, result.payload);
+        return grpc::Status{grpc::StatusCode::INTERNAL, "worker failed after limited result"};
+    };
+    auto tx = utils::create_transaction(*db_, true, false);
+    status st{};
+    std::shared_ptr<error::error_info> info{};
+    builder().text("SELECT C0 FROM worker_schema.T LIMIT 1").tx(*tx).expect_error(true).st(st).error(info).run();
+    EXPECT_EQ(status::err_unknown, st);
+    ASSERT_TRUE(info);
+    EXPECT_EQ(error_code::internal_exception, info->code());
+    EXPECT_EQ(1, service_.calls.load());
+}
+
 TEST_F(remote_process_sql_test, multiple_result_messages_preserve_rows_and_contiguous_sequence) {
     service_.stream_handler = [this](std::string_view payload, auto const&, auto const& sink) {
         auto result = dist::remote_process_handler{*db_}(payload);

@@ -23,14 +23,14 @@
 #include <functional>
 #include <ios>
 #include <memory>
+#include <mutex>
 #include <ratio>
 #include <regex>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 #include <xmmintrin.h>
-#include <tbb/concurrent_hash_map.h>
-#include <tbb/concurrent_queue.h>
 
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/database_info.h>
@@ -55,9 +55,14 @@ inline void reset_ss(std::stringstream& ss) {
     ss.clear();
 }
 
+// buffers are held by standard containers (not TBB ones) so that LeakSanitizer can trace them.
+// TBB containers allocate their internal memory from tbbmalloc, which LeakSanitizer does not scan,
+// and the buffers held by the global buffer_manager are reported as leaks if the leak check runs
+// before its destruction (e.g. clang build)
 class buffer_manager {
-    tbb::concurrent_hash_map<std::stringstream*, std::shared_ptr<std::stringstream>> entity_{};
-    tbb::concurrent_queue<std::stringstream*> queue_{};
+    std::unordered_map<std::stringstream*, std::shared_ptr<std::stringstream>> entity_{};
+    std::vector<std::stringstream*> free_list_{};
+    std::mutex mutex_{};  // protect entity_ and free_list_
 
 public:
     buffer_manager() = default;

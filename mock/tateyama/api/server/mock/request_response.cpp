@@ -229,31 +229,34 @@ std::string_view test_writer::view() const noexcept {
 }
 
 bool buffer_manager::acquire(std::stringstream*& bufp) {
-    std::stringstream* popped{};
-    if (queue_.try_pop(popped)) {
-        bufp = popped;
-        return true;
+    {
+        std::lock_guard<std::mutex> lk{mutex_};
+        if (! free_list_.empty()) {
+            bufp = free_list_.back();
+            free_list_.pop_back();
+            return true;
+        }
     }
     auto ss = std::make_shared<std::stringstream>(std::string(1024*1024, '\0'));
-    bufp = ss.get();
+    auto* p = ss.get();
     {
-        decltype(entity_)::accessor acc{};
-        if (! entity_.insert(acc, std::pair{bufp, std::move(ss)})) { //NOLINT
+        std::lock_guard<std::mutex> lk{mutex_};
+        if (! entity_.emplace(p, std::move(ss)).second) {
             std::abort();
         }
     }
+    bufp = p;
     return true;
 }
 
 bool buffer_manager::release(std::stringstream* bufp) {
     reset_ss(*bufp);
     {
-        decltype(entity_)::accessor acc{};
-        if (entity_.find(acc, bufp)) {
-            queue_.push(bufp);
-        } else {
+        std::lock_guard<std::mutex> lk{mutex_};
+        if (entity_.count(bufp) == 0) {
             std::abort();
         }
+        free_list_.emplace_back(bufp);
     }
     return true;
 }

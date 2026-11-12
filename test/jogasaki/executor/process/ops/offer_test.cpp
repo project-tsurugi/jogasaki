@@ -175,6 +175,13 @@ TEST_F(offer_test, simple) {
         },
         boost::dynamic_bitset<std::uint64_t>{3}.flip()
     );
+    auto incomplete = offer_columns;
+    incomplete.pop_back();
+    EXPECT_ANY_THROW((offer{0, p_info, 0, order, meta, incomplete, 0}));
+    auto duplicate = offer_columns;
+    duplicate.back() = duplicate.front();
+    EXPECT_ANY_THROW((offer{0, p_info, 0, order, meta, duplicate, 0}));
+
     offer s{
         0,
         p_info, 0,

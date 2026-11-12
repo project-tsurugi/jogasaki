@@ -26,10 +26,25 @@
 #include <vector>
 #include <gtest/gtest.h>
 
+#include <takatori/type/primitive.h>
+#include <takatori/type/table.h>
+#include <takatori/util/sequence_view.h>
+#include <yugawara/function/configurable_provider.h>
+#include <yugawara/function/declaration.h>
+
 #include <jogasaki/configuration.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/data/any_sequence.h>
+#include <jogasaki/data/any_sequence_stream.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/executor/function/table_valued_function_info.h>
+#include <jogasaki/executor/function/table_valued_function_kind.h>
+#include <jogasaki/executor/function/table_valued_function_repository.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/scan_impl_kind.h>
+#include <jogasaki/test_utils/mock_any_sequence_stream.h>
 #include <jogasaki/utils/create_tx.h>
 
 #include "api_test_base.h"
@@ -43,6 +58,41 @@ using namespace std::string_view_literals;
 using namespace std::string_literals;
 
 using kind = meta::field_type_kind;
+
+namespace {
+
+constexpr std::size_t tvf_id_tn_f = 12100;
+
+/**
+ * @brief mock table-valued function `tn_f(x INT) -> TABLE(c1 INT)` for APPLY
+ * @details returns 2 rows (x * 10, x * 10 + 1) if x % 3 = 0, no rows if x % 3 = 1, and 1 row (x * 10) if x % 3 = 2.
+ */
+std::unique_ptr<data::any_sequence_stream> tn_f(
+    executor::expr::evaluator_context& /* ctx */,
+    takatori::util::sequence_view<data::any> args
+) {
+    auto x = args[0].to<std::int32_t>();
+    mock_any_sequence_stream::sequences_type sequences{};
+    switch(x % 3) {
+        case 0:
+            sequences.emplace_back(data::any_sequence::storage_type{
+                data::any{std::in_place_type<std::int32_t>, x * 10}
+            });
+            sequences.emplace_back(data::any_sequence::storage_type{
+                data::any{std::in_place_type<std::int32_t>, x * 10 + 1}
+            });
+            break;
+        case 2:
+            sequences.emplace_back(data::any_sequence::storage_type{
+                data::any{std::in_place_type<std::int32_t>, x * 10}
+            });
+            break;
+        default: break;
+    }
+    return std::make_unique<mock_any_sequence_stream>(std::move(sequences));
+}
+
+}  // namespace
 
 /**
  * @brief a query in the plan catalog of TOP-N optimization
@@ -66,13 +116,14 @@ struct catalog_query {
 
 /**
  * @brief tests that TOP-N optimizations do not change the query results
- * @details the queries come from the plan catalog provided for jogasaki in tsurugi-issues#1589, and each query
- * result is compared with the one compiled without TOP-N runtime features (F0 in the catalog).
+ * @details the queries come from the plan catalog provided for jogasaki in tsurugi-issues#1589 and the plan
+ * changes notified after that in the same issue, and each query result is compared with the one compiled without
+ * TOP-N runtime features (F0 in the catalog).
  * The parameters are (scan_impl, use_rtx, flags), where flags is the TOP-N runtime features to compare with F0:
  * F1 (scan_limit), F2 (ordered_scan and ordered_forward) or F3 (all of them).
  * @note the sort keys of the test data are unique except for NULLs, and the number of the rows with NULL sort key
  * does not exceed the row count of LIMIT, so that the ordered results are deterministic except for the order
- * among the rows with NULL sort key.
+ * among the rows with NULL sort key. The exception is APPLY, whose ties are noted in the test.
  */
 enum class topn_flags {
     f1,
@@ -97,10 +148,48 @@ public:
         cfg_->scan_default_parallel(4);
         db_setup(cfg_);
         create_tables();
+        register_functions();
     }
 
     void TearDown() override {
+        unregister_functions();
         db_teardown();
+    }
+
+    void register_functions() {
+        namespace t = takatori::type;
+        decl_tn_f_ = global::regular_function_provider()->add(std::make_shared<yugawara::function::declaration>(
+            tvf_id_tn_f,
+            "tn_f",
+            std::make_shared<t::table>(std::initializer_list<t::table::column_type>{
+                {"c1", std::make_shared<t::int4>()},
+            }),
+            std::vector<std::shared_ptr<t::data const>>{
+                std::make_shared<t::int4>(),
+            },
+            yugawara::function::declaration::feature_set_type{
+                yugawara::function::function_feature::table_valued_function
+            }
+        ));
+        global::table_valued_function_repository().add(
+            tvf_id_tn_f,
+            std::make_shared<executor::function::table_valued_function_info>(
+                executor::function::table_valued_function_kind::builtin,
+                tn_f,
+                1,
+                executor::function::table_valued_function_info::columns_type{
+                    executor::function::table_valued_function_column{"c1"},
+                }
+            )
+        );
+    }
+
+    void unregister_functions() {
+        global::table_valued_function_repository().clear();
+        if(decl_tn_f_) {
+            global::regular_function_provider()->remove(*decl_tn_f_);
+            decl_tn_f_.reset();
+        }
     }
 
     bool use_rtx() {
@@ -151,6 +240,22 @@ public:
         cfg_->enable_scan_limit(enable_topn && (flags == topn_flags::f1 || flags == topn_flags::f3));
         cfg_->enable_ordered_scan(enable_topn && (flags == topn_flags::f2 || flags == topn_flags::f3));
         cfg_->enable_ordered_forward(true);
+    }
+
+    /**
+     * @brief creates the table with more rows than the default `max_partial_limit_count` (1000)
+     * @details tn_b has k in 0..1599 and v as a permutation of k (unique), where v in 0..18 except 15 has a partner
+     * in tn_n.
+     */
+    void create_large_table() {
+        execute_statement("CREATE TABLE tn_b (k INT PRIMARY KEY, v INT)");
+        execute_statement("CREATE INDEX tn_b_v ON tn_b (v)");
+        // read tn_t to fill tn_b, as reading tn_b itself can hit Halloween problem with dev_scan_impl=iscan
+        execute_statement(
+            "INSERT INTO tn_b "
+            "SELECT x.k * 80 + y.k * 4 + z.k, (x.k * 80 + y.k * 4 + z.k) * 7919 % 1600 "
+            "FROM tn_t x CROSS JOIN tn_t y CROSS JOIN tn_t z WHERE z.k < 4"
+        );
     }
 
     std::vector<basic_record> query(std::string_view sql, bool enable_topn) {
@@ -244,6 +349,7 @@ public:
     }
 
     std::shared_ptr<configuration> cfg_{};  //NOLINT
+    std::shared_ptr<yugawara::function::declaration> decl_tn_f_{};  //NOLINT
 };
 
 INSTANTIATE_TEST_SUITE_P(
@@ -367,6 +473,119 @@ TEST_P(sql_topn_plan_catalog_test, i_index_selection) {
         {"I1", "SELECT * FROM tn_t WHERE v > 5 ORDER BY k LIMIT 3", {0}},
         {"I2", "SELECT * FROM tn_t WHERE v > 5 ORDER BY v LIMIT 3", {1}},
         {"I3", "SELECT * FROM tn_t WHERE v = 5 ORDER BY v LIMIT 3", {1}},
+    });
+}
+
+/**
+ * @brief tests for the plan changes notified after the plan catalog
+ * @details same as sql_topn_plan_catalog_test, but runs only with the automatic scan implementation to save time
+ */
+class sql_topn_plan_notice_test : public sql_topn_plan_catalog_test {};
+
+INSTANTIATE_TEST_SUITE_P(
+    plan_notice,
+    sql_topn_plan_notice_test,
+    ::testing::Values(
+        std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f1),
+        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f1),
+        std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f2),
+        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f2),
+        std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f3),
+        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f3)
+    ),
+    [](auto const& info) {
+        auto flags = std::get<2>(info.param);
+        return std::string{flags == topn_flags::f1 ? "f1" : flags == topn_flags::f2 ? "f2" : "f3"} +
+            (std::get<1>(info.param) ? "_rtx" : "_occ");
+    }
+);
+
+// the plan changes notified after the catalog: removal of TRUE filters and partial limits before OUTER APPLY
+// (linking limits with ordered forward changes only G5, which is covered above)
+
+TEST_P(sql_topn_plan_notice_test, true_filter_removed) {
+    verify({
+        {"TF-a", "SELECT * FROM (SELECT k, v, w + 1 AS x FROM tn_t) s WHERE v > 1 ORDER BY v LIMIT 3", {1}},
+        {"TF-b", "SELECT * FROM tn_t t LEFT OUTER JOIN tn_n n ON t.v = n.k WHERE t.w > 1 ORDER BY t.k LIMIT 3",
+            {0}},
+    });
+}
+
+TEST_P(sql_topn_plan_notice_test, partial_limit_before_outer_apply) {
+    // tn_f(k) returns 2, 0 and 1 rows for k % 3 = 0, 1 and 2 respectively, and OUTER APPLY gives a row with NULL
+    // if it returns no rows, so the rows for k = 0, 1, 2, 3 are 2, 1, 1, 2 rows (and for k = 1, 2, 3, 4 with w > 1).
+    // The LIMITs below are chosen so that the ties of t.k are not split.
+    verify({
+        {"AP-a", "SELECT t.k, r.c1 FROM tn_t t OUTER APPLY tn_f(t.k) AS r(c1) ORDER BY t.k LIMIT 4", {0}},
+        {"AP-b", "SELECT t.k, r.c1 FROM tn_t t OUTER APPLY tn_f(t.k) AS r(c1) WHERE t.w > 1 ORDER BY t.k LIMIT 4",
+            {0}},
+        {"AP-c", "SELECT t.k, r.c1 FROM tn_t t OUTER APPLY tn_f(t.k) AS r(c1) LIMIT 3", {},
+            "SELECT t.k, r.c1 FROM tn_t t OUTER APPLY tn_f(t.k) AS r(c1)"},
+        // not optimized - the sort key uses the output of the function, or CROSS APPLY can drop rows
+        {"AP-d", "SELECT t.k, r.c1 FROM tn_t t OUTER APPLY tn_f(t.k) AS r(c1) ORDER BY t.k, r.c1 LIMIT 3",
+            {0, 1}},
+        {"AP-e", "SELECT t.k, r.c1 FROM tn_t t CROSS APPLY tn_f(t.k) AS r(c1) ORDER BY t.k LIMIT 3", {0}},
+    });
+}
+
+// the plan changes notified after the catalog: large LIMIT, nested limits and limits on UNION ALL branches
+
+TEST_P(sql_topn_plan_notice_test, large_limit) {
+    create_large_table();
+    // the row count around max_early_stop_limit_count (10000)
+    verify({
+        {"LL-a", "SELECT * FROM tn_t WHERE v > 5 ORDER BY k LIMIT 100000000", {0}},
+        {"LL-b", "SELECT * FROM tn_b WHERE v < 100 ORDER BY k LIMIT 10000", {0}},
+        {"LL-c", "SELECT * FROM tn_b WHERE v < 100 ORDER BY k LIMIT 10001", {0}},
+        {"LL-d", "SELECT * FROM tn_b LIMIT 100000000", {}, "SELECT * FROM tn_b"},
+    });
+}
+
+TEST_P(sql_topn_plan_notice_test, nested_limits) {
+    create_large_table();
+    verify({
+        // the outer row count exceeds max_partial_limit_count (1000)
+        {"NL-a",
+            "SELECT * FROM (SELECT * FROM tn_b ORDER BY k LIMIT 1500) s LEFT OUTER JOIN tn_n n ON s.v = n.k "
+            "ORDER BY s.k LIMIT 1200", {0}},
+        // the inner sort key is a prefix of the outer one, where the inner ties of `a` are not split by the outer
+        {"NL-b", "SELECT * FROM (SELECT * FROM tn_c ORDER BY a LIMIT 10) s ORDER BY a, b LIMIT 3", {0, 1}},
+        {"NL-c", "SELECT * FROM tn_b b LEFT OUTER JOIN tn_n n ON b.v = n.k LIMIT 1200", {},
+            "SELECT * FROM tn_b b LEFT OUTER JOIN tn_n n ON b.v = n.k"},
+        {"NL-d", "SELECT b.k, r.c1 FROM tn_b b OUTER APPLY tn_f(b.k) AS r(c1) LIMIT 1200", {},
+            "SELECT b.k, r.c1 FROM tn_b b OUTER APPLY tn_f(b.k) AS r(c1)"},
+    });
+}
+
+TEST_P(sql_topn_plan_notice_test, limit_over_union_all) {
+    create_large_table();
+    verify({
+        {"UA-a",
+            "SELECT * FROM (SELECT k, v FROM tn_t UNION ALL SELECT k + 100, v FROM tn_n) x ORDER BY k LIMIT 3", {0}},
+        {"UA-b",
+            "SELECT * FROM (SELECT k, v FROM tn_t UNION ALL SELECT k + 100, v FROM tn_n) x ORDER BY k DESC LIMIT 3",
+            {0}},
+        {"UA-c",
+            "SELECT * FROM (SELECT k, v FROM tn_t UNION ALL SELECT k, v FROM tn_n) x ORDER BY k, v LIMIT 5", {0, 1}},
+        {"UA-d",
+            "SELECT * FROM (SELECT k, v FROM tn_t WHERE w > 1 UNION ALL SELECT k + 100, v FROM tn_n) x "
+            "ORDER BY v LIMIT 3", {1}},
+        {"UA-e",
+            "SELECT * FROM (SELECT k, v FROM tn_t UNION ALL SELECT k + 100, v FROM tn_n UNION ALL "
+            "SELECT k + 200, v FROM tn_d) x ORDER BY k DESC LIMIT 4", {0}},
+        {"UA-f", "SELECT * FROM (SELECT k, v FROM tn_t UNION ALL SELECT k, v FROM tn_n) x LIMIT 3", {},
+            "SELECT * FROM (SELECT k, v FROM tn_t UNION ALL SELECT k, v FROM tn_n) x"},
+        {"UA-g",
+            "SELECT * FROM (SELECT k, v FROM tn_t WHERE w > 1 UNION ALL SELECT k, v FROM tn_n WHERE v < 990) x LIMIT 3",
+            {}, "SELECT * FROM (SELECT k, v FROM tn_t WHERE w > 1 UNION ALL SELECT k, v FROM tn_n WHERE v < 990) x"},
+        // the row count exceeds max_partial_limit_count (1000), so only the scans have the count
+        {"UA-h", "SELECT * FROM (SELECT k, v FROM tn_b UNION ALL SELECT k, v FROM tn_t) x LIMIT 1200", {},
+            "SELECT * FROM (SELECT k, v FROM tn_b UNION ALL SELECT k, v FROM tn_t) x"},
+        {"UA-i",
+            "SELECT * FROM (SELECT k, v FROM tn_b UNION ALL SELECT k + 10000, v FROM tn_t) x ORDER BY k LIMIT 1200",
+            {0}},
+        // not optimized - UNION removes duplicates
+        {"UA-j", "SELECT * FROM (SELECT k FROM tn_t UNION SELECT k FROM tn_n) x ORDER BY k LIMIT 3", {0}},
     });
 }
 

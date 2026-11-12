@@ -16,6 +16,8 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
+#include <vector>
 
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
@@ -65,6 +67,11 @@ public:
      * @brief index of the downstream currently being called, or std::nullopt when not in calling_child state.
      */
     std::optional<std::size_t> current_child_{};  //NOLINT
+
+    /**
+     * @brief whether each downstream has returned early_stop and requires no more records (empty until initialized)
+     */
+    std::vector<bool> stopped_children_{};  //NOLINT
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

@@ -52,12 +52,15 @@ public:
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
      * @param downstreams the downstream operator chains invoked for each incoming record
+     * @param stop_with_primary whether this can stop when the primary (the first) downstream stops
+     * (see takatori::relation::buffer::stop_with_primary())
      */
     buffer(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
-        std::vector<std::unique_ptr<operator_base>> downstreams
+        std::vector<std::unique_ptr<operator_base>> downstreams,
+        bool stop_with_primary = false
     );
 
     /**
@@ -85,8 +88,14 @@ public:
      */
     void finish(abstract::task_context* context) override;
 
+    /**
+     * @brief returns whether this can stop when the primary (the first) downstream stops
+     */
+    [[nodiscard]] bool stop_with_primary() const noexcept;
+
 private:
     std::vector<std::unique_ptr<operator_base>> downstreams_{};
+    bool stop_with_primary_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

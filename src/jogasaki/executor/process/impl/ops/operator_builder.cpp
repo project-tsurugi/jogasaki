@@ -313,7 +313,8 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::buff
         index_++,
         *info_,
         block_index,
-        std::move(downstreams)
+        std::move(downstreams),
+        node.stop_with_primary()
     );
 }
 

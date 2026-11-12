@@ -174,8 +174,8 @@ TEST_F(buffer_test, abort_on_second_skips_third) {
     EXPECT_EQ(count2, 0U);
 }
 
-TEST_F(buffer_test, early_stop_is_not_propagated) {
-    // early_stop from a downstream is treated as ok, and the other downstreams receive the records
+TEST_F(buffer_test, early_stop_from_one_downstream) {
+    // the downstream returned early_stop is not called again, and the others continue to receive records
     auto& buf_node = build_graph(3);
     auto block_idx = processor_info_->block_indices().at(&buf_node);
     setup_task_ctx();
@@ -184,16 +184,101 @@ TEST_F(buffer_test, early_stop_is_not_propagated) {
     std::size_t count2{};
     std::vector<std::unique_ptr<operator_base>> downs;
     downs.push_back(std::make_unique<verifier>([&count0]() { ++count0; }));
-    downs.push_back(std::make_unique<fixed_status_operator>(
-        std::vector<operation_status_kind>{operation_status_kind::early_stop, operation_status_kind::early_stop}
-    ));
+    auto stopping = std::make_unique<fixed_status_operator>(
+        std::vector<operation_status_kind>{operation_status_kind::early_stop}
+    );
+    auto* stopping_ptr = stopping.get();
+    downs.push_back(std::move(stopping));
     downs.push_back(std::make_unique<verifier>([&count2]() { ++count2; }));
 
     buffer op{0, *processor_info_, block_idx, std::move(downs)};
     EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
     EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
     EXPECT_EQ(count0, 2U);
+    EXPECT_EQ(stopping_ptr->call_count_, 1U);
     EXPECT_EQ(count2, 2U);
+}
+
+TEST_F(buffer_test, early_stop_from_all_downstreams) {
+    auto& buf_node = build_graph(2);
+    auto block_idx = processor_info_->block_indices().at(&buf_node);
+    setup_task_ctx();
+
+    std::vector<std::unique_ptr<operator_base>> downs;
+    auto down0 = std::make_unique<fixed_status_operator>(
+        std::vector<operation_status_kind>{operation_status_kind::early_stop}
+    );
+    auto* down0_ptr = down0.get();
+    downs.push_back(std::move(down0));
+    auto down1 = std::make_unique<fixed_status_operator>(
+        std::vector<operation_status_kind>{operation_status_kind::ok, operation_status_kind::early_stop}
+    );
+    auto* down1_ptr = down1.get();
+    downs.push_back(std::move(down1));
+
+    buffer op{0, *processor_info_, block_idx, std::move(downs)};
+    EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
+    // the buffer stops when all downstreams stop
+    EXPECT_EQ(operation_status_kind::early_stop, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(down0_ptr->call_count_, 1U);
+    EXPECT_EQ(down1_ptr->call_count_, 2U);
+}
+
+TEST_F(buffer_test, early_stop_from_primary_with_stop_with_primary) {
+    // the buffer stops when the primary downstream stops, after passing the current record to the secondaries
+    auto& buf_node = build_graph(2);
+    auto block_idx = processor_info_->block_indices().at(&buf_node);
+    setup_task_ctx();
+
+    std::size_t count1{};
+    std::vector<std::unique_ptr<operator_base>> downs;
+    downs.push_back(std::make_unique<fixed_status_operator>(
+        std::vector<operation_status_kind>{operation_status_kind::early_stop}
+    ));
+    downs.push_back(std::make_unique<verifier>([&count1]() { ++count1; }));
+
+    buffer op{0, *processor_info_, block_idx, std::move(downs), true};
+    EXPECT_TRUE(op.stop_with_primary());
+    EXPECT_EQ(operation_status_kind::early_stop, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(count1, 1U);
+}
+
+TEST_F(buffer_test, early_stop_from_primary_without_stop_with_primary) {
+    auto& buf_node = build_graph(2);
+    auto block_idx = processor_info_->block_indices().at(&buf_node);
+    setup_task_ctx();
+
+    std::size_t count1{};
+    std::vector<std::unique_ptr<operator_base>> downs;
+    downs.push_back(std::make_unique<fixed_status_operator>(
+        std::vector<operation_status_kind>{operation_status_kind::early_stop}
+    ));
+    downs.push_back(std::make_unique<verifier>([&count1]() { ++count1; }));
+
+    buffer op{0, *processor_info_, block_idx, std::move(downs)};
+    EXPECT_FALSE(op.stop_with_primary());
+    EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(count1, 2U);
+}
+
+TEST_F(buffer_test, early_stop_from_secondary_with_stop_with_primary) {
+    // the secondary downstream stopping does not stop the buffer
+    auto& buf_node = build_graph(2);
+    auto block_idx = processor_info_->block_indices().at(&buf_node);
+    setup_task_ctx();
+
+    std::size_t count0{};
+    std::vector<std::unique_ptr<operator_base>> downs;
+    downs.push_back(std::make_unique<verifier>([&count0]() { ++count0; }));
+    downs.push_back(std::make_unique<fixed_status_operator>(
+        std::vector<operation_status_kind>{operation_status_kind::early_stop}
+    ));
+
+    buffer op{0, *processor_info_, block_idx, std::move(downs), true};
+    EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(count0, 2U);
 }
 
 TEST_F(buffer_test, yield_from_second_resumes_correctly) {

@@ -131,6 +131,7 @@ public:
         EXPECT_EQ(error_code::target_not_found_exception, error->code());
         EXPECT_EQ(status::err_not_found, error->status());
         EXPECT_EQ("Foreign catalog \"worker_a\" has been dropped.", error->message());
+        EXPECT_EQ(status::err_inactive_transaction, tx->commit());
         std::ostringstream diagnostic{};
         db_impl()->task_scheduler()->print_diagnostic(diagnostic);
         EXPECT_NE(std::string::npos, diagnostic.str().find("job_count: 0"));

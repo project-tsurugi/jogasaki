@@ -262,6 +262,7 @@ target_link_libraries(${ENGINE}
         PRIVATE arrow_objs
         PRIVATE mpdecpp
         PRIVATE ${GRPC_LIBRARIES}
+        PRIVATE OpenSSL::Crypto
         )
 
 if(LIKWID_ENABLE)

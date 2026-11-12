@@ -15,6 +15,7 @@
  */
 
 #include "remote_server_channel_manager.h"
+#include "remote_server_configuration_validation.h"
 
 #include <mutex>
 #include <unordered_set>
@@ -67,6 +68,10 @@ status remote_server_channel_manager::start(std::vector<remote_server_configurat
             return status::err_invalid_argument;
         }
         if (configuration.name.empty() || configuration.uri.empty() || !names.emplace(configuration.name).second) {
+            return status::err_invalid_argument;
+        }
+        if (!valid_remote_server_credentials(configuration)) {
+            LOG_LP(ERROR) << "invalid remote server credentials: name=" << configuration.name;
             return status::err_invalid_argument;
         }
     }

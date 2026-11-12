@@ -128,17 +128,19 @@ public:
     /**
      * @brief create new object from takatori columns
      * @param idx target index information
+     * @param primary the primary index used to prepare the key/value metadata
      * @param primary_key_meta primary key meta
      * @param primary_value_meta primary value meta
      */
     secondary_target(
         yugawara::storage::index const& idx,
+        yugawara::storage::index const& primary,
         maybe_shared_ptr<meta::record_meta> const& primary_key_meta,
         maybe_shared_ptr<meta::record_meta> const& primary_value_meta
     ) :
         secondary_target(
             idx.simple_name(),
-            create_fields(idx, primary_key_meta, primary_value_meta)
+            create_fields(idx, primary, primary_key_meta, primary_value_meta)
         )
     {}
 
@@ -221,6 +223,7 @@ private:
 
     field_mapping_type create_fields(
         yugawara::storage::index const& idx,
+        yugawara::storage::index const& primary,
         maybe_shared_ptr<meta::record_meta> const& primary_key_meta, //NOLINT
         maybe_shared_ptr<meta::record_meta> const& primary_value_meta //NOLINT
     );

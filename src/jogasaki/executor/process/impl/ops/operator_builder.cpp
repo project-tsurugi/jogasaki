@@ -56,6 +56,7 @@
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/relation_io_map.h>
+#include <jogasaki/executor/process/requires_single_partition.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/compiler.h>
@@ -552,8 +553,10 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     auto [rtx_parallel_scan_enabled, scan_parallel_count] = utils::scan_parallel_enabled(*request_context_->transaction());
     const auto option = request_context_->transaction()->option();
     const bool is_rtx = option && option->readonly();
-    // the scan with row count or direction must not be split, so that it honors the count and its order
-    const bool splittable = ! node.row_slice() && ! node.direction().has_value();
+    // the scan with row count or direction must not be split, so that it honors the count and its order.
+    // Neither the scan in the process outputting ordered relation (tsurugi-issues#1589 R4).
+    const bool splittable = ! node.row_slice() && ! node.direction().has_value() &&
+        (io_exchange_map_ == nullptr || ! requires_single_partition(*info_, *io_exchange_map_));
     if (rtx_parallel_scan_enabled && scan_parallel_count > 1 && is_rtx && !is_empty && splittable) {
         std::unique_ptr<kvs::storage> stg{};
         std::unique_ptr<dist::key_distribution> distribution{};

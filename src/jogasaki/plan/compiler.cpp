@@ -120,6 +120,7 @@
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
+#include <jogasaki/executor/exchange/forward/forward_info.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/step.h>
@@ -905,10 +906,13 @@ executor::exchange::forward::step create(
         std::move(fields),
         boost::dynamic_bitset{cnt}.flip() // currently assuming all fields are nullable
     );
-    return executor::exchange::forward::step{
+    auto finfo = std::make_shared<executor::exchange::forward::forward_info>(
         std::move(meta),
         row_slice_to_limit(forward.row_slice()),
-        std::move(column_order)};
+        forward.ordering().contains(takatori::plan::forward_ordering::respect_input),
+        forward.ordering().contains(takatori::plan::forward_ordering::preserve_output)
+    );
+    return executor::exchange::forward::step{std::move(finfo), std::move(column_order)};
 }
 
 executor::exchange::group::step create(

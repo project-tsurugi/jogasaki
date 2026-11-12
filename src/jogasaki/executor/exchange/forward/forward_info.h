@@ -52,10 +52,14 @@ public:
      * @brief construct new object
      * @param meta the metadata of the input record for forward operation
      * @param limit the record limit set for the forward operation
+     * @param respect_input whether the row count is applied in the order of the input relation
+     * @param preserve_output whether the output keeps the order of the input relation
      */
     explicit forward_info(
         maybe_shared_ptr<meta::record_meta> meta,
-        std::optional<std::size_t> limit = {}
+        std::optional<std::size_t> limit = {},
+        bool respect_input = false,
+        bool preserve_output = false
     );
 
     /**
@@ -68,9 +72,24 @@ public:
      */
     [[nodiscard]] std::optional<std::size_t> limit() const noexcept;
 
+    /**
+     * @brief returns whether the row count is applied in the order of the input relation
+     * @details the input relation must be an ordered relation, i.e. the upstream process is not split
+     * (takatori::plan::forward_ordering::respect_input)
+     */
+    [[nodiscard]] bool respect_input() const noexcept;
+
+    /**
+     * @brief returns whether the output keeps the order of the input relation
+     * @details the downstream process must not be split (takatori::plan::forward_ordering::preserve_output)
+     */
+    [[nodiscard]] bool preserve_output() const noexcept;
+
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::optional<std::size_t> limit_{};
+    bool respect_input_{};
+    bool preserve_output_{};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

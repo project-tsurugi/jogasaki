@@ -64,9 +64,13 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
+#include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/relation_io_map.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/step.h>
+#include <jogasaki/model/step_kind.h>
 #include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
@@ -712,6 +716,63 @@ TEST_F(partition_calculation_test, union_all_no_rtx) {
                      p2, global::config_pool()->scan_default_parallel(), false));
     EXPECT_EQ(2, executor::impl::calculate_partition(
                      p2, global::config_pool()->scan_default_parallel(), false));
+}
+
+// returns the partitions of the process steps that read from group or aggregate exchanges
+static std::vector<std::size_t> partitions_after_shuffle(compiler_context& ctx) {
+    std::vector<std::size_t> ret{};
+    auto& exec = downcast<executor::common::execute>(*ctx.executable_statement()->operators());
+    for(auto&& s : exec.operators().steps()) {
+        auto* pp = dynamic_cast<executor::process::step*>(s.get());
+        if(pp == nullptr) {
+            continue;
+        }
+        auto& p = *pp;
+        auto&& exchanges = p.io_exchange_map();
+        bool after_shuffle = false;
+        for(std::size_t i = 0; exchanges && i < exchanges->input_count(); ++i) {
+            auto k = exchanges->input_at(i)->kind();
+            after_shuffle |= k == model::step_kind::group || k == model::step_kind::aggregate;
+        }
+        if(after_shuffle) {
+            ret.emplace_back(p.partitions());
+        }
+    }
+    return ret;
+}
+
+TEST_F(partition_calculation_test, single_partition_for_ordered_emit) {
+    // the process emitting the records preserving the order uses single partition (tsurugi-issues#1589 R4)
+    compiler_context ctx{};
+    auto cfg = std::make_shared<configuration>();
+    cfg->default_partitions(7);
+    global::config_pool(cfg);
+    ctx.storage_provider(tables());
+    ctx.aggregate_provider(aggregate_functions());
+    ASSERT_EQ(status::ok, compile("select * from T0 order by C1", ctx));
+    EXPECT_EQ((std::vector<std::size_t>{1}), partitions_after_shuffle(ctx));
+}
+
+TEST_F(partition_calculation_test, default_partitions_without_ordered_output) {
+    // the process without ordered output uses the default partitions, even if the exchange has no group keys
+    {
+        compiler_context ctx{};
+        auto cfg = std::make_shared<configuration>();
+        cfg->default_partitions(7);
+        global::config_pool(cfg);
+        ctx.storage_provider(tables());
+        ctx.aggregate_provider(aggregate_functions());
+        ASSERT_EQ(status::ok, compile("select count(*) from T0", ctx));
+        EXPECT_EQ((std::vector<std::size_t>{7}), partitions_after_shuffle(ctx));
+    }
+    compiler_context ctx{};
+    auto cfg = std::make_shared<configuration>();
+    cfg->default_partitions(7);
+    global::config_pool(cfg);
+    ctx.storage_provider(tables());
+    ctx.aggregate_provider(aggregate_functions());
+    ASSERT_EQ(status::ok, compile("select C1, count(*) from T0 group by C1", ctx));
+    EXPECT_EQ((std::vector<std::size_t>{7}), partitions_after_shuffle(ctx));
 }
 
 } // namespace jogasaki::plan

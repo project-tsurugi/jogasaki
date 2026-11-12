@@ -63,6 +63,11 @@ public:
 
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& output_meta() const noexcept;
 
+    /**
+     * @brief returns the forward information
+     */
+    [[nodiscard]] forward_info const& info() const noexcept;
+
 private:
     std::shared_ptr<forward_info> info_{};
 };

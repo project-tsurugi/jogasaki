@@ -66,6 +66,10 @@ meta::variable_order const& step::output_order() const noexcept {
     return exchange::step::input_order();
 }
 
+forward_info const& step::info() const noexcept {
+    return *info_;
+}
+
 maybe_shared_ptr<meta::record_meta> const& step::output_meta() const noexcept {
     return exchange::step::input_meta();
 }

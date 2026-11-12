@@ -33,6 +33,7 @@
 #include <jogasaki/executor/process/abstract/process_executor.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/requires_single_partition.h>
 #include <jogasaki/model/flow.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/utils/fail.h>
@@ -121,6 +122,11 @@ std::size_t step::partitions() const noexcept {
     if (info_->details().has_scan_operator() ||
         info_->details().has_find_operator() ||
         info_->details().has_values_operator()) {
+        return 1;
+    }
+    if (auto&& exchanges = io_exchange_map(); exchanges && requires_single_partition(*info_, *exchanges)) {
+        // the process outputting ordered relation must not be split (tsurugi-issues#1589 R4). The upstream group or
+        // aggregate exchange also provides single partition, as it is created for the partitions of this process.
         return 1;
     }
     return global::config_pool()->default_partitions();

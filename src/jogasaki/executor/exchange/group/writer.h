@@ -46,7 +46,7 @@ public:
         group::sink& owner
     );
 
-    bool write(accessor::record_ref rec) override;
+    io::write_result write(accessor::record_ref rec) override;
 
     void flush() override;
 

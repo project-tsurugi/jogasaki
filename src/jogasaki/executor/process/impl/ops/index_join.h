@@ -535,10 +535,10 @@ private:
     expr::evaluator evaluator_{};
 
     /**
-     * @brief call downstream process_record and propagate yield or aborted status.
+     * @brief call downstream process_record and propagate yield, aborted or early_stop status.
      * @param ctx the index join context for state management
      * @param context the task context
-     * @return ok, yield, or aborted
+     * @return ok, yield, aborted, or early_stop
      */
     operation_status call_downstream(
         index_join_context<MatchInfo>& ctx,

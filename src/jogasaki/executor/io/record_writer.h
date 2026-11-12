@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/io/write_result.h>
 
 namespace jogasaki::executor::io {
 
@@ -30,10 +31,11 @@ public:
 
     /**
      * @brief write the record and flush the current buffer if it's full
-     * @return true if successful
-     * @return false otherwise
+     * @return write_result::ok if successful
+     * @return write_result::satisfied if the record is accepted and the destination requires no more records
+     * @return write_result::error if any error occurs
      */
-    virtual bool write(accessor::record_ref rec) = 0;
+    virtual write_result write(accessor::record_ref rec) = 0;
 
     /**
      * @brief force flush to provide the buffered data to downstream instantly

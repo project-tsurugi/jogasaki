@@ -174,6 +174,28 @@ TEST_F(buffer_test, abort_on_second_skips_third) {
     EXPECT_EQ(count2, 0U);
 }
 
+TEST_F(buffer_test, early_stop_is_not_propagated) {
+    // early_stop from a downstream is treated as ok, and the other downstreams receive the records
+    auto& buf_node = build_graph(3);
+    auto block_idx = processor_info_->block_indices().at(&buf_node);
+    setup_task_ctx();
+
+    std::size_t count0{};
+    std::size_t count2{};
+    std::vector<std::unique_ptr<operator_base>> downs;
+    downs.push_back(std::make_unique<verifier>([&count0]() { ++count0; }));
+    downs.push_back(std::make_unique<fixed_status_operator>(
+        std::vector<operation_status_kind>{operation_status_kind::early_stop, operation_status_kind::early_stop}
+    ));
+    downs.push_back(std::make_unique<verifier>([&count2]() { ++count2; }));
+
+    buffer op{0, *processor_info_, block_idx, std::move(downs)};
+    EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(operation_status_kind::ok, op.process_record(&task_ctx_).kind());
+    EXPECT_EQ(count0, 2U);
+    EXPECT_EQ(count2, 2U);
+}
+
 TEST_F(buffer_test, yield_from_second_resumes_correctly) {
     auto& buf_node = build_graph(3);
     auto block_idx = processor_info_->block_indices().at(&buf_node);

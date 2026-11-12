@@ -157,6 +157,9 @@ operation_status find::call_downstream(
             return operation_status_kind::aborted;
         }
         ctx.state(context_state::running_operator_body);
+        if (st.kind() == operation_status_kind::early_stop) {
+            return operation_status_kind::early_stop;
+        }
     }
     return operation_status_kind::ok;
 }
@@ -273,7 +276,7 @@ resume_calling_child_2:
             ctx.key_scanned_ = kk;
             return operation_status_kind::yield;
         }
-        if (ret.kind() == operation_status_kind::aborted) {
+        if (ret.kind() == operation_status_kind::aborted || ret.kind() == operation_status_kind::early_stop) {
             ctx.it_.reset();
             finish(context);
             return ret;

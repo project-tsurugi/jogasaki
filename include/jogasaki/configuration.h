@@ -617,6 +617,17 @@ public:
     }
 
     /**
+     * @brief whether the forward exchange with row count stops its upstream early when it receives the records of the count
+     */
+    [[nodiscard]] bool enable_early_stop() const noexcept {
+        return enable_early_stop_;
+    }
+
+    void enable_early_stop(bool arg) noexcept {
+        enable_early_stop_ = arg;
+    }
+
+    /**
      * @brief the implementation of the transaction engine scan used by the scan operator
      */
     [[nodiscard]] scan_impl_kind scan_impl() const noexcept {
@@ -737,6 +748,7 @@ public:
         print_non_default(enable_disjunction_range_hinting);
         print_non_default(enable_truncate);
         print_non_default(enable_scan_limit);
+        print_non_default(enable_early_stop);
         print_non_default(scan_impl);
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
@@ -817,6 +829,7 @@ private:
     bool enable_disjunction_range_hinting_ = true;
     bool enable_truncate_ = true;
     bool enable_scan_limit_ = true;
+    bool enable_early_stop_ = true;
     scan_impl_kind scan_impl_{scan_impl_kind::automatic};
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;

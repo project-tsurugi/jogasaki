@@ -59,10 +59,10 @@ public:
     /**
      * @brief write record and store internal storage as basic_record.
      */
-    bool write(accessor::record_ref rec) override {
+    io::write_result write(accessor::record_ref rec) override {
         record_type r{rec, maybe_shared_ptr<meta::record_meta>{meta_.get()}, resource_.get()};
         records_.emplace_back(r);
-        return true;
+        return io::write_result::ok;
     }
 
     void flush() override {

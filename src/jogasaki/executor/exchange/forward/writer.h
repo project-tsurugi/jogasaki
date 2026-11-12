@@ -41,7 +41,7 @@ public:
         std::shared_ptr<input_partition> partition
     );
 
-    bool write(accessor::record_ref rec) override;
+    io::write_result write(accessor::record_ref rec) override;
 
     void flush() override;
 
@@ -52,6 +52,7 @@ private:
     sink* owner_{};
     std::shared_ptr<std::atomic_size_t> write_count_{};
     std::shared_ptr<input_partition> partition_{};
+    bool early_stop_{};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

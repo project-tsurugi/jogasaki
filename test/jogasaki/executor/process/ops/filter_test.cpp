@@ -206,6 +206,32 @@ TEST_F(filter_test, simple) {
     ASSERT_TRUE(! called);
 }
 
+TEST_F(filter_test, early_stop) {
+    // early_stop from the downstream is returned to the upstream (tsurugi-issues#1589)
+    auto input_pass = create_nullable_record<kind::int8, kind::int8, kind::int8>(1, 11, 10);
+    auto up = add_upstream_record_provider(input_pass.record_meta());
+    auto& in = up.in();
+
+    auto& flt = emplace_operator<relation::filter>(std::make_unique<compare>(
+        comparison_operator::equal,
+        varref(in[1]),
+        binary{binary_operator::add, varref(in[2]), constant(1)}
+    ));
+
+    auto down = add_downstream_record_verifier({in[0], in[1], in[2]});
+    auto ex = make_filter_executor(flt, up, down);
+    down.set_body([]() {});
+    down.set_result([]() -> operation_status { return operation_status_kind::early_stop; });
+
+    set_variables(ex.variables_list_[0], in, input_pass.ref());
+    EXPECT_EQ(operation_status_kind::early_stop, ex.op_(ex.ctx_).kind());
+
+    // the record filtered out does not reach the downstream
+    auto input_fail = create_nullable_record<kind::int8, kind::int8, kind::int8>(2, 20, 22);
+    set_variables(ex.variables_list_[0], in, input_fail.ref());
+    EXPECT_EQ(operation_status_kind::ok, ex.op_(ex.ctx_).kind());
+}
+
 TEST_F(filter_test, cross_region_reads_upstream_variables) {
     // Graph: take_flat(2 cols) → buffer(1) → filter(in[1] == in[0] + 1) → offer
     auto input_pass = create_nullable_record<kind::int8, kind::int8>(10, 11);

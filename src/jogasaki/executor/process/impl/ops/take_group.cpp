@@ -110,7 +110,7 @@ operation_status take_group::process_empty_group(
         return operation_status_kind::aborted;
     }
     ctx.state(context_state::running_operator_body);
-    return operation_status_kind::ok;
+    return st;
 }
 
 operation_status take_group::operator()(take_group_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
@@ -127,7 +127,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
                 VLOG_LP(log_trace) << "resuming take_group op. (with empty input) after downstream yield";
             }
             auto st = process_empty_group(ctx, context);
-            if (st.kind() != operation_status_kind::ok) {
+            if (st.kind() != operation_status_kind::ok && st.kind() != operation_status_kind::early_stop) {
                 return st;
             }
             finish(context);
@@ -209,6 +209,12 @@ resume_calling_child:
                     return operation_status_kind::aborted;
                 }
                 ctx.state(context_state::running_operator_body);
+                if (st.kind() == operation_status_kind::early_stop) {
+                    // the downstream requires no more records - finish normally leaving the rest of the input
+                    ctx.group_cp_.reset();
+                    finish(context);
+                    return operation_status_kind::ok;
+                }
             }
         }
     }

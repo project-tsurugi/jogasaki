@@ -79,7 +79,7 @@ public:
      * @brief write record and store internal storage as basic_record.
      * The record_meta passed to constructor is used to convert the input ref to basic_record.
      */
-    bool write(accessor::record_ref rec) override;
+    io::write_result write(accessor::record_ref rec) override;
 
     void flush() override;
 
@@ -94,6 +94,14 @@ public:
     [[nodiscard]] bool is_released() const noexcept;
 
     [[nodiscard]] bool is_acquired() const noexcept;
+
+    /**
+     * @brief makes write() return write_result::satisfied when the number of written records reaches the count
+     * @param count the number of records
+     */
+    void satisfied_at(std::size_t count) noexcept {
+        satisfied_at_ = count;
+    }
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     records_type records_{};
@@ -102,6 +110,7 @@ private:
     std::size_t capacity_{npos};
     std::size_t pos_{};
     std::size_t write_count_{};
+    std::size_t satisfied_at_{npos};
     std::unique_ptr<memory::paged_memory_resource> resource_{
         std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool())
     };

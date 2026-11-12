@@ -25,7 +25,7 @@ namespace jogasaki::executor::io {
 
 class fake_record_writer : public record_writer {
 public:
-    bool write(accessor::record_ref) override { return true; }
+    io::write_result write(accessor::record_ref) override { return io::write_result::ok; }
     void flush() override {}
     void release() override { released_ = true; }
 

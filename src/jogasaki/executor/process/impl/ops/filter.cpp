@@ -100,6 +100,9 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
             return operation_status_kind::aborted;
         }
         ctx.state(context_state::running_operator_body);
+        if (st.kind() == operation_status_kind::early_stop) {
+            return operation_status_kind::early_stop;
+        }
     }
     return operation_status_kind::ok;
 }

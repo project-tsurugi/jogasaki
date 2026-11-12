@@ -41,11 +41,11 @@ writer::writer(
     owner_(std::addressof(owner))
 {}
 
-bool writer::write(accessor::record_ref rec) {
+io::write_result writer::write(accessor::record_ref rec) {
     auto partition = partitioner_(info_->extract_key(rec));
     initialize_lazy(partition);
     partitions_[partition]->write(rec);
-    return true;
+    return io::write_result::ok;
 }
 
 void writer::flush() {

@@ -47,11 +47,11 @@ public:
         owner_(std::addressof(owner))
     {}
 
-    bool write(accessor::record_ref rec) override {
+    io::write_result write(accessor::record_ref rec) override {
         auto partition = partitioner_(info_->extract_key(rec));
         initialize_lazy(partition);
         partitions_[partition]->write(rec);
-        return true;
+        return io::write_result::ok;
     }
 
     void flush() override {

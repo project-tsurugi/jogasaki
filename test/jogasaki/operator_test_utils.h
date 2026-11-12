@@ -736,6 +736,7 @@ public:
         std::unique_ptr<verifier> downstream_{};  //NOLINT
         std::reference_wrapper<relation::step::offer> offer_node_;  //NOLINT
         std::shared_ptr<std::function<void()>> body_ptr_{};  //NOLINT
+        std::shared_ptr<std::function<operation_status()>> result_ptr_{};  //NOLINT
 
         auto& input() noexcept { return offer_node_.get().input(); }
         std::unique_ptr<verifier> take() noexcept { return std::move(downstream_); }
@@ -749,6 +750,12 @@ public:
          * @param f verification lambda, invoked once per processed record
          */
         void set_body(std::function<void()> f) { *body_ptr_ = std::move(f); }
+
+        /**
+         * @brief Assign the function returning the status of the verifier to the upstream for each record.
+         * @param f the function, or empty to return ok
+         */
+        void set_result(std::function<operation_status()> f) { *result_ptr_ = std::move(f); }
     };
 
     /**
@@ -769,10 +776,14 @@ public:
         std::vector<descriptor::variable> vars) {
         auto& off = add_offer(std::move(vars));
         auto body_ptr = std::make_shared<std::function<void()>>();
+        auto result_ptr = std::make_shared<std::function<operation_status()>>();
+        auto v = std::make_unique<verifier>([body_ptr]() { (*body_ptr)(); });
+        v->result_ = [result_ptr]() { return *result_ptr ? (*result_ptr)() : operation_status{}; };
         record_verifier_sink sink{
-            std::make_unique<verifier>([body_ptr]() { (*body_ptr)(); }),
+            std::move(v),
             off,
-            body_ptr
+            body_ptr,
+            result_ptr
         };
         return sink;
     }

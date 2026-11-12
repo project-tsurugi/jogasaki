@@ -18,6 +18,7 @@
 #include <utility>
 #include <glog/logging.h>
 
+#include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -40,21 +41,30 @@ writer::writer(
     info_(std::move(info)),
     owner_(std::addressof(owner)),
     write_count_(std::move(write_count)),
-    partition_(std::move(partition))
+    partition_(std::move(partition)),
+    early_stop_(global::config_pool()->enable_early_stop())
 {}
 
-bool writer::write(accessor::record_ref rec) {
+io::write_result writer::write(accessor::record_ref rec) {
     if(write_count_ && info_->limit().has_value()) {
+        // the row count is shared by all writers of the exchange
         auto cnt = write_count_->load();
         auto limit = info_->limit().value();
         do {
             if(cnt >= limit) {
-                return true;
+                // the records of the count are already received - drop the record
+                return early_stop_ ? io::write_result::satisfied : io::write_result::ok;
             }
         } while(! write_count_->compare_exchange_weak(cnt, cnt+1));
+        partition_->push(rec);
+        if(early_stop_ && cnt + 1 >= limit) {
+            // this is the last record of the count, so the upstream can stop without reading the next record
+            return io::write_result::satisfied;
+        }
+        return io::write_result::ok;
     }
     partition_->push(rec);
-    return true;
+    return io::write_result::ok;
 }
 
 void writer::flush() {

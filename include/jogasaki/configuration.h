@@ -617,6 +617,29 @@ public:
     }
 
     /**
+     * @brief whether the scan operator outputs records in the order of its direction (runtime_feature::ordered_scan)
+     */
+    [[nodiscard]] bool enable_ordered_scan() const noexcept {
+        return enable_ordered_scan_;
+    }
+
+    void enable_ordered_scan(bool arg) noexcept {
+        enable_ordered_scan_ = arg;
+    }
+
+    /**
+     * @brief whether the forward exchange respects the order of its input and output (runtime_feature::ordered_forward)
+     * @details this is effective only if enable_ordered_scan() is true
+     */
+    [[nodiscard]] bool enable_ordered_forward() const noexcept {
+        return enable_ordered_forward_;
+    }
+
+    void enable_ordered_forward(bool arg) noexcept {
+        enable_ordered_forward_ = arg;
+    }
+
+    /**
      * @brief whether the forward exchange with row count stops its upstream early when it receives the records of the count
      */
     [[nodiscard]] bool enable_early_stop() const noexcept {
@@ -749,6 +772,8 @@ public:
         print_non_default(enable_truncate);
         print_non_default(enable_scan_limit);
         print_non_default(enable_early_stop);
+        print_non_default(enable_ordered_scan);
+        print_non_default(enable_ordered_forward);
         print_non_default(scan_impl);
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
@@ -830,6 +855,8 @@ private:
     bool enable_truncate_ = true;
     bool enable_scan_limit_ = true;
     bool enable_early_stop_ = true;
+    bool enable_ordered_scan_ = true;
+    bool enable_ordered_forward_ = true;
     scan_impl_kind scan_impl_{scan_impl_kind::automatic};
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;

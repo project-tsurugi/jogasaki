@@ -223,6 +223,8 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_enable_truncate) " << cfg.enable_truncate() << " : whether to enable TRUNCATE TABLE statement";
     LOGCFG << "(dev_enable_scan_limit) " << cfg.enable_scan_limit() << " : whether the scan operator honors the row count given by the compiler";
     LOGCFG << "(dev_enable_early_stop) " << cfg.enable_early_stop() << " : whether the forward exchange with row count stops its upstream early when it receives the records of the count";
+    LOGCFG << "(dev_enable_ordered_scan) " << cfg.enable_ordered_scan() << " : whether the scan operator outputs records in the order of its direction given by the compiler";
+    LOGCFG << "(dev_enable_ordered_forward) " << cfg.enable_ordered_forward() << " : whether the forward exchange respects the order of its input and output (effective only with dev_enable_ordered_scan)";
     LOGCFG << "(dev_scan_impl) " << cfg.scan_impl() << " : transaction engine scan implementation used by scan operator (auto, legacy or iscan)";
 }
 

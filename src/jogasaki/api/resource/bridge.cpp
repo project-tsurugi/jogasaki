@@ -343,6 +343,12 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<bool>("dev_enable_early_stop")) {
         ret->enable_early_stop(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_ordered_scan")) {
+        ret->enable_ordered_scan(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_ordered_forward")) {
+        ret->enable_ordered_forward(v.value());
+    }
     constexpr std::string_view KEY_SCAN_IMPL{"dev_scan_impl"};
     if (auto v = jogasaki_config->get<std::string>(KEY_SCAN_IMPL)) {
         std::int32_t idx{};

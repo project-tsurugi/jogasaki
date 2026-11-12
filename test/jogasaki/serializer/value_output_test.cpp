@@ -289,6 +289,12 @@ TEST_F(value_output_test, write_bit_embed) {
             perform([](auto& iter, auto end) { return write_bit(n_bit(8), 8, iter, end); }));
 }
 
+TEST_F(value_output_test, write_bit_preserves_partial_final_byte) {
+    EXPECT_EQ(sequence(header_embed_bit + 7 - 1, {bytes({0x55})}),
+        perform([](auto& iter, auto end) { return write_bit(bytes({0xd5}), 7, iter, end); }));
+    EXPECT_EQ(sequence(header_bit, {uint(15), bytes({0x33, 0x5d})}),
+        perform([](auto& iter, auto end) { return write_bit(bytes({0x33, 0xdd}), 15, iter, end); }));
+}
 TEST_F(value_output_test, write_bit_full) {
     EXPECT_EQ(
             sequence(header_bit, { uint(0) }),

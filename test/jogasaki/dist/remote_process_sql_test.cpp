@@ -28,6 +28,8 @@
 #include <google/protobuf/wire_format_lite.h>
 #include <grpcpp/grpcpp.h>
 #include <takatori/type/primitive.h>
+#include <takatori/value/decimal.h>
+#include <jogasaki/accessor/text.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 #include <gtest/gtest.h>
@@ -49,6 +51,7 @@
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/dist/remote_execution_block_proto.h>
+#include <jogasaki/dist/remote_execution_block_decoder.h>
 #include <jogasaki/dist/remote_execution_result.h>
 #include <jogasaki/dist/remote_process_handler.h>
 #include <jogasaki/dist/remote_record_codec.h>
@@ -360,6 +363,36 @@ TEST_F(remote_process_sql_test, downstream_satisfied_write_does_not_hide_final_r
     EXPECT_EQ(status::err_unknown, st);
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::internal_exception, info->code());
+    EXPECT_EQ(1, service_.calls.load());
+}
+
+TEST_F(remote_process_sql_test, sql_generated_literals_preserve_utf8_and_decimal_boundaries) {
+    service_.stream_handler = [this](std::string_view payload, auto const& check, auto const& sink) {
+        auto decoded = dist::decode_remote_execution_block(payload);
+        EXPECT_TRUE(decoded) << decoded.error;
+        std::size_t character_literals{};
+        std::size_t decimal_literals{};
+        if (decoded) {
+            for (auto const& expression : decoded.block->scalar_expressions) {
+                if (expression.kind != dist::remote_scalar_expression_kind::immediate) continue;
+                auto type = dist::decode_remote_type(expression.type_payload);
+                if (!type) continue;
+                if (type->kind() == takatori::type::type_kind::character) ++character_literals;
+                if (type->kind() == takatori::type::type_kind::decimal) ++decimal_literals;
+            }
+        }
+        EXPECT_GE(character_literals, 1U);
+        EXPECT_GE(decimal_literals, 2U);
+        return dist::remote_process_handler{*db_}.execute_stream(payload, check, sink);
+    };
+    std::vector<mock::basic_record> rows{};
+    query("SELECT CAST('あ' AS VARCHAR(3)), CAST(1.10 AS DECIMAL(3,1)), "
+          "CAST(0.001 AS DECIMAL(3,3)) FROM worker_schema.T WHERE C0=10", rows);
+    ASSERT_EQ(1U, rows.size());
+    auto text = rows[0].get_value<accessor::text>(0);
+    EXPECT_EQ("あ", static_cast<std::string_view>(text));
+    EXPECT_EQ(takatori::value::decimal{"1.1"}.get(), rows[0].get_value<takatori::decimal::triple>(1));
+    EXPECT_EQ(takatori::value::decimal{"0.001"}.get(), rows[0].get_value<takatori::decimal::triple>(2));
     EXPECT_EQ(1, service_.calls.load());
 }
 

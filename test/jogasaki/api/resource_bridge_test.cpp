@@ -21,6 +21,7 @@
 #include <string_view>
 #include <unistd.h>
 #include <gtest/gtest.h>
+#include <jogasaki/dist/test_root_certificate.h>
 #include <fstream>
 #include <jogasaki/utils/finally.h>
 #include <grpcpp/grpcpp.h>
@@ -541,8 +542,10 @@ TEST_F(resource_bridge_test, resolves_relative_certificate_and_rejects_missing_o
     EXPECT_FALSE(parse());
     { std::ofstream out{certificate}; out << "not a PEM certificate"; }
     EXPECT_FALSE(parse());
-    // Configuration parsing checks the PEM envelope; TLS verifies X.509 contents later.
-    std::string pem{"-----BEGIN CERTIFICATE-----\nparser-fixture\n-----END CERTIFICATE-----\n"};
+    // A syntactically invalid certificate must not reach TLS connection setup.
+    { std::ofstream out{certificate}; out << "-----BEGIN CERTIFICATE-----\nparser-fixture\n-----END CERTIFICATE-----\n"; }
+    EXPECT_FALSE(parse());
+    std::string pem{::jogasaki::testing::remote_test_root_certificate};
     { std::ofstream out{certificate}; out << pem; }
     auto converted = parse();
     ASSERT_TRUE(converted);

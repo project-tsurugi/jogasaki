@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/dist/local_catalog_handler.h>
+#include <jogasaki/dist/remote_catalog_manager.h>
+#include <jogasaki/dist/remote_server_configuration_validation.h>
 #include <jogasaki/dist/remote_process_handler.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
@@ -476,23 +478,6 @@ static bool process_grpc_server_config(std::shared_ptr<jogasaki::configuration>&
     return true;
 }
 
-[[nodiscard]] static bool has_prefix(std::string_view value, std::string_view prefix) noexcept {
-    return value.size() >= prefix.size() && value.substr(0, prefix.size()) == prefix;
-}
-
-[[nodiscard]] static bool validate_remote_server_uri(std::string_view uri) {
-    constexpr std::string_view dns_prefix{"dns:///"};
-    constexpr std::string_view unix_prefix{"unix://"};
-    if (has_prefix(uri, dns_prefix)) {
-        return uri.size() > dns_prefix.size();
-    }
-    if (has_prefix(uri, unix_prefix)) {
-        auto const path = uri.substr(unix_prefix.size());
-        return ! path.empty() && path.front() == '/';
-    }
-    return false;
-}
-
 [[nodiscard]] static std::optional<std::filesystem::path> resolve_root_certificate_path(
     tateyama::api::configuration::whole& cfg,
     std::string_view value)
@@ -527,9 +512,8 @@ static bool process_grpc_server_config(std::shared_ptr<jogasaki::configuration>&
         std::istreambuf_iterator<char>{input},
         std::istreambuf_iterator<char>{}
     };
-    if (!boost::algorithm::contains(contents, "-----BEGIN CERTIFICATE-----") ||
-        !boost::algorithm::contains(contents, "-----END CERTIFICATE-----")) {
-        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.root_cert file does not contain PEM certificate: "
+    if (!dist::valid_remote_root_certificates(contents)) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.root_cert file contains invalid X.509 certificates: "
                       << path->string();
         return std::nullopt;
     }
@@ -617,11 +601,11 @@ static bool process_distributed_query_client_config(
     std::vector<dist::remote_server_configuration> remote_servers{};
     remote_servers.reserve(names->size());
     for (std::size_t i = 0; i < names->size(); ++i) {
-        if ((*names)[i].empty()) {
-            LOG_LP(ERROR) << "invalid configuration - distributed_query_client.name contains empty element";
+        if (!dist::valid_remote_catalog_identifier((*names)[i])) {
+            LOG_LP(ERROR) << "invalid configuration - distributed_query_client.name contains an invalid identifier";
             return false;
         }
-        if ((*uris)[i].empty() || ! validate_remote_server_uri((*uris)[i])) {
+        if ((*uris)[i].empty() || ! dist::valid_remote_server_uri((*uris)[i], secure_values[i])) {
             LOG_LP(ERROR) << "invalid configuration - distributed_query_client.uri contains unsupported value: "
                           << (*uris)[i];
             return false;

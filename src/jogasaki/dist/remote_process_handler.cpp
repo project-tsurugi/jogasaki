@@ -56,6 +56,7 @@
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/io/write_result.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/process_executor.h>
 #include <jogasaki/executor/process/impl/task_context.h>
@@ -288,7 +289,9 @@ class remote_result_writer final : public executor::io::record_writer {
 public:
     remote_result_writer(bounded_remote_result& result, executor::io::record_writer& writer)
         : result_(std::addressof(result)), writer_(std::addressof(writer)) {}
-    bool write(accessor::record_ref record) override { return result_->write(record); }
+    executor::io::write_result write(accessor::record_ref record) override {
+        return result_->write(record) ? executor::io::write_result::ok : executor::io::write_result::error;
+    }
     void flush() override {}
     void release() override {
         if (!released_) {

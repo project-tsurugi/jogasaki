@@ -100,6 +100,17 @@ classify_remote_rtx_start_failure(status result, bool stopping) noexcept {
     }
 }
 
+tateyama::grpc::distributed_query::remote_process_result remote_output_failure(status result) {
+    using kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    if (result == status::err_resource_limit_reached) {
+        return {false, {}, "remote result exceeds 64 MiB", kind::resource_exhausted};
+    }
+    if (result == status::request_canceled) {
+        return {false, {}, "remote result sink was closed", kind::cancelled};
+    }
+    return {false, {}, "remote result encoding or sink failed", kind::internal};
+}
+
 namespace {
 
 namespace scalar = takatori::scalar;
@@ -216,6 +227,11 @@ public:
     [[nodiscard]] bool overflow() const noexcept { return overflow_; }
     [[nodiscard]] bool failed() const noexcept { return failed_; }
     [[nodiscard]] bool internal_error() const noexcept { return internal_error_; }
+    [[nodiscard]] dq::remote_process_result failure() const {
+        if (overflow_) return remote_output_failure(status::err_resource_limit_reached);
+        if (internal_error_) return remote_output_failure(status::err_unknown);
+        return remote_output_failure(failed_ ? status::request_canceled : status::err_unknown);
+    }
     std::string release() { return sink_ || records_ ? std::string{} : std::move(payload_); }
 
 private:
@@ -647,14 +663,8 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
         return {false, {}, "remote process execution was cancelled", remote_error::cancelled};
     }
 
-    if (result.overflow()) {
-        return {false, {}, "remote result exceeds 64 MiB", remote_error::resource_exhausted};
-    }
-    if (result.internal_error()) {
-        return {false, {}, "remote result encoding or sink failed", remote_error::internal};
-    }
-    if (result.failed()) {
-        return {false, {}, "remote result sink was closed", remote_error::cancelled};
+    if (result.overflow() || result.internal_error() || result.failed()) {
+        return result.failure();
     }
     if (request->status_code() != status::ok) {
         if (auto info = request->error_info()) {
@@ -665,10 +675,7 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
     }
 
     if (!result.finish()) {
-        if (result.internal_error()) {
-            return {false, {}, "remote result encoding or sink failed", remote_error::internal};
-        }
-        return {false, {}, "remote result sink was closed", remote_error::cancelled};
+        return result.failure();
     }
     if (auto st = transaction->commit(); st != status::ok) {
         return {false, {}, "failed to commit remote RTX", remote_error::internal};
@@ -724,7 +731,7 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
         return {false,
                 {},
                 std::move(decoded.error),
-                decoded.unsupported_type ? remote_error::unsupported : remote_error::invalid_request};
+                decoded.unsupported ? remote_error::unsupported : remote_error::invalid_request};
     }
 
     if (auto error = validate_output_types(*decoded.block)) {
@@ -733,6 +740,9 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
     catalog_graph_resolver resolver{*database_, *decoded.block, decoded.operator_order};
     auto graph = build_remote_execution_graph(*decoded.block, resolver);
     if (!graph) {
+        if (graph.unsupported) {
+            return {false, {}, std::move(graph.error), remote_error::unsupported};
+        }
         if (!graph.invalid_request && resolver.catalog_mismatch()) {
             return {false, {}, "remote index definition does not match worker catalog", remote_error::failed_precondition};
         }

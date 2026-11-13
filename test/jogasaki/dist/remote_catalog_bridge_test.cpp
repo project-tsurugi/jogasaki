@@ -35,6 +35,7 @@
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/dist/remote_type_codec.h>
+#include <jogasaki/dist/remote_rpc_error.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/dist/remote_execution_block_proto.h>
 #include <jogasaki/dist/remote_record_codec.h>
@@ -125,6 +126,39 @@ TEST_F(remote_catalog_bridge_test, framework_exposes_sql_catalog_on_registered_r
     stopped_ = true;
     // SQL handler removal precedes database stop and the gRPC listener's shutdown.
 }
+TEST_F(remote_catalog_bridge_test, framework_preserves_ir_failure_categories_and_protocol_version) {
+    namespace wire = tateyama::grpc::proto;
+    auto stub = wire::DistributedQueryService::NewStub(grpc::CreateChannel(endpoint_, grpc::InsecureChannelCredentials()));
+    auto& database = api::impl::get_impl(*bridge_->database());
+    auto before = database.transaction_count();
+    for (int input = 0; input < 6; ++input) {
+        SCOPED_TRACE(input);
+        wire::RemoteProcessRequest request{};
+        auto* metadata = request.mutable_metadata();
+        metadata->mutable_protocol_version()->set_major(input == 5 ? 2 : 1);
+        metadata->set_coordinator_job_id("ir-category-test");
+        metadata->set_remote_execution_id("worker"); metadata->set_attempt_number(1);
+        auto* block = request.mutable_execution_block();
+        block->set_version(input == 0 ? 3 : input == 1 ? 0 : 2);
+        if (input == 2 || input == 3) block->add_operators()->set_kind(
+            input == 2 ? static_cast<wire::OperatorKind>(2026) : wire::OPERATOR_KIND_UNSPECIFIED);
+        if (input == 4) block->add_scalar_expressions()->set_kind(static_cast<wire::ScalarExpressionKind>(2026));
+        grpc::ClientContext context{};
+        context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(10));
+        auto reader = stub->ExecuteRemoteProcess(&context, request);
+        wire::RemoteProcessResult response{};
+        EXPECT_FALSE(reader->Read(&response));
+        auto result = reader->Finish();
+        auto expected = input == 5 ? grpc::StatusCode::FAILED_PRECONDITION
+            : (input == 1 || input == 3) ? grpc::StatusCode::INVALID_ARGUMENT : grpc::StatusCode::UNIMPLEMENTED;
+        EXPECT_EQ(expected, result.error_code()) << result.error_message();
+        auto mapped = dist::classify_remote_rpc_error(result.error_code());
+        EXPECT_EQ(expected == grpc::StatusCode::UNIMPLEMENTED ? error_code::unsupported_runtime_feature_exception
+                                                              : error_code::sql_execution_exception, mapped.code);
+        EXPECT_EQ(before, database.transaction_count());
+    }
+}
+
 TEST_F(remote_catalog_bridge_test, framework_executes_native_external_output_without_fixtures) {
     namespace wire = tateyama::grpc::proto;
     ASSERT_EQ("", utils::runner{}.db(*bridge_->database()).text("INSERT INTO T VALUES(42)").run().report());

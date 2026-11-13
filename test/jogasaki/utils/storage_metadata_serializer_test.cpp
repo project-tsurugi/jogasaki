@@ -46,7 +46,9 @@
 #include <yugawara/storage/table.h>
 #include <yugawara/variable/nullity.h>
 
+#include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/proto_debug_string.h>
@@ -57,6 +59,7 @@ namespace jogasaki::utils {
 
 using namespace yugawara;
 namespace type = ::takatori::type;
+namespace storage = ::yugawara::storage;
 using ::yugawara::variable::nullity;
 using ::yugawara::storage::column_value;
 
@@ -71,9 +74,11 @@ public:
         ::yugawara::storage::index_feature::unique,
         ::yugawara::storage::index_feature::primary,
     };
+    // same as the secondary index registered in the provider (ties_ordered_by_primary_key is given on deserialization)
     yugawara::storage::index_feature_set secondary_index_features_{
         ::yugawara::storage::index_feature::find,
         ::yugawara::storage::index_feature::scan,
+        ::yugawara::storage::index_feature::ties_ordered_by_primary_key,
     };
 
     void test_default_value_with_type(
@@ -261,6 +266,45 @@ TEST_F(storage_metadata_serializer_test, secondary_index) {
     test_index(*secondary, provider_, *deserialized);
     auto i2 = deserialized->find_index("TT_SECONDARY");
     EXPECT_EQ(to_string(*i2), to_string(*secondary));
+}
+
+TEST_F(storage_metadata_serializer_test, ties_ordered_by_primary_key_not_persistent) {
+    // ties_ordered_by_primary_key is not saved, but given to the secondary indices on recovery (tsurugi-issues#1589)
+    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+        "TT",
+        {
+            { "C0", type::int8(), nullity{false} },
+            { "C1", type::int8(), nullity{true} },
+        },
+    });
+    auto primary = provider_.add_index({t, t->simple_name(), {t->columns()[0]}, {t->columns()[1]}, index_features_});
+    auto secondary = provider_.add_index({t, "TT_SECONDARY", {t->columns()[1]}, {}, secondary_index_features_});
+
+    std::string out{};
+    storage_metadata_serializer ser{};
+    ASSERT_NO_THROW(ser.serialize(*secondary, out));
+    EXPECT_EQ(std::string::npos, readable(out).find("TIES")) << readable(out);
+
+    for(bool enabled : {true, false}) {
+        auto cfg = std::make_shared<configuration>();
+        cfg->enable_ties_ordered_by_primary_key(enabled);
+        global::config_pool(cfg);
+        auto deserialized = std::make_shared<storage::configurable_provider>();
+        ASSERT_NO_THROW(ser.deserialize(out, provider_, *deserialized));
+        auto i2 = deserialized->find_index("TT_SECONDARY");
+        ASSERT_TRUE(i2);
+        EXPECT_EQ(enabled, i2->features().contains(yugawara::storage::index_feature::ties_ordered_by_primary_key));
+    }
+    global::config_pool(std::make_shared<configuration>());
+
+    // the primary index does not have the feature
+    std::string out_primary{};
+    ASSERT_NO_THROW(ser.serialize(*primary, out_primary));
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    ASSERT_NO_THROW(ser.deserialize(out_primary, provider_, *deserialized));
+    auto p2 = deserialized->find_index("TT");
+    ASSERT_TRUE(p2);
+    EXPECT_FALSE(p2->features().contains(yugawara::storage::index_feature::ties_ordered_by_primary_key));
 }
 
 TEST_F(storage_metadata_serializer_test, default_value) {

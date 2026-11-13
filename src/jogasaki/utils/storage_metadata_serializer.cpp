@@ -73,6 +73,7 @@
 
 #include <jogasaki/auth/fill_action_set.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -672,6 +673,14 @@ static yugawara::storage::index_feature_set features(::jogasaki::proto::metadata
             case ::jogasaki::proto::metadata::storage::IndexFeature::UNIQUE_CONSTRAINT: ret.insert(yugawara::storage::index_feature::unique_constraint); break;
             default: break;
         }
+    }
+    // the secondary index entry key is the secondary key followed by the primary key (see
+    // index::secondary_target::create_secondary_key()), so the entries with the same secondary key are ordered by
+    // the primary key (tsurugi-issues#1589). This feature is not persistent, and it is given here because the index
+    // is registered via deserialization both on creation (create_table/create_index) and on recovery.
+    if (! ret.contains(yugawara::storage::index_feature::primary) &&
+        global::config_pool()->enable_ties_ordered_by_primary_key()) {
+        ret.insert(yugawara::storage::index_feature::ties_ordered_by_primary_key);
     }
     return ret;
 }

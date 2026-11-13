@@ -117,9 +117,10 @@ TEST_F(secondary_index_upsert_test, upsert_creates_new_entry_on_secondary_index)
     {
         std::string plan{};
         explain_statement("SELECT C0, C1, C2 FROM T WHERE C1 = 10 ORDER BY C0", plan);
-        // verify 1. find op exists 2. with target index I
+        // verify the secondary index I is used. The operator can be find or scan depending on the compiler
+        // (e.g. range scan is used for ORDER BY with index_feature::ties_ordered_by_primary_key)
         EXPECT_TRUE(contains(plan,
-            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+            R"("source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
     {
@@ -148,9 +149,10 @@ TEST_F(secondary_index_upsert_test, upsert_updates_existing_entry_on_secondary_i
     {
         std::string plan{};
         explain_statement("SELECT C0, C1, C2 FROM T WHERE C1 = 10 ORDER BY C0", plan);
-        // verify 1. find op exists 2. with target index I
+        // verify the secondary index I is used. The operator can be find or scan depending on the compiler
+        // (e.g. range scan is used for ORDER BY with index_feature::ties_ordered_by_primary_key)
         EXPECT_TRUE(contains(plan,
-            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+            R"("source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
     {
@@ -179,9 +181,10 @@ TEST_F(secondary_index_upsert_test, upsert_updates_existing_entry_on_secondary_i
     {
         std::string plan{};
         explain_statement("SELECT C0, C1, C2 FROM T WHERE C1 = 10 ORDER BY C0", plan);
-        // verify 1. find op exists 2. with target index I
+        // verify the secondary index I is used. The operator can be find or scan depending on the compiler
+        // (e.g. range scan is used for ORDER BY with index_feature::ties_ordered_by_primary_key)
         EXPECT_TRUE(contains(plan,
-            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+            R"("source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
     {

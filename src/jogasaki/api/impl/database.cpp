@@ -225,6 +225,7 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_enable_early_stop) " << cfg.enable_early_stop() << " : whether the forward exchange with row count stops its upstream early when it receives the records of the count";
     LOGCFG << "(dev_enable_ordered_scan) " << cfg.enable_ordered_scan() << " : whether the scan operator outputs records in the order of its direction given by the compiler";
     LOGCFG << "(dev_enable_ordered_forward) " << cfg.enable_ordered_forward() << " : whether the forward exchange respects the order of its input and output (effective only with dev_enable_ordered_scan)";
+    LOGCFG << "(dev_enable_ties_ordered_by_primary_key) " << cfg.enable_ties_ordered_by_primary_key() << " : whether the secondary indices tell the compiler that the entries with the same key are ordered by the primary key";
     LOGCFG << "(dev_scan_impl) " << cfg.scan_impl() << " : transaction engine scan implementation used by scan operator (auto, legacy or iscan)";
 }
 

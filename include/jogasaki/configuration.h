@@ -640,6 +640,18 @@ public:
     }
 
     /**
+     * @brief whether the secondary indices tell the compiler that the entries with the same key are ordered by the
+     * primary key (index_feature::ties_ordered_by_primary_key)
+     */
+    [[nodiscard]] bool enable_ties_ordered_by_primary_key() const noexcept {
+        return enable_ties_ordered_by_primary_key_;
+    }
+
+    void enable_ties_ordered_by_primary_key(bool arg) noexcept {
+        enable_ties_ordered_by_primary_key_ = arg;
+    }
+
+    /**
      * @brief whether the forward exchange with row count stops its upstream early when it receives the records of the count
      */
     [[nodiscard]] bool enable_early_stop() const noexcept {
@@ -774,6 +786,7 @@ public:
         print_non_default(enable_early_stop);
         print_non_default(enable_ordered_scan);
         print_non_default(enable_ordered_forward);
+        print_non_default(enable_ties_ordered_by_primary_key);
         print_non_default(scan_impl);
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
@@ -857,6 +870,7 @@ private:
     bool enable_early_stop_ = true;
     bool enable_ordered_scan_ = true;
     bool enable_ordered_forward_ = true;
+    bool enable_ties_ordered_by_primary_key_ = true;
     scan_impl_kind scan_impl_{scan_impl_kind::automatic};
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;

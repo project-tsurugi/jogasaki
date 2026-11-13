@@ -235,13 +235,18 @@ TEST_F(operation_location_compiler_test, remote_writes_do_not_use_same_named_loc
         dist::remote_catalog_snapshot::catalogs_type{catalog},
         dist::remote_catalog_snapshot::locations_type{{table.get(), "worker"}});
     ASSERT_TRUE(global::storage_manager()->find_by_name("T0").has_value());
-    for (auto sql : {"INSERT INTO T0(C0) VALUES(999)", "UPDATE T0 SET C1=1.0 WHERE C0=999", "DELETE FROM T0 WHERE C0=999"}) {
+    struct sample { std::string_view sql; status result; error_code code; };
+    for (auto const& test : {
+        sample{"INSERT INTO T0(C0) VALUES(999)", status::err_illegal_operation, error_code::restricted_operation_exception},
+        sample{"UPDATE T0 SET C1=1.0 WHERE C0=999", status::err_unsupported, error_code::unsupported_compiler_feature_exception},
+        sample{"DELETE FROM T0 WHERE C0=999", status::err_unsupported, error_code::unsupported_compiler_feature_exception}}) {
         plan::compiler_context ctx{};
         ctx.storage_provider(remote);
         ctx.remote_catalogs(snapshot);
-        EXPECT_EQ(status::err_unsupported, plan::prepare(sql, ctx)) << sql;
+        // INSERT reaches runtime metadata preparation; the existing plan validation rejects UPDATE/DELETE earlier.
+        EXPECT_EQ(test.result, plan::prepare(test.sql, ctx)) << test.sql;
         ASSERT_TRUE(ctx.error_info());
-        EXPECT_EQ(error_code::unsupported_compiler_feature_exception, ctx.error_info()->code()) << sql;
+        EXPECT_EQ(test.code, ctx.error_info()->code()) << test.sql;
     }
 }
 
@@ -341,6 +346,8 @@ TEST_F(operation_location_compiler_test, lookup_failure_is_reported_with_error_i
 }
 
 TEST_F(operation_location_compiler_test, extractor_is_not_used_for_write_statements) {
+    // Keep the successful local-write path covered independently of remote target rejection.
+    ctx_.remote_catalogs(std::make_shared<dist::remote_catalog_snapshot>());
     auto observed = std::make_shared<probe>();
     ctx_.operation_locations(extractor(observed, {7}));
 

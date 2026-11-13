@@ -388,9 +388,10 @@ namespace {
 
 class catalog_graph_resolver final : public remote_execution_graph_resolver {
 public:
-    catalog_graph_resolver(api::database& database, remote_execution_block const& block)
-        : index_(find_index(database, *block.operators.front().source)),
-          relation_id_(block.operators.back().offer->external_relation_id) {
+    catalog_graph_resolver(api::database& database, remote_execution_block const& block,
+                           std::vector<std::size_t> const& order)
+        : index_(find_index(database, *block.operators[order.front()].source)),
+          relation_id_(block.operators[order.back()].offer->external_relation_id) {
         std::vector<takatori::descriptor::variable> columns{};
         columns.reserve(block.result_schema.size());
         for (auto const& column : block.result_schema) {
@@ -763,7 +764,7 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
     if (auto error = validate_output_types(*decoded.block)) {
         return std::move(*error);
     }
-    catalog_graph_resolver resolver{*database_, *decoded.block};
+    catalog_graph_resolver resolver{*database_, *decoded.block, decoded.operator_order};
     auto graph = build_remote_execution_graph(*decoded.block, resolver);
     if (!graph) {
         if (!graph.invalid_request && resolver.catalog_mismatch()) {

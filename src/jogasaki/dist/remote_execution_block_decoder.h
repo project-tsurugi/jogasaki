@@ -17,9 +17,11 @@
 
 
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <jogasaki/dist/remote_execution_block.h>
 
@@ -31,12 +33,15 @@ struct remote_execution_block_decode_result {
     std::optional<remote_execution_block> block{};
     std::string error{};
     bool unsupported_type{};
+    // Validated source-to-offer indices into block->operators; independent of storage order.
+    std::vector<std::size_t> operator_order{};
 
     [[nodiscard]] explicit operator bool() const noexcept { return block.has_value(); }
 };
 // NOLINTEND(misc-non-private-member-variables-in-classes)
 
-[[nodiscard]] std::optional<std::string> validate_remote_execution_block(remote_execution_block const& block);
+[[nodiscard]] std::optional<std::string> validate_remote_execution_block(
+    remote_execution_block const& block, std::vector<std::size_t>* operator_order = nullptr);
 
 [[nodiscard]] remote_execution_block_decode_result decode_remote_execution_block(std::string_view payload);
 

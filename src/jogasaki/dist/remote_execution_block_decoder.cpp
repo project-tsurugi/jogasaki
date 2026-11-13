@@ -149,11 +149,13 @@ public:
         if (value_ids.count(block->result_value_id) == 0) {
             return "result value is undefined";
         }
-        if (block->operators.back().input_value_id != block->result_value_id) {
+        if (block->operators[order.back()].input_value_id != block->result_value_id) {
             return "result value does not match offer input";
         }
         return {};
     }
+
+    [[nodiscard]] std::vector<std::size_t> take_operator_order() { return std::move(order); }
 
 private:
     std::optional<std::string> validate_types() {
@@ -278,7 +280,7 @@ private:
         bool const first = i == 0;
         bool const last = i + 1 == block->operators.size();
         if (first && op.kind != remote_operator_kind::scan && op.kind != remote_operator_kind::find) {
-            return "the first operator must be scan or find";
+            return "operator graph must contain exactly one source";
         }
         if (!first && !last && op.kind != remote_operator_kind::filter && op.kind != remote_operator_kind::project) {
             return "an intermediate operator must be filter or project";
@@ -309,7 +311,7 @@ private:
         } else if (!op.output_value_id || value_ids.count(*op.output_value_id) == 0) {
             return id_error("operator", op.operator_id, "has an undefined output value");
         }
-        if (i > 0 && block->operators[i - 1].output_value_id != op.input_value_id) {
+        if (i > 0 && block->operators[order[i - 1]].output_value_id != op.input_value_id) {
             return id_error("operator", op.operator_id, "is not connected to its predecessor");
         }
 
@@ -438,8 +440,58 @@ private:
     }
 
     std::optional<std::string> validate_operators() {
+        // Build the single chain from connection IDs, never from operator IDs or array positions.
+        std::unordered_set<std::uint64_t> producers{};
+        std::unordered_map<std::uint64_t, std::size_t> consumers{};
+        std::optional<std::size_t> source{};
+        std::size_t offers{};
         for (std::size_t i = 0; i < block->operators.size(); ++i) {
             auto const& op = block->operators[i];
+            if (op.kind == remote_operator_kind::scan || op.kind == remote_operator_kind::find) {
+                if (source) {
+                    return "operator graph must contain exactly one source";
+                }
+                source = i;
+            }
+            if (op.kind == remote_operator_kind::offer) {
+                ++offers;
+            }
+            if (op.output_value_id && !producers.emplace(*op.output_value_id).second) {
+                return "operator graph has duplicate value producers";
+            }
+            if (op.input_value_id && !consumers.emplace(*op.input_value_id, i).second) {
+                return "operator graph must not branch";
+            }
+        }
+        if (!source) {
+            return "operator graph must contain exactly one source";
+        }
+        if (offers != 1) {
+            return "operator graph must contain exactly one offer";
+        }
+        std::unordered_set<std::size_t> visited{};
+        auto current = *source;
+        while (visited.emplace(current).second) {
+            order.push_back(current);
+            auto const& op = block->operators[current];
+            if (op.kind == remote_operator_kind::offer) {
+                break;
+            }
+            if (!op.output_value_id) {
+                return "operator graph has no output value";
+            }
+            auto next = consumers.find(*op.output_value_id);
+            if (next == consumers.end()) {
+                return "operator graph has a disconnected output";
+            }
+            current = next->second;
+        }
+        if (order.size() != block->operators.size() ||
+            block->operators[order.back()].kind != remote_operator_kind::offer) {
+            return "operator graph contains a cycle or disconnected operators";
+        }
+        for (std::size_t i = 0; i < order.size(); ++i) {
+            auto const& op = block->operators[order[i]];
             if (auto error = validate_operator_shape(op, i)) {
                 return error;
             }
@@ -458,6 +510,7 @@ private:
         }
         return {};
     }
+    std::vector<std::size_t> order{};
     remote_execution_block const* block;
     std::unordered_set<std::uint64_t> value_ids{};
     std::unordered_set<std::uint64_t> variable_ids{};
@@ -468,8 +521,16 @@ private:
 };
 } // namespace
 
-std::optional<std::string> validate_remote_execution_block(remote_execution_block const& block) {
-    return block_validator{block}.validate();
+std::optional<std::string> validate_remote_execution_block(
+    remote_execution_block const& block, std::vector<std::size_t>* operator_order) {
+    block_validator validator{block};
+    if (auto error = validator.validate()) {
+        return error;
+    }
+    if (operator_order) {
+        *operator_order = validator.take_operator_order();
+    }
+    return {};
 }
 
 static bool unsupported_type(std::string const& payload, std::string const& name) {
@@ -612,10 +673,11 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
         block.result_schema.push_back({column.column_id(), column.type(), column.nullable(), column.type_payload()});
     }
 
-    if (auto error = validate_remote_execution_block(block)) {
+    std::vector<std::size_t> order{};
+    if (auto error = validate_remote_execution_block(block, &order)) {
         return failure(std::move(*error));
     }
-    return {std::move(block), {}};
+    return {std::move(block), {}, false, std::move(order)};
 }
 
 } // namespace jogasaki::dist

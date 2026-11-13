@@ -51,9 +51,7 @@ std::string serialize_remote_execution_result(remote_execution_result const& res
         out->set_column_id(column.column_id);
         out->set_type(column.type);
         out->set_nullable(column.nullable);
-        out->set_type_payload(column.type_payload.empty() && column.type == "int8()"
-                                  ? encode_remote_type(takatori::type::int8{})
-                                  : column.type_payload);
+        out->set_type_payload(column.type_payload);
     }
     if (!result.encoded_rows.empty()) {
         for (auto const& row : result.encoded_rows) {

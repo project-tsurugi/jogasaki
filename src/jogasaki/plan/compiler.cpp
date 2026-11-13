@@ -106,6 +106,7 @@
 #include <jogasaki/datastore/register_lob.h>
 #include <jogasaki/dist/operation_location.h>
 #include <jogasaki/dist/remote_catalog_provider.h>
+#include <jogasaki/dist/remote_write_target.h>
 #include <jogasaki/dist/remote_routing.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
@@ -396,6 +397,12 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     compiled_info info, compiler_context &ctx
 ) {
+    // Compiler diagnostics have already been handled. Reject resolved remote update targets
+    // before collecting local storage operations or creating executable runtime metadata.
+    if (auto error = dist::validate_remote_write_target(*statement, ctx.remote_catalogs().get())) {
+        ctx.error_info(error);
+        return {error->status(), {}};
+    }
     auto container = std::make_shared<mirror_container>();
     container->remote_catalogs(ctx.remote_catalogs());
     switch(statement->kind()) {

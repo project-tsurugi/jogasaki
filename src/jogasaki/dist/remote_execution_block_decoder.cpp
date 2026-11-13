@@ -15,6 +15,8 @@
  */
 #include "remote_execution_block_decoder.h"
 
+#include <charconv>
+
 #include <limits>
 #include <memory>
 #include <queue>
@@ -158,7 +160,7 @@ public:
 
 private:
     std::optional<std::string> validate_types() {
-        if (block->version != 2) {
+        if (block->version != remote_execution_block::current_version) {
             return "unsupported RemoteExecutionBlock version";
         }
         for (auto const& expression : block->scalar_expressions) {
@@ -219,33 +221,32 @@ private:
             }
         }
 
-        for (auto const& expression : block->scalar_expressions) {
-            if (!add_unique(expression_ids, expression.expression_id)) {
-                return id_error("scalar expression", expression.expression_id, "is duplicated");
-            }
+        for (std::size_t index = 0; index < block->scalar_expressions.size(); ++index) {
+            expression_indexes.emplace(index);
         }
         return {};
     }
 
     std::optional<std::string> validate_expressions() {
-        for (auto const& expression : block->scalar_expressions) {
-            if (expression.operand_expression_ids.size() != expected_operand_count(expression.kind)) {
-                return id_error("scalar expression", expression.expression_id, "has invalid operand count");
+        for (std::size_t index = 0; index < block->scalar_expressions.size(); ++index) {
+            auto const& expression = block->scalar_expressions[index];
+            if (expression.operand_expression_indexes.size() != expected_operand_count(expression.kind)) {
+                return id_error("scalar expression", index, "has invalid operand count");
             }
-            for (auto id : expression.operand_expression_ids) {
-                if (expression_ids.count(id) == 0) {
-                    return id_error("scalar expression operand", id, "is undefined");
+            for (auto id : expression.operand_expression_indexes) {
+                if (id >= index) {
+                    return id_error("scalar expression operand", id, "must precede its expression");
                 }
             }
             if (expression.kind == remote_scalar_expression_kind::variable_reference) {
                 if (!expression.variable_id) {
-                    return id_error("scalar expression", expression.expression_id, "has no variable");
+                    return id_error("scalar expression", index, "has no variable");
                 }
                 if (variable_ids.count(*expression.variable_id) == 0) {
                     return id_error("stream variable", *expression.variable_id, "is undefined");
                 }
             } else if (expression.variable_id) {
-                return id_error("scalar expression", expression.expression_id, "has an unexpected variable");
+                return id_error("scalar expression", index, "has an unexpected variable");
             }
         }
 
@@ -257,33 +258,7 @@ private:
         if (block->scalar_expressions.size() > 512) {
             return "too many scalar expressions";
         }
-        std::unordered_map<std::uint64_t, std::size_t> pending{};
-        std::unordered_map<std::uint64_t, std::vector<std::uint64_t>> dependents{};
-        std::queue<std::uint64_t> ready{};
-        for (auto const& expression : block->scalar_expressions) {
-            pending[expression.expression_id] = expression.operand_expression_ids.size();
-            if (expression.operand_expression_ids.empty()) {
-                ready.push(expression.expression_id);
-            }
-            for (auto operand : expression.operand_expression_ids) {
-                dependents[operand].push_back(expression.expression_id);
-            }
-        }
-        std::size_t resolved{};
-        while (!ready.empty()) {
-            auto id = ready.front();
-            ready.pop();
-            ++resolved;
-            for (auto dependent : dependents[id]) {
-                if (--pending[dependent] == 0) {
-                    ready.push(dependent);
-                }
-            }
-        }
-        if (resolved != block->scalar_expressions.size()) {
-            return "scalar expression graph contains a cycle";
-        }
-
+        // Post-order operands already exclude self references, forward references and cycles.
         return {};
     }
 
@@ -370,35 +345,35 @@ private:
     }
 
     std::optional<std::string> validate_source_keys(remote_operator const& op) {
-        for (auto id : op.source->lower_key_expression_ids) {
-            if (expression_ids.count(id) == 0) {
+        for (auto id : op.source->lower_key_expression_indexes) {
+            if (expression_indexes.count(id) == 0) {
                 return id_error("lower key expression", id, "is undefined");
             }
         }
-        for (auto id : op.source->upper_key_expression_ids) {
-            if (expression_ids.count(id) == 0) {
+        for (auto id : op.source->upper_key_expression_indexes) {
+            if (expression_indexes.count(id) == 0) {
                 return id_error("upper key expression", id, "is undefined");
             }
         }
-        for (auto id : op.source->find_key_expression_ids) {
-            if (expression_ids.count(id) == 0) {
+        for (auto id : op.source->find_key_expression_indexes) {
+            if (expression_indexes.count(id) == 0) {
                 return id_error("find key expression", id, "is undefined");
             }
         }
-        if (op.kind == remote_operator_kind::scan && !op.source->find_key_expression_ids.empty()) {
+        if (op.kind == remote_operator_kind::scan && !op.source->find_key_expression_indexes.empty()) {
             return "scan operator must not have find keys";
         }
         if (op.kind == remote_operator_kind::find &&
-            (!op.source->lower_key_expression_ids.empty() || !op.source->upper_key_expression_ids.empty() ||
+            (!op.source->lower_key_expression_indexes.empty() || !op.source->upper_key_expression_indexes.empty() ||
              op.source->lower_endpoint_kind != remote_endpoint_kind::unbound ||
              op.source->upper_endpoint_kind != remote_endpoint_kind::unbound || op.source->limit)) {
             return "find operator must not have scan endpoints or limit";
         }
         if (op.kind == remote_operator_kind::scan &&
             ((op.source->lower_endpoint_kind == remote_endpoint_kind::unbound &&
-              !op.source->lower_key_expression_ids.empty()) ||
+              !op.source->lower_key_expression_indexes.empty()) ||
              (op.source->upper_endpoint_kind == remote_endpoint_kind::unbound &&
-              !op.source->upper_key_expression_ids.empty()))) {
+              !op.source->upper_key_expression_indexes.empty()))) {
             return "unbound scan endpoint must not have keys";
         }
         return {};
@@ -406,10 +381,10 @@ private:
 
     std::optional<std::string> validate_filter_project(remote_operator const& op) {
         if (op.kind == remote_operator_kind::filter) {
-            if (!op.filter_expression_id || expression_ids.count(*op.filter_expression_id) == 0) {
+            if (!op.filter_expression_index || expression_indexes.count(*op.filter_expression_index) == 0) {
                 return id_error("operator", op.operator_id, "has an undefined filter expression");
             }
-        } else if (op.filter_expression_id) {
+        } else if (op.filter_expression_index) {
             return id_error("operator", op.operator_id, "has an unexpected filter expression");
         }
         if (op.kind != remote_operator_kind::project && !op.project_columns.empty()) {
@@ -419,8 +394,8 @@ private:
             if (variable_ids.count(column.destination_variable_id) == 0) {
                 return id_error("stream variable", column.destination_variable_id, "is undefined");
             }
-            if (expression_ids.count(column.value_expression_id) == 0) {
-                return id_error("project expression", column.value_expression_id, "is undefined");
+            if (expression_indexes.count(column.expression_index) == 0) {
+                return id_error("project expression", column.expression_index, "is undefined");
             }
         }
         return {};
@@ -530,7 +505,7 @@ private:
     std::unordered_set<std::uint64_t> variable_ids{};
     std::unordered_set<std::uint64_t> external_relation_ids{};
     std::unordered_set<std::uint64_t> result_column_ids{};
-    std::unordered_set<std::uint64_t> expression_ids{};
+    std::unordered_set<std::uint64_t> expression_indexes{};
     std::unordered_set<std::uint64_t> operator_ids{};
 };
 } // namespace
@@ -577,20 +552,27 @@ static std::optional<std::string> decode_operator(dqproto::Operator const& op, r
         remote_source decoded_source{};
         decoded_source.table_name = op.source().storage().table_name();
         decoded_source.index_name = op.source().storage().index_name();
-        if (op.source().storage().definition_id_presence_case() == dqproto::StorageReference::kDefinitionId) {
-            decoded_source.definition_id = op.source().storage().definition_id();
+        auto const& identity = op.source().storage().remote_definition_id();
+        if (!identity.empty()) {
+            std::uint64_t value{};
+            auto [end, error] = std::from_chars(identity.data(), identity.data() + identity.size(), value);
+            if (error != std::errc{} || end != identity.data() + identity.size() ||
+                identity != std::to_string(value)) {
+                return "invalid remote storage definition ID";
+            }
+            decoded_source.definition_id = value;
         }
         decoded_source.lower_endpoint_kind = *lower_kind;
         decoded_source.upper_endpoint_kind = *upper_kind;
-        decoded_source.lower_key_expression_ids.assign(op.source().lower().key_expression_ids().begin(),
-                                                       op.source().lower().key_expression_ids().end());
-        decoded_source.upper_key_expression_ids.assign(op.source().upper().key_expression_ids().begin(),
-                                                       op.source().upper().key_expression_ids().end());
-        decoded_source.find_key_expression_ids.assign(op.source().find_key_expression_ids().begin(),
-                                                      op.source().find_key_expression_ids().end());
-        decoded_source.lower_key_count = decoded_source.lower_key_expression_ids.size();
-        decoded_source.upper_key_count = decoded_source.upper_key_expression_ids.size();
-        decoded_source.find_key_count = decoded_source.find_key_expression_ids.size();
+        decoded_source.lower_key_expression_indexes.assign(op.source().lower().key_expression_indexes().begin(),
+                                                       op.source().lower().key_expression_indexes().end());
+        decoded_source.upper_key_expression_indexes.assign(op.source().upper().key_expression_indexes().begin(),
+                                                       op.source().upper().key_expression_indexes().end());
+        decoded_source.find_key_expression_indexes.assign(op.source().find_key_expression_indexes().begin(),
+                                                      op.source().find_key_expression_indexes().end());
+        decoded_source.lower_key_count = decoded_source.lower_key_expression_indexes.size();
+        decoded_source.upper_key_count = decoded_source.upper_key_expression_indexes.size();
+        decoded_source.find_key_count = decoded_source.find_key_expression_indexes.size();
         if (op.source().limit_presence_case() == dqproto::Source::kLimit) {
             decoded_source.limit = op.source().limit();
         }
@@ -602,11 +584,14 @@ static std::optional<std::string> decode_operator(dqproto::Operator const& op, r
         }
         target.source = std::move(decoded_source);
     }
-    if (op.filter_expression_id_presence_case() == dqproto::Operator::kFilterExpressionId) {
-        target.filter_expression_id = op.filter_expression_id();
+    if (op.filter_expression_index_presence_case() == dqproto::Operator::kFilterExpressionIndex) {
+        target.filter_expression_index = op.filter_expression_index();
     }
     for (auto const& column : op.project_columns()) {
-        target.project_columns.push_back({column.destination_variable_id(), column.value_expression_id()});
+        if (column.expression_index_presence_case() != dqproto::ProjectColumn::kExpressionIndex) {
+            return "project expression index is missing";
+        }
+        target.project_columns.push_back({column.destination_variable_id(), column.expression_index()});
     }
     if (op.has_offer()) {
         remote_offer offer{};
@@ -630,7 +615,7 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
 
     // An unknown format must not be interpreted as the current version's structure.
     if (source.version() == 0) return failure("missing RemoteExecutionBlock version");
-    if (source.version() != 2) return failure("unsupported RemoteExecutionBlock version", true);
+    if (source.version() != remote_execution_block::current_version) return failure("unsupported RemoteExecutionBlock version", true);
 
     // Reject unsupported SQL types before creating runtime metadata, including typed NULLs.
     for (auto const& expression : source.scalar_expressions()) {
@@ -662,11 +647,10 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
     for (auto const& expression : source.scalar_expressions()) {
         auto kind = decode(expression.kind());
         if (!kind) {
-            return failure(id_error("scalar expression", expression.expression_id(), "has unknown kind"),
+            return failure(id_error("scalar expression", block.scalar_expressions.size(), "has unknown kind"),
                 expression.kind() != dqproto::SCALAR_EXPRESSION_KIND_UNSPECIFIED);
         }
         remote_scalar_expression target{};
-        target.expression_id = expression.expression_id();
         target.kind = *kind;
         target.operator_kind = expression.operator_kind();
         target.value_kind = expression.value_kind();
@@ -677,8 +661,8 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
         if (expression.variable_id_presence_case() == dqproto::ScalarExpression::kVariableId) {
             target.variable_id = expression.variable_id();
         }
-        target.operand_expression_ids.assign(expression.operand_expression_ids().begin(),
-                                             expression.operand_expression_ids().end());
+        target.operand_expression_indexes.assign(expression.operand_expression_indexes().begin(),
+                                             expression.operand_expression_indexes().end());
         block.scalar_expressions.emplace_back(std::move(target));
     }
 

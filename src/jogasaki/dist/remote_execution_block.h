@@ -64,14 +64,13 @@ enum class remote_scalar_expression_kind {
 };
 
 struct remote_scalar_expression {
-    std::uint64_t expression_id{};
     remote_scalar_expression_kind kind{};
     std::string operator_kind{};
     std::string value_kind{};
     std::string value{};
     std::string type{};
     std::optional<std::uint64_t> variable_id{};
-    std::vector<std::uint64_t> operand_expression_ids{};
+    std::vector<std::uint64_t> operand_expression_indexes{};
     std::string type_payload{};
     std::string literal_payload{};
 };
@@ -90,12 +89,12 @@ struct remote_source {
     std::vector<remote_source_column> columns{};
     remote_endpoint_kind lower_endpoint_kind{};
     std::size_t lower_key_count{};
-    std::vector<std::uint64_t> lower_key_expression_ids{};
+    std::vector<std::uint64_t> lower_key_expression_indexes{};
     remote_endpoint_kind upper_endpoint_kind{};
     std::size_t upper_key_count{};
-    std::vector<std::uint64_t> upper_key_expression_ids{};
+    std::vector<std::uint64_t> upper_key_expression_indexes{};
     std::size_t find_key_count{};
-    std::vector<std::uint64_t> find_key_expression_ids{};
+    std::vector<std::uint64_t> find_key_expression_indexes{};
     std::optional<std::uint64_t> limit{};
     // Remote index declaration identity. Presence is separate from the valid ID zero.
     std::optional<std::uint64_t> definition_id{};
@@ -103,7 +102,7 @@ struct remote_source {
 
 struct remote_project_column {
     std::uint64_t destination_variable_id{};
-    std::uint64_t value_expression_id{};
+    std::uint64_t expression_index{};
 };
 
 struct remote_offer_column {
@@ -129,14 +128,15 @@ struct remote_operator {
     std::optional<std::uint64_t> input_value_id{};
     std::optional<std::uint64_t> output_value_id{};
     std::optional<remote_source> source{};
-    std::optional<std::uint64_t> filter_expression_id{};
+    std::optional<std::uint64_t> filter_expression_index{};
     std::vector<remote_project_column> project_columns{};
     std::optional<remote_offer> offer{};
 };
 
 struct remote_execution_block {
-    // Version 2 requires storage identity and positional column bindings.
-    std::uint32_t version{2};
+    // Version 3 follows L3-04: string storage identity and post-order expression indexes.
+    static constexpr std::uint32_t current_version = 3;
+    std::uint32_t version{current_version};
     std::vector<remote_operator> operators{};
     std::vector<std::uint64_t> values{};
     std::vector<std::uint64_t> stream_variables{};

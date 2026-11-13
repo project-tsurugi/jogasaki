@@ -41,6 +41,8 @@
 #include <tateyama/grpc/distributed_query/service_adapter.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/impl/database.h>
+#include <tateyama/metrics/metrics_store.h>
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/dist/local_catalog_handler.h>
@@ -130,6 +132,11 @@ bool bridge::start(framework::environment& env) {
 
     auto ret = db_->start() == status::ok;
     started_ = ret;
+    if (ret && cfg_->distributed_query_coordinator_enabled()) {
+        if (auto* store = tateyama::metrics::find_metrics_store(env)) {
+            api::impl::get_impl(*db_).remote_server_channels().register_metrics(*store);
+        }
+    }
     if (ret && remote_enabled_) {
         auto adapter = env.resource_repository().find<tateyama::grpc::distributed_query::service_adapter>();
         if (!adapter) {

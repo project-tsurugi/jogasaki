@@ -405,7 +405,7 @@ public:
         request.mutable_metadata()->set_remote_execution_id("bridge-execution");
         request.mutable_metadata()->set_attempt_number(1);
         // A supported version with a malformed body distinguishes an installed handler from no handler.
-        request.mutable_execution_block()->set_version(2);
+        request.mutable_execution_block()->set_version(3);
         grpc::ClientContext context{};
         context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
         auto reader = stub->ExecuteRemoteProcess(&context, request);

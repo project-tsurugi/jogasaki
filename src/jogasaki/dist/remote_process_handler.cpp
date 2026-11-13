@@ -121,20 +121,21 @@ using remote_error = dq::remote_process_error_kind;
 
 class transaction_abort_guard {
 public:
-    transaction_abort_guard(api::impl::database& database, std::shared_ptr<transaction_context> transaction) noexcept
+    transaction_abort_guard(api::impl::database& database, std::shared_ptr<transaction_context> transaction, dq::remote_process_observation& observed) noexcept
         : database_(database), handle_(transaction->surrogate_id(), transaction->option()->session_id()),
-          transaction_(std::move(transaction)) {}
+          transaction_(std::move(transaction)), observed_(observed) {}
 
     ~transaction_abort_guard() {
         if (transaction_) {
+            observed_.rollback_requested = true;
             if (direct_) {
-                (void)transaction_->abort_transaction();
+                observed_.rollback_status = static_cast<int>(transaction_->abort_transaction());
             } else {
                 executor::abort_transaction(std::move(transaction_));
             }
         }
         // Commit/abort ends the KVS transaction; the database registration must also be released.
-        (void)database_.destroy_transaction(handle_);
+        observed_.close_status = static_cast<int>(database_.destroy_transaction(handle_));
     }
 
     transaction_abort_guard(transaction_abort_guard const&) = delete;
@@ -151,6 +152,7 @@ private:
     api::impl::database& database_;
     api::transaction_handle handle_;
     std::shared_ptr<transaction_context> transaction_{};
+    dq::remote_process_observation& observed_;
     bool direct_{};
 };
 
@@ -576,15 +578,20 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
                      takatori::relation::graph_type const& graph, remote_execution_graph_compile_result const& compiled,
                      executor::exchange::forward::step&& forward, std::function<bool()> const& is_cancelled,
                      dq::remote_process_handler::result_sink const& sink,
-                     dq::remote_process_handler::record_sink const& records) {
+                     dq::remote_process_handler::record_sink const& records, dq::remote_process_observation& observed) {
     std::shared_ptr<transaction_context> transaction{};
     api::transaction_option option{transaction_type_kind::rtx};
     option.scan_parallel(1);
-    if (auto st = database.create_transaction_internal(transaction, option); st != status::ok) {
+    observed.phase = "begin";
+    auto begin_status = database.create_transaction_internal(transaction, option);
+    observed.begin_status = static_cast<int>(begin_status);
+    if (auto st = begin_status; st != status::ok) {
         return {false, {}, "failed to create remote RTX (" + std::string{to_string_view(st)} + ")",
                 classify_remote_rtx_start_failure(st, database.stop_requested())};
     }
-    transaction_abort_guard abort_guard{database, transaction};
+    observed.transaction_handle = transaction->surrogate_id();
+    transaction_abort_guard abort_guard{database, transaction, observed};
+    observed.phase = "wait_ready";
 
     while (!transaction->is_ready()) {
         if (database.stop_requested()) {
@@ -595,6 +602,7 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
         }
         std::this_thread::sleep_for(std::chrono::milliseconds{1});
     }
+    observed.transaction_id = std::string{transaction->transaction_id()};
     transaction->start_time(transaction_context::clock::now());
     transaction->state(transaction_state_kind::active);
 
@@ -608,6 +616,8 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
         database, transaction, nullptr, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         request_info{0, {}, cancellation}, false, nullptr, std::addressof(rpc_scheduler));
 
+    observed.local_job_id = request->job()->id();
+    observed.phase = "execute";
     request->remote_worker(true);
     // Rebinding resolved the received process against this worker; never route it again.
     compiled.processor_info->captured_location({});
@@ -674,10 +684,14 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
         return {false, {}, "failed to execute remote process task", remote_error::internal};
     }
 
+    observed.phase = "finish";
     if (!result.finish()) {
         return result.failure();
     }
-    if (auto st = transaction->commit(); st != status::ok) {
+    observed.phase = "commit";
+    auto commit_status = transaction->commit();
+    observed.commit_status = static_cast<int>(commit_status);
+    if (auto st = commit_status; st != status::ok) {
         return {false, {}, "failed to commit remote RTX", remote_error::internal};
     }
     abort_guard.release();
@@ -686,6 +700,7 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
     if (encoded.size() > std::size_t{64} * 1024U * 1024U) {
         return {false, {}, "remote result exceeds 64 MiB", remote_error::resource_exhausted};
     }
+    observed.phase = "done";
     return {true, std::move(encoded), {}};
 }
 
@@ -775,8 +790,19 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
             return {false, {}, "remote result schema type mismatch", remote_error::invalid_request};
         }
     }
-    return execute_remote_graph(api::impl::get_impl(*database_), *decoded.block, *graph.graph, compiled,
-                                std::move(forward), is_cancelled, sink, records);
+    dq::remote_process_observation observed{};
+    dq::remote_process_result result{};
+    try {
+        result = execute_remote_graph(api::impl::get_impl(*database_), *decoded.block, *graph.graph, compiled,
+                                std::move(forward), is_cancelled, sink, records, observed);
+    } catch (std::exception const& e) {
+        result = {false, {}, e.what(), remote_error::internal};
+    } catch (...) {
+        result = {false, {}, "remote process handler threw an unknown exception", remote_error::internal};
+    }
+    // The transaction guard has run before its observations are attached to the result.
+    result.observation = std::move(observed);
+    return result;
 }
 
 } // namespace jogasaki::dist

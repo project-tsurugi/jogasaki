@@ -106,4 +106,26 @@ TEST(remote_server_configuration_validation_test, plain_ini_ignores_unused_certi
     ASSERT_TRUE(converted);
     EXPECT_EQ(dist::root_certificate_source::none, converted->distributed_query_remote_servers().front().root_certificate);
 }
+TEST(remote_server_configuration_validation_test, counts_channel_lookup_failures_and_releases_channel_gauge) {
+    dist::remote_server_channel_manager manager{};
+    auto stats = manager.statistics();
+    EXPECT_FALSE(manager.find_channel("worker"));
+    EXPECT_EQ(1, stats->acquisitions.load());
+    EXPECT_EQ(1, stats->failures.load());
+    dist::remote_server_configuration cfg{};
+    cfg.name = "worker";
+    cfg.uri = "dns:///127.0.0.1:49388";
+    ASSERT_EQ(status::ok, manager.start({cfg}));
+    EXPECT_EQ(1, stats->channels.load());
+    EXPECT_TRUE(manager.find_channel("worker"));
+    EXPECT_FALSE(manager.find_channel("missing"));
+    EXPECT_EQ(3, stats->acquisitions.load());
+    EXPECT_EQ(2, stats->failures.load());
+    manager.stop();
+    EXPECT_EQ(0, stats->channels.load());
+    EXPECT_FALSE(manager.find_channel("worker"));
+    EXPECT_EQ(4, stats->acquisitions.load());
+    EXPECT_EQ(3, stats->failures.load());
+}
+
 } // namespace jogasaki::testing

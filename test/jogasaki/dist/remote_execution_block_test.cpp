@@ -321,7 +321,7 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     ASSERT_EQ(1, block->result_schema.size());
     // This graph has one BIGINT output; no compiler type map is supplied by this fixture.
     block->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
-    EXPECT_EQ(2, block->version);
+    EXPECT_EQ(3, block->version);
     ASSERT_EQ(4, block->operators.size());
     EXPECT_EQ(dist::remote_operator_kind::scan, block->operators[0].kind);
     EXPECT_EQ(dist::remote_operator_kind::filter, block->operators[1].kind);
@@ -349,8 +349,8 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     EXPECT_EQ(0, source.find_key_count);
     ASSERT_TRUE(source.limit);
     EXPECT_EQ(25, *source.limit);
-    ASSERT_EQ(1, source.lower_key_expression_ids.size());
-    EXPECT_EQ(0, source.lower_key_expression_ids[0]);
+    ASSERT_EQ(1, source.lower_key_expression_indexes.size());
+    EXPECT_EQ(0, source.lower_key_expression_indexes[0]);
 
     ASSERT_EQ(9, block->scalar_expressions.size());
     EXPECT_EQ(dist::remote_scalar_expression_kind::immediate, block->scalar_expressions[0].kind);
@@ -358,15 +358,15 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     EXPECT_EQ(0, block->scalar_expressions[1].variable_id);
     EXPECT_EQ(dist::remote_scalar_expression_kind::binary, block->scalar_expressions[3].kind);
     EXPECT_EQ("add", block->scalar_expressions[3].operator_kind);
-    EXPECT_EQ((std::vector<std::uint64_t>{1, 2}), block->scalar_expressions[3].operand_expression_ids);
+    EXPECT_EQ((std::vector<std::uint64_t>{1, 2}), block->scalar_expressions[3].operand_expression_indexes);
     EXPECT_EQ(dist::remote_scalar_expression_kind::compare, block->scalar_expressions[5].kind);
     EXPECT_EQ("greater", block->scalar_expressions[5].operator_kind);
-    EXPECT_EQ(5, block->operators[1].filter_expression_id);
+    EXPECT_EQ(5, block->operators[1].filter_expression_index);
     EXPECT_EQ(dist::remote_scalar_expression_kind::unary, block->scalar_expressions[7].kind);
     EXPECT_EQ(dist::remote_scalar_expression_kind::cast, block->scalar_expressions[8].kind);
     ASSERT_EQ(1, block->operators[2].project_columns.size());
     EXPECT_EQ(1, block->operators[2].project_columns[0].destination_variable_id);
-    EXPECT_EQ(8, block->operators[2].project_columns[0].value_expression_id);
+    EXPECT_EQ(8, block->operators[2].project_columns[0].expression_index);
     ASSERT_TRUE(block->operators[3].offer);
     EXPECT_EQ(0, block->operators[3].offer->external_relation_id);
     ASSERT_EQ(1, block->operators[3].offer->columns.size());
@@ -379,15 +379,15 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     EXPECT_FALSE(block->result_schema[0].nullable);
 
     auto serialized = dist::serialize_remote_execution_block(*block);
-    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.version=2\n"));
+    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.version=3\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.2.kind=project\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.result_value_id=2\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.0.source.table_name=T0\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.0.source.column.0.name=C0\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.0.source.lower.kind=inclusive\n"));
-    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.0.source.lower.key.0.expression_id=0\n"));
+    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.0.source.lower.key.0.expression_index=0\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.0.source.limit=25\n"));
-    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.1.filter_expression_id=5\n"));
+    EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.1.filter_expression_index=5\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.scalar_expression.3.operator_kind=add\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.scalar_expression.8.kind=cast\n"));
     EXPECT_NE(std::string::npos, serialized.find("remote_execution_block.operator.3.offer.external_relation_id=0\n"));
@@ -402,9 +402,9 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     auto bytes = dist::serialize_remote_execution_block_proto(*block);
     tateyama::grpc::proto::RemoteExecutionBlock decoded{};
     ASSERT_TRUE(decoded.ParseFromString(bytes));
-    EXPECT_EQ(2, decoded.version());
-    ASSERT_TRUE(decoded.operators(0).source().storage().has_definition_id());
-    EXPECT_EQ(1257U, decoded.operators(0).source().storage().definition_id());
+    EXPECT_EQ(3, decoded.version());
+    ASSERT_TRUE(!decoded.operators(0).source().storage().remote_definition_id().empty());
+    EXPECT_EQ("1257", decoded.operators(0).source().storage().remote_definition_id());
     ASSERT_TRUE(decoded.operators(0).source().columns(0).has_column_index());
     EXPECT_EQ(0U, decoded.operators(0).source().columns(0).column_index());
     ASSERT_EQ(4, decoded.operators_size());
@@ -502,7 +502,7 @@ TEST(remote_execution_block_test, rejects_invalid_protobuf_payload) {
 
 TEST(remote_execution_block_test, rejects_undefined_expression_reference) {
     tateyama::grpc::proto::RemoteExecutionBlock block{};
-    block.set_version(2);
+    block.set_version(3);
     block.add_value_ids(0);
     block.add_stream_variable_ids(0);
     block.add_external_relation_ids(0);
@@ -517,10 +517,10 @@ TEST(remote_execution_block_test, rejects_undefined_expression_reference) {
     scan->set_output_value_id(0);
     scan->mutable_source()->mutable_storage()->set_table_name("T0");
     scan->mutable_source()->mutable_storage()->set_index_name("I0");
-    scan->mutable_source()->mutable_storage()->set_definition_id(1257);
+    scan->mutable_source()->mutable_storage()->set_remote_definition_id("1257");
     scan->mutable_source()->mutable_lower()->set_kind(tateyama::grpc::proto::ENDPOINT_KIND_UNBOUND);
     scan->mutable_source()->mutable_upper()->set_kind(tateyama::grpc::proto::ENDPOINT_KIND_UNBOUND);
-    scan->mutable_source()->add_find_key_expression_ids(999);
+    scan->mutable_source()->add_find_key_expression_indexes(999);
 
     auto* offer = block.add_operators();
     offer->set_operator_id(1);
@@ -535,7 +535,7 @@ TEST(remote_execution_block_test, rejects_undefined_expression_reference) {
 
 TEST(remote_execution_block_test, rejects_non_operator_sequence) {
     tateyama::grpc::proto::RemoteExecutionBlock block{};
-    block.set_version(2);
+    block.set_version(3);
     block.add_value_ids(0);
     block.set_result_value_id(0);
     auto* project = block.add_operators();
@@ -688,16 +688,16 @@ TEST(remote_execution_block_test, rebuilds_unordered_operators_through_wire_and_
     auto literal = std::find_if(missing_type.scalar_expressions.begin(), missing_type.scalar_expressions.end(),
         [](auto const& expression) { return expression.kind == dist::remote_scalar_expression_kind::immediate; });
     ASSERT_NE(missing_type.scalar_expressions.end(), literal);
-    auto literal_id = literal->expression_id;
+    auto literal_id = static_cast<std::uint64_t>(literal - missing_type.scalar_expressions.begin());
     literal->type_payload.clear();
     reject(missing_type, "missing remote scalar type payload");
     missing_type = valid;
     dist::remote_scalar_expression cast{};
-    cast.expression_id = 1004;
+
     cast.kind = dist::remote_scalar_expression_kind::cast;
     cast.operator_kind = "error";
     cast.type = "int8()";
-    cast.operand_expression_ids = {literal_id};
+    cast.operand_expression_indexes = {literal_id};
     missing_type.scalar_expressions.emplace_back(std::move(cast));
     reject(missing_type, "missing remote scalar type payload");
     missing_type = valid;

@@ -74,9 +74,9 @@ namespace {
 dist::remote_result_column int8_column(std::uint64_t id, bool nullable) {
     return {id, "int8()", nullable, dist::encode_remote_type(takatori::type::int8{})};
 }
-dist::remote_scalar_expression int8_literal(std::uint64_t id, std::int64_t value) {
+dist::remote_scalar_expression int8_literal(std::int64_t value) {
     dist::remote_scalar_expression result{};
-    result.expression_id = id;
+
     result.kind = dist::remote_scalar_expression_kind::immediate;
     result.value_kind = "int8";
     result.value = std::to_string(value);
@@ -116,7 +116,7 @@ dist::remote_execution_block large_row_block() {
     block.result_value_id = 1;
     auto literal = takatori::value::character{std::string(1024 * 1024, 'x')};
     dist::remote_scalar_expression expression{};
-    expression.expression_id = 0;
+
     expression.kind = dist::remote_scalar_expression_kind::immediate;
     expression.type_payload = dist::encode_remote_type(takatori::type::character{takatori::type::varying});
     expression.literal_payload = dist::encode_remote_literal(literal);
@@ -208,6 +208,14 @@ TEST_F(remote_process_handler_test, releases_transaction_registration_after_succ
     for (int attempt = 0; attempt < 2; ++attempt) {
         auto result = handler(payload);
         ASSERT_TRUE(result.success) << result.error;
+        EXPECT_EQ("done", result.observation.phase);
+        EXPECT_TRUE(result.observation.local_job_id);
+        EXPECT_TRUE(result.observation.transaction_handle);
+        EXPECT_EQ(static_cast<int>(status::ok), result.observation.begin_status);
+        EXPECT_EQ(static_cast<int>(status::ok), result.observation.commit_status);
+        EXPECT_FALSE(result.observation.rollback_requested);
+        EXPECT_FALSE(result.observation.rollback_status);
+        EXPECT_EQ(static_cast<int>(status::ok), result.observation.close_status);
         EXPECT_EQ(before, db_impl()->transaction_count());
         std::size_t batches{};
         auto records = handler.execute_records(payload, {}, [&](auto const& rows) {
@@ -217,6 +225,10 @@ TEST_F(remote_process_handler_test, releases_transaction_registration_after_succ
             return true;
         });
         EXPECT_TRUE(records.success) << records.error;
+        EXPECT_EQ("done", records.observation.phase);
+        EXPECT_EQ(static_cast<int>(status::ok), records.observation.commit_status);
+        EXPECT_EQ(static_cast<int>(status::ok), records.observation.close_status);
+        EXPECT_TRUE(records.observation.local_job_id);
         EXPECT_EQ(1, batches);
         EXPECT_EQ(before, db_impl()->transaction_count());
         auto stream = handler.execute_stream(payload, {}, [&](auto) {
@@ -239,10 +251,36 @@ TEST_F(remote_process_handler_test, releases_transaction_registration_after_sink
             throw std::runtime_error("sink failure after RTX creation");
         });
     EXPECT_TRUE(called);
+    EXPECT_TRUE(result.observation.rollback_requested);
+    EXPECT_FALSE(result.observation.rollback_status); // existing void abort API: no fabricated success
+    EXPECT_EQ(static_cast<int>(status::ok), result.observation.close_status);
+    EXPECT_FALSE(result.observation.commit_status);
     EXPECT_FALSE(result.success);
     EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, result.error_kind);
     EXPECT_EQ(before, db_impl()->transaction_count());
 }
+TEST_F(remote_process_handler_test, keeps_cleanup_observations_when_cancellation_check_throws_after_begin) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto before = db_impl()->transaction_count();
+    bool threw{};
+    auto result = dist::remote_process_handler{*db_}.execute_records(
+        dist::serialize_remote_execution_block_proto(scan_block()), [&] {
+            if (db_impl()->transaction_count() > before) {
+                threw = true;
+                throw std::runtime_error("cancellation observer failed after begin");
+            }
+            return false;
+        }, [](auto const&) { return true; });
+    EXPECT_TRUE(threw);
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::internal, result.error_kind);
+    EXPECT_EQ(static_cast<int>(status::ok), result.observation.begin_status);
+    EXPECT_TRUE(result.observation.rollback_requested);
+    EXPECT_EQ(static_cast<int>(status::ok), result.observation.close_status);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+}
+
 TEST_F(remote_process_handler_test, releases_transaction_registration_after_cancellation_during_execution) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (101), (205), (308)");
@@ -609,16 +647,16 @@ TEST_F(remote_process_handler_test, rpc_cancel_reaches_filtered_scan_when_scan_c
     block.values = {0, 1};
     block.result_value_id = 1;
     block.scalar_expressions = {
-        {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        int8_literal(1, 1000000),
-        {2, dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
+        {dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
+        int8_literal(1000000),
+        {dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
     };
     dist::remote_operator filter{};
     filter.operator_id = 1;
     filter.kind = dist::remote_operator_kind::filter;
     filter.input_value_id = 0;
     filter.output_value_id = 1;
-    filter.filter_expression_id = 2;
+    filter.filter_expression_index = 2;
     auto offer = block.operators.back();
     offer.operator_id = 2;
     offer.input_value_id = 1;
@@ -709,7 +747,7 @@ TEST_F(remote_process_handler_test, stops_when_encoded_output_exceeds_limit) {
     block.result_value_id = 1;
     auto literal = takatori::value::character{std::string(1024 * 1024, 'x')};
     dist::remote_scalar_expression expression{};
-    expression.expression_id = 0;
+
     expression.kind = dist::remote_scalar_expression_kind::immediate;
     expression.type_payload = dist::encode_remote_type(takatori::type::character{takatori::type::varying});
     expression.literal_payload = dist::encode_remote_literal(literal);
@@ -740,7 +778,7 @@ TEST_F(remote_process_handler_test, stream_result_total_may_exceed_message_limit
     block.result_value_id = 1;
     auto literal = takatori::value::character{std::string(1024 * 1024, 'x')};
     dist::remote_scalar_expression expression{};
-    expression.expression_id = 0;
+
     expression.kind = dist::remote_scalar_expression_kind::immediate;
     expression.type_payload = dist::encode_remote_type(takatori::type::character{takatori::type::varying});
     expression.literal_payload = dist::encode_remote_literal(literal);
@@ -907,17 +945,17 @@ TEST_F(remote_process_handler_test, filters_and_projects_worker_rows) {
     block.stream_variables = {0, 1};
     block.result_value_id = 2;
     block.scalar_expressions = {
-        {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        int8_literal(1, 10),
-        {2, dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
-        {3, dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 1}},
+        {dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
+        int8_literal(10),
+        {dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
+        {dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 1}},
     };
     dist::remote_operator filter{};
     filter.operator_id = 1;
     filter.kind = dist::remote_operator_kind::filter;
     filter.input_value_id = 0;
     filter.output_value_id = 1;
-    filter.filter_expression_id = 2;
+    filter.filter_expression_index = 2;
     dist::remote_operator project{};
     project.operator_id = 2;
     project.kind = dist::remote_operator_kind::project;
@@ -944,9 +982,9 @@ TEST_F(remote_process_handler_test, executes_find_when_offer_is_stored_first) {
     auto block = scan_block();
     block.operators.front().kind = dist::remote_operator_kind::find;
     block.operators.front().source->find_key_count = 1;
-    block.operators.front().source->find_key_expression_ids = {0};
+    block.operators.front().source->find_key_expression_indexes = {0};
     block.scalar_expressions = {
-        int8_literal(0, 20),
+        int8_literal(20),
     };
     std::reverse(block.operators.begin(), block.operators.end());
     dist::remote_process_handler handler{*db_};
@@ -967,17 +1005,17 @@ TEST_F(remote_process_handler_test, executes_every_operator_storage_permutation)
     block.stream_variables = {0, 1};
     block.result_value_id = 2;
     block.scalar_expressions = {
-        {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        int8_literal(1, 10),
-        {2, dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
-        {3, dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 1}},
+        {dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
+        int8_literal(10),
+        {dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
+        {dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 1}},
     };
     dist::remote_operator filter{};
     filter.operator_id = 1;
     filter.kind = dist::remote_operator_kind::filter;
     filter.input_value_id = 0;
     filter.output_value_id = 1;
-    filter.filter_expression_id = 2;
+    filter.filter_expression_index = 2;
     dist::remote_operator project{};
     project.operator_id = 2;
     project.kind = dist::remote_operator_kind::project;
@@ -1042,7 +1080,7 @@ TEST_F(remote_process_handler_test, evaluates_and_returns_all_output_types) {
         block.stream_variables = {0, 1};
         block.result_value_id = 1;
         block.result_schema[0].type_payload = dist::encode_remote_type(*sample.type);
-        block.scalar_expressions = {{0, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions = {{dist::remote_scalar_expression_kind::immediate}};
         block.scalar_expressions[0].type_payload = dist::encode_remote_type(*sample.type);
         block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(*sample.value);
         dist::remote_operator project{};
@@ -1092,7 +1130,7 @@ TEST_F(remote_process_handler_test, rejects_literals_outside_declared_length_and
         block.stream_variables = {0, 1};
         block.result_value_id = 1;
         block.result_schema[0].type_payload = dist::encode_remote_type(*sample.type);
-        block.scalar_expressions = {{0, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions = {{dist::remote_scalar_expression_kind::immediate}};
         block.scalar_expressions[0].type_payload = dist::encode_remote_type(*sample.type);
         block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(*sample.value);
         dist::remote_operator project{};
@@ -1143,7 +1181,7 @@ TEST_F(remote_process_handler_test, accepts_literal_boundaries_nulls_and_exact_d
         block.result_value_id = 1;
         block.result_schema[0].type_payload = dist::encode_remote_type(*sample.type);
         block.result_schema[0].nullable = true;
-        block.scalar_expressions = {{0, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions = {{dist::remote_scalar_expression_kind::immediate}};
         block.scalar_expressions[0].type_payload = dist::encode_remote_type(*sample.type);
         block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(*sample.value);
         dist::remote_operator project{};
@@ -1175,9 +1213,9 @@ TEST_F(remote_process_handler_test, returns_native_sql_error_details) {
     block.stream_variables = {0, 1};
     block.result_value_id = 1;
     block.scalar_expressions = {
-        {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        int8_literal(1, 0),
-        {2, dist::remote_scalar_expression_kind::binary, "divide", {}, {}, {}, {}, {0, 1}},
+        {dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
+        int8_literal(0),
+        {dist::remote_scalar_expression_kind::binary, "divide", {}, {}, {}, {}, {0, 1}},
     };
     dist::remote_operator project{};
     project.operator_id = 1;
@@ -1215,11 +1253,11 @@ TEST_F(remote_process_handler_test, evaluates_supported_intermediate_records) {
         block.stream_variables = {0, 1, 2};
         block.result_value_id = 2;
         block.result_schema[0].type_payload = dist::encode_remote_type(output_type);
-        block.scalar_expressions = {{0, kind::immediate}, {1, kind::variable_reference}, {2, kind::unary, operation}};
+        block.scalar_expressions = {{kind::immediate}, {kind::variable_reference}, {kind::unary, operation}};
         block.scalar_expressions[0].type_payload = dist::encode_remote_type(input_type);
         block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(literal);
         block.scalar_expressions[1].variable_id = 1;
-        block.scalar_expressions[2].operand_expression_ids = {1};
+        block.scalar_expressions[2].operand_expression_indexes = {1};
         dist::remote_operator first{};
         first.operator_id = 1; first.kind = dist::remote_operator_kind::project;
         first.input_value_id = 0; first.output_value_id = 1; first.project_columns = {{1, 0}};
@@ -1228,8 +1266,8 @@ TEST_F(remote_process_handler_test, evaluates_supported_intermediate_records) {
         if (operation == "concat_length") {
             block.scalar_expressions[2].kind = kind::binary;
             block.scalar_expressions[2].operator_kind = "concat";
-            block.scalar_expressions[2].operand_expression_ids = {1, 1};
-            block.scalar_expressions.push_back({3, kind::unary, "length", {}, {}, {}, {}, {2}});
+            block.scalar_expressions[2].operand_expression_indexes = {1, 1};
+            block.scalar_expressions.push_back({kind::unary, "length", {}, {}, {}, {}, {2}});
             second.project_columns = {{2, 3}};
         }
         if (operation == "cast") {
@@ -1272,7 +1310,7 @@ TEST_F(remote_process_handler_test, rejects_boolean_and_octet_operation_extensio
         dist::remote_operator project{};
         project.operator_id = 1; project.kind = dist::remote_operator_kind::project;
         project.input_value_id = 0; project.output_value_id = 1;
-        project.project_columns = {{1, block.scalar_expressions.back().expression_id}};
+        project.project_columns = {{1, block.scalar_expressions.size() - 1}};
         auto offer = block.operators.back(); offer.operator_id = 2; offer.input_value_id = 1;
         offer.offer->columns[0].source_variable_id = 1;
         block.operators = {block.operators.front(), project, offer};
@@ -1280,7 +1318,7 @@ TEST_F(remote_process_handler_test, rejects_boolean_and_octet_operation_extensio
         EXPECT_FALSE(response.success);
         EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::unsupported, response.error_kind);
     };
-    std::vector<dist::remote_scalar_expression> operands{{0, kind::immediate}, {1, kind::immediate}};
+    std::vector<dist::remote_scalar_expression> operands{{kind::immediate}, {kind::immediate}};
     for (std::size_t i = 0; i < 2; ++i) {
         operands[i].type_payload = dist::encode_remote_type(t::boolean{});
         operands[i].literal_payload = dist::encode_remote_literal(v::boolean{i == 1});
@@ -1289,23 +1327,23 @@ TEST_F(remote_process_handler_test, rejects_boolean_and_octet_operation_extensio
         {"equal", false}, {"not_equal", true}, {"less", true}, {"less_equal", true},
         {"greater", false}, {"greater_equal", false}, {"is_distinct_from", true}, {"is_not_distinct_from", false}}) {
         SCOPED_TRACE(operation);
-        auto expressions = operands; expressions.push_back({2, kind::compare, operation});
-        expressions.back().operand_expression_ids = {0, 1};
+        auto expressions = operands; expressions.push_back({kind::compare, operation});
+        expressions.back().operand_expression_indexes = {0, 1};
         run(std::move(expressions), t::boolean{}, v::boolean{expected});
     }
     auto cast = operands;
-    cast.push_back({2, kind::cast, "error"});
-    cast.back().operand_expression_ids = {0};
+    cast.push_back({kind::cast, "error"});
+    cast.back().operand_expression_indexes = {0};
     cast.back().type_payload = dist::encode_remote_type(t::character{t::varying, 5});
     run(std::move(cast), t::character{t::varying, 5}, v::character{"false"});
     operands[0].type_payload = operands[1].type_payload = dist::encode_remote_type(t::octet{t::varying, 3});
     operands[0].literal_payload = dist::encode_remote_literal(v::octet{std::string{"a\0", 2}});
     operands[1].literal_payload = dist::encode_remote_literal(v::octet{"b"});
-    operands.push_back({2, kind::binary, "concat"}); operands.back().operand_expression_ids = {0, 1};
+    operands.push_back({kind::binary, "concat"}); operands.back().operand_expression_indexes = {0, 1};
     run(operands, t::octet{t::varying, 6}, v::octet{std::string{"a\0b", 3}});
     operands.back().kind = kind::unary;
     operands.back().operator_kind = "length";
-    operands.back().operand_expression_ids = {0};
+    operands.back().operand_expression_indexes = {0};
     run(std::move(operands), t::int4{}, v::int4{2});
 }
 TEST_F(remote_process_handler_test, remote_cast_preserves_existing_sql_limits) {
@@ -1391,7 +1429,7 @@ TEST_F(remote_process_handler_test, distinguishes_unsupported_ir_from_malformed_
     using kind = tateyama::grpc::distributed_query::remote_process_error_kind;
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     auto base = scan_block();
-    base.scalar_expressions = {int8_literal(0, 7)};
+    base.scalar_expressions = {int8_literal(7)};
     wire::RemoteExecutionBlock valid{};
     ASSERT_TRUE(valid.ParseFromString(dist::serialize_remote_execution_block_proto(base)));
     ASSERT_TRUE(dist::remote_process_handler{*db_}(valid.SerializeAsString()).success);
@@ -1406,12 +1444,12 @@ TEST_F(remote_process_handler_test, distinguishes_unsupported_ir_from_malformed_
         EXPECT_EQ(unsupported ? kind::unsupported : kind::invalid_request, result.error_kind) << result.error;
         EXPECT_EQ(before, db_impl()->transaction_count());
     };
-    for (auto version : {0U, 1U, 3U}) {
+    for (auto version : {0U, 1U, 2U, 4294967295U}) {
         auto block = valid; block.set_version(version);
         check(block, version != 0);
     }
     auto unknown_version = valid;
-    unknown_version.set_version(3);
+    unknown_version.set_version(4);
     unknown_version.clear_operators(); unknown_version.clear_result_schema();
     check(unknown_version, true);
     auto block = valid;
@@ -1440,7 +1478,7 @@ TEST_F(remote_process_handler_test, distinguishes_unknown_type_kinds_from_invali
         for (int problem = 0; problem < 4; ++problem) {
             SCOPED_TRACE(::testing::Message{} << position << ':' << problem);
             auto block = scan_block();
-            block.scalar_expressions = {int8_literal(0, 7)};
+            block.scalar_expressions = {int8_literal(7)};
             auto* payload = position == 0 ? &block.scalar_expressions[0].type_payload
                 : position == 1 ? &block.result_schema[0].type_payload
                                 : &block.operators[0].source->columns[0].type_payload;
@@ -1469,13 +1507,13 @@ TEST_F(remote_process_handler_test, distinguishes_unknown_scalar_operations_from
             auto block = scan_block();
             block.values = {0, 1}; block.stream_variables = {0, 1}; block.result_value_id = 1;
             dist::remote_scalar_expression expression{};
-            expression.expression_id = 1; expression.kind = operation; expression.operator_kind = name;
-            expression.operand_expression_ids = {0};
+            expression.kind = operation; expression.operator_kind = name;
+            expression.operand_expression_indexes = {0};
             if (operation == dist::remote_scalar_expression_kind::binary || operation == dist::remote_scalar_expression_kind::compare)
-                expression.operand_expression_ids.push_back(0);
+                expression.operand_expression_indexes.push_back(0);
             if (operation == dist::remote_scalar_expression_kind::cast)
                 expression.type_payload = dist::encode_remote_type(takatori::type::int8{});
-            block.scalar_expressions = {int8_literal(0, 7), expression};
+            block.scalar_expressions = {int8_literal(7), expression};
             dist::remote_operator project{};
             project.operator_id = 1; project.kind = dist::remote_operator_kind::project;
             project.input_value_id = 0; project.output_value_id = 1; project.project_columns = {{1, 1}};
@@ -1498,10 +1536,10 @@ TEST_F(remote_process_handler_test, requires_type_payload_at_each_explicit_type_
     valid.values = {0, 1};
     valid.stream_variables = {0, 1};
     valid.result_value_id = 1;
-    valid.scalar_expressions = {int8_literal(0, 7), {1, dist::remote_scalar_expression_kind::cast, "error"}};
+    valid.scalar_expressions = {int8_literal(7), {dist::remote_scalar_expression_kind::cast, "error"}};
     valid.scalar_expressions[1].type = "int8()";
     valid.scalar_expressions[1].type_payload = dist::encode_remote_type(takatori::type::int8{});
-    valid.scalar_expressions[1].operand_expression_ids = {0};
+    valid.scalar_expressions[1].operand_expression_indexes = {0};
     dist::remote_operator project{};
     project.operator_id = 1;
     project.kind = dist::remote_operator_kind::project;
@@ -1559,7 +1597,7 @@ TEST_F(remote_process_handler_test, rejects_unsupported_types_before_execution) 
                     block.result_schema[0].type = std::string{name} + "()";
                     block.result_schema[0].type_payload = typed_payload ? type.SerializeAsString() : std::string{};
                 } else {
-                    block.scalar_expressions = {{0, dist::remote_scalar_expression_kind::immediate}};
+                    block.scalar_expressions = {{dist::remote_scalar_expression_kind::immediate}};
                     auto& expression = block.scalar_expressions[0];
                     expression.type = std::string{name} + "()";
                     if (typed_payload) expression.type_payload = type.SerializeAsString();
@@ -1598,7 +1636,7 @@ TEST_F(remote_process_handler_test, rejects_blob_source_even_when_not_offered) {
 }
 TEST_F(remote_process_handler_test, rejects_cyclic_expression_graph) {
     auto block = scan_block();
-    block.scalar_expressions = {{1, dist::remote_scalar_expression_kind::unary, "plus", {}, {}, {}, {}, {1}}};
+    block.scalar_expressions = {{dist::remote_scalar_expression_kind::unary, "plus", {}, {}, {}, {}, {1}}};
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     EXPECT_FALSE(response.success);
@@ -1626,8 +1664,8 @@ TEST_F(remote_process_handler_test, rejects_unknown_scalar_operator_as_unsupport
     block.stream_variables = {0, 1};
     block.result_value_id = 1;
     block.scalar_expressions = {
-        {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        {1, dist::remote_scalar_expression_kind::unary, "invalid_operator", {}, {}, {}, {}, {0}},
+        {dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
+        {dist::remote_scalar_expression_kind::unary, "invalid_operator", {}, {}, {}, {}, {0}},
     };
     dist::remote_operator project{};
     project.operator_id = 1;
@@ -1664,11 +1702,11 @@ TEST_F(remote_process_handler_test, rejects_find_with_ignored_scan_options) {
 }
 TEST_F(remote_process_handler_test, rejects_unbound_scan_endpoint_with_keys) {
     auto block = scan_block();
-    block.scalar_expressions = {{7, dist::remote_scalar_expression_kind::immediate}};
+    block.scalar_expressions = {{dist::remote_scalar_expression_kind::immediate}};
     block.scalar_expressions[0].type_payload = dist::encode_remote_type(takatori::type::int8{});
     block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(takatori::value::int8{205});
     block.operators.front().source->lower_key_count = 1;
-    block.operators.front().source->lower_key_expression_ids = {7};
+    block.operators.front().source->lower_key_expression_indexes = {0};
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     EXPECT_FALSE(response.success);
@@ -1716,21 +1754,21 @@ TEST_F(remote_process_handler_test, executes_find_and_bounded_scan_keys) {
     dist::remote_process_handler handler{*db_};
     for (bool find : {false, true}) {
         auto block = scan_block();
-        block.scalar_expressions = {{7, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions = {{dist::remote_scalar_expression_kind::immediate}};
         block.scalar_expressions[0].type_payload = dist::encode_remote_type(takatori::type::int8{});
         block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(takatori::value::int8{205});
         auto& source = *block.operators.front().source;
         if (find) {
             block.operators.front().kind = dist::remote_operator_kind::find;
             source.find_key_count = 1;
-            source.find_key_expression_ids = {7};
+            source.find_key_expression_indexes = {0};
         } else {
             source.lower_key_count = 1;
             source.upper_key_count = 1;
             source.lower_endpoint_kind = dist::remote_endpoint_kind::prefixed_inclusive;
             source.upper_endpoint_kind = dist::remote_endpoint_kind::prefixed_inclusive;
-            source.lower_key_expression_ids = {7};
-            source.upper_key_expression_ids = {7};
+            source.lower_key_expression_indexes = {0};
+            source.upper_key_expression_indexes = {0};
         }
         auto response = handler(dist::serialize_remote_execution_block_proto(block));
         ASSERT_TRUE(response.success) << response.error;
@@ -1750,10 +1788,10 @@ TEST_F(remote_process_handler_test, executes_find_and_bounded_scan_keys) {
         }
         if (find) {
             source.find_key_count = 2;
-            source.find_key_expression_ids = {7, 7};
+            source.find_key_expression_indexes = {0, 0};
         } else {
             source.lower_key_count = 2;
-            source.lower_key_expression_ids = {7, 7};
+            source.lower_key_expression_indexes = {0, 0};
         }
         auto excessive_keys = handler(dist::serialize_remote_execution_block_proto(block));
         EXPECT_FALSE(excessive_keys.success);
@@ -1813,12 +1851,12 @@ TEST_F(remote_process_handler_test, rejects_unexecutable_scan_endpoint_before_tr
     dist::remote_process_handler handler{*db_};
     for (auto kind : {dist::remote_endpoint_kind::inclusive, dist::remote_endpoint_kind::exclusive}) {
         auto block = scan_block();
-        block.scalar_expressions = {{7, dist::remote_scalar_expression_kind::immediate}};
+        block.scalar_expressions = {{dist::remote_scalar_expression_kind::immediate}};
         block.scalar_expressions[0].type_payload = dist::encode_remote_type(takatori::type::int8{});
         block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(takatori::value::int8{205});
         auto& source = *block.operators.front().source;
         source.lower_key_count = 1;
-        source.lower_key_expression_ids = {7};
+        source.lower_key_expression_indexes = {0};
         source.lower_endpoint_kind = kind;
         auto response = handler(dist::serialize_remote_execution_block_proto(block));
         EXPECT_FALSE(response.success);
@@ -1826,6 +1864,145 @@ TEST_F(remote_process_handler_test, rejects_unexecutable_scan_endpoint_before_tr
         EXPECT_NE(std::string::npos, response.error.find("scan endpoint"));
         EXPECT_EQ(before, db_impl()->transaction_count());
     }
+}
+
+TEST_F(remote_process_handler_test, validates_l3_storage_identity_before_creating_transaction) {
+    auto base = scan_block();
+    auto encode = [&] { return dist::encode_remote_execution_block(base); };
+    for (auto const& text : {"0", "1257", "18446744073709551615"}) {
+        auto block = encode();
+        block.mutable_operators(0)->mutable_source()->mutable_storage()->set_remote_definition_id(text);
+        auto decoded = dist::decode_remote_execution_block(block.SerializeAsString());
+        ASSERT_TRUE(decoded) << decoded.error;
+        EXPECT_EQ(text, std::to_string(*decoded.block->operators[0].source->definition_id));
+    }
+    auto before = db_impl()->transaction_count();
+    for (auto const& text : {"", "-1", "+1", " 1", "1 ", "01", "1x", "18446744073709551616"}) {
+        auto block = encode();
+        block.mutable_operators(0)->mutable_source()->mutable_storage()->set_remote_definition_id(text);
+        auto decoded = dist::decode_remote_execution_block(block.SerializeAsString());
+        EXPECT_FALSE(decoded) << text;
+        auto result = dist::remote_process_handler{*db_}(block.SerializeAsString());
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, result.error_kind);
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
+    EXPECT_EQ("0", [&] {
+        auto zero = base;
+        zero.operators[0].source->definition_id = 0;
+        return dist::encode_remote_execution_block(zero).operators(0).source().storage().remote_definition_id();
+    }());
+    // Old wire field 1 must not become a v3 identity when the envelope is relabelled.
+    auto old = encode();
+    auto* storage = old.mutable_operators(0)->mutable_source()->mutable_storage();
+    storage->clear_remote_definition_id();
+    storage->GetReflection()->MutableUnknownFields(storage)->AddVarint(1, 1257);
+    auto rejected = dist::decode_remote_execution_block(old.SerializeAsString());
+    EXPECT_FALSE(rejected);
+    EXPECT_EQ("operator 0 has no storage definition ID", rejected.error);
+}
+
+TEST_F(remote_process_handler_test, validates_post_order_expression_indexes_and_project_presence) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto base = scan_block();
+    base.scalar_expressions = {int8_literal(7),
+        {dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 0}}};
+    // Repeated use of the same earlier operand is valid; unused well-formed expressions are allowed.
+    auto valid = dist::encode_remote_execution_block(base);
+    ASSERT_TRUE(dist::decode_remote_execution_block(valid.SerializeAsString()));
+    auto before = db_impl()->transaction_count();
+    for (auto operand : {1U, 2U, 999U}) {
+        auto broken = valid;
+        broken.mutable_scalar_expressions(1)->set_operand_expression_indexes(0, operand);
+        auto result = dist::remote_process_handler{*db_}(broken.SerializeAsString());
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, result.error_kind);
+        EXPECT_NE(std::string::npos, result.error.find("must precede"));
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
+    auto broken = valid;
+    broken.mutable_scalar_expressions()->SwapElements(0, 1);
+    EXPECT_NE(std::string::npos, dist::decode_remote_execution_block(broken.SerializeAsString()).error.find("must precede"));
+    // Version rejection happens before interpreting malformed fields.
+    broken.set_version(2);
+    auto legacy = dist::decode_remote_execution_block(broken.SerializeAsString());
+    EXPECT_TRUE(legacy.unsupported);
+    EXPECT_EQ("unsupported RemoteExecutionBlock version", legacy.error);
+
+    auto project_base = scan_block();
+    project_base.values = {0, 1};
+    project_base.stream_variables = {0, 1};
+    project_base.result_value_id = 1;
+    project_base.scalar_expressions = {int8_literal(7)};
+    dist::remote_operator project_op{};
+    project_op.kind = dist::remote_operator_kind::project;
+    project_op.operator_id = 1;
+    project_op.input_value_id = 0;
+    project_op.output_value_id = 1;
+    project_op.project_columns = {{1, 0}};
+    auto offer = project_base.operators.back();
+    offer.operator_id = 2;
+    offer.input_value_id = 1;
+    offer.offer->columns[0].source_variable_id = 1;
+    project_base.operators = {project_base.operators[0], project_op, offer};
+    auto project = dist::encode_remote_execution_block(project_base);
+    ASSERT_TRUE(dist::decode_remote_execution_block(project.SerializeAsString()));
+    auto result = dist::remote_process_handler{*db_}(project.SerializeAsString());
+    ASSERT_TRUE(result.success) << result.error;
+    std::string decode_error{};
+    auto rows = dist::deserialize_remote_execution_result(result.payload, decode_error);
+    ASSERT_TRUE(rows); ASSERT_EQ(1U, rows->rows.size());
+    EXPECT_EQ(7, rows->rows[0][0]);
+    project.mutable_operators(1)->mutable_project_columns(0)->clear_expression_index();
+    EXPECT_EQ("project expression index is missing",
+        dist::decode_remote_execution_block(project.SerializeAsString()).error);
+
+    auto filter_base = scan_block();
+    filter_base.values = {0, 1}; filter_base.result_value_id = 1;
+    dist::remote_scalar_expression condition{};
+    condition.kind = dist::remote_scalar_expression_kind::immediate;
+    condition.type_payload = dist::encode_remote_type(takatori::type::boolean{});
+    condition.literal_payload = dist::encode_remote_literal(takatori::value::boolean{true});
+    filter_base.scalar_expressions = {condition};
+    dist::remote_operator filter{};
+    filter.operator_id = 1; filter.kind = dist::remote_operator_kind::filter;
+    filter.input_value_id = 0; filter.output_value_id = 1; filter.filter_expression_index = 0;
+    offer = filter_base.operators.back(); offer.operator_id = 2; offer.input_value_id = 1;
+    filter_base.operators = {filter_base.operators[0], filter, offer};
+    auto filter_wire = dist::encode_remote_execution_block(filter_base);
+    result = dist::remote_process_handler{*db_}(filter_wire.SerializeAsString());
+    ASSERT_TRUE(result.success) << result.error;
+    rows = dist::deserialize_remote_execution_result(result.payload, decode_error);
+    ASSERT_TRUE(rows); ASSERT_EQ(1U, rows->rows.size()); EXPECT_EQ(205, rows->rows[0][0]);
+    filter_wire.mutable_operators(1)->clear_filter_expression_index();
+    EXPECT_NE(std::string::npos,
+        dist::decode_remote_execution_block(filter_wire.SerializeAsString()).error.find("has an undefined filter expression"));
+
+}
+
+TEST_F(remote_process_handler_test, bounds_expansion_of_shared_post_order_operands) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    auto block = scan_block();
+    block.values = {0, 1}; block.stream_variables = {0, 1}; block.result_value_id = 1;
+    block.scalar_expressions = {int8_literal(1)};
+    for (std::uint64_t index = 1; index <= 20; ++index) {
+        dist::remote_scalar_expression expression{};
+        expression.kind = dist::remote_scalar_expression_kind::binary;
+        expression.operator_kind = "add";
+        expression.operand_expression_indexes = {index - 1, index - 1};
+        block.scalar_expressions.push_back(std::move(expression));
+    }
+    dist::remote_operator project{};
+    project.operator_id = 1; project.kind = dist::remote_operator_kind::project;
+    project.input_value_id = 0; project.output_value_id = 1; project.project_columns = {{1, 20}};
+    auto offer = block.operators.back(); offer.operator_id = 2; offer.input_value_id = 1;
+    offer.offer->columns[0].source_variable_id = 1;
+    block.operators = {block.operators[0], project, offer};
+    auto before = db_impl()->transaction_count();
+    auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, result.error_kind);
+    EXPECT_NE(std::string::npos, result.error.find("scalar expression expansion limit exceeded"));
+    EXPECT_EQ(before, db_impl()->transaction_count());
 }
 
 } // namespace jogasaki::testing

@@ -139,7 +139,7 @@ TEST_F(remote_catalog_bridge_test, framework_preserves_ir_failure_categories_and
         metadata->set_coordinator_job_id("ir-category-test");
         metadata->set_remote_execution_id("worker"); metadata->set_attempt_number(1);
         auto* block = request.mutable_execution_block();
-        block->set_version(input == 0 ? 3 : input == 1 ? 0 : 2);
+        block->set_version(input == 0 ? 4 : input == 1 ? 0 : 3);
         if (input == 2 || input == 3) block->add_operators()->set_kind(
             input == 2 ? static_cast<wire::OperatorKind>(2026) : wire::OPERATOR_KIND_UNSPECIFIED);
         if (input == 4) block->add_scalar_expressions()->set_kind(static_cast<wire::ScalarExpressionKind>(2026));

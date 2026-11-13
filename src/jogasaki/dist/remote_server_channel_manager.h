@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #pragma once
+#include <atomic>
+#include <tateyama/metrics/metrics_store.h>
 
 
 #include <memory>
@@ -46,6 +48,17 @@ public:
 
     void stop() noexcept;
 
+    // Register during framework start, before calls can be accepted.
+    void register_metrics(tateyama::metrics::metrics_store& store) const;
+
+    struct channel_statistics {
+        std::atomic_uint64_t channels{};
+        std::atomic_uint64_t acquisitions{};
+        std::atomic_uint64_t failures{};
+    };
+    [[nodiscard]] std::shared_ptr<channel_statistics const> statistics() const noexcept { return statistics_; }
+
+
 private:
     enum class state {
         uninitialized,
@@ -54,6 +67,7 @@ private:
         stopped,
     };
 
+    std::shared_ptr<channel_statistics> statistics_{std::make_shared<channel_statistics>()};
     mutable std::shared_mutex mutex_{};
     state state_{state::uninitialized};
     std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_{};

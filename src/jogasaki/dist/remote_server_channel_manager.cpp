@@ -18,6 +18,7 @@
 #include "remote_server_configuration_validation.h"
 
 #include <mutex>
+#include <array>
 #include <unordered_set>
 #include <utility>
 #include <glog/logging.h>
@@ -32,6 +33,15 @@ namespace jogasaki::dist {
 namespace {
 
 constexpr int max_message_size = 64 * 1024 * 1024;
+
+std::array<char, 129> channel_log_name(std::string_view input) noexcept {
+    std::array<char, 129> result{};
+    std::size_t position{};
+    for (unsigned char ch : input.substr(0, result.size() - 1)) {
+        result[position++] = ch >= 0x21 && ch <= 0x7e ? static_cast<char>(ch) : '_';
+    }
+    return result;
+}
 
 } // namespace
 
@@ -98,19 +108,33 @@ status remote_server_channel_manager::start(std::vector<remote_server_configurat
     }
 
     channels_ = std::move(channels);
+    statistics_->channels.store(channels_.size(), std::memory_order_relaxed);
     state_ = state::available;
     return status::ok;
 }
 
 std::shared_ptr<grpc::Channel>
 remote_server_channel_manager::find_channel(std::string_view remote_server_name) const noexcept {
+    statistics_->acquisitions.fetch_add(1, std::memory_order_relaxed);
     std::shared_lock lock{mutex_};
     if (state_ != state::available) {
+        statistics_->failures.fetch_add(1, std::memory_order_relaxed);
+        auto const* current = state_ == state::uninitialized ? "uninitialized" :
+                              state_ == state::stopping ? "stopping" : "stopped";
+        lock.unlock();
+        auto name = channel_log_name(remote_server_name);
+        LOG_LP(INFO) << "distributed query channel event:acquire_failed server:" << name.data()
+                     << " state:" << current << " reason:manager_unavailable";
         return {};
     }
     if (auto it = channels_.find(std::string{remote_server_name}); it != channels_.end()) {
         return it->second;
     }
+    statistics_->failures.fetch_add(1, std::memory_order_relaxed);
+    lock.unlock();
+    auto name = channel_log_name(remote_server_name);
+    LOG_LP(INFO) << "distributed query channel event:acquire_failed server:" << name.data()
+                 << " state:available reason:unregistered_server";
     return {};
 }
 
@@ -121,7 +145,20 @@ void remote_server_channel_manager::stop() noexcept {
     }
     state_ = state::stopping;
     channels_.clear();
+    statistics_->channels.store(0, std::memory_order_relaxed);
     state_ = state::stopped;
+}
+
+void remote_server_channel_manager::register_metrics(tateyama::metrics::metrics_store& store) const {
+    auto stats = statistics_;
+    auto add = [&](char const* key, auto reader) {
+        // A new database manager replaces this component's previous generation of metrics.
+        store.unregister_element(key);
+        store.register_item(tateyama::metrics::metrics_metadata{key, key, {}, {}}, std::move(reader));
+    };
+    add("distributed_query_channels", [stats] { return static_cast<double>(stats->channels.load(std::memory_order_relaxed)); });
+    add("distributed_query_channel_acquisitions_total", [stats] { return static_cast<double>(stats->acquisitions.load(std::memory_order_relaxed)); });
+    add("distributed_query_channel_failures_total", [stats] { return static_cast<double>(stats->failures.load(std::memory_order_relaxed)); });
 }
 
 } // namespace jogasaki::dist

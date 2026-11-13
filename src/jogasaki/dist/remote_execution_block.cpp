@@ -193,7 +193,7 @@ public:
         return id;
     }
 
-    [[nodiscard]] std::optional<std::uint64_t> expression_id(scalar::expression const& expression) {
+    [[nodiscard]] std::optional<std::uint64_t> expression_index(scalar::expression const& expression) {
         remote_scalar_expression result{};
         switch (expression.kind()) {
             case scalar::expression_kind::immediate: {
@@ -224,11 +224,11 @@ public:
                 auto const& e = dynamic_cast<scalar::unary const&>(expression);
                 result.kind = remote_scalar_expression_kind::unary;
                 result.operator_kind = std::string{scalar::to_string_view(e.operator_kind())};
-                auto operand = expression_id(e.operand());
+                auto operand = expression_index(e.operand());
                 if (!operand) {
                     return std::nullopt;
                 }
-                result.operand_expression_ids.emplace_back(*operand);
+                result.operand_expression_indexes.emplace_back(*operand);
                 break;
             }
             case scalar::expression_kind::cast: {
@@ -239,43 +239,43 @@ public:
                 type << e.type();
                 result.type = type.str();
                 result.type_payload = encode_remote_type(e.type());
-                auto operand = expression_id(e.operand());
+                auto operand = expression_index(e.operand());
                 if (!operand) {
                     return std::nullopt;
                 }
-                result.operand_expression_ids.emplace_back(*operand);
+                result.operand_expression_indexes.emplace_back(*operand);
                 break;
             }
             case scalar::expression_kind::binary: {
                 auto const& e = dynamic_cast<scalar::binary const&>(expression);
                 result.kind = remote_scalar_expression_kind::binary;
                 result.operator_kind = std::string{scalar::to_string_view(e.operator_kind())};
-                auto left = expression_id(e.left());
-                auto right = expression_id(e.right());
+                auto left = expression_index(e.left());
+                auto right = expression_index(e.right());
                 if (!left || !right) {
                     return std::nullopt;
                 }
-                result.operand_expression_ids = {*left, *right};
+                result.operand_expression_indexes = {*left, *right};
                 break;
             }
             case scalar::expression_kind::compare: {
                 auto const& e = dynamic_cast<scalar::compare const&>(expression);
                 result.kind = remote_scalar_expression_kind::compare;
                 result.operator_kind = std::string{scalar::to_string_view(e.operator_kind())};
-                auto left = expression_id(e.left());
-                auto right = expression_id(e.right());
+                auto left = expression_index(e.left());
+                auto right = expression_index(e.right());
                 if (!left || !right) {
                     return std::nullopt;
                 }
-                result.operand_expression_ids = {*left, *right};
+                result.operand_expression_indexes = {*left, *right};
                 break;
             }
             default:
                 return std::nullopt;
         }
-        result.expression_id = block_->scalar_expressions.size();
+        auto index = block_->scalar_expressions.size();
         block_->scalar_expressions.emplace_back(std::move(result));
-        return block_->scalar_expressions.back().expression_id;
+        return index;
     }
 
     [[nodiscard]] bool create_offer_payload(relation::step::offer const& offer, remote_operator& op) {
@@ -362,15 +362,15 @@ template <class Source>
     result.upper_endpoint_kind = endpoint_kind(source.upper().kind());
     result.upper_key_count = source.upper().keys().size();
     for (auto const& key : source.lower().keys()) {
-        auto id = context.expression_id(key.value());
+        auto id = context.expression_index(key.value());
         if (id) {
-            result.lower_key_expression_ids.emplace_back(*id);
+            result.lower_key_expression_indexes.emplace_back(*id);
         }
     }
     for (auto const& key : source.upper().keys()) {
-        auto id = context.expression_id(key.value());
+        auto id = context.expression_index(key.value());
         if (id) {
-            result.upper_key_expression_ids.emplace_back(*id);
+            result.upper_key_expression_indexes.emplace_back(*id);
         }
     }
     if (auto count = source.row_slice().count().immediate_if()) {
@@ -383,9 +383,9 @@ template <class Source>
     auto result = create_source_payload<relation::find>(source, context);
     result.find_key_count = source.keys().size();
     for (auto const& key : source.keys()) {
-        auto id = context.expression_id(key.value());
+        auto id = context.expression_index(key.value());
         if (id) {
-            result.find_key_expression_ids.emplace_back(*id);
+            result.find_key_expression_indexes.emplace_back(*id);
         }
     }
     return result;
@@ -405,24 +405,24 @@ template <class Source>
                 return false;
             }
             op.source = create_source_payload(scan, context);
-            return op.source->lower_key_expression_ids.size() == op.source->lower_key_count &&
-                   op.source->upper_key_expression_ids.size() == op.source->upper_key_count;
+            return op.source->lower_key_expression_indexes.size() == op.source->lower_key_count &&
+                   op.source->upper_key_expression_indexes.size() == op.source->upper_key_count;
         }
         case relation::expression_kind::find:
             op.source = create_source_payload(dynamic_cast<relation::find const&>(expression), context);
-            return op.source->find_key_expression_ids.size() == op.source->find_key_count;
+            return op.source->find_key_expression_indexes.size() == op.source->find_key_count;
         case relation::expression_kind::filter:
-            op.filter_expression_id =
-                context.expression_id(dynamic_cast<relation::filter const&>(expression).condition());
-            return op.filter_expression_id.has_value();
+            op.filter_expression_index =
+                context.expression_index(dynamic_cast<relation::filter const&>(expression).condition());
+            return op.filter_expression_index.has_value();
         case relation::expression_kind::project:
             for (auto const& column : dynamic_cast<relation::project const&>(expression).columns()) {
-                auto expression_id = context.expression_id(column.value());
-                if (!expression_id) {
+                auto expression_index = context.expression_index(column.value());
+                if (!expression_index) {
                     return false;
                 }
                 op.project_columns.emplace_back(
-                    remote_project_column{context.variable_id(column.variable()), *expression_id});
+                    remote_project_column{context.variable_id(column.variable()), *expression_index});
             }
             return true;
         case relation::expression_kind::offer:
@@ -494,23 +494,23 @@ static void serialize_source(std::ostream& out, remote_operator const& op) {
             << ".source.lower.kind=" << to_string_view(op.source->lower_endpoint_kind) << '\n';
         out << "remote_execution_block.operator." << op.operator_id
             << ".source.lower.key_count=" << op.source->lower_key_count << '\n';
-        for (std::size_t i = 0; i < op.source->lower_key_expression_ids.size(); ++i) {
+        for (std::size_t i = 0; i < op.source->lower_key_expression_indexes.size(); ++i) {
             out << "remote_execution_block.operator." << op.operator_id << ".source.lower.key." << i
-                << ".expression_id=" << op.source->lower_key_expression_ids[i] << '\n';
+                << ".expression_index=" << op.source->lower_key_expression_indexes[i] << '\n';
         }
         out << "remote_execution_block.operator." << op.operator_id
             << ".source.upper.kind=" << to_string_view(op.source->upper_endpoint_kind) << '\n';
         out << "remote_execution_block.operator." << op.operator_id
             << ".source.upper.key_count=" << op.source->upper_key_count << '\n';
-        for (std::size_t i = 0; i < op.source->upper_key_expression_ids.size(); ++i) {
+        for (std::size_t i = 0; i < op.source->upper_key_expression_indexes.size(); ++i) {
             out << "remote_execution_block.operator." << op.operator_id << ".source.upper.key." << i
-                << ".expression_id=" << op.source->upper_key_expression_ids[i] << '\n';
+                << ".expression_index=" << op.source->upper_key_expression_indexes[i] << '\n';
         }
         out << "remote_execution_block.operator." << op.operator_id
             << ".source.find_key_count=" << op.source->find_key_count << '\n';
-        for (std::size_t i = 0; i < op.source->find_key_expression_ids.size(); ++i) {
+        for (std::size_t i = 0; i < op.source->find_key_expression_indexes.size(); ++i) {
             out << "remote_execution_block.operator." << op.operator_id << ".source.find_key." << i
-                << ".expression_id=" << op.source->find_key_expression_ids[i] << '\n';
+                << ".expression_index=" << op.source->find_key_expression_indexes[i] << '\n';
         }
         out << "remote_execution_block.operator." << op.operator_id << ".source.limit=";
         if (op.source->limit) {
@@ -539,8 +539,9 @@ static void serialize_offer(std::ostream& out, remote_operator const& op) {
 }
 
 static void serialize_scalar_expressions(std::ostream& out, remote_execution_block const& block) {
-    for (auto const& expression : block.scalar_expressions) {
-        auto prefix = "remote_execution_block.scalar_expression." + std::to_string(expression.expression_id);
+    for (std::size_t index = 0; index < block.scalar_expressions.size(); ++index) {
+        auto const& expression = block.scalar_expressions[index];
+        auto prefix = "remote_execution_block.scalar_expression." + std::to_string(index);
         out << prefix << ".kind=" << to_string_view(expression.kind) << '\n';
         if (!expression.operator_kind.empty()) {
             out << prefix << ".operator_kind=" << expression.operator_kind << '\n';
@@ -557,9 +558,9 @@ static void serialize_scalar_expressions(std::ostream& out, remote_execution_blo
         if (expression.variable_id) {
             out << prefix << ".variable_id=" << *expression.variable_id << '\n';
         }
-        out << prefix << ".operand_count=" << expression.operand_expression_ids.size() << '\n';
-        for (std::size_t i = 0; i < expression.operand_expression_ids.size(); ++i) {
-            out << prefix << ".operand." << i << "=" << expression.operand_expression_ids[i] << '\n';
+        out << prefix << ".operand_count=" << expression.operand_expression_indexes.size() << '\n';
+        for (std::size_t i = 0; i < expression.operand_expression_indexes.size(); ++i) {
+            out << prefix << ".operand." << i << "=" << expression.operand_expression_indexes[i] << '\n';
         }
     }
 }
@@ -591,9 +592,9 @@ std::string serialize_remote_execution_block(remote_execution_block const& block
         }
         out << '\n';
         serialize_source(out, op);
-        if (op.filter_expression_id) {
+        if (op.filter_expression_index) {
             out << "remote_execution_block.operator." << op.operator_id
-                << ".filter_expression_id=" << *op.filter_expression_id << '\n';
+                << ".filter_expression_index=" << *op.filter_expression_index << '\n';
         }
         out << "remote_execution_block.operator." << op.operator_id
             << ".project_column_count=" << op.project_columns.size() << '\n';
@@ -602,7 +603,7 @@ std::string serialize_remote_execution_block(remote_execution_block const& block
             out << "remote_execution_block.operator." << op.operator_id << ".project_column." << i
                 << ".destination_variable_id=" << column.destination_variable_id << '\n';
             out << "remote_execution_block.operator." << op.operator_id << ".project_column." << i
-                << ".value_expression_id=" << column.value_expression_id << '\n';
+                << ".expression_index=" << column.expression_index << '\n';
         }
         serialize_offer(out, op);
     }

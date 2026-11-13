@@ -77,7 +77,7 @@ static void encode_source(remote_source const& source, dqproto::Source& out) {
     out.mutable_storage()->set_table_name(source.table_name);
     out.mutable_storage()->set_index_name(source.index_name);
     if (source.definition_id) {
-        out.mutable_storage()->set_definition_id(*source.definition_id);
+        out.mutable_storage()->set_remote_definition_id(std::to_string(*source.definition_id));
     }
     for (auto const& column : source.columns) {
         auto* target = out.add_columns();
@@ -89,15 +89,15 @@ static void encode_source(remote_source const& source, dqproto::Source& out) {
         target->set_type_payload(column.type_payload);
     }
     out.mutable_lower()->set_kind(encode(source.lower_endpoint_kind));
-    for (auto id : source.lower_key_expression_ids) {
-        out.mutable_lower()->add_key_expression_ids(id);
+    for (auto id : source.lower_key_expression_indexes) {
+        out.mutable_lower()->add_key_expression_indexes(id);
     }
     out.mutable_upper()->set_kind(encode(source.upper_endpoint_kind));
-    for (auto id : source.upper_key_expression_ids) {
-        out.mutable_upper()->add_key_expression_ids(id);
+    for (auto id : source.upper_key_expression_indexes) {
+        out.mutable_upper()->add_key_expression_indexes(id);
     }
-    for (auto id : source.find_key_expression_ids) {
-        out.add_find_key_expression_ids(id);
+    for (auto id : source.find_key_expression_indexes) {
+        out.add_find_key_expression_indexes(id);
     }
     if (source.limit) {
         out.set_limit(*source.limit);
@@ -131,13 +131,13 @@ dqproto::RemoteExecutionBlock encode_remote_execution_block(remote_execution_blo
         if (op.source) {
             encode_source(*op.source, *target->mutable_source());
         }
-        if (op.filter_expression_id) {
-            target->set_filter_expression_id(*op.filter_expression_id);
+        if (op.filter_expression_index) {
+            target->set_filter_expression_index(*op.filter_expression_index);
         }
         for (auto const& column : op.project_columns) {
             auto* c = target->add_project_columns();
             c->set_destination_variable_id(column.destination_variable_id);
-            c->set_value_expression_id(column.value_expression_id);
+            c->set_expression_index(column.expression_index);
         }
         if (op.offer) {
             auto* offer = target->mutable_offer();
@@ -152,7 +152,6 @@ dqproto::RemoteExecutionBlock encode_remote_execution_block(remote_execution_blo
 
     for (auto const& expression : block.scalar_expressions) {
         auto* target = out.add_scalar_expressions();
-        target->set_expression_id(expression.expression_id);
         target->set_kind(encode(expression.kind));
         target->set_operator_kind(expression.operator_kind);
         target->set_value_kind(expression.value_kind);
@@ -163,8 +162,8 @@ dqproto::RemoteExecutionBlock encode_remote_execution_block(remote_execution_blo
         if (expression.variable_id) {
             target->set_variable_id(*expression.variable_id);
         }
-        for (auto id : expression.operand_expression_ids) {
-            target->add_operand_expression_ids(id);
+        for (auto id : expression.operand_expression_indexes) {
+            target->add_operand_expression_indexes(id);
         }
     }
 

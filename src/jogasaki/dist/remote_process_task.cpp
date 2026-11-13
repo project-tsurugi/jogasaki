@@ -240,7 +240,8 @@ public:
         try {
             return execute();
         } catch (std::exception const& e) {
-            LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+            LOG_LP(INFO) << "distributed query job_id:" << (context()->job() ? std::to_string(context()->job()->id()) : "none")
+                     << " execution_id:" << (state_->execution_id().empty() ? "none" : state_->execution_id().c_str())
                          << " server:" << server_ << " internal_code:REMOTE_TRANSPORT_EXCEPTION reason:" << e.what();
             return fail(status::err_unknown, "[distributed-query] unexpected remote transport error",
                         error_code::internal_exception);
@@ -317,21 +318,24 @@ private:
         return std::nullopt;
     }
     model::task_result invalid_result(std::string_view reason) {
-        LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+        LOG_LP(INFO) << "distributed query job_id:" << (context()->job() ? std::to_string(context()->job()->id()) : "none")
+                     << " execution_id:" << (state_->execution_id().empty() ? "none" : state_->execution_id().c_str())
                      << " server:" << server_ << " internal_code:INVALID_REMOTE_RESULT reason:" << reason;
         return fail(status::err_invalid_state,
                     "[distributed-query] failed to decode remote result record", error_code::internal_exception);
     }
     model::task_result complete_rpc() {
         if (state_->has_rpc_status()) {
-            LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+            LOG_LP(INFO) << "distributed query job_id:" << (context()->job() ? std::to_string(context()->job()->id()) : "none")
+                     << " execution_id:" << (state_->execution_id().empty() ? "none" : state_->execution_id().c_str())
                          << " server:" << server_ << " rpc:ExecuteRemoteProcess grpc_status:"
                          << static_cast<int>(state_->status().error_code())
                          << " grpc_message:" << state_->status().error_message();
         }
         using local_failure = rpc_state::local_failure;
         auto diagnose = [&](std::string_view code) {
-            LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+            LOG_LP(INFO) << "distributed query job_id:" << (context()->job() ? std::to_string(context()->job()->id()) : "none")
+                     << " execution_id:" << (state_->execution_id().empty() ? "none" : state_->execution_id().c_str())
                          << " server:" << server_ << " internal_code:" << code
                          << " reason:" << state_->diagnostic();
         };
@@ -363,7 +367,8 @@ private:
                     return finish();
                 }
                 if (!proto::sql::error::Code_IsValid(remote->code())) {
-                    LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+                    LOG_LP(INFO) << "distributed query job_id:" << (context()->job() ? std::to_string(context()->job()->id()) : "none")
+                     << " execution_id:" << (state_->execution_id().empty() ? "none" : state_->execution_id().c_str())
                                  << " server:" << server_ << " unknown_sql_code:" << static_cast<int>(remote->code())
                                  << " message:" << remote->detail() << " supplemental_text:" << remote->supplemental_text();
                 }
@@ -389,7 +394,8 @@ private:
         if (writer_) {
             auto* writer = std::exchange(writer_, nullptr);
             auto report = [&](std::string_view reason) {
-                LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+                LOG_LP(INFO) << "distributed query job_id:" << (context()->job() ? std::to_string(context()->job()->id()) : "none")
+                     << " execution_id:" << (state_->execution_id().empty() ? "none" : state_->execution_id().c_str())
                              << " server:" << server_ << " internal_code:REMOTE_DOWNSTREAM_FAILED reason:" << reason;
                 if (auto existing = context()->error_info(); !existing || !*existing) {
                     error::set_error_info(*context(), create_error_info(error_code::sql_execution_exception,
@@ -434,7 +440,8 @@ private:
     }
     model::task_result fail_local(status result, std::string_view diagnostic, std::string const& message,
                                   std::string_view reason = {}) {
-        LOG_LP(INFO) << "distributed query execution_id:" << state_->execution_id()
+        LOG_LP(INFO) << "distributed query job_id:" << (context()->job() ? std::to_string(context()->job()->id()) : "none")
+                     << " execution_id:" << (state_->execution_id().empty() ? "none" : state_->execution_id().c_str())
                      << " server:" << server_ << " internal_code:" << diagnostic
                      << " status:" << result << " reason:" << reason;
         return fail(result, message);
@@ -489,13 +496,13 @@ std::shared_ptr<model::task> make_remote_process_task(request_context& context, 
                                                       std::string server) {
     if (!context.transaction() || !context.transaction()->option() ||
         !context.transaction()->option()->readonly()) {
-        LOG_LP(INFO) << "distributed query internal_code:RTX_REQUIRED";
+        LOG_LP(INFO) << "distributed query job_id:" << (context.job() ? std::to_string(context.job()->id()) : "none") << " internal_code:RTX_REQUIRED";
         return std::make_shared<failed_remote_process_task>(
             context, step, "[distributed-query] execution requires an RTX",
             error_code::restricted_operation_exception, status::err_illegal_operation);
     }
     if (server.empty() || !context.remote_catalogs()) {
-        LOG_LP(INFO) << "distributed query internal_code:REMOTE_METADATA_MISSING";
+        LOG_LP(INFO) << "distributed query job_id:" << (context.job() ? std::to_string(context.job()->id()) : "none") << " internal_code:REMOTE_METADATA_MISSING";
         return std::make_shared<failed_remote_process_task>(
             context, step, "[distributed-query] required remote execution metadata is missing",
             error_code::internal_exception, status::err_invalid_state);

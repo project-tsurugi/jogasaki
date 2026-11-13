@@ -15,6 +15,7 @@
  */
 
 
+#include <cstdlib>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -47,6 +48,11 @@
 #include <yugawara/storage/index.h>
 #include <yugawara/storage/table.h>
 
+#include <jogasaki/configuration.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/executor/process/flow.h>
 #include <jogasaki/dist/operation_location.h>
 #include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/dist/remote_routing.h>
@@ -169,6 +175,134 @@ protected:
     std::shared_ptr<dist::remote_catalog_snapshot> catalogs_{};
     takatori::plan::graph_type plan_{};
 };
+
+TEST_F(operation_location_test, rejects_remote_placement_when_request_role_forbids_dispatch) {
+    auto [source, consumer] = add_fenced_processes();
+    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
+        dist::remote_catalog_snapshot::catalogs_type{},
+        dist::remote_catalog_snapshot::locations_type{{table_.get(), "worker"}});
+    for (bool captured : {false, true}) {
+        for (bool coordinator : {false, true}) {
+            for (bool worker : {false, true}) {
+                if (coordinator && !worker) continue;
+                SCOPED_TRACE(::testing::Message() << captured << coordinator << worker);
+                auto config = std::make_shared<configuration>();
+                config->distributed_query_coordinator_enabled(coordinator);
+                request_context request{config};
+                request.remote_worker(worker);
+                request.remote_catalogs(snapshot);
+                auto processor = std::make_shared<executor::process::processor_info>(source->operators(), info());
+                if (captured) processor->captured_location("worker");
+                auto selected = dist::select_remote_execution_server(request, *processor);
+                EXPECT_FALSE(selected.server);
+                EXPECT_EQ("Remote query execution is not available in this execution context.", selected.error);
+#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
+                // Rejection must happen before dereferencing the local execution step or starting an RPC.
+                executor::process::flow flow{&request, nullptr, processor};
+                EXPECT_TRUE(flow.create_tasks().empty());
+                ASSERT_TRUE(request.error_info());
+                EXPECT_EQ(error_code::restricted_operation_exception, request.error_info()->code());
+                EXPECT_EQ(status::err_illegal_operation, request.error_info()->status());
+#endif
+            }
+        }
+    }
+}
+
+TEST_F(operation_location_test, retains_remote_placement_when_dispatch_is_allowed) {
+    auto [source, consumer] = add_fenced_processes();
+    auto config = std::make_shared<configuration>();
+    config->distributed_query_coordinator_enabled(true);
+    request_context request{config};
+    request.remote_catalogs(std::make_shared<dist::remote_catalog_snapshot>(
+        dist::remote_catalog_snapshot::catalogs_type{},
+        dist::remote_catalog_snapshot::locations_type{{table_.get(), "worker"}}));
+    executor::process::processor_info processor{source->operators(), info()};
+    auto selected = dist::select_remote_execution_server(request, processor);
+    EXPECT_TRUE(selected.error.empty());
+    EXPECT_EQ(std::optional<std::string>{"worker"}, selected.server);
+    processor.captured_location("captured-worker");
+    selected = dist::select_remote_execution_server(request, processor);
+    EXPECT_TRUE(selected.error.empty());
+    EXPECT_EQ(std::optional<std::string>{"captured-worker"}, selected.server);
+}
+
+TEST_F(operation_location_test, explicit_local_placement_does_not_route_again_on_a_worker) {
+    auto [source, consumer] = add_fenced_processes();
+    executor::process::processor_info processor{source->operators(), info()};
+    processor.captured_location({});
+    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
+        dist::remote_catalog_snapshot::catalogs_type{},
+        dist::remote_catalog_snapshot::locations_type{{table_.get(), "worker"}});
+    for (bool coordinator : {false, true}) {
+        for (bool worker : {false, true}) {
+            auto config = std::make_shared<configuration>();
+            config->distributed_query_coordinator_enabled(coordinator);
+            request_context request{config};
+            request.remote_worker(worker);
+            request.remote_catalogs(snapshot);
+            auto selected = dist::select_remote_execution_server(request, processor);
+            EXPECT_TRUE(selected.error.empty());
+            EXPECT_FALSE(selected.server);
+        }
+    }
+}
+
+TEST_F(operation_location_test, environment_only_override_is_ignored_when_dispatch_is_forbidden) {
+    constexpr auto name = "JOGASAKI_DQ_REMOTE_EXECUTION_SERVER";
+    auto* original = std::getenv(name);
+    class restore_environment {
+    public:
+        explicit restore_environment(std::optional<std::string> original) : original_(std::move(original)) {}
+        ~restore_environment() {
+            if (original_) setenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER", original_->c_str(), 1);
+            else unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
+        }
+    private:
+        std::optional<std::string> original_;
+    } restore{original ? std::optional<std::string>{original} : std::nullopt};
+    ASSERT_EQ(0, setenv(name, "environment-only-worker", 1));
+    auto [source, consumer] = add_fenced_processes();
+    executor::process::processor_info processor{source->operators(), info()};
+    auto option = std::make_shared<api::transaction_option>();
+    option->readonly(true);
+    auto transaction = std::make_shared<transaction_context>(nullptr, option);
+    for (bool coordinator : {false, true}) {
+        for (bool worker : {false, true}) {
+            if (coordinator && !worker) continue;
+            auto config = std::make_shared<configuration>();
+            config->distributed_query_coordinator_enabled(coordinator);
+            request_context request{config};
+            request.remote_worker(worker);
+            request.transaction(transaction);
+            auto selected = dist::select_remote_execution_server(request, processor);
+            EXPECT_TRUE(selected.error.empty());
+            EXPECT_FALSE(selected.server);
+        }
+    }
+    auto config = std::make_shared<configuration>();
+    config->distributed_query_coordinator_enabled(true);
+    request_context request{config};
+    request.transaction(transaction);
+    auto selected = dist::select_remote_execution_server(request, processor);
+    EXPECT_TRUE(selected.error.empty());
+    EXPECT_EQ(std::optional<std::string>{"environment-only-worker"}, selected.server);
+    processor.captured_location({});
+    selected = dist::select_remote_execution_server(request, processor);
+    EXPECT_TRUE(selected.error.empty());
+    EXPECT_FALSE(selected.server);
+}
+
+TEST_F(operation_location_test, absent_placement_remains_local_when_dispatch_is_disabled) {
+    auto [source, consumer] = add_fenced_processes();
+    executor::process::processor_info processor{source->operators(), info()};
+    auto config = std::make_shared<configuration>();
+    config->distributed_query_coordinator_enabled(false);
+    request_context request{config};
+    auto selected = dist::select_remote_execution_server(request, processor);
+    EXPECT_TRUE(selected.error.empty());
+    EXPECT_FALSE(selected.server);
+}
 
 TEST_F(operation_location_test, queries_each_compiled_process_once_and_keeps_graph) {
     auto [source, consumer] = add_fenced_processes();

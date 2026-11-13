@@ -15,6 +15,7 @@
  */
 #include "remote_routing.h"
 
+#include <cstdlib>
 #include <stdexcept>
 #include <vector>
 
@@ -35,9 +36,41 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/dist/remote_execution_block.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/dist/remote_process_execution_block_shape.h>
 
 namespace jogasaki::dist {
+remote_execution_server_selection select_remote_execution_server(
+    request_context const& context, executor::process::processor_info const& info) {
+    auto dispatch_allowed = !context.remote_worker() && context.configuration()->distributed_query_coordinator_enabled();
+    auto select = [&](std::string const& server) -> remote_execution_server_selection {
+        if (server.empty()) return {};
+        if (!dispatch_allowed) {
+            return {{}, "Remote query execution is not available in this execution context."};
+        }
+        return {server, {}};
+    };
+    if (auto const& captured = info.captured_location()) {
+        return captured->empty() ? remote_execution_server_selection{} : select(*captured);
+    }
+    if (auto server = remote_server(info.relations(), context.remote_catalogs().get())) {
+        return select(*server);
+    }
+    // An environment-only development override does not define a remote catalog placement.
+    auto* server = std::getenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
+    if (!server || *server == '\0' || !dispatch_allowed) {
+        return {};
+    }
+    auto const& transaction = context.transaction();
+    if (!transaction || !transaction->option() || !transaction->option()->readonly()
+        || !is_remote_process_execution_block_shape(info.relations())) {
+        return {};
+    }
+    return {std::string{server}, {}};
+}
+
 std::optional<std::string> remote_server(takatori::relation::graph_type const& graph,
                                          remote_catalog_snapshot const* catalogs, std::string_view fallback) {
     if (catalogs) {

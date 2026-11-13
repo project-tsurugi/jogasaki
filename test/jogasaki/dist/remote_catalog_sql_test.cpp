@@ -155,6 +155,30 @@ TEST_F(remote_catalog_sql_test, request_factory_connects_catalog_ddl_to_database
     db_impl()->task_scheduler()->unregister_job(job_id);
 }
 
+TEST_F(remote_catalog_sql_test, remote_plan_rejects_disabled_coordinator_without_rpc_and_finishes_job) {
+    std::unique_ptr<api::executable_statement> statement{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", statement));
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::unique_ptr<api::result_set> results{};
+    std::shared_ptr<error::error_info> error{};
+    std::shared_ptr<request_statistics> statistics{};
+    auto config = db_impl()->configuration();
+    config->distributed_query_coordinator_enabled(false);
+    auto result = executor::execute(*db_impl(), api::get_transaction_context(*tx),
+        *statement, results, error, statistics, request_info{});
+    config->distributed_query_coordinator_enabled(true);
+    EXPECT_EQ(status::err_illegal_operation, result);
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error_code::restricted_operation_exception, error->code());
+    EXPECT_EQ(0, a_.calls);
+    EXPECT_EQ(0, b_.calls);
+    db_impl()->task_scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
+    std::ostringstream diagnostic{};
+    db_impl()->task_scheduler()->print_diagnostic(diagnostic);
+    EXPECT_NE(std::string::npos, diagnostic.str().find("job_count: 0"));
+    EXPECT_EQ(101, query("SELECT C0 FROM schema_a.T"));
+}
+
 TEST_F(remote_catalog_sql_test, executable_rejects_execution_after_catalog_drop) {
     std::unique_ptr<api::executable_statement> statement{};
     ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM schema_a.T", statement));

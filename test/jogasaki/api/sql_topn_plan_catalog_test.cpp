@@ -120,7 +120,7 @@ struct catalog_query {
  * changes notified after that in the same issue, and each query result is compared with the one compiled without
  * TOP-N runtime features (F0 in the catalog).
  * The parameters are (scan_impl, use_rtx, flags), where flags is the TOP-N runtime features to compare with F0:
- * F1 (scan_limit), F2 (ordered_scan and ordered_forward) or F3 (all of them).
+ * F1 (scan_limit), F2 (ordered_scan and ordered_forward), F3 (F1 and F2) or F4 (F3 and backward_scan).
  * @note the sort keys of the test data are unique except for NULLs, and the number of the rows with NULL sort key
  * does not exceed the row count of LIMIT, so that the ordered results are deterministic except for the order
  * among the rows with NULL sort key. The exception is APPLY, whose ties are noted in the test.
@@ -129,6 +129,7 @@ enum class topn_flags {
     f1,
     f2,
     f3,
+    f4,
 };
 
 class sql_topn_plan_catalog_test :
@@ -237,9 +238,10 @@ public:
     // enables the TOP-N runtime features of the parameter if enable_topn is true, or disables all of them (F0)
     void set_topn_flags(bool enable_topn) {
         auto flags = std::get<2>(GetParam());
-        cfg_->enable_scan_limit(enable_topn && (flags == topn_flags::f1 || flags == topn_flags::f3));
-        cfg_->enable_ordered_scan(enable_topn && (flags == topn_flags::f2 || flags == topn_flags::f3));
+        cfg_->enable_scan_limit(enable_topn && flags != topn_flags::f2);
+        cfg_->enable_ordered_scan(enable_topn && flags != topn_flags::f1);
         cfg_->enable_ordered_forward(true);
+        cfg_->enable_backward_scan(enable_topn && flags == topn_flags::f4);
     }
 
     /**
@@ -355,7 +357,7 @@ public:
 INSTANTIATE_TEST_SUITE_P(
     plan_catalog,
     sql_topn_plan_catalog_test,
-    // F1 is compared with each scan implementation, while F2 and F3 are compared only with the automatic one
+    // F1 is compared with each scan implementation, while F2, F3 and F4 are compared only with the automatic one
     ::testing::Values(
         std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f1),
         std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f1),
@@ -366,12 +368,14 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f2),
         std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f2),
         std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f3),
-        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f3)
+        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f3),
+        std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f4),
+        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f4)
     ),
     [](auto const& info) {
         auto impl = std::get<0>(info.param);
         auto flags = std::get<2>(info.param);
-        return std::string{flags == topn_flags::f1 ? "f1_" : flags == topn_flags::f2 ? "f2_" : "f3_"} +
+        return std::string{flags == topn_flags::f1 ? "f1_" : flags == topn_flags::f2 ? "f2_" : flags == topn_flags::f3 ? "f3_" : "f4_"} +
             std::string{impl == scan_impl_kind::automatic ? "auto" : to_string_view(impl)} +
             (std::get<1>(info.param) ? "_rtx" : "_occ");
     }
@@ -491,11 +495,13 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f2),
         std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f2),
         std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f3),
-        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f3)
+        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f3),
+        std::make_tuple(scan_impl_kind::automatic, false, topn_flags::f4),
+        std::make_tuple(scan_impl_kind::automatic, true, topn_flags::f4)
     ),
     [](auto const& info) {
         auto flags = std::get<2>(info.param);
-        return std::string{flags == topn_flags::f1 ? "f1" : flags == topn_flags::f2 ? "f2" : "f3"} +
+        return std::string{flags == topn_flags::f1 ? "f1" : flags == topn_flags::f2 ? "f2" : flags == topn_flags::f3 ? "f3" : "f4"} +
             (std::get<1>(info.param) ? "_rtx" : "_occ");
     }
 );

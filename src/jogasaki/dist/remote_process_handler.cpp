@@ -593,6 +593,8 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
         request_info{0, {}, cancellation}, false, nullptr, std::addressof(rpc_scheduler));
 
     request->remote_worker(true);
+    // Rebinding resolved the received process against this worker; never route it again.
+    compiled.processor_info->captured_location({});
     auto* offer = output_offer(graph);
     executor::process::relation_io_map::output_entity_type outputs{};
     outputs.emplace(offer, 0);

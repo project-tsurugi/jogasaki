@@ -129,7 +129,7 @@ public:
 
     /**
      * @brief records the placement captured from the compiler's operation location result
-     * @param server the remote server name, or empty for the coordinator
+     * @param server the remote server name, or empty for local execution
      */
     void captured_location(std::string server) {
         captured_location_ = std::move(server);

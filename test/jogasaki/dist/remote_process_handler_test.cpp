@@ -50,6 +50,7 @@
 #include <jogasaki/api/api_test_base.h>
 #include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/dist/remote_execution_block_proto.h>
+#include <jogasaki/dist/remote_execution_block_decoder.h>
 #include <jogasaki/dist/remote_execution_result.h>
 #include <jogasaki/dist/remote_process_handler.h>
 #include <jogasaki/dist/remote_type_codec.h>
@@ -69,12 +70,26 @@
 
 namespace jogasaki::testing {
 namespace {
+dist::remote_result_column int8_column(std::uint64_t id, bool nullable) {
+    return {id, "int8()", nullable, dist::encode_remote_type(takatori::type::int8{})};
+}
+dist::remote_scalar_expression int8_literal(std::uint64_t id, std::int64_t value) {
+    dist::remote_scalar_expression result{};
+    result.expression_id = id;
+    result.kind = dist::remote_scalar_expression_kind::immediate;
+    result.value_kind = "int8";
+    result.value = std::to_string(value);
+    result.type = "int8()";
+    result.type_payload = dist::encode_remote_type(takatori::type::int8{});
+    result.literal_payload = dist::encode_remote_literal(takatori::value::int8{value});
+    return result;
+}
 dist::remote_execution_block scan_block() {
     dist::remote_execution_block block{};
     block.values = {0};
     block.stream_variables = {0};
     block.external_relations = {0};
-    block.result_schema = {{0, "int8()", false}};
+    block.result_schema = {int8_column(0, false)};
     dist::remote_operator scan{};
     scan.operator_id = 0;
     scan.kind = dist::remote_operator_kind::scan;
@@ -315,7 +330,7 @@ TEST_F(remote_process_handler_test, record_sink_reads_fresh_rows_and_nullable_va
     auto block = scan_block();
     block.stream_variables = {0, 1};
     block.external_relations = {42};
-    block.result_schema = {{1055, "int8()", false}, {1900, "int8()", true}};
+    block.result_schema = {int8_column(1055, false), int8_column(1900, true)};
     block.operators.front().source->table_name = "sales";
     block.operators.front().source->index_name = "sales";
     block.operators.front().source->columns = {
@@ -573,7 +588,7 @@ TEST_F(remote_process_handler_test, rpc_cancel_reaches_filtered_scan_when_scan_c
     block.result_value_id = 1;
     block.scalar_expressions = {
         {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        {1, dist::remote_scalar_expression_kind::immediate, {}, "int8", "1000000", "int8()", {}, {}},
+        int8_literal(1, 1000000),
         {2, dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
     };
     dist::remote_operator filter{};
@@ -763,8 +778,8 @@ TEST_F(remote_process_handler_test, resolves_sales_output_in_schema_column_order
     // Both the normal and reversed schemas must resolve sparse IDs, not use IDs as positions.
     for (bool reversed : {false, true}) {
         block.result_schema = reversed
-            ? std::vector<dist::remote_result_column>{{1900, "int8()", true}, {1055, "int8()", false}}
-            : std::vector<dist::remote_result_column>{{1055, "int8()", false}, {1900, "int8()", true}};
+            ? std::vector<dist::remote_result_column>{int8_column(1900, true), int8_column(1055, false)}
+            : std::vector<dist::remote_result_column>{int8_column(1055, false), int8_column(1900, true)};
         auto response = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
         ASSERT_TRUE(response.success) << response.error;
         std::string error{};
@@ -791,7 +806,7 @@ TEST_F(remote_process_handler_test, resolves_sparse_external_ids_and_schema_colu
     block.operators[0].source->index_name = "sales";
     block.operators[0].source->columns = {{"sale_number", 123, 0, dist::encode_remote_type(takatori::type::int8{})}, {"amount", 987, 1, dist::encode_remote_type(takatori::type::int8{})}};
     // Reverse the output order while retaining the documentation's sparse column IDs.
-    block.result_schema = {{1900, "int8()", true}, {1055, "int8()", false}};
+    block.result_schema = {int8_column(1900, true), int8_column(1055, false)};
     block.operators.back().offer = dist::remote_offer{42, {{123, 1055}, {987, 1900}}};
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
@@ -829,7 +844,7 @@ TEST_F(remote_process_handler_test, rejects_duplicate_and_missing_output_columns
     for (bool duplicate : {false, true}) {
         auto block = scan_block();
         if (duplicate) block.operators.back().offer->columns.push_back({0, 0});
-        else block.result_schema.push_back({42, "int8()", false});
+        else block.result_schema.push_back(int8_column(42, false));
         auto response = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
         EXPECT_FALSE(response.success);
         EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
@@ -871,7 +886,7 @@ TEST_F(remote_process_handler_test, filters_and_projects_worker_rows) {
     block.result_value_id = 2;
     block.scalar_expressions = {
         {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        {1, dist::remote_scalar_expression_kind::immediate, {}, "int8", "10", "int8()", {}, {}},
+        int8_literal(1, 10),
         {2, dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
         {3, dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 1}},
     };
@@ -909,7 +924,7 @@ TEST_F(remote_process_handler_test, executes_find_when_offer_is_stored_first) {
     block.operators.front().source->find_key_count = 1;
     block.operators.front().source->find_key_expression_ids = {0};
     block.scalar_expressions = {
-        {0, dist::remote_scalar_expression_kind::immediate, {}, "int8", "20", "int8()", {}, {}},
+        int8_literal(0, 20),
     };
     std::reverse(block.operators.begin(), block.operators.end());
     dist::remote_process_handler handler{*db_};
@@ -931,7 +946,7 @@ TEST_F(remote_process_handler_test, executes_every_operator_storage_permutation)
     block.result_value_id = 2;
     block.scalar_expressions = {
         {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        {1, dist::remote_scalar_expression_kind::immediate, {}, "int8", "10", "int8()", {}, {}},
+        int8_literal(1, 10),
         {2, dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
         {3, dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 1}},
     };
@@ -1139,7 +1154,7 @@ TEST_F(remote_process_handler_test, returns_native_sql_error_details) {
     block.result_value_id = 1;
     block.scalar_expressions = {
         {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
-        {1, dist::remote_scalar_expression_kind::immediate, {}, "int8", "0", "int8()", {}, {}},
+        int8_literal(1, 0),
         {2, dist::remote_scalar_expression_kind::binary, "divide", {}, {}, {}, {}, {0, 1}},
     };
     dist::remote_operator project{};
@@ -1349,6 +1364,63 @@ TEST_F(remote_process_handler_test, covers_analyzer_accepted_cast_pairs) {
     EXPECT_GE(checked, 50);
     RecordProperty("cast_pairs_checked", static_cast<int>(checked));
 }
+TEST_F(remote_process_handler_test, requires_type_payload_at_each_explicit_type_position) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10)");
+    auto valid = scan_block();
+    valid.values = {0, 1};
+    valid.stream_variables = {0, 1};
+    valid.result_value_id = 1;
+    valid.scalar_expressions = {int8_literal(0, 7), {1, dist::remote_scalar_expression_kind::cast, "error"}};
+    valid.scalar_expressions[1].type = "int8()";
+    valid.scalar_expressions[1].type_payload = dist::encode_remote_type(takatori::type::int8{});
+    valid.scalar_expressions[1].operand_expression_ids = {0};
+    dist::remote_operator project{};
+    project.operator_id = 1;
+    project.kind = dist::remote_operator_kind::project;
+    project.input_value_id = 0;
+    project.output_value_id = 1;
+    project.project_columns = {{1, 1}};
+    auto offer = valid.operators.back();
+    offer.operator_id = 2;
+    offer.input_value_id = 1;
+    offer.offer->columns[0].source_variable_id = 1;
+    valid.operators = {valid.operators.front(), project, offer};
+    dist::remote_process_handler handler{*db_};
+    auto success = handler(dist::serialize_remote_execution_block_proto(valid));
+    ASSERT_TRUE(success.success) << success.error;
+    for (int position = 0; position < 4; ++position) {
+        SCOPED_TRACE(position);
+        auto block = valid;
+        switch (position) {
+            case 0: block.scalar_expressions[0].type_payload.clear(); break;
+            case 1: block.scalar_expressions[1].type_payload.clear(); break;
+            case 2: block.result_schema[0].type_payload.clear(); break;
+            case 3: block.operators[0].source->columns[0].type_payload.clear(); break;
+        }
+        // Both entry forms must reject before graph resolution or RTX creation.
+        EXPECT_TRUE(dist::validate_remote_execution_block(block));
+        auto before = db_impl()->transaction_count();
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(response.success);
+        EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
+    // Type names are display information; a valid payload determines the type.
+    valid.scalar_expressions[0].type = "int4()";
+    valid.scalar_expressions[0].value_kind = "int4";
+    valid.scalar_expressions[0].value = "999";
+    valid.scalar_expressions[1].type = "int4()";
+    valid.result_schema[0].type = "int4()";
+    auto displayed = handler(dist::serialize_remote_execution_block_proto(valid));
+    ASSERT_TRUE(displayed.success) << displayed.error;
+    std::string diagnostic{};
+    auto result = dist::deserialize_remote_execution_result(displayed.payload, diagnostic);
+    ASSERT_TRUE(result) << diagnostic;
+    ASSERT_EQ(1U, result->rows.size());
+    EXPECT_EQ(7, result->rows[0][0]);
+}
+
 TEST_F(remote_process_handler_test, rejects_unsupported_types_before_execution) {
     for (auto const* name : {"int1", "int2", "bit", "datetime_interval"}) {
         proto::distributed_query::PortableType type{};
@@ -1358,7 +1430,7 @@ TEST_F(remote_process_handler_test, rejects_unsupported_types_before_execution) 
                 auto block = scan_block();
                 if (output) {
                     block.result_schema[0].type = std::string{name} + "()";
-                    if (typed_payload) block.result_schema[0].type_payload = type.SerializeAsString();
+                    block.result_schema[0].type_payload = typed_payload ? type.SerializeAsString() : std::string{};
                 } else {
                     block.scalar_expressions = {{0, dist::remote_scalar_expression_kind::immediate}};
                     auto& expression = block.scalar_expressions[0];
@@ -1369,7 +1441,9 @@ TEST_F(remote_process_handler_test, rejects_unsupported_types_before_execution) 
                 dist::remote_process_handler handler{*db_};
                 auto response = handler(dist::serialize_remote_execution_block_proto(block));
                 EXPECT_FALSE(response.success);
-                EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::unsupported, response.error_kind);
+                EXPECT_EQ(typed_payload ? tateyama::grpc::distributed_query::remote_process_error_kind::unsupported
+                                        : tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request,
+                          response.error_kind);
             }
         }
     }

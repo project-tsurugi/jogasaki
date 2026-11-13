@@ -16,7 +16,6 @@
 #include "remote_process_handler.h"
 
 #include <atomic>
-#include <cerrno>
 #include <chrono>
 #include <cstdlib>
 #include <functional>
@@ -334,18 +333,6 @@ private:
 
 } // namespace
 
-[[nodiscard]] static std::optional<std::int64_t> parse_int8(std::string text) {
-    if (auto begin = text.rfind('('); begin != std::string::npos && !text.empty() && text.back() == ')') {
-        text = text.substr(begin + 1, text.size() - begin - 2);
-    }
-    char* end{};
-    errno = 0;
-    auto result = std::strtoll(text.c_str(), std::addressof(end), 10);
-    if (errno == ERANGE || end == text.c_str() || *end != '\0') {
-        return {};
-    }
-    return result;
-}
 
 namespace {
 
@@ -471,32 +458,15 @@ public:
     }
 
     std::unique_ptr<scalar::expression> resolve_immediate(remote_scalar_expression const& expression) const override {
-        if (!expression.type_payload.empty()) {
-            auto type = decode_remote_type(expression.type_payload);
-            if (!type) {
-                return {};
-            }
-            auto value = decode_remote_literal(expression.literal_payload, *type);
-            if (!value || !literal_fits_declared_type(*value, *type)) {
-                return {};
-            }
-            return std::make_unique<scalar::immediate>(std::move(value), std::move(type));
-        }
-        if (expression.value_kind != "int8" || expression.type != "int8()") {
+        auto type = decode_remote_type(expression.type_payload);
+        if (!type) {
             return {};
         }
-        auto parsed = parse_int8(expression.value);
-        if (!parsed) {
+        auto value = decode_remote_literal(expression.literal_payload, *type);
+        if (!value || !literal_fits_declared_type(*value, *type)) {
             return {};
         }
-        return std::make_unique<scalar::immediate>(value::int8{*parsed}, type::int8{});
-    }
-
-    std::shared_ptr<type::data const> resolve_type(std::string_view name) const override {
-        if (name != "int8()") {
-            return {};
-        }
-        return std::make_shared<type::int8>();
+        return std::make_unique<scalar::immediate>(std::move(value), std::move(type));
     }
 
     [[nodiscard]] bool catalog_mismatch() const noexcept { return catalog_mismatch_; }
@@ -550,8 +520,7 @@ private:
 validate_output_types(remote_execution_block const& block) {
     // Reject output kinds before constructing any internal record layout.
     for (auto const& column : block.result_schema) {
-        auto t = column.type_payload.empty() && column.type == "int8()" ? std::make_shared<type::int8>()
-                                                                        : decode_remote_type(column.type_payload);
+        auto t = decode_remote_type(column.type_payload);
         if (!t) {
             return dq::remote_process_result{false, {}, "invalid remote output type", remote_error::invalid_request};
         }
@@ -641,11 +610,6 @@ execute_remote_graph(api::impl::database& database, remote_execution_block const
 
     remote_execution_result remote_result{};
     remote_result.columns = block.result_schema;
-    for (auto& column : remote_result.columns) {
-        if (column.type_payload.empty()) {
-            column.type_payload = encode_remote_type(type::int8{});
-        }
-    }
     bounded_remote_result result{remote_result, *forward_step.output_meta(), sink, records, is_cancelled};
     process_step.executor_factory(std::make_shared<executor::process::abstract::process_executor_factory>(
         [&process_step, &result](std::shared_ptr<executor::process::abstract::processor> processor,
@@ -794,9 +758,7 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
     }
     for (std::size_t i = 0; i < decoded.block->result_schema.size(); ++i) {
         auto const& column = decoded.block->result_schema[i];
-        auto expected = column.type_payload.empty() && column.type == "int8()"
-                            ? std::make_shared<type::int8>()
-                            : decode_remote_type(column.type_payload);
+        auto expected = decode_remote_type(column.type_payload);
         if (!expected || utils::type_for(*expected) != forward.output_meta()->at(i)) {
             return {false, {}, "remote result schema type mismatch", remote_error::invalid_request};
         }

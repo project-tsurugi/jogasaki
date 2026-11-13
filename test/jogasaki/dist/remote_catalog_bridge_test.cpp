@@ -137,7 +137,7 @@ TEST_F(remote_catalog_bridge_test, framework_executes_native_external_output_wit
     metadata->set_attempt_number(1);
     dist::remote_execution_block block{};
     block.values = {0}; block.stream_variables = {0}; block.external_relations = {73};
-    block.result_schema = {{19, "int8()", false}};
+    block.result_schema = {{19, "int8()", false, dist::encode_remote_type(takatori::type::int8{})}};
     dist::remote_operator scan{};
     scan.kind = dist::remote_operator_kind::scan; scan.operator_id = 0; scan.output_value_id = 0;
     scan.source = dist::remote_source{};

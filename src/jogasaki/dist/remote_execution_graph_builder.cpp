@@ -412,8 +412,7 @@ private:
     }
 
     [[nodiscard]] std::unique_ptr<scalar::expression> build_cast(remote_scalar_expression const& source) {
-        auto type = source.type_payload.empty() ? resolver_->resolve_type(source.type)
-                                                : decode_remote_type(source.type_payload);
+        auto type = decode_remote_type(source.type_payload);
         auto policy = cast_loss_policy(source.operator_kind);
         if (!type) {
             invalid_request_ = true;

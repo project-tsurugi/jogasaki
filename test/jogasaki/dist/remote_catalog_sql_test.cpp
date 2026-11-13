@@ -44,6 +44,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/utils/create_tx.h>
@@ -132,6 +133,8 @@ public:
         EXPECT_EQ(status::err_not_found, error->status());
         EXPECT_EQ("Foreign catalog \"worker_a\" has been dropped.", error->message());
         EXPECT_EQ(status::err_inactive_transaction, tx->commit());
+        // Completion callbacks can return before their jobs are unregistered.
+        db_impl()->task_scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
         std::ostringstream diagnostic{};
         db_impl()->task_scheduler()->print_diagnostic(diagnostic);
         EXPECT_NE(std::string::npos, diagnostic.str().find("job_count: 0"));

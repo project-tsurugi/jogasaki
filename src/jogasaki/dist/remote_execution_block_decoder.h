@@ -32,7 +32,7 @@ namespace jogasaki::dist {
 struct remote_execution_block_decode_result {
     std::optional<remote_execution_block> block{};
     std::string error{};
-    bool unsupported_type{};
+    bool unsupported{};
     // Validated source-to-offer indices into block->operators; independent of storage order.
     std::vector<std::size_t> operator_order{};
 

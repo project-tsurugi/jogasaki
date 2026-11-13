@@ -41,8 +41,8 @@ namespace jogasaki::dist {
 namespace relation = takatori::relation;
 namespace scalar = takatori::scalar;
 
-[[nodiscard]] static remote_execution_graph_build_result failure(std::string message, bool invalid_request = false) {
-    return {{}, std::move(message), invalid_request};
+[[nodiscard]] static remote_execution_graph_build_result failure(std::string message, bool invalid_request = false, bool unsupported = false) {
+    return {{}, std::move(message), invalid_request, unsupported};
 }
 
 template <class T> [[nodiscard]] static std::string missing(char const* category, T const& value) {
@@ -198,7 +198,7 @@ public:
             auto const& op = block_->operators[index];
             auto node = build_operator(op);
             if (!node) {
-                return failure(error_, invalid_request_);
+                return failure(error_, invalid_request_, unsupported_);
             }
             auto& current = graph->insert(std::move(node));
             if (previous != nullptr) {
@@ -250,7 +250,8 @@ private:
             case remote_scalar_expression_kind::unary: {
                 auto kind = unary_operator(source.operator_kind);
                 if (!kind) {
-                    invalid_request_ = true;
+                    unsupported_ = !source.operator_kind.empty();
+                    invalid_request_ = !unsupported_;
                     error_ = missing("unary operator", source.operator_kind);
                     return {};
                 }
@@ -265,7 +266,8 @@ private:
             case remote_scalar_expression_kind::binary: {
                 auto kind = binary_operator(source.operator_kind);
                 if (!kind) {
-                    invalid_request_ = true;
+                    unsupported_ = !source.operator_kind.empty();
+                    invalid_request_ = !unsupported_;
                     error_ = missing("binary operator", source.operator_kind);
                     return {};
                 }
@@ -279,7 +281,8 @@ private:
             case remote_scalar_expression_kind::compare: {
                 auto kind = comparison_operator(source.operator_kind);
                 if (!kind) {
-                    invalid_request_ = true;
+                    unsupported_ = !source.operator_kind.empty();
+                    invalid_request_ = !unsupported_;
                     error_ = missing("comparison operator", source.operator_kind);
                     return {};
                 }
@@ -420,7 +423,8 @@ private:
             return {};
         }
         if (!policy) {
-            invalid_request_ = true;
+            unsupported_ = !source.operator_kind.empty();
+            invalid_request_ = !unsupported_;
             error_ = missing("cast loss policy", source.operator_kind);
             return {};
         }
@@ -462,6 +466,7 @@ private:
     std::unordered_map<std::uint64_t, remote_scalar_expression const*> expressions_{};
     std::string error_{};
     bool invalid_request_{};
+    bool unsupported_{};
 };
 
 } // namespace

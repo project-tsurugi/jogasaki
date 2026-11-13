@@ -36,8 +36,8 @@ template <class T> [[nodiscard]] static bool add_unique(std::unordered_set<T>& v
     return values.emplace(value).second;
 }
 
-[[nodiscard]] static remote_execution_block_decode_result failure(std::string message) {
-    return {{}, std::move(message)};
+[[nodiscard]] static remote_execution_block_decode_result failure(std::string message, bool unsupported = false) {
+    return {{}, std::move(message), unsupported};
 }
 
 [[nodiscard]] static std::optional<remote_operator_kind> decode(dqproto::OperatorKind kind) {
@@ -174,6 +174,14 @@ private:
                 if (expression.kind == remote_scalar_expression_kind::immediate &&
                     !decode_remote_literal(expression.literal_payload, *type)) {
                     return "invalid remote literal";
+                }
+            }
+        }
+        for (auto const& op : block->operators) {
+            if (!op.source) continue;
+            for (auto const& column : op.source->columns) {
+                if (!column.type_payload.empty() && !decode_remote_type(column.type_payload)) {
+                    return "invalid remote source type";
                 }
             }
         }
@@ -540,17 +548,15 @@ std::optional<std::string> validate_remote_execution_block(
 }
 
 static bool unsupported_type(std::string const& payload) {
-    proto::distributed_query::PortableType type{};
-    if (payload.empty() || payload.size() > 4096 || !type.ParseFromString(payload)) {
-        return false;
-    }
-    return type.kind() == "int1" || type.kind() == "int2" || type.kind() == "bit" ||
-           type.kind() == "datetime_interval";
+    bool unsupported{};
+    (void)decode_remote_type(payload, &unsupported);
+    return unsupported;
 }
 
-static std::optional<std::string> decode_operator(dqproto::Operator const& op, remote_operator& target) {
+static std::optional<std::string> decode_operator(dqproto::Operator const& op, remote_operator& target, bool& unsupported) {
     auto kind = decode(op.kind());
     if (!kind) {
+        unsupported = op.kind() != dqproto::OPERATOR_KIND_UNSPECIFIED;
         return id_error("operator", op.operator_id(), "has unknown kind");
     }
     target.operator_id = op.operator_id();
@@ -565,6 +571,7 @@ static std::optional<std::string> decode_operator(dqproto::Operator const& op, r
         auto lower_kind = decode(op.source().lower().kind());
         auto upper_kind = decode(op.source().upper().kind());
         if (!lower_kind || !upper_kind) {
+            unsupported = true;
             return id_error("operator", op.operator_id(), "has unknown endpoint kind");
         }
         remote_source decoded_source{};
@@ -621,6 +628,10 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
         return failure("invalid RemoteExecutionBlock protobuf payload");
     }
 
+    // An unknown format must not be interpreted as the current version's structure.
+    if (source.version() == 0) return failure("missing RemoteExecutionBlock version");
+    if (source.version() != 2) return failure("unsupported RemoteExecutionBlock version", true);
+
     // Reject unsupported SQL types before creating runtime metadata, including typed NULLs.
     for (auto const& expression : source.scalar_expressions()) {
         if (unsupported_type(expression.type_payload())) {
@@ -630,6 +641,14 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
     for (auto const& column : source.result_schema().columns()) {
         if (unsupported_type(column.type_payload())) {
             return {{}, "unsupported SQL type is outside remote execution", true};
+        }
+    }
+
+    for (auto const& op : source.operators()) {
+        for (auto const& column : op.source().columns()) {
+            if (unsupported_type(column.type_payload())) {
+                return failure("unsupported SQL type is outside remote execution", true);
+            }
         }
     }
 
@@ -643,7 +662,8 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
     for (auto const& expression : source.scalar_expressions()) {
         auto kind = decode(expression.kind());
         if (!kind) {
-            return failure(id_error("scalar expression", expression.expression_id(), "has unknown kind"));
+            return failure(id_error("scalar expression", expression.expression_id(), "has unknown kind"),
+                expression.kind() != dqproto::SCALAR_EXPRESSION_KIND_UNSPECIFIED);
         }
         remote_scalar_expression target{};
         target.expression_id = expression.expression_id();
@@ -664,8 +684,9 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
 
     for (auto const& op : source.operators()) {
         remote_operator target{};
-        if (auto error = decode_operator(op, target)) {
-            return failure(std::move(*error));
+        bool unsupported{};
+        if (auto error = decode_operator(op, target, unsupported)) {
+            return failure(std::move(*error), unsupported);
         }
         block.operators.emplace_back(std::move(target));
     }

@@ -24,7 +24,8 @@
 
 namespace jogasaki::dist {
 [[nodiscard]] std::string encode_remote_type(takatori::type::data const& data);
-[[nodiscard]] std::shared_ptr<takatori::type::data const> decode_remote_type(std::string_view payload);
+/** @brief Decode a structured type; optionally distinguish an unknown/non-supported kind from malformed data. */
+[[nodiscard]] std::shared_ptr<takatori::type::data const> decode_remote_type(std::string_view payload, bool* unsupported = nullptr);
 [[nodiscard]] std::string encode_remote_literal(takatori::value::data const& data);
 [[nodiscard]] std::unique_ptr<takatori::value::data> decode_remote_literal(std::string_view payload,
                                                                            takatori::type::data const& type);

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <tateyama/proto/distributed_query/remote_execution_block.pb.h>
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -1385,6 +1386,111 @@ TEST_F(remote_process_handler_test, covers_analyzer_accepted_cast_pairs) {
     EXPECT_GE(checked, 50);
     RecordProperty("cast_pairs_checked", static_cast<int>(checked));
 }
+TEST_F(remote_process_handler_test, distinguishes_unsupported_ir_from_malformed_ir_before_rtx) {
+    namespace wire = tateyama::grpc::proto;
+    using kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    auto base = scan_block();
+    base.scalar_expressions = {int8_literal(0, 7)};
+    wire::RemoteExecutionBlock valid{};
+    ASSERT_TRUE(valid.ParseFromString(dist::serialize_remote_execution_block_proto(base)));
+    ASSERT_TRUE(dist::remote_process_handler{*db_}(valid.SerializeAsString()).success);
+    auto before = db_impl()->transaction_count();
+    auto check = [&](wire::RemoteExecutionBlock const& block, bool unsupported) {
+        auto payload = block.SerializeAsString();
+        auto decoded = dist::decode_remote_execution_block(payload);
+        EXPECT_FALSE(decoded);
+        EXPECT_EQ(unsupported, decoded.unsupported) << decoded.error;
+        auto result = dist::remote_process_handler{*db_}(payload);
+        EXPECT_FALSE(result.success);
+        EXPECT_EQ(unsupported ? kind::unsupported : kind::invalid_request, result.error_kind) << result.error;
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    };
+    for (auto version : {0U, 1U, 3U}) {
+        auto block = valid; block.set_version(version);
+        check(block, version != 0);
+    }
+    auto unknown_version = valid;
+    unknown_version.set_version(3);
+    unknown_version.clear_operators(); unknown_version.clear_result_schema();
+    check(unknown_version, true);
+    auto block = valid;
+    block.mutable_operators(0)->set_kind(wire::OPERATOR_KIND_UNSPECIFIED);
+    check(block, false);
+    block = valid;
+    block.mutable_operators(0)->set_kind(static_cast<wire::OperatorKind>(2026));
+    check(block, true);
+    block = valid;
+    block.mutable_scalar_expressions(0)->set_kind(wire::SCALAR_EXPRESSION_KIND_UNSPECIFIED);
+    check(block, false);
+    block = valid;
+    block.mutable_scalar_expressions(0)->set_kind(static_cast<wire::ScalarExpressionKind>(2026));
+    check(block, true);
+    block = valid;
+    block.mutable_operators(0)->mutable_source()->mutable_lower()->set_kind(static_cast<wire::EndpointKind>(2026));
+    check(block, true);
+    // Zero is a valid unbound endpoint, not UNSPECIFIED.
+    EXPECT_EQ(wire::ENDPOINT_KIND_UNBOUND, valid.operators(0).source().lower().kind());
+}
+
+TEST_F(remote_process_handler_test, distinguishes_unknown_type_kinds_from_invalid_type_payloads) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    using kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    for (int position = 0; position < 3; ++position) {
+        for (int problem = 0; problem < 4; ++problem) {
+            SCOPED_TRACE(::testing::Message{} << position << ':' << problem);
+            auto block = scan_block();
+            block.scalar_expressions = {int8_literal(0, 7)};
+            auto* payload = position == 0 ? &block.scalar_expressions[0].type_payload
+                : position == 1 ? &block.result_schema[0].type_payload
+                                : &block.operators[0].source->columns[0].type_payload;
+            proto::distributed_query::PortableType type{};
+            switch (problem) {
+                case 0: type.set_kind("future_type"); type.set_precision(9); *payload = type.SerializeAsString(); break;
+                case 1: payload->clear(); break;
+                case 2: *payload = std::string(1, static_cast<char>(0xff)); break;
+                case 3: type.set_kind("int8"); type.set_precision(9); *payload = type.SerializeAsString(); break;
+            }
+            auto before = db_impl()->transaction_count();
+            auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+            EXPECT_FALSE(result.success);
+            EXPECT_EQ(problem == 0 ? kind::unsupported : kind::invalid_request, result.error_kind) << result.error;
+            EXPECT_EQ(before, db_impl()->transaction_count());
+        }
+    }
+}
+
+TEST_F(remote_process_handler_test, distinguishes_unknown_scalar_operations_from_missing_operations) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    using kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    for (auto operation : {dist::remote_scalar_expression_kind::unary, dist::remote_scalar_expression_kind::binary,
+                           dist::remote_scalar_expression_kind::compare, dist::remote_scalar_expression_kind::cast}) {
+        for (auto const* name : {"", "future_operation"}) {
+            auto block = scan_block();
+            block.values = {0, 1}; block.stream_variables = {0, 1}; block.result_value_id = 1;
+            dist::remote_scalar_expression expression{};
+            expression.expression_id = 1; expression.kind = operation; expression.operator_kind = name;
+            expression.operand_expression_ids = {0};
+            if (operation == dist::remote_scalar_expression_kind::binary || operation == dist::remote_scalar_expression_kind::compare)
+                expression.operand_expression_ids.push_back(0);
+            if (operation == dist::remote_scalar_expression_kind::cast)
+                expression.type_payload = dist::encode_remote_type(takatori::type::int8{});
+            block.scalar_expressions = {int8_literal(0, 7), expression};
+            dist::remote_operator project{};
+            project.operator_id = 1; project.kind = dist::remote_operator_kind::project;
+            project.input_value_id = 0; project.output_value_id = 1; project.project_columns = {{1, 1}};
+            auto offer = block.operators.back(); offer.operator_id = 2; offer.input_value_id = 1;
+            offer.offer->columns[0].source_variable_id = 1;
+            block.operators = {block.operators.front(), project, offer};
+            auto before = db_impl()->transaction_count();
+            auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+            EXPECT_FALSE(result.success);
+            EXPECT_EQ(*name ? kind::unsupported : kind::invalid_request, result.error_kind) << result.error;
+            EXPECT_EQ(before, db_impl()->transaction_count());
+        }
+    }
+}
+
 TEST_F(remote_process_handler_test, requires_type_payload_at_each_explicit_type_position) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (10)");
@@ -1513,7 +1619,7 @@ TEST_F(remote_process_handler_test, cancels_before_execution) {
 }
 
 
-TEST_F(remote_process_handler_test, rejects_unknown_scalar_operator_as_invalid_request) {
+TEST_F(remote_process_handler_test, rejects_unknown_scalar_operator_as_unsupported) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     auto block = scan_block();
     block.values = {0, 1};
@@ -1537,7 +1643,7 @@ TEST_F(remote_process_handler_test, rejects_unknown_scalar_operator_as_invalid_r
     dist::remote_process_handler handler{*db_};
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     EXPECT_FALSE(response.success);
-    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, response.error_kind);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::unsupported, response.error_kind);
     EXPECT_NE(std::string::npos, response.error.find("unary operator"));
 }
 TEST_F(remote_process_handler_test, rejects_find_with_ignored_scan_options) {

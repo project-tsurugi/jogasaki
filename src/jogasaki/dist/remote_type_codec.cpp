@@ -15,6 +15,9 @@
  */
 #include "remote_type_codec.h"
 
+#include <array>
+#include <algorithm>
+
 #include <iterator>
 #include <limits>
 #include <stdexcept>
@@ -133,10 +136,20 @@ static bool valid_remote_type_options(proto::distributed_query::PortableType con
     return true;
 }
 
-std::shared_ptr<takatori::type::data const> decode_remote_type(std::string_view payload) {
+std::shared_ptr<takatori::type::data const> decode_remote_type(std::string_view payload, bool* unsupported) {
+    if (unsupported) *unsupported = false;
     using namespace takatori;
     proto::distributed_query::PortableType in{};
     if (payload.size() > 4096 || !in.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
+        return {};
+    }
+    if (in.kind().empty()) return {};
+    // Unknown type kinds are not interpreted using the options of a known type.
+    static constexpr std::array<std::string_view, 12> supported_kinds{
+        "boolean", "int4", "int8", "float4", "float8", "date", "unknown", "decimal",
+        "character", "octet", "time_of_day", "time_point"};
+    if (std::find(supported_kinds.begin(), supported_kinds.end(), in.kind()) == supported_kinds.end()) {
+        if (unsupported) *unsupported = true;
         return {};
     }
     if (!valid_remote_type_options(in)) {

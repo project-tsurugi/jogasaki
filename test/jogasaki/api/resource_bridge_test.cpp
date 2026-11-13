@@ -404,8 +404,8 @@ public:
         request.mutable_metadata()->set_coordinator_job_id("bridge-job");
         request.mutable_metadata()->set_remote_execution_id("bridge-execution");
         request.mutable_metadata()->set_attempt_number(1);
-        // A valid envelope with an invalid IR distinguishes an installed handler from no handler.
-        request.mutable_execution_block()->set_version(1);
+        // A supported version with a malformed body distinguishes an installed handler from no handler.
+        request.mutable_execution_block()->set_version(2);
         grpc::ClientContext context{};
         context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(5));
         auto reader = stub->ExecuteRemoteProcess(&context, request);

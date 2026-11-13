@@ -28,6 +28,10 @@ namespace jogasaki::dist {
 [[nodiscard]] tateyama::grpc::distributed_query::remote_process_error_kind
 classify_remote_rtx_start_failure(status result, bool stopping) noexcept;
 
+/** @brief Classify a failed output status consistently for write and finish. */
+[[nodiscard]] tateyama::grpc::distributed_query::remote_process_result
+remote_output_failure(status result);
+
 /**
  * @brief execute a distributed-query process against this database and return encoded records.
  * @details Uses the existing process executor and owns no database. The database must outlive active calls.

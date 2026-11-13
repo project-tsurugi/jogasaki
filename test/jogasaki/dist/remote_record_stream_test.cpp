@@ -18,6 +18,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/dist/remote_record_codec.h>
 #include <jogasaki/dist/remote_record_stream.h>
+#include <jogasaki/dist/remote_process_handler.h>
 
 namespace jogasaki::testing {
 namespace {
@@ -155,6 +156,24 @@ TEST(remote_record_stream_test, rejects_missing_sender_and_invalid_limits) {
     EXPECT_THROW((void)dist::remote_record_stream_writer(send, 0), std::invalid_argument);
     EXPECT_THROW((void)dist::remote_record_stream_writer(send, dist::remote_message_limit + 1), std::invalid_argument);
 }
+TEST(remote_record_stream_test, finish_resource_failure_keeps_its_worker_failure_category) {
+    std::size_t calls{};
+    dist::remote_record_stream_writer writer{[&](auto const&) {
+        ++calls; return status::err_resource_limit_reached;
+    }};
+    ASSERT_EQ(status::ok, writer.append(row(205)));
+    EXPECT_EQ(0, calls);
+    auto finished = writer.finish();
+    ASSERT_EQ(status::err_resource_limit_reached, finished);
+    auto result = dist::remote_output_failure(finished);
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::resource_exhausted, result.error_kind);
+    EXPECT_EQ("remote result exceeds 64 MiB", result.error);
+    EXPECT_EQ(finished, writer.finish());
+    EXPECT_EQ(finished, writer.append(row(308)));
+    EXPECT_EQ(1, calls);
+}
+
 TEST(remote_record_stream_test, sender_failure_is_sticky_across_all_entry_points) {
     std::size_t calls{};
     dist::remote_record_stream_writer writer{[&](auto const&) { ++calls; return status::err_io_error; }};

@@ -349,6 +349,9 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<bool>("dev_enable_ordered_forward")) {
         ret->enable_ordered_forward(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_backward_scan")) {
+        ret->enable_backward_scan(v.value());
+    }
     if (auto v = jogasaki_config->get<bool>("dev_enable_ties_ordered_by_primary_key")) {
         ret->enable_ties_ordered_by_primary_key(v.value());
     }

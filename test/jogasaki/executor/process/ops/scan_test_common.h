@@ -120,11 +120,12 @@ public:
             memory::lifo_paged_memory_resource* resource,
             memory::lifo_paged_memory_resource* varlen_resource,
             std::optional<std::size_t> limit = std::nullopt,
-            bool use_iscan = false
+            bool use_iscan = false,
+            bool reverse = false
         ) :
             range_{std::move(range_arg)},
             op_{0, p_info, 0, primary_idx, columns, secondary_idx,
-                std::move(downstream), limit, use_iscan},
+                std::move(downstream), limit, use_iscan, reverse},
             variables_list_{},
             task_ctx_{{}, {}, {}, range_},
             ctx_{&task_ctx_, variables_view{variables_list_, 0}, std::move(primary_stg), std::move(secondary_stg),
@@ -271,7 +272,8 @@ public:
             request_context_.request_resource(),
             &varlen_resource_,
             plan::impl::row_slice_to_limit(target.row_slice()),
-            scan_use_iscan_
+            scan_use_iscan_,
+            target.direction() == relation::scan_direction::backward
         };
     }
 

@@ -77,7 +77,8 @@ scan::scan(
     std::vector<details::secondary_index_field_info> secondary_key_fields,
     std::unique_ptr<operator_base> downstream,
     std::optional<std::size_t> limit,
-    bool use_iscan
+    bool use_iscan,
+    bool reverse
 ) :
     record_operator(index, info, block_index),
     use_secondary_(! secondary_storage_name.empty()),
@@ -91,7 +92,8 @@ scan::scan(
         std::move(secondary_key_fields)
     ),
     limit_(limit),
-    use_iscan_(use_iscan)
+    use_iscan_(use_iscan),
+    reverse_(reverse)
 {}
 
 scan::scan(
@@ -103,7 +105,8 @@ scan::scan(
     yugawara::storage::index const* secondary_idx,
     std::unique_ptr<operator_base> downstream,
     std::optional<std::size_t> limit,
-    bool use_iscan
+    bool use_iscan,
+    bool reverse
 ) :
     scan(
         index,
@@ -116,7 +119,8 @@ scan::scan(
         create_secondary_key_fields(secondary_idx),
         std::move(downstream),
         limit,
-        use_iscan
+        use_iscan,
+        reverse
     )
 {}
 
@@ -294,6 +298,8 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
     kvs::scan_options options{};
     options.legacy_scan_ = ! use_iscan_;
+    // the scan range (begin and end) is in the order of the index key also for the reverse scan
+    options.reverse_ = reverse_;
     if(auto res = stg.content_scan(
             tx,
             begin.key(),
@@ -317,6 +323,10 @@ std::optional<std::size_t> scan::limit() const noexcept {
 
 bool scan::use_iscan() const noexcept {
     return use_iscan_;
+}
+
+bool scan::reverse() const noexcept {
+    return reverse_;
 }
 
 void scan::close(scan_context& ctx) {

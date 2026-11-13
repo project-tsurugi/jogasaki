@@ -640,6 +640,18 @@ public:
     }
 
     /**
+     * @brief whether the scan operator reads the index in reverse order (runtime_feature::backward_scan)
+     * @details this is effective only if enable_scan_limit() or enable_ordered_scan() is true
+     */
+    [[nodiscard]] bool enable_backward_scan() const noexcept {
+        return enable_backward_scan_;
+    }
+
+    void enable_backward_scan(bool arg) noexcept {
+        enable_backward_scan_ = arg;
+    }
+
+    /**
      * @brief whether the secondary indices tell the compiler that the entries with the same key are ordered by the
      * primary key (index_feature::ties_ordered_by_primary_key)
      */
@@ -786,6 +798,7 @@ public:
         print_non_default(enable_early_stop);
         print_non_default(enable_ordered_scan);
         print_non_default(enable_ordered_forward);
+        print_non_default(enable_backward_scan);
         print_non_default(enable_ties_ordered_by_primary_key);
         print_non_default(scan_impl);
         print_non_default(grpc_server_endpoint);
@@ -870,6 +883,7 @@ private:
     bool enable_early_stop_ = true;
     bool enable_ordered_scan_ = true;
     bool enable_ordered_forward_ = true;
+    bool enable_backward_scan_ = true;
     bool enable_ties_ordered_by_primary_key_ = true;
     scan_impl_kind scan_impl_{scan_impl_kind::automatic};
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};

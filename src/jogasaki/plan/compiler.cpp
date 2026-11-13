@@ -54,7 +54,6 @@
 #include <takatori/relation/join_find.h>
 #include <takatori/relation/join_scan.h>
 #include <takatori/relation/scan.h>
-#include <takatori/relation/scan_direction.h>
 #include <takatori/relation/sort_direction.h>
 #include <takatori/relation/step/offer.h>
 #include <takatori/relation/write_kind.h>
@@ -260,13 +259,6 @@ std::optional<std::size_t> row_slice_to_limit(takatori::relation::details::row_s
 void validate_scan(takatori::relation::scan const& scan) {
     // only immediate row count without start position is supported (otherwise row_slice_to_limit() throws)
     (void) row_slice_to_limit(scan.row_slice());
-    if(scan.direction() == takatori::relation::scan_direction::backward) {
-        throw_exception(plan_exception(create_error_info(
-            error_code::unsupported_runtime_feature_exception,
-            "Compiling statement resulted in unsupported scan operator with backward direction.",
-            status::err_unsupported
-        )));
-    }
 }
 
 void preprocess(
@@ -663,6 +655,28 @@ static status create_prepared_statement(
     return create_prepared_statement(std::move(result), provider, sp, ctx, out);
 }
 
+/**
+ * @brief adds the TOP-N runtime features enabled by the configuration
+ * @param cfg the configuration
+ * @param runtime_features the runtime features to add to
+ */
+static void add_topn_runtime_features(configuration const& cfg, yugawara::runtime_feature_set& runtime_features) {
+    if(cfg.enable_scan_limit()) {
+        runtime_features.insert(yugawara::runtime_feature::scan_limit);
+    }
+    if(cfg.enable_ordered_scan()) {
+        runtime_features.insert(yugawara::runtime_feature::ordered_scan);
+        // ordered_forward requires ordered_scan
+        if(cfg.enable_ordered_forward()) {
+            runtime_features.insert(yugawara::runtime_feature::ordered_forward);
+        }
+    }
+    // backward_scan requires scan_limit or ordered_scan
+    if(cfg.enable_backward_scan() && (cfg.enable_scan_limit() || cfg.enable_ordered_scan())) {
+        runtime_features.insert(yugawara::runtime_feature::backward_scan);
+    }
+}
+
 static status prepare(
     std::string_view sql,
     compiler_context &ctx,
@@ -766,7 +780,6 @@ static status prepare(
         yugawara::runtime_feature::aggregate_exchange,
 //        yugawara::runtime_feature::broadcast_join_scan,
         yugawara::runtime_feature::always_inline_scalar_local_variables,
-//        yugawara::runtime_feature::backward_scan,
     };
 
     // TOP-N runtime features are not given for statements with write operations because they remove exchanges
@@ -777,16 +790,8 @@ static status prepare(
     // more sensitive to the problem, for such statements.
     bool const has_write_operations = has_write_operator(analysis);
     ctx.statement_has_write_operations(has_write_operations);
-    bool const allow_topn_features = ! has_write_operations;
-    if(cfg && cfg->enable_scan_limit() && allow_topn_features) {
-        runtime_features.insert(yugawara::runtime_feature::scan_limit);
-    }
-    if(cfg && cfg->enable_ordered_scan() && allow_topn_features) {
-        runtime_features.insert(yugawara::runtime_feature::ordered_scan);
-        // ordered_forward requires ordered_scan
-        if(cfg->enable_ordered_forward()) {
-            runtime_features.insert(yugawara::runtime_feature::ordered_forward);
-        }
+    if(cfg && ! has_write_operations) {
+        add_topn_runtime_features(*cfg, runtime_features);
     }
     if(cfg && cfg->enable_index_join()) {
         runtime_features.insert(yugawara::runtime_feature::index_join);
@@ -824,8 +829,7 @@ static status prepare(
             yugawara::restricted_feature::statement_rename_column,
             yugawara::restricted_feature::statement_rename_index,
             yugawara::restricted_feature::statement_rename_table,
-            // backward scan, and row slice with start position or variable row count are not supported by scan yet
-            yugawara::restricted_feature::relation_scan_direction_backward,
+            // row slice with start position or variable row count is not supported by scan yet
             yugawara::restricted_feature::relation_scan_row_slice_start,
             yugawara::restricted_feature::relation_scan_row_slice_variable,
             // only immediate row count is supported for row slice of exchanges

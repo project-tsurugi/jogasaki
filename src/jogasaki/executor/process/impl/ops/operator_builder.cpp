@@ -195,7 +195,8 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
         *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
         std::move(downstream),
         limit,
-        use_iscan
+        use_iscan,
+        node.direction() == takatori::relation::scan_direction::backward
     );
 }
 

@@ -21,7 +21,6 @@
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
-#include <absl/strings/match.h>
 
 #include <tateyama/proto/distributed_query/remote_execution_block.pb.h>
 
@@ -163,6 +162,10 @@ private:
             return "unsupported RemoteExecutionBlock version";
         }
         for (auto const& expression : block->scalar_expressions) {
+            if ((expression.kind == remote_scalar_expression_kind::immediate ||
+                 expression.kind == remote_scalar_expression_kind::cast) && expression.type_payload.empty()) {
+                return "missing remote scalar type payload";
+            }
             if (!expression.type_payload.empty()) {
                 auto type = decode_remote_type(expression.type_payload);
                 if (!type) {
@@ -175,7 +178,10 @@ private:
             }
         }
         for (auto const& column : block->result_schema) {
-            if (!column.type_payload.empty() && !decode_remote_type(column.type_payload)) {
+            if (column.type_payload.empty()) {
+                return "missing remote output type payload";
+            }
+            if (!decode_remote_type(column.type_payload)) {
                 return "invalid remote output type";
             }
         }
@@ -533,19 +539,13 @@ std::optional<std::string> validate_remote_execution_block(
     return {};
 }
 
-static bool unsupported_type(std::string const& payload, std::string const& name) {
-
+static bool unsupported_type(std::string const& payload) {
     proto::distributed_query::PortableType type{};
-    if (!payload.empty()) {
-        if (payload.size() > 4096 || !type.ParseFromString(payload)) {
-            return false;
-        }
-        return type.kind() == "int1" || type.kind() == "int2" || type.kind() == "bit" ||
-               type.kind() == "datetime_interval";
+    if (payload.empty() || payload.size() > 4096 || !type.ParseFromString(payload)) {
+        return false;
     }
-    return name == "int1" || absl::StartsWith(name, "int1(") || name == "int2" || absl::StartsWith(name, "int2(") ||
-           name == "bit" || absl::StartsWith(name, "bit(") || name == "datetime_interval" ||
-           absl::StartsWith(name, "datetime_interval(");
+    return type.kind() == "int1" || type.kind() == "int2" || type.kind() == "bit" ||
+           type.kind() == "datetime_interval";
 }
 
 static std::optional<std::string> decode_operator(dqproto::Operator const& op, remote_operator& target) {
@@ -623,12 +623,12 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
 
     // Reject unsupported SQL types before creating runtime metadata, including typed NULLs.
     for (auto const& expression : source.scalar_expressions()) {
-        if (unsupported_type(expression.type_payload(), expression.type())) {
+        if (unsupported_type(expression.type_payload())) {
             return {{}, "unsupported SQL type is outside remote execution", true};
         }
     }
     for (auto const& column : source.result_schema().columns()) {
-        if (unsupported_type(column.type_payload(), column.type())) {
+        if (unsupported_type(column.type_payload())) {
             return {{}, "unsupported SQL type is outside remote execution", true};
         }
     }

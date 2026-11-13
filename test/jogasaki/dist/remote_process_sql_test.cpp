@@ -429,7 +429,7 @@ TEST_F(remote_process_sql_test, typed_record_batches_cross_dummy_rpc_without_fra
     request.mutable_metadata()->mutable_protocol_version()->set_major(1);
     request.mutable_metadata()->set_coordinator_job_id("test"); request.mutable_metadata()->set_remote_execution_id("stream"); request.mutable_metadata()->set_attempt_number(1);
     auto block = dist::remote_execution_block{};
-    block.values = {0}; block.stream_variables = {0}; block.external_relations = {0}; block.result_schema = {{0, "int8()", false}};
+    block.values = {0}; block.stream_variables = {0}; block.external_relations = {0}; block.result_schema = {{0, "int8()", false, dist::encode_remote_type(takatori::type::int8{})}};
     dist::remote_operator scan{}; scan.kind = dist::remote_operator_kind::scan; scan.operator_id = 0; scan.output_value_id = 0;
     scan.source = dist::remote_source{}; scan.source->table_name = "T"; scan.source->index_name = "T"; scan.source->definition_id = 1257; scan.source->columns = {{"C0", 0, 0, dist::encode_remote_type(takatori::type::int8{})}};
     dist::remote_operator offer{}; offer.kind = dist::remote_operator_kind::offer; offer.operator_id = 1; offer.input_value_id = 0; offer.offer = dist::remote_offer{0, {{0, 0}}};

@@ -69,9 +69,6 @@ public:
 
     [[nodiscard]] virtual std::unique_ptr<takatori::scalar::expression> resolve_immediate(
         remote_scalar_expression const& expression) const = 0;
-
-    [[nodiscard]] virtual std::shared_ptr<takatori::type::data const> resolve_type(
-        std::string_view type) const = 0;
 };
 
 struct remote_execution_graph_build_result {

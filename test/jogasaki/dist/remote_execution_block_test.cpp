@@ -74,7 +74,8 @@ namespace value = takatori::value;
 
 TEST(remote_execution_result_test, round_trips_multiple_rows_columns_and_null) {
     dist::remote_execution_result source{
-        {{0, "int8()", false}, {1, "int8()", true}},
+        {{0, "int8()", false, dist::encode_remote_type(type::int8{})},
+         {1, "int8()", true, dist::encode_remote_type(type::int8{})}},
         {{10, 20}, {30, std::nullopt}},
     };
 
@@ -89,6 +90,14 @@ TEST(remote_execution_result_test, round_trips_multiple_rows_columns_and_null) {
     EXPECT_EQ(20, result->rows[0][1]);
     EXPECT_EQ(30, result->rows[1][0]);
     EXPECT_FALSE(result->rows[1][1]);
+}
+
+TEST(remote_execution_result_test, does_not_supply_a_missing_type_payload) {
+    dist::remote_execution_result source{{{0, "int8()", false}}, {{7}}};
+    auto payload = dist::serialize_remote_execution_result(source);
+    std::string error{};
+    EXPECT_FALSE(dist::deserialize_remote_execution_result(payload, error));
+    EXPECT_EQ("invalid remote result schema", error);
 }
 
 class test_graph_resolver final : public dist::remote_execution_graph_resolver {
@@ -134,19 +143,11 @@ public:
 
     std::unique_ptr<scalar::expression> resolve_immediate(
         dist::remote_scalar_expression const& expression) const override {
-        if (expression.value_kind != "int8" || expression.type != "int8()") return {};
-        auto value = expression.value;
-        if (auto begin = value.rfind('('); begin != std::string::npos && value.back() == ')') {
-            value = value.substr(begin + 1, value.size() - begin - 2);
-        }
-        return std::make_unique<scalar::immediate>(
-            value::int8{std::stoll(value)},
-            type::int8{});
-    }
-
-    std::shared_ptr<type::data const> resolve_type(std::string_view name) const override {
-        if (name != "int8()") return {};
-        return std::make_shared<type::int8>();
+        auto type = dist::decode_remote_type(expression.type_payload);
+        if (!type) return {};
+        auto value = dist::decode_remote_literal(expression.literal_payload, *type);
+        if (!value) return {};
+        return std::make_unique<scalar::immediate>(std::move(value), std::move(type));
     }
 
 private:
@@ -317,6 +318,9 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
     auto block = dist::create_remote_execution_block(graph);
 
     ASSERT_TRUE(block);
+    ASSERT_EQ(1, block->result_schema.size());
+    // This graph has one BIGINT output; no compiler type map is supplied by this fixture.
+    block->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
     EXPECT_EQ(2, block->version);
     ASSERT_EQ(4, block->operators.size());
     EXPECT_EQ(dist::remote_operator_kind::scan, block->operators[0].kind);
@@ -444,6 +448,9 @@ TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {
     index->definition_id(0);
     auto block = dist::create_remote_execution_block(graph);
     ASSERT_TRUE(block);
+    ASSERT_EQ(1, block->result_schema.size());
+    // This graph has one BIGINT output; no compiler type map is supplied by this fixture.
+    block->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
     EXPECT_EQ(std::optional<std::uint64_t>{0}, block->operators[0].source->definition_id);
     EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, nullptr, "worker"));
     using identity = dist::remote_declaration_identity;
@@ -502,6 +509,7 @@ TEST(remote_execution_block_test, rejects_undefined_expression_reference) {
     block.set_result_value_id(0);
     auto* result_column = block.mutable_result_schema()->add_columns();
     result_column->set_column_id(0);
+    result_column->set_type_payload(dist::encode_remote_type(type::int8{}));
 
     auto* scan = block.add_operators();
     scan->set_operator_id(0);
@@ -577,6 +585,9 @@ TEST(remote_execution_block_test, creates_find_source_payload) {
     auto block = dist::create_remote_execution_block(graph);
 
     ASSERT_TRUE(block);
+    ASSERT_EQ(1, block->result_schema.size());
+    // This graph has one BIGINT output; no compiler type map is supplied by this fixture.
+    block->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
     ASSERT_TRUE(block->operators[0].source);
     auto const& source = *block->operators[0].source;
     EXPECT_EQ(1, source.find_key_count);
@@ -621,6 +632,9 @@ TEST(remote_execution_block_test, rebuilds_unordered_operators_through_wire_and_
 
     auto source_block = dist::create_remote_execution_block(source_graph);
     ASSERT_TRUE(source_block);
+    ASSERT_EQ(1, source_block->result_schema.size());
+    // This graph has one BIGINT output; no compiler type map is supplied by this fixture.
+    source_block->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
     source_block->external_relations = {42};
     source_block->operators.back().offer->external_relation_id = 42;
     auto const operators = source_block->operators;
@@ -670,6 +684,29 @@ TEST(remote_execution_block_test, rebuilds_unordered_operators_through_wire_and_
         EXPECT_FALSE(dist::build_remote_execution_graph(broken, resolver));
         EXPECT_FALSE(dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(broken)));
     };
+    auto missing_type = valid;
+    auto literal = std::find_if(missing_type.scalar_expressions.begin(), missing_type.scalar_expressions.end(),
+        [](auto const& expression) { return expression.kind == dist::remote_scalar_expression_kind::immediate; });
+    ASSERT_NE(missing_type.scalar_expressions.end(), literal);
+    auto literal_id = literal->expression_id;
+    literal->type_payload.clear();
+    reject(missing_type, "missing remote scalar type payload");
+    missing_type = valid;
+    dist::remote_scalar_expression cast{};
+    cast.expression_id = 1004;
+    cast.kind = dist::remote_scalar_expression_kind::cast;
+    cast.operator_kind = "error";
+    cast.type = "int8()";
+    cast.operand_expression_ids = {literal_id};
+    missing_type.scalar_expressions.emplace_back(std::move(cast));
+    reject(missing_type, "missing remote scalar type payload");
+    missing_type = valid;
+    missing_type.result_schema[0].type_payload.clear();
+    reject(missing_type, "missing remote output type payload");
+    missing_type = valid;
+    missing_type.operators[0].source->columns[0].type_payload.clear();
+    reject(missing_type, "no source column position or type");
+
     auto broken = valid;
     broken.operators[2].input_value_id = operators[0].output_value_id;
     broken.operators[1].input_value_id = 10; // isolated self-cycle
@@ -750,6 +787,9 @@ TEST(remote_execution_block_test, rebuilds_takatori_graph) {
 
     auto source_block = dist::create_remote_execution_block(source_graph);
     ASSERT_TRUE(source_block);
+    ASSERT_EQ(1, source_block->result_schema.size());
+    // This graph has one BIGINT output; no compiler type map is supplied by this fixture.
+    source_block->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
     source_block->external_relations = {42};
     source_block->operators.back().offer->external_relation_id = 42;
     std::weak_ptr<yugawara::binding::external_relation_info> external_owner{};

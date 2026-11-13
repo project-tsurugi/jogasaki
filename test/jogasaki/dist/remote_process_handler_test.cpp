@@ -176,6 +176,27 @@ TEST(remote_rtx_start_failure_test, classifies_start_failure_by_cause) {
     EXPECT_EQ(kind::internal, dist::classify_remote_rtx_start_failure(status::err_unknown, false));
 }
 
+TEST_F(remote_process_handler_test, rebound_worker_process_executes_locally_with_coordinator_enabled) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    // The worker executor must not redispatch even on a DB that also has a coordinator role.
+    auto config = db_impl()->configuration();
+    auto was_enabled = config->distributed_query_coordinator_enabled();
+    config->distributed_query_coordinator_enabled(true);
+    auto before = db_impl()->transaction_count();
+    dist::remote_process_handler handler{*db_};
+    auto result = handler(dist::serialize_remote_execution_block_proto(scan_block()));
+    config->distributed_query_coordinator_enabled(was_enabled);
+    ASSERT_TRUE(result.success) << result.error;
+    std::string error{};
+    auto decoded = dist::deserialize_remote_execution_result(result.payload, error);
+    ASSERT_TRUE(decoded) << error;
+    ASSERT_EQ(1, decoded->rows.size());
+    ASSERT_EQ(1, decoded->rows[0].size());
+    EXPECT_EQ(205, decoded->rows[0][0]);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+}
+
 TEST_F(remote_process_handler_test, releases_transaction_registration_after_success_for_all_entry_points) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (205)");

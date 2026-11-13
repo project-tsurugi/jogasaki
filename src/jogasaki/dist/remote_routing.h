@@ -24,7 +24,26 @@
 
 #include <jogasaki/dist/remote_catalog_provider.h>
 
+namespace jogasaki {
+class request_context;
+namespace executor::process { class processor_info; }
+}
+
 namespace jogasaki::dist {
+// NOLINTBEGIN(misc-non-private-member-variables-in-classes)
+struct remote_execution_server_selection {
+    std::optional<std::string> server{};
+    std::string error{};
+};
+// NOLINTEND(misc-non-private-member-variables-in-classes)
+/**
+ * @brief select local execution, a remote server, or rejection before creating tasks.
+ * @details A captured local placement takes precedence. A remote placement must not
+ *     fall back to local execution when the request's role forbids RPC dispatch.
+ */
+[[nodiscard]] remote_execution_server_selection select_remote_execution_server(
+    request_context const& context, executor::process::processor_info const& info);
+
 /**
  * @brief select a remote server from bound table identities in an existing catalog snapshot.
  * @note This adapter is used only when compiler operation locations are unavailable.

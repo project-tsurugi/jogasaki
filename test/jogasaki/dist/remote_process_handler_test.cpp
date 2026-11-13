@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -899,6 +901,85 @@ TEST_F(remote_process_handler_test, filters_and_projects_worker_rows) {
     ASSERT_EQ(1, result->rows.size());
     EXPECT_EQ(30, result->rows[0][0]);
 }
+TEST_F(remote_process_handler_test, executes_find_when_offer_is_stored_first) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10), (20)");
+    auto block = scan_block();
+    block.operators.front().kind = dist::remote_operator_kind::find;
+    block.operators.front().source->find_key_count = 1;
+    block.operators.front().source->find_key_expression_ids = {0};
+    block.scalar_expressions = {
+        {0, dist::remote_scalar_expression_kind::immediate, {}, "int8", "20", "int8()", {}, {}},
+    };
+    std::reverse(block.operators.begin(), block.operators.end());
+    dist::remote_process_handler handler{*db_};
+    auto response = handler(dist::serialize_remote_execution_block_proto(block));
+    ASSERT_TRUE(response.success) << response.error;
+    std::string error{};
+    auto result = dist::deserialize_remote_execution_result(response.payload, error);
+    ASSERT_TRUE(result) << error;
+    ASSERT_EQ(1, result->rows.size());
+    EXPECT_EQ(20, result->rows[0][0]);
+}
+
+TEST_F(remote_process_handler_test, executes_every_operator_storage_permutation) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (10), (20)");
+    auto block = scan_block();
+    block.values = {0, 1, 2};
+    block.stream_variables = {0, 1};
+    block.result_value_id = 2;
+    block.scalar_expressions = {
+        {0, dist::remote_scalar_expression_kind::variable_reference, {}, {}, {}, {}, 0, {}},
+        {1, dist::remote_scalar_expression_kind::immediate, {}, "int8", "10", "int8()", {}, {}},
+        {2, dist::remote_scalar_expression_kind::compare, "greater", {}, {}, {}, {}, {0, 1}},
+        {3, dist::remote_scalar_expression_kind::binary, "add", {}, {}, {}, {}, {0, 1}},
+    };
+    dist::remote_operator filter{};
+    filter.operator_id = 1;
+    filter.kind = dist::remote_operator_kind::filter;
+    filter.input_value_id = 0;
+    filter.output_value_id = 1;
+    filter.filter_expression_id = 2;
+    dist::remote_operator project{};
+    project.operator_id = 2;
+    project.kind = dist::remote_operator_kind::project;
+    project.input_value_id = 1;
+    project.output_value_id = 2;
+    project.project_columns = {{1, 3}};
+    auto offer = block.operators.back();
+    offer.operator_id = 3;
+    offer.input_value_id = 2;
+    offer.offer->columns[0].source_variable_id = 1;
+    block.operators = {block.operators.front(), filter, project, offer};
+    auto operators = block.operators;
+    // Operator IDs deliberately differ from both connection and storage order.
+    operators[0].operator_id = 90;
+    operators[1].operator_id = 7;
+    operators[2].operator_id = 42;
+    operators[3].operator_id = 0;
+    std::array<std::size_t, 4> permutation{0, 1, 2, 3};
+    dist::remote_process_handler handler{*db_};
+    std::size_t count{};
+    do {
+        SCOPED_TRACE(++count);
+        for (std::size_t i = 0; i < permutation.size(); ++i) block.operators[i] = operators[permutation[i]];
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        ASSERT_TRUE(response.success) << response.error;
+        std::string error{};
+        auto result = dist::deserialize_remote_execution_result(response.payload, error);
+        ASSERT_TRUE(result) << error;
+        ASSERT_EQ(1, result->rows.size());
+        EXPECT_EQ(30, result->rows[0][0]);
+    } while (std::next_permutation(permutation.begin(), permutation.end()));
+    EXPECT_EQ(24, count);
+    block.operators = operators;
+    block.operators[2].input_value_id = operators[0].output_value_id;
+    auto invalid = handler(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_FALSE(invalid.success);
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, invalid.error_kind);
+}
+
 TEST_F(remote_process_handler_test, evaluates_and_returns_all_output_types) {
     namespace t = takatori::type;
     namespace v = takatori::value;

@@ -29,4 +29,7 @@ namespace jogasaki::dist {
 [[nodiscard]] std::string encode_remote_literal(takatori::value::data const& data);
 [[nodiscard]] std::unique_ptr<takatori::value::data> decode_remote_literal(std::string_view payload,
                                                                            takatori::type::data const& type);
+/** @brief Check typed literal representation without evaluating SQL or performing a cast. */
+[[nodiscard]] bool remote_literal_fits_declared_type(takatori::value::data const& value,
+                                                    takatori::type::data const& type);
 } // namespace jogasaki::dist

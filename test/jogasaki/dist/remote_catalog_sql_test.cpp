@@ -26,6 +26,22 @@
 
 #include <tateyama/proto/distributed_query/remote_catalog.grpc.pb.h>
 
+#include <takatori/statement/create_table.h>
+#include <takatori/statement/create_index.h>
+#include <takatori/statement/drop_table.h>
+#include <takatori/statement/drop_index.h>
+#include <takatori/statement/execute.h>
+#include <takatori/statement/write.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/write.h>
+#include <takatori/relation/scan.h>
+#include <takatori/type/primitive.h>
+#include <takatori/util/downcast.h>
+#include <yugawara/binding/extract.h>
+#include <yugawara/binding/factory.h>
+#include <yugawara/schema/provider.h>
+#include <jogasaki/dist/remote_write_target.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/api/api_test_base.h>
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/api/impl/executable_statement.h>
@@ -404,6 +420,179 @@ TEST_F(remote_catalog_sql_test, request_factory_keeps_original_snapshot_after_dr
     EXPECT_EQ(2, before->remote_catalogs()->catalogs().size());
     db_impl()->task_scheduler()->unregister_job(before->job()->id());
     db_impl()->task_scheduler()->unregister_job(after->job()->id());
+}
+
+TEST_F(remote_catalog_sql_test, resolved_remote_writes_fail_before_runtime_metadata) {
+    namespace st = takatori::statement;
+    auto snapshot = db_impl()->remote_catalogs();
+    ASSERT_TRUE(snapshot);
+    auto schema = snapshot->catalogs().front()->schema_provider().find("schema_a");
+    ASSERT_TRUE(schema);
+    auto table = schema->storage_provider().find_table("T");
+    auto index = schema->storage_provider().find_index("T");
+    ASSERT_TRUE(table); ASSERT_TRUE(index);
+    ASSERT_TRUE(snapshot->remote_definition(*table));
+    ASSERT_TRUE(snapshot->remote_definition(*index));
+    yugawara::binding::factory bindings{};
+    for (auto kind : {takatori::relation::write_kind::insert, takatori::relation::write_kind::insert_skip,
+                      takatori::relation::write_kind::insert_overwrite, takatori::relation::write_kind::update,
+                      takatori::relation::write_kind::delete_}) {
+        auto statement = std::make_shared<st::write>(kind, bindings(*index),
+            std::vector<st::write::column>{}, std::vector<st::write::tuple>{});
+        plan::compiler_context context{};
+        context.remote_catalogs(snapshot);
+        auto [result, mirror] = plan::impl::preprocess_mirror(statement, {}, {}, context);
+        EXPECT_EQ(status::err_illegal_operation, result);
+        EXPECT_FALSE(mirror);
+        ASSERT_TRUE(context.error_info());
+        EXPECT_EQ(error_code::restricted_operation_exception, context.error_info()->code());
+        EXPECT_EQ(status::err_illegal_operation, context.error_info()->status());
+        EXPECT_EQ("[distributed-query] cannot modify a remote table", context.error_info()->message());
+    }
+    auto statement = std::make_shared<st::execute>();
+    auto local = std::make_shared<yugawara::storage::configurable_provider>();
+    auto local_table = local->add_table({"T", {{"C0", takatori::type::int8{}}}});
+    auto local_index = local->add_index({std::uint64_t{1257}, local_table, "T"});
+    auto& first = statement->execution_plan().insert(takatori::plan::process{});
+    first.operators().insert(takatori::relation::write{takatori::relation::write_kind::update,
+        bindings(*local_index), std::vector<takatori::relation::write::key>{}, std::vector<takatori::relation::write::column>{}});
+    auto& second = statement->execution_plan().insert(takatori::plan::process{});
+    second.operators().insert(takatori::relation::write{takatori::relation::write_kind::delete_,
+        bindings(*index), std::vector<takatori::relation::write::key>{}, std::vector<takatori::relation::write::column>{}});
+    plan::compiler_context context{};
+    context.remote_catalogs(snapshot);
+    auto [result, mirror] = plan::impl::preprocess_mirror(statement, {}, {}, context);
+    EXPECT_EQ(status::err_illegal_operation, result);
+    EXPECT_FALSE(mirror);
+    ASSERT_TRUE(context.error_info());
+    EXPECT_EQ(error_code::restricted_operation_exception, context.error_info()->code());
+    EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
+    EXPECT_EQ(table, schema->storage_provider().find_table("T"));
+    EXPECT_EQ(index, schema->storage_provider().find_index("T"));
+    EXPECT_EQ(snapshot, db_impl()->remote_catalogs());
+}
+
+TEST_F(remote_catalog_sql_test, resolved_foreign_table_and_index_ddl_fail_before_runtime_metadata) {
+    namespace st = takatori::statement;
+    auto snapshot = db_impl()->remote_catalogs();
+    auto schema = snapshot->catalogs().front()->schema_provider().find("schema_a");
+    ASSERT_TRUE(schema);
+    auto table = schema->storage_provider().find_table("T");
+    auto index = schema->storage_provider().find_index("T");
+    ASSERT_TRUE(table); ASSERT_TRUE(index);
+    auto prototype = std::make_shared<yugawara::storage::table>("NEW_T",
+        std::initializer_list<yugawara::storage::column>{{"C0", takatori::type::int8{}}});
+    auto primary = std::make_shared<yugawara::storage::index>(std::nullopt, prototype, "NEW_T");
+    auto secondary = std::make_shared<yugawara::storage::index>(std::nullopt, table, "NEW_I");
+    yugawara::binding::factory bindings{};
+    std::vector<std::shared_ptr<st::statement>> statements{};
+    statements.push_back(std::make_shared<st::create_table>(bindings(schema), bindings(prototype), bindings(*primary)));
+    statements.push_back(std::make_shared<st::create_index>(bindings(schema), bindings(*secondary)));
+    statements.push_back(std::make_shared<st::drop_table>(bindings(schema), bindings(table)));
+    statements.push_back(std::make_shared<st::drop_index>(bindings(schema), bindings(*index)));
+    // A local-looking schema descriptor must not hide the remote table of an index.
+    auto local_provider = std::make_shared<yugawara::storage::configurable_provider>();
+    auto local_schema = std::make_shared<yugawara::schema::declaration>(std::nullopt, "schema_a", local_provider);
+    statements.push_back(std::make_shared<st::create_index>(bindings(local_schema), bindings(*secondary)));
+    // Copied schema views still own the remote storage provider.
+    auto alias = std::make_shared<yugawara::schema::declaration>(std::nullopt, "alias", schema->shared_storage_provider());
+    statements.push_back(std::make_shared<st::create_table>(bindings(alias), bindings(prototype), bindings(*primary)));
+    for (auto const& statement : statements) {
+        SCOPED_TRACE(::testing::Message{} << statement->kind());
+        plan::compiler_context context{};
+        context.remote_catalogs(snapshot);
+        auto [result, mirror] = plan::impl::preprocess_mirror(statement, {}, {}, context);
+        EXPECT_EQ(status::err_illegal_operation, result);
+        EXPECT_FALSE(mirror);
+        ASSERT_TRUE(context.error_info());
+        EXPECT_EQ(error_code::restricted_operation_exception, context.error_info()->code());
+        EXPECT_EQ("[distributed-query] cannot change a definition in a foreign catalog", context.error_info()->message());
+    }
+    EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
+    EXPECT_EQ(table, schema->storage_provider().find_table("T"));
+    EXPECT_EQ(index, schema->storage_provider().find_index("T"));
+    EXPECT_FALSE(schema->storage_provider().find_table("NEW_T"));
+    EXPECT_FALSE(schema->storage_provider().find_index("NEW_I"));
+    EXPECT_EQ(snapshot, db_impl()->remote_catalogs());
+}
+
+TEST_F(remote_catalog_sql_test, remote_target_guard_uses_compiler_retained_declaration_identity) {
+    api::statement_handle handle{};
+    ASSERT_EQ(status::ok, db_->prepare("SELECT C0 FROM schema_a.T", handle));
+    auto prepared = db_impl()->find_statement(handle)->body();
+    auto snapshot = prepared->mirrors()->remote_catalogs();
+    ASSERT_TRUE(snapshot);
+    auto const& plan = takatori::util::unsafe_downcast<takatori::statement::execute>(*prepared->statement()).execution_plan();
+    takatori::util::maybe_shared_ptr<yugawara::storage::index const> source{};
+    for (auto const& step : plan) {
+        if (step.kind() != takatori::plan::step_kind::process) continue;
+        for (auto const& relation : takatori::util::unsafe_downcast<takatori::plan::process>(step).operators()) {
+            if (relation.kind() == takatori::relation::expression_kind::scan) {
+                source = yugawara::binding::extract_shared<yugawara::storage::index>(
+                    takatori::util::unsafe_downcast<takatori::relation::scan>(relation).source());
+            }
+        }
+    }
+    ASSERT_TRUE(source);
+    ASSERT_TRUE(snapshot->remote_definition(*source));
+    ASSERT_TRUE(snapshot->remote_definition(source->table()));
+    yugawara::binding::factory bindings{};
+    takatori::statement::write write{takatori::relation::write_kind::insert, bindings(*source),
+        std::vector<takatori::statement::write::column>{}, std::vector<takatori::statement::write::tuple>{}};
+    auto error = dist::validate_remote_write_target(write, snapshot.get());
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error_code::restricted_operation_exception, error->code());
+    EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
+    ASSERT_EQ(status::ok, db_->destroy_statement(handle));
+}
+
+TEST_F(remote_catalog_sql_test, compiler_errors_are_not_reclassified_as_remote_target_errors) {
+    struct sample { std::string_view sql; error_code code; };
+    for (auto const& test : {
+        sample{"INSERT INTO schema_a.T(C0) VALUES(999)", error_code::symbol_analyze_exception},
+        sample{"UPDATE schema_a.T SET C0=999 WHERE C0=101", error_code::symbol_analyze_exception},
+        sample{"DELETE FROM schema_a.T WHERE C0=101", error_code::symbol_analyze_exception},
+        sample{"DROP TABLE schema_a.T", error_code::symbol_analyze_exception},
+        sample{"DROP INDEX schema_a.T", error_code::symbol_analyze_exception},
+        sample{"CREATE TABLE schema_a.NEW_T(C0 BIGINT PRIMARY KEY)", error_code::unsupported_compiler_feature_exception},
+    }) {
+        SCOPED_TRACE(test.sql);
+        api::statement_handle handle{};
+        std::shared_ptr<error::error_info> error{};
+        EXPECT_NE(status::ok, db_impl()->prepare(test.sql, handle, error));
+        ASSERT_TRUE(error);
+        EXPECT_EQ(test.code, error->code()) << error->message();
+        EXPECT_NE(error_code::restricted_operation_exception, error->code());
+    }
+    EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
+}
+
+TEST_F(remote_catalog_sql_test, local_writes_and_ddl_keep_existing_behavior_with_remote_catalogs) {
+    // Qualified local DDL is rejected by the existing compiler before the remote guard.
+    api::statement_handle handle{};
+    std::shared_ptr<error::error_info> error{};
+    ASSERT_NE(status::ok, db_impl()->prepare("CREATE TABLE \"public\".Q(C0 BIGINT PRIMARY KEY)", handle, error));
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error_code::unsupported_compiler_feature_exception, error->code());
+    execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY, C1 BIGINT)");
+    // A same-named local schema has a different provider and must not be treated as foreign.
+    auto schema = std::make_shared<yugawara::schema::declaration>(std::nullopt, "schema_a", db_impl()->tables());
+    auto table = db_impl()->tables()->find_table("T");
+    auto index = db_impl()->tables()->find_index("T");
+    ASSERT_TRUE(table); ASSERT_TRUE(index);
+    yugawara::binding::factory bindings{};
+    takatori::statement::create_table ddl{bindings(schema), bindings(table), bindings(*index)};
+    EXPECT_FALSE(dist::validate_remote_write_target(ddl, db_impl()->remote_catalogs().get()));
+    execute_statement("CREATE INDEX I ON T(C1)");
+    execute_statement("INSERT INTO T VALUES(1, 10)");
+    execute_statement("UPDATE T SET C1=20 WHERE C0=1");
+    EXPECT_EQ(20, query("SELECT C1 FROM T WHERE C0=1"));
+    execute_statement("DROP INDEX I");
+    execute_statement("DELETE FROM T WHERE C0=1");
+    EXPECT_EQ(0, query("SELECT COUNT(*) FROM T"));
+    execute_statement("DROP TABLE T");
+    EXPECT_FALSE(db_impl()->tables()->find_table("T"));
+    EXPECT_EQ(0, a_.calls); EXPECT_EQ(0, b_.calls);
 }
 
 }

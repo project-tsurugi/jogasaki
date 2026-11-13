@@ -186,9 +186,6 @@ public:
         for (auto id : block_->stream_variables) {
             variables_.emplace(id, bindings_.stream_variable("remote_" + std::to_string(id)));
         }
-        for (auto const& expression : block_->scalar_expressions) {
-            expressions_.emplace(expression.expression_id, std::addressof(expression));
-        }
     }
 
     [[nodiscard]] remote_execution_graph_build_result build(std::vector<std::size_t> const& order) {
@@ -225,12 +222,11 @@ private:
             error_ = "scalar expression expansion limit exceeded";
             return {};
         }
-        auto it = expressions_.find(id);
-        if (it == expressions_.end()) {
+        if (id >= block_->scalar_expressions.size()) {
             error_ = missing("scalar expression", id);
             return {};
         }
-        auto const& source = *it->second;
+        auto const& source = block_->scalar_expressions[id];
         switch (source.kind) {
             case remote_scalar_expression_kind::immediate: {
                 auto result = resolver_->resolve_immediate(source);
@@ -255,7 +251,7 @@ private:
                     error_ = missing("unary operator", source.operator_kind);
                     return {};
                 }
-                auto operand = expression(source.operand_expression_ids[0]);
+                auto operand = expression(source.operand_expression_indexes[0]);
                 if (!operand) {
                     return {};
                 }
@@ -271,8 +267,8 @@ private:
                     error_ = missing("binary operator", source.operator_kind);
                     return {};
                 }
-                auto left = expression(source.operand_expression_ids[0]);
-                auto right = expression(source.operand_expression_ids[1]);
+                auto left = expression(source.operand_expression_indexes[0]);
+                auto right = expression(source.operand_expression_indexes[1]);
                 if (!left || !right) {
                     return {};
                 }
@@ -286,8 +282,8 @@ private:
                     error_ = missing("comparison operator", source.operator_kind);
                     return {};
                 }
-                auto left = expression(source.operand_expression_ids[0]);
-                auto right = expression(source.operand_expression_ids[1]);
+                auto left = expression(source.operand_expression_indexes[0]);
+                auto right = expression(source.operand_expression_indexes[1]);
                 if (!left || !right) {
                     return {};
                 }
@@ -357,8 +353,8 @@ private:
                 auto const& source = *op.source;
                 auto storage = resolver_->resolve_storage(source);
                 auto mappings = columns(source);
-                auto lower_keys = keys<relation::scan::key>(source, source.lower_key_expression_ids);
-                auto upper_keys = keys<relation::scan::key>(source, source.upper_key_expression_ids);
+                auto lower_keys = keys<relation::scan::key>(source, source.lower_key_expression_indexes);
+                auto upper_keys = keys<relation::scan::key>(source, source.upper_key_expression_indexes);
                 if (!storage) {
                     error_ = missing("storage", source.table_name + "." + source.index_name);
                     return {};
@@ -378,7 +374,7 @@ private:
                 auto const& source = *op.source;
                 auto storage = resolver_->resolve_storage(source);
                 auto mappings = columns(source);
-                auto find_keys = keys<relation::find::key>(source, source.find_key_expression_ids);
+                auto find_keys = keys<relation::find::key>(source, source.find_key_expression_indexes);
                 if (!storage) {
                     error_ = missing("storage", source.table_name + "." + source.index_name);
                     return {};
@@ -389,7 +385,7 @@ private:
                 return std::make_unique<relation::find>(*storage, std::move(*mappings), std::move(*find_keys));
             }
             case remote_operator_kind::filter: {
-                auto condition = expression(*op.filter_expression_id);
+                auto condition = expression(*op.filter_expression_index);
                 if (!condition) {
                     return {};
                 }
@@ -399,7 +395,7 @@ private:
                 std::vector<relation::project::column> columns{};
                 for (auto const& column : op.project_columns) {
                     auto* destination = variable(column.destination_variable_id);
-                    auto value = expression(column.value_expression_id);
+                    auto value = expression(column.expression_index);
                     if (!destination || !value) {
                         return {};
                     }
@@ -428,7 +424,7 @@ private:
             error_ = missing("cast loss policy", source.operator_kind);
             return {};
         }
-        auto operand = expression(source.operand_expression_ids[0]);
+        auto operand = expression(source.operand_expression_indexes[0]);
         if (!operand) {
             return {};
         }
@@ -463,7 +459,6 @@ private:
     remote_execution_graph_resolver const* resolver_;
     yugawara::binding::factory bindings_{};
     std::unordered_map<std::uint64_t, takatori::descriptor::variable> variables_{};
-    std::unordered_map<std::uint64_t, remote_scalar_expression const*> expressions_{};
     std::string error_{};
     bool invalid_request_{};
     bool unsupported_{};

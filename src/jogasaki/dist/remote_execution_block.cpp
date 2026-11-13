@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "remote_execution_block.h"
+#include "remote_execution_block_decoder.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -194,6 +195,9 @@ public:
     }
 
     [[nodiscard]] std::optional<std::uint64_t> expression_index(scalar::expression const& expression) {
+        if (++expression_count_ > remote_scalar_expression_limit) {
+            return {};
+        }
         remote_scalar_expression result{};
         switch (expression.kind()) {
             case scalar::expression_kind::immediate: {
@@ -320,6 +324,7 @@ public:
     }
 
 private:
+    std::size_t expression_count_{};
     remote_execution_block* block_;
     yugawara::compiled_info const* compiled_info_{};
     meta::record_meta const* result_meta_{};
@@ -472,6 +477,9 @@ std::optional<remote_execution_block> create_remote_execution_block(relation::gr
         current = downstream(*current);
     }
     block.result_value_id = block.values.back();
+    if (validate_remote_scalar_expressions(block)) {
+        return std::nullopt;
+    }
     return block;
 }
 

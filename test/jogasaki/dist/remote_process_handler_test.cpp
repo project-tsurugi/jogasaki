@@ -2005,4 +2005,152 @@ TEST_F(remote_process_handler_test, bounds_expansion_of_shared_post_order_operan
     EXPECT_EQ(before, db_impl()->transaction_count());
 }
 
+TEST_F(remote_process_handler_test, validates_unused_scalar_semantics_before_begin) {
+    using expression_kind = dist::remote_scalar_expression_kind;
+    using error_kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    auto before = db_impl()->transaction_count();
+    for (auto kind : {expression_kind::unary, expression_kind::binary,
+                      expression_kind::compare, expression_kind::cast}) {
+        for (auto const* name : {"", "not_supported"}) {
+            SCOPED_TRACE(::testing::Message{} << static_cast<int>(kind) << ":" << name);
+            auto block = scan_block();
+            block.scalar_expressions = {int8_literal(1)};
+            dist::remote_scalar_expression expression{};
+            expression.kind = kind;
+            expression.operator_kind = name;
+            expression.operand_expression_indexes = kind == expression_kind::binary || kind == expression_kind::compare
+                ? std::vector<std::uint64_t>{0, 0} : std::vector<std::uint64_t>{0};
+            if (kind == expression_kind::cast) expression.type_payload = dist::encode_remote_type(takatori::type::int8{});
+            block.scalar_expressions.push_back(expression);
+            bool unsupported{};
+            EXPECT_TRUE(dist::validate_remote_scalar_expressions(block, &unsupported));
+            EXPECT_EQ(name[0] != '\0', unsupported);
+            auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+            EXPECT_FALSE(result.success);
+            EXPECT_EQ(name[0] == '\0' ? error_kind::invalid_request : error_kind::unsupported, result.error_kind);
+            EXPECT_EQ(before, db_impl()->transaction_count());
+        }
+    }
+    auto block = scan_block();
+    auto literal = int8_literal(0);
+    literal.type_payload = dist::encode_remote_type(takatori::type::character{takatori::type::varying, 2});
+    literal.literal_payload = dist::encode_remote_literal(takatori::value::character{"abc"});
+    block.scalar_expressions = {literal};
+    auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_EQ(error_kind::invalid_request, result.error_kind);
+    literal.type_payload = dist::encode_remote_type(takatori::type::decimal{3, 1});
+    literal.literal_payload = dist::encode_remote_literal(takatori::value::decimal{"1.23"});
+    block.scalar_expressions = {literal};
+    result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_EQ(error_kind::invalid_request, result.error_kind);
+    block.scalar_expressions[0].type_payload.clear();
+    result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_EQ(error_kind::invalid_request, result.error_kind);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+}
+
+TEST_F(remote_process_handler_test, validates_but_does_not_evaluate_unused_expressions) {
+    using kind = dist::remote_scalar_expression_kind;
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto block = scan_block();
+    block.scalar_expressions = {int8_literal(1), int8_literal(0),
+        {kind::binary, "divide", {}, {}, {}, {}, {0, 1}}, int8_literal(9223372036854775807LL),
+        {kind::cast, "error", {}, {}, {}, {}, {3}}};
+    block.scalar_expressions.back().type_payload = dist::encode_remote_type(takatori::type::int4{});
+    auto decimal = int8_literal(0);
+    decimal.type_payload = dist::encode_remote_type(takatori::type::decimal{38, 0});
+    decimal.literal_payload = dist::encode_remote_literal(takatori::value::decimal{"99999999999999999999999999999999999999"});
+    block.scalar_expressions.push_back(decimal);
+    block.scalar_expressions.push_back({kind::binary, "multiply", {}, {}, {}, {}, {5, 5}});
+    auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    ASSERT_TRUE(result.success) << result.error;
+    std::string error{};
+    auto rows = dist::deserialize_remote_execution_result(result.payload, error);
+    ASSERT_TRUE(rows) << error;
+    ASSERT_EQ(1U, rows->rows.size());
+    EXPECT_EQ(205, rows->rows[0][0]);
+}
+
+TEST_F(remote_process_handler_test, enforces_scalar_count_boundary_including_unused_expressions) {
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto block = scan_block();
+    block.scalar_expressions.assign(512, int8_literal(1));
+    EXPECT_FALSE(dist::validate_remote_scalar_expressions(block));
+    auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    ASSERT_TRUE(result.success) << result.error;
+    block.scalar_expressions.push_back(int8_literal(1));
+    EXPECT_EQ("too many scalar expressions", dist::validate_remote_scalar_expressions(block));
+    auto before = db_impl()->transaction_count();
+    result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, result.error_kind);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+}
+
+TEST_F(remote_process_handler_test, enforces_expansion_boundary_across_shared_roots_and_unused_dags) {
+    using kind = dist::remote_scalar_expression_kind;
+    create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (205)");
+    auto block = scan_block();
+    block.scalar_expressions = {int8_literal(1)};
+    for (std::uint64_t index = 1; index != 8; ++index) {
+        block.scalar_expressions.push_back({kind::binary, "add", {}, {}, {}, {}, {index - 1, index - 1}});
+    }
+    dist::remote_operator project{};
+    project.operator_id = 1;
+    project.kind = dist::remote_operator_kind::project;
+    project.input_value_id = 0;
+    project.output_value_id = 1;
+    // Cost(index 7) = 255. 39 copies + 55 leaf copies = exactly 10,000 nodes.
+    for (std::uint64_t index = 0; index != 94; ++index) {
+        project.project_columns.push_back({index + 1, index < 39 ? 7U : 0U});
+        block.stream_variables.push_back(index + 1);
+    }
+    auto offer = block.operators.back();
+    offer.operator_id = 2; offer.input_value_id = 1;
+    offer.offer->columns.clear();
+    block.result_schema.clear();
+    for (std::uint64_t index = 0; index != 94; ++index) {
+        offer.offer->columns.push_back({index + 1, index});
+        block.result_schema.push_back(int8_column(index, false));
+    }
+    block.values = {0, 1}; block.result_value_id = 1;
+    block.operators = {block.operators.front(), project, offer};
+    EXPECT_FALSE(dist::validate_remote_scalar_expressions(block));
+    auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    ASSERT_TRUE(result.success) << result.error;
+    std::string error{};
+    auto rows = dist::deserialize_remote_execution_result(result.payload, error);
+    ASSERT_TRUE(rows) << error;
+    ASSERT_EQ(1U, rows->rows.size());
+    ASSERT_EQ(94U, rows->rows[0].size());
+    EXPECT_EQ(128, rows->rows[0].front());
+    EXPECT_EQ(1, rows->rows[0].back());
+    auto before = db_impl()->transaction_count();
+    block.stream_variables.push_back(95);
+    block.operators[1].project_columns.push_back({95, 0});
+    EXPECT_EQ("scalar expression expansion limit exceeded", dist::validate_remote_scalar_expressions(block));
+    result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, result.error_kind);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+
+    auto unused = scan_block();
+    unused.scalar_expressions = {int8_literal(1)};
+    for (std::uint64_t index = 1; index != 512; ++index) {
+        unused.scalar_expressions.push_back({kind::binary, "add", {}, {}, {}, {}, {index - 1, index - 1}});
+    }
+    // Exponentially shared, but unused: contributes to storage count, never to expansion or evaluation.
+    EXPECT_FALSE(dist::validate_remote_scalar_expressions(unused));
+    result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(unused));
+    ASSERT_TRUE(result.success) << result.error;
+    block.scalar_expressions = unused.scalar_expressions;
+    block.operators[1].project_columns = {{1, 511}};
+    EXPECT_EQ("scalar expression expansion limit exceeded", dist::validate_remote_scalar_expressions(block));
+    result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::invalid_request, result.error_kind);
+    EXPECT_EQ(before, db_impl()->transaction_count());
+}
+
 } // namespace jogasaki::testing

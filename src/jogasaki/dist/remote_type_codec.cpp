@@ -334,4 +334,41 @@ std::unique_ptr<takatori::value::data> decode_remote_literal(std::string_view pa
     }
     return result;
 }
+// Validate typed IR constants without truncation, padding, rounding, or changing SQL casts.
+[[nodiscard]] bool remote_literal_fits_declared_type(takatori::value::data const& value, takatori::type::data const& type) {
+    using kind = takatori::type::type_kind;
+    if (value.kind() == takatori::value::value_kind::unknown) return true;
+    if (type.kind() == kind::character) {
+        auto const& t = static_cast<takatori::type::character const&>(type); // NOLINT
+        auto const& v = static_cast<takatori::value::character const&>(value); // NOLINT
+        return !t.length() || v.get().size() <= *t.length();
+    }
+    if (type.kind() == kind::octet) {
+        auto const& t = static_cast<takatori::type::octet const&>(type); // NOLINT
+        auto const& v = static_cast<takatori::value::octet const&>(value); // NOLINT
+        return !t.length() || v.get().size() <= *t.length();
+    }
+    if (type.kind() != kind::decimal) return true;
+    auto const& t = static_cast<takatori::type::decimal const&>(type); // NOLINT
+    auto v = static_cast<takatori::value::decimal const&>(value).get(); // NOLINT
+    if (v.sign() == 0) return true;
+    auto coefficient = (static_cast<unsigned __int128>(v.coefficient_high()) << 64U) | v.coefficient_low();
+    std::int64_t exponent = v.exponent();
+    // Trailing zeros do not constitute a loss of scale (e.g. 1.10 fits DECIMAL(3,1)).
+    while (coefficient % 10U == 0) { coefficient /= 10U; ++exponent; }
+    std::size_t digits{};
+    for (auto rest = coefficient; rest != 0; rest /= 10U) ++digits;
+    if (t.scale() && exponent < 0 && static_cast<std::uint64_t>(-exponent) > *t.scale()) return false;
+    if (!t.precision()) return true;
+    if (!t.scale()) {
+        // A variable non-negative scale still needs room for leading fractional or integer zeros.
+        auto integer_digits = static_cast<std::int64_t>(digits) + exponent;
+        auto required = (integer_digits > 0 ? integer_digits : 0) + (exponent < 0 ? -exponent : 0);
+        return static_cast<std::uint64_t>(required) <= *t.precision();
+    }
+    if (*t.scale() > *t.precision()) return false;
+    auto integer_digits = static_cast<std::int64_t>(digits) + exponent;
+    return integer_digits <= 0 || static_cast<std::uint64_t>(integer_digits) <= *t.precision() - *t.scale();
+}
+
 } // namespace jogasaki::dist

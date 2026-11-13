@@ -29,6 +29,7 @@
 #include <jogasaki/proto/distributed_query/remote_execution_block.pb.h>
 
 #include "remote_type_codec.h"
+#include "remote_scalar_expression_operators.h"
 
 namespace jogasaki::dist {
 
@@ -123,12 +124,152 @@ template <class T> [[nodiscard]] static bool add_unique(std::unordered_set<T>& v
     return out.str();
 }
 
+[[nodiscard]] static std::optional<std::string> validate_scalar_references(remote_execution_block const& block, bool* unsupported) {
+    std::unordered_set<std::uint64_t> variables{block.stream_variables.begin(), block.stream_variables.end()};
+    // Validate every reference before computing expansion costs or inspecting semantic payloads.
+    for (std::size_t index = 0; index < block.scalar_expressions.size(); ++index) {
+        auto const& expression = block.scalar_expressions[index];
+        switch (expression.kind) {
+            case remote_scalar_expression_kind::immediate:
+            case remote_scalar_expression_kind::variable_reference:
+            case remote_scalar_expression_kind::unary:
+            case remote_scalar_expression_kind::cast:
+            case remote_scalar_expression_kind::binary:
+            case remote_scalar_expression_kind::compare:
+                break;
+            default:
+                if (unsupported) *unsupported = true;
+                return "unknown scalar expression kind";
+        }
+        if (expression.operand_expression_indexes.size() != expected_operand_count(expression.kind)) {
+            return id_error("scalar expression", index, "has invalid operand count");
+        }
+        for (auto operand : expression.operand_expression_indexes) {
+            if (operand >= index) {
+                return id_error("scalar expression operand", operand, "must precede its expression");
+            }
+        }
+        if (expression.kind == remote_scalar_expression_kind::variable_reference) {
+            if (!expression.variable_id) return id_error("scalar expression", index, "has no variable");
+            if (variables.count(*expression.variable_id) == 0) {
+                return id_error("stream variable", *expression.variable_id, "is undefined");
+            }
+        } else if (expression.variable_id) {
+            return id_error("scalar expression", index, "has an unexpected variable");
+        }
+    }
+    return {};
+}
+
+std::optional<std::string> validate_remote_scalar_expressions(remote_execution_block const& block, bool* unsupported) {
+    if (unsupported) *unsupported = false;
+    if (block.scalar_expressions.size() > remote_scalar_expression_limit) {
+        return "too many scalar expressions";
+    }
+    if (auto error = validate_scalar_references(block, unsupported)) return error;
+    for (auto const& expression : block.scalar_expressions) {
+        auto const typed = expression.kind == remote_scalar_expression_kind::immediate ||
+                           expression.kind == remote_scalar_expression_kind::cast;
+        if (typed && expression.type_payload.empty()) return "missing remote scalar type payload";
+        if (!expression.type_payload.empty()) {
+            auto type = decode_remote_type(expression.type_payload, unsupported);
+            if (!type) return "invalid remote scalar type";
+            if (expression.kind == remote_scalar_expression_kind::immediate) {
+                auto value = decode_remote_literal(expression.literal_payload, *type);
+                if (!value || !remote_literal_fits_declared_type(*value, *type)) {
+                    return "invalid remote literal";
+                }
+            }
+        }
+        bool supported{};
+        switch (expression.kind) {
+            case remote_scalar_expression_kind::immediate:
+            case remote_scalar_expression_kind::variable_reference:
+                supported = true;
+                break;
+            case remote_scalar_expression_kind::unary:
+                supported = remote_unary_operator(expression.operator_kind).has_value();
+                break;
+            case remote_scalar_expression_kind::binary:
+                supported = remote_binary_operator(expression.operator_kind).has_value();
+                break;
+            case remote_scalar_expression_kind::compare:
+                supported = remote_comparison_operator(expression.operator_kind).has_value();
+                break;
+            case remote_scalar_expression_kind::cast:
+                supported = remote_cast_loss_policy(expression.operator_kind).has_value();
+                break;
+            default:
+                if (unsupported) *unsupported = true;
+                return "unknown scalar expression kind";
+        }
+        if (!supported) {
+            if (unsupported) *unsupported = !expression.operator_kind.empty();
+            char const* category = "binary operator";
+            switch (expression.kind) {
+                case remote_scalar_expression_kind::unary: category = "unary operator"; break;
+                case remote_scalar_expression_kind::compare: category = "comparison operator"; break;
+                case remote_scalar_expression_kind::cast: category = "cast loss policy"; break;
+                default: break;
+            }
+            return "cannot resolve " + std::string{category} + " " + expression.operator_kind;
+        }
+    }
+
+    // Post-order operands allow one bounded, non-recursive pass. Count tree copies, not distinct nodes.
+    constexpr auto overflow = remote_scalar_expression_expansion_limit + 1;
+    auto add = [](std::size_t left, std::size_t right) {
+        return left >= overflow - right ? overflow : left + right;
+    };
+    std::vector<std::size_t> costs{};
+    costs.reserve(block.scalar_expressions.size());
+    for (auto const& expression : block.scalar_expressions) {
+        std::size_t cost = 1;
+        for (auto operand : expression.operand_expression_indexes) cost = add(cost, costs[operand]);
+        costs.emplace_back(cost);
+    }
+    std::size_t expanded{};
+    auto count = [&](std::uint64_t index) -> std::optional<std::string> {
+        if (index >= costs.size()) return "scalar expression index is out of range";
+        expanded = add(expanded, costs[index]);
+        if (expanded > remote_scalar_expression_expansion_limit) return "scalar expression expansion limit exceeded";
+        return {};
+    };
+    for (auto const& op : block.operators) {
+        if (op.filter_expression_index) {
+            if (auto error = count(*op.filter_expression_index)) return error;
+        }
+        for (auto const& column : op.project_columns) {
+            if (auto error = count(column.expression_index)) return error;
+        }
+        if (op.source) {
+            for (auto const* keys : {&op.source->find_key_expression_indexes,
+                                    &op.source->lower_key_expression_indexes,
+                                    &op.source->upper_key_expression_indexes}) {
+                for (auto index : *keys) {
+                    if (auto error = count(index)) return error;
+                }
+            }
+        }
+    }
+    return {};
+}
+
 namespace {
 /** @brief Validate Portable IR in stages before reconstructing the execution graph. */
 class block_validator {
 public:
-    explicit block_validator(remote_execution_block const& value) : block(std::addressof(value)) {}
+    explicit block_validator(remote_execution_block const& value, bool* unsupported)
+        : block(std::addressof(value)), unsupported_(unsupported) {}
     std::optional<std::string> validate() {
+        if (block->version == 0) return "missing RemoteExecutionBlock version";
+        if (block->version != remote_execution_block::current_version) {
+            if (unsupported_) *unsupported_ = true;
+            return "unsupported RemoteExecutionBlock version";
+        }
+        if (block->scalar_expressions.size() > remote_scalar_expression_limit) {
+            return "too many scalar expressions";
+        }
         if (auto error = validate_types()) {
             return error;
         }
@@ -141,9 +282,6 @@ public:
         if (auto error = validate_expressions()) {
             return error;
         }
-        if (auto error = validate_expression_graph()) {
-            return error;
-        }
         if (auto error = validate_operators()) {
             return error;
         }
@@ -153,36 +291,17 @@ public:
         if (block->operators[order.back()].input_value_id != block->result_value_id) {
             return "result value does not match offer input";
         }
-        return {};
+        return validate_remote_scalar_expressions(*block, unsupported_);
     }
 
     [[nodiscard]] std::vector<std::size_t> take_operator_order() { return std::move(order); }
 
 private:
     std::optional<std::string> validate_types() {
-        if (block->version != remote_execution_block::current_version) {
-            return "unsupported RemoteExecutionBlock version";
-        }
-        for (auto const& expression : block->scalar_expressions) {
-            if ((expression.kind == remote_scalar_expression_kind::immediate ||
-                 expression.kind == remote_scalar_expression_kind::cast) && expression.type_payload.empty()) {
-                return "missing remote scalar type payload";
-            }
-            if (!expression.type_payload.empty()) {
-                auto type = decode_remote_type(expression.type_payload);
-                if (!type) {
-                    return "invalid remote scalar type";
-                }
-                if (expression.kind == remote_scalar_expression_kind::immediate &&
-                    !decode_remote_literal(expression.literal_payload, *type)) {
-                    return "invalid remote literal";
-                }
-            }
-        }
         for (auto const& op : block->operators) {
             if (!op.source) continue;
             for (auto const& column : op.source->columns) {
-                if (!column.type_payload.empty() && !decode_remote_type(column.type_payload)) {
+                if (!column.type_payload.empty() && !decode_remote_type(column.type_payload, unsupported_)) {
                     return "invalid remote source type";
                 }
             }
@@ -191,7 +310,7 @@ private:
             if (column.type_payload.empty()) {
                 return "missing remote output type payload";
             }
-            if (!decode_remote_type(column.type_payload)) {
+            if (!decode_remote_type(column.type_payload, unsupported_)) {
                 return "invalid remote output type";
             }
         }
@@ -228,38 +347,7 @@ private:
     }
 
     std::optional<std::string> validate_expressions() {
-        for (std::size_t index = 0; index < block->scalar_expressions.size(); ++index) {
-            auto const& expression = block->scalar_expressions[index];
-            if (expression.operand_expression_indexes.size() != expected_operand_count(expression.kind)) {
-                return id_error("scalar expression", index, "has invalid operand count");
-            }
-            for (auto id : expression.operand_expression_indexes) {
-                if (id >= index) {
-                    return id_error("scalar expression operand", id, "must precede its expression");
-                }
-            }
-            if (expression.kind == remote_scalar_expression_kind::variable_reference) {
-                if (!expression.variable_id) {
-                    return id_error("scalar expression", index, "has no variable");
-                }
-                if (variable_ids.count(*expression.variable_id) == 0) {
-                    return id_error("stream variable", *expression.variable_id, "is undefined");
-                }
-            } else if (expression.variable_id) {
-                return id_error("scalar expression", index, "has an unexpected variable");
-            }
-        }
-
-        return {};
-    }
-
-    std::optional<std::string> validate_expression_graph() {
-        // Bound recursive graph reconstruction and reject cycles before resolving expressions.
-        if (block->scalar_expressions.size() > 512) {
-            return "too many scalar expressions";
-        }
-        // Post-order operands already exclude self references, forward references and cycles.
-        return {};
+        return validate_scalar_references(*block, unsupported_);
     }
 
     std::optional<std::string> validate_operator_shape(remote_operator const& op, std::size_t i) {
@@ -501,6 +589,7 @@ private:
     }
     std::vector<std::size_t> order{};
     remote_execution_block const* block;
+    bool* unsupported_{};
     std::unordered_set<std::uint64_t> value_ids{};
     std::unordered_set<std::uint64_t> variable_ids{};
     std::unordered_set<std::uint64_t> external_relation_ids{};
@@ -511,8 +600,9 @@ private:
 } // namespace
 
 std::optional<std::string> validate_remote_execution_block(
-    remote_execution_block const& block, std::vector<std::size_t>* operator_order) {
-    block_validator validator{block};
+    remote_execution_block const& block, std::vector<std::size_t>* operator_order, bool* unsupported) {
+    if (unsupported) *unsupported = false;
+    block_validator validator{block, unsupported};
     if (auto error = validator.validate()) {
         return error;
     }
@@ -520,12 +610,6 @@ std::optional<std::string> validate_remote_execution_block(
         *operator_order = validator.take_operator_order();
     }
     return {};
-}
-
-static bool unsupported_type(std::string const& payload) {
-    bool unsupported{};
-    (void)decode_remote_type(payload, &unsupported);
-    return unsupported;
 }
 
 static std::optional<std::string> decode_operator(dqproto::Operator const& op, remote_operator& target, bool& unsupported) {
@@ -617,24 +701,8 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
     if (source.version() == 0) return failure("missing RemoteExecutionBlock version");
     if (source.version() != remote_execution_block::current_version) return failure("unsupported RemoteExecutionBlock version", true);
 
-    // Reject unsupported SQL types before creating runtime metadata, including typed NULLs.
-    for (auto const& expression : source.scalar_expressions()) {
-        if (unsupported_type(expression.type_payload())) {
-            return {{}, "unsupported SQL type is outside remote execution", true};
-        }
-    }
-    for (auto const& column : source.result_schema().columns()) {
-        if (unsupported_type(column.type_payload())) {
-            return {{}, "unsupported SQL type is outside remote execution", true};
-        }
-    }
-
-    for (auto const& op : source.operators()) {
-        for (auto const& column : op.source().columns()) {
-            if (unsupported_type(column.type_payload())) {
-                return failure("unsupported SQL type is outside remote execution", true);
-            }
-        }
+    if (source.scalar_expressions_size() > static_cast<int>(remote_scalar_expression_limit)) {
+        return failure("too many scalar expressions");
     }
 
     remote_execution_block block{};
@@ -679,8 +747,9 @@ remote_execution_block_decode_result decode_remote_execution_block(std::string_v
     }
 
     std::vector<std::size_t> order{};
-    if (auto error = validate_remote_execution_block(block, &order)) {
-        return failure(std::move(*error));
+    bool unsupported{};
+    if (auto error = validate_remote_execution_block(block, &order, &unsupported)) {
+        return failure(std::move(*error), unsupported);
     }
     return {std::move(block), {}, false, std::move(order)};
 }

@@ -40,8 +40,17 @@ struct remote_execution_block_decode_result {
 };
 // NOLINTEND(misc-non-private-member-variables-in-classes)
 
+// Implementation resource guards, independent of the wire version.
+inline constexpr std::size_t remote_scalar_expression_limit = 512;
+inline constexpr std::size_t remote_scalar_expression_expansion_limit = 10000;
+
+/** @brief Validate all scalar definitions without evaluating them, and bound referenced tree expansion. */
+[[nodiscard]] std::optional<std::string> validate_remote_scalar_expressions(
+    remote_execution_block const& block, bool* unsupported = nullptr);
+
 [[nodiscard]] std::optional<std::string> validate_remote_execution_block(
-    remote_execution_block const& block, std::vector<std::size_t>* operator_order = nullptr);
+    remote_execution_block const& block, std::vector<std::size_t>* operator_order = nullptr,
+    bool* unsupported = nullptr);
 
 [[nodiscard]] remote_execution_block_decode_result decode_remote_execution_block(std::string_view payload);
 

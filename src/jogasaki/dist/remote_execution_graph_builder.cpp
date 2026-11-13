@@ -191,10 +191,11 @@ public:
         }
     }
 
-    [[nodiscard]] remote_execution_graph_build_result build() {
+    [[nodiscard]] remote_execution_graph_build_result build(std::vector<std::size_t> const& order) {
         auto graph = std::make_unique<relation::graph_type>();
         relation::expression* previous{};
-        for (auto const& op : block_->operators) {
+        for (auto index : order) {
+            auto const& op = block_->operators[index];
             auto node = build_operator(op);
             if (!node) {
                 return failure(error_, invalid_request_);
@@ -468,10 +469,11 @@ private:
 
 remote_execution_graph_build_result build_remote_execution_graph(remote_execution_block const& block,
                                                                  remote_execution_graph_resolver const& resolver) {
-    if (auto error = validate_remote_execution_block(block)) {
+    std::vector<std::size_t> order{};
+    if (auto error = validate_remote_execution_block(block, &order)) {
         return failure(std::move(*error), true);
     }
-    return builder{block, resolver}.build();
+    return builder{block, resolver}.build(order);
 }
 
 } // namespace jogasaki::dist

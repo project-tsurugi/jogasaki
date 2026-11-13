@@ -15,6 +15,9 @@
  */
 
 
+#include <algorithm>
+#include <array>
+#include <string_view>
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -540,7 +543,7 @@ TEST(remote_execution_block_test, rejects_non_operator_sequence) {
 
     auto decoded = dist::decode_remote_execution_block(block.SerializeAsString());
     EXPECT_FALSE(decoded);
-    EXPECT_EQ("the first operator must be scan or find", decoded.error);
+    EXPECT_EQ("operator graph must contain exactly one source", decoded.error);
 }
 
 TEST(remote_execution_block_test, creates_find_source_payload) {
@@ -586,6 +589,135 @@ TEST(remote_execution_block_test, creates_find_source_payload) {
     EXPECT_EQ(dist::remote_endpoint_kind::unbound, decoded.block->operators[0].source->lower_endpoint_kind);
     EXPECT_EQ(dist::remote_endpoint_kind::unbound, decoded.block->operators[0].source->upper_endpoint_kind);
     EXPECT_FALSE(decoded.block->operators[0].source->limit);
+}
+
+TEST(remote_execution_block_test, rebuilds_unordered_operators_through_wire_and_direct_entry) {
+    yugawara::binding::factory bindings{};
+    yugawara::storage::configurable_provider storages{};
+    auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
+    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
+    auto c0 = bindings.stream_variable("c0");
+
+    relation::graph_type source_graph{};
+    auto& scan = source_graph.insert(relation::scan{
+        bindings(*index),
+        {{bindings(table->columns()[0]), c0}},
+        {},
+        {},
+        {},
+    });
+    auto& filter = source_graph.insert(relation::filter{scalar::compare{
+        scalar::comparison_operator::greater,
+        scalar::variable_reference{c0},
+        scalar::immediate{value::int8{10}, type::int8{}},
+    }});
+    takatori::plan::forward forward{bindings.exchange_column("result")};
+    auto& offer = source_graph.insert(relation::step::offer{
+        bindings.exchange(forward),
+        {{c0, forward.columns()[0]}},
+    });
+    scan.output() >> filter.input();
+    filter.output() >> offer.input();
+
+    auto source_block = dist::create_remote_execution_block(source_graph);
+    ASSERT_TRUE(source_block);
+    source_block->external_relations = {42};
+    source_block->operators.back().offer->external_relation_id = 42;
+    auto const operators = source_block->operators;
+    auto external = std::make_shared<yugawara::binding::external_relation_info>(42, forward.columns());
+    test_graph_resolver resolver{bindings(*index), bindings(table->columns()[0]),
+        bindings.external_relation(external), forward.columns()[0]};
+    std::array<std::size_t, 3> permutation{0, 1, 2};
+    std::size_t count{};
+    do {
+        SCOPED_TRACE(++count);
+        for (std::size_t i = 0; i < permutation.size(); ++i) source_block->operators[i] = operators[permutation[i]];
+        auto decoded = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(*source_block));
+        ASSERT_TRUE(decoded) << decoded.error;
+        ASSERT_EQ(3, decoded.operator_order.size());
+        for (std::size_t i = 0; i < 3; ++i) {
+            EXPECT_EQ(operators[i].operator_id, decoded.block->operators[decoded.operator_order[i]].operator_id);
+        }
+        auto rebuilt = dist::build_remote_execution_graph(*source_block, resolver);
+        ASSERT_TRUE(rebuilt) << rebuilt.error;
+        ASSERT_EQ(3, rebuilt.graph->size());
+        std::size_t scans{};
+        for (auto const& node : *rebuilt.graph) {
+            if (node.kind() != relation::expression_kind::scan) continue;
+            ++scans;
+            ASSERT_TRUE(node.output_ports()[0].opposite());
+            auto const& next = node.output_ports()[0].opposite()->owner();
+            ASSERT_EQ(relation::expression_kind::filter, next.kind());
+            ASSERT_TRUE(next.output_ports()[0].opposite());
+            EXPECT_EQ(relation::expression_kind::offer, next.output_ports()[0].opposite()->owner().kind());
+        }
+        EXPECT_EQ(1, scans);
+        for (std::size_t i = 0; i < permutation.size(); ++i) {
+            EXPECT_EQ(operators[permutation[i]].operator_id, source_block->operators[i].operator_id);
+        }
+    } while (std::next_permutation(permutation.begin(), permutation.end()));
+    EXPECT_EQ(6, count);
+
+    auto valid = *source_block;
+    valid.operators = operators;
+    auto reject = [&](auto const& broken, std::string_view reason) {
+        SCOPED_TRACE(reason);
+        std::vector<std::size_t> unchanged{99};
+        auto error = dist::validate_remote_execution_block(broken, &unchanged);
+        ASSERT_TRUE(error);
+        EXPECT_NE(std::string::npos, error->find(reason)) << *error;
+        EXPECT_EQ((std::vector<std::size_t>{99}), unchanged);
+        EXPECT_FALSE(dist::build_remote_execution_graph(broken, resolver));
+        EXPECT_FALSE(dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(broken)));
+    };
+    auto broken = valid;
+    broken.operators[2].input_value_id = operators[0].output_value_id;
+    broken.operators[1].input_value_id = 10; // isolated self-cycle
+    broken.operators[1].output_value_id = 10;
+    broken.values.push_back(10);
+    reject(broken, "cycle or disconnected");
+    broken = valid;
+    broken.operators[2].input_value_id = broken.operators[0].output_value_id; // branch
+    reject(broken, "must not branch");
+    broken = valid;
+    broken.operators[1].output_value_id = broken.operators[0].output_value_id; // duplicate producer
+    reject(broken, "duplicate value producers");
+    broken = valid;
+    broken.operators[1].input_value_id = 999; // undefined/disconnected input
+    reject(broken, "disconnected output");
+    broken = valid;
+    broken.operators[1] = broken.operators[0]; // second source
+    broken.operators[1].operator_id = 100;
+    reject(broken, "exactly one source");
+    broken = valid;
+    broken.operators[1] = broken.operators[2]; // second offer
+    broken.operators[1].operator_id = 100;
+    broken.operators[1].input_value_id = operators[0].output_value_id;
+    reject(broken, "exactly one offer");
+    broken = valid;
+    broken.result_value_id = *broken.operators[0].output_value_id; // wrong result
+    reject(broken, "result value does not match");
+    broken = valid;
+    broken.operators.clear();
+    reject(broken, "must contain a source and an offer");
+    broken = valid;
+    broken.operators = {operators[0], operators[1]};
+    reject(broken, "exactly one offer");
+    broken = valid;
+    broken.operators[0].input_value_id = operators[1].output_value_id;
+    reject(broken, "must not branch");
+    // A valid source-to-offer component plus a disconnected two-operator cycle.
+    broken = valid;
+    broken.operators[2].input_value_id = operators[0].output_value_id;
+    broken.operators[1].input_value_id = 10;
+    broken.operators[1].output_value_id = 11;
+    auto other = broken.operators[1];
+    other.operator_id = 100;
+    other.input_value_id = 11;
+    other.output_value_id = 10;
+    broken.operators.push_back(std::move(other));
+    broken.values.insert(broken.values.end(), {10, 11});
+    reject(broken, "cycle or disconnected");
 }
 
 TEST(remote_execution_block_test, rebuilds_takatori_graph) {

@@ -35,6 +35,7 @@
 #include <jogasaki/dist/remote_execution_block_decoder.h>
 
 #include "remote_type_codec.h"
+#include "remote_scalar_expression_operators.h"
 
 namespace jogasaki::dist {
 
@@ -63,116 +64,6 @@ template <class T> [[nodiscard]] static std::string missing(char const* category
             return relation::endpoint_kind::prefixed_inclusive;
         case remote_endpoint_kind::prefixed_exclusive:
             return relation::endpoint_kind::prefixed_exclusive;
-    }
-    return {};
-}
-
-[[nodiscard]] static std::optional<scalar::unary_operator> unary_operator(std::string_view name) {
-    using kind = scalar::unary_operator;
-    if (name == "plus") {
-        return kind::plus;
-    }
-    if (name == "sign_inversion") {
-        return kind::sign_inversion;
-    }
-    if (name == "length") {
-        return kind::length;
-    }
-    if (name == "conditional_not") {
-        return kind::conditional_not;
-    }
-    if (name == "is_null") {
-        return kind::is_null;
-    }
-    if (name == "is_true") {
-        return kind::is_true;
-    }
-    if (name == "is_false") {
-        return kind::is_false;
-    }
-    if (name == "is_unknown") {
-        return kind::is_unknown;
-    }
-    return {};
-}
-
-[[nodiscard]] static std::optional<scalar::binary_operator> binary_operator(std::string_view name) {
-    using kind = scalar::binary_operator;
-    if (name == "add") {
-        return kind::add;
-    }
-    if (name == "subtract") {
-        return kind::subtract;
-    }
-    if (name == "multiply") {
-        return kind::multiply;
-    }
-    if (name == "divide") {
-        return kind::divide;
-    }
-    if (name == "remainder") {
-        return kind::remainder;
-    }
-    if (name == "concat") {
-        return kind::concat;
-    }
-    if (name == "conditional_and") {
-        return kind::conditional_and;
-    }
-    if (name == "conditional_or") {
-        return kind::conditional_or;
-    }
-    return {};
-}
-
-[[nodiscard]] static std::optional<scalar::comparison_operator> comparison_operator(std::string_view name) {
-    using kind = scalar::comparison_operator;
-    if (name == "equal") {
-        return kind::equal;
-    }
-    if (name == "not_equal") {
-        return kind::not_equal;
-    }
-    if (name == "less") {
-        return kind::less;
-    }
-    if (name == "less_equal") {
-        return kind::less_equal;
-    }
-    if (name == "greater") {
-        return kind::greater;
-    }
-    if (name == "greater_equal") {
-        return kind::greater_equal;
-    }
-    if (name == "is_not_distinct_from") {
-        return kind::is_not_distinct_from;
-    }
-    if (name == "is_distinct_from") {
-        return kind::is_distinct_from;
-    }
-    return {};
-}
-
-[[nodiscard]] static std::optional<scalar::cast_loss_policy> cast_loss_policy(std::string_view name) {
-    using kind = scalar::cast_loss_policy;
-    if (name == "ignore") {
-        return kind::ignore;
-    }
-    if (name == "floor") {
-        return kind::floor;
-    }
-    if (name == "ceil") {
-        return kind::ceil;
-    }
-    if (name == "unknown") {
-        return kind::unknown;
-    }
-    if (name == "warn") {
-        return kind::warn;
-    }
-    if (name == "error") {
-        return kind::error;
     }
     return {};
 }
@@ -217,7 +108,7 @@ private:
     }
 
     [[nodiscard]] std::unique_ptr<scalar::expression> expression(std::uint64_t id) {
-        if (++expanded_expression_count_ > 10000) {
+        if (++expanded_expression_count_ > remote_scalar_expression_expansion_limit) {
             invalid_request_ = true;
             error_ = "scalar expression expansion limit exceeded";
             return {};
@@ -244,7 +135,7 @@ private:
                 return std::make_unique<scalar::variable_reference>(*descriptor);
             }
             case remote_scalar_expression_kind::unary: {
-                auto kind = unary_operator(source.operator_kind);
+                auto kind = remote_unary_operator(source.operator_kind);
                 if (!kind) {
                     unsupported_ = !source.operator_kind.empty();
                     invalid_request_ = !unsupported_;
@@ -260,7 +151,7 @@ private:
             case remote_scalar_expression_kind::cast:
                 return build_cast(source);
             case remote_scalar_expression_kind::binary: {
-                auto kind = binary_operator(source.operator_kind);
+                auto kind = remote_binary_operator(source.operator_kind);
                 if (!kind) {
                     unsupported_ = !source.operator_kind.empty();
                     invalid_request_ = !unsupported_;
@@ -275,7 +166,7 @@ private:
                 return std::make_unique<scalar::binary>(*kind, std::move(left), std::move(right));
             }
             case remote_scalar_expression_kind::compare: {
-                auto kind = comparison_operator(source.operator_kind);
+                auto kind = remote_comparison_operator(source.operator_kind);
                 if (!kind) {
                     unsupported_ = !source.operator_kind.empty();
                     invalid_request_ = !unsupported_;
@@ -412,7 +303,7 @@ private:
 
     [[nodiscard]] std::unique_ptr<scalar::expression> build_cast(remote_scalar_expression const& source) {
         auto type = decode_remote_type(source.type_payload);
-        auto policy = cast_loss_policy(source.operator_kind);
+        auto policy = remote_cast_loss_policy(source.operator_kind);
         if (!type) {
             invalid_request_ = true;
             error_ = missing("type", source.type);
@@ -469,8 +360,9 @@ private:
 remote_execution_graph_build_result build_remote_execution_graph(remote_execution_block const& block,
                                                                  remote_execution_graph_resolver const& resolver) {
     std::vector<std::size_t> order{};
-    if (auto error = validate_remote_execution_block(block, &order)) {
-        return failure(std::move(*error), true);
+    bool unsupported{};
+    if (auto error = validate_remote_execution_block(block, &order, &unsupported)) {
+        return failure(std::move(*error), !unsupported, unsupported);
     }
     return builder{block, resolver}.build(order);
 }

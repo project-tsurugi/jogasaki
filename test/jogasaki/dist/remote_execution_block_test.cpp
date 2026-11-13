@@ -37,8 +37,10 @@
 #include <takatori/scalar/unary.h>
 #include <takatori/scalar/variable_reference.h>
 #include <takatori/type/primitive.h>
+#include <takatori/type/character.h>
 #include <takatori/util/rvalue_reference_wrapper.h>
 #include <takatori/value/primitive.h>
+#include <takatori/value/character.h>
 #include <yugawara/binding/external_relation_info.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/binding/factory.h>
@@ -871,6 +873,135 @@ TEST(remote_execution_block_test, native_external_layout_preserves_order_and_rej
         EXPECT_EQ((std::vector<std::uint64_t>{73}), block->external_relations);
         EXPECT_EQ(1, block->operators.back().offer->columns[0].destination_column_id);
         EXPECT_EQ(0, block->operators.back().offer->columns[1].destination_column_id);
+    }
+}
+
+TEST(remote_execution_block_test, rejects_scalar_overflow_and_invalid_literals_before_publication) {
+    auto generate = [](std::size_t count, std::string_view text) {
+        yugawara::binding::factory bindings{};
+        yugawara::storage::configurable_provider storages{};
+        auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
+        auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
+        auto input = bindings.stream_variable("input");
+        auto output = bindings.stream_variable("output");
+        auto column = bindings.exchange_column("column");
+        relation::graph_type graph{};
+        auto& scan = graph.insert(relation::scan{bindings(*index), {{bindings(table->columns()[0]), input}}, {}, {}, {}});
+        std::unique_ptr<scalar::expression> expression = std::make_unique<scalar::immediate>(value::int8{1}, type::int8{});
+        if (!text.empty()) {
+            expression = std::make_unique<scalar::immediate>(value::character{std::string{text}}, type::character{type::varying, 2});
+        }
+        for (std::size_t i = 1; i < count; ++i) {
+            expression = std::make_unique<scalar::unary>(scalar::unary_operator::plus, std::move(expression));
+        }
+        std::vector<relation::project::column> columns{};
+        columns.emplace_back(output, std::move(expression));
+        auto& project = graph.insert(relation::project{std::move(columns)});
+        auto destination = bindings.external_relation(yugawara::binding::external_relation_info{73, {column}});
+        auto& offer = graph.insert(relation::step::offer{destination, {{output, column}}});
+        scan.output() >> project.input();
+        project.output() >> offer.input();
+        return dist::create_remote_execution_block(graph);
+    };
+    auto valid = generate(512, {});
+    ASSERT_TRUE(valid);
+    EXPECT_EQ(512U, valid->scalar_expressions.size());
+    EXPECT_FALSE(dist::validate_remote_scalar_expressions(*valid));
+    EXPECT_FALSE(generate(513, {}));
+    EXPECT_TRUE(generate(1, "ab"));
+    EXPECT_FALSE(generate(1, "abc"));
+}
+
+TEST(remote_execution_block_test, direct_builder_preserves_scalar_failure_classification) {
+    yugawara::binding::factory bindings{};
+    yugawara::storage::configurable_provider storages{};
+    auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
+    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
+    auto variable = bindings.stream_variable("input");
+    auto column = bindings.exchange_column("output");
+    auto external = bindings.external_relation(yugawara::binding::external_relation_info{73, {column}});
+    relation::graph_type graph{};
+    auto& scan = graph.insert(relation::scan{bindings(*index), {{bindings(table->columns()[0]), variable}}, {}, {}, {}});
+    auto& offer = graph.insert(relation::step::offer{external, {{variable, column}}});
+    scan.output() >> offer.input();
+    auto valid = dist::create_remote_execution_block(graph);
+    ASSERT_TRUE(valid);
+    valid->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
+    test_graph_resolver resolver{bindings(*index), bindings(table->columns()[0]), external, column};
+    ASSERT_TRUE(dist::build_remote_execution_graph(*valid, resolver));
+    dist::remote_scalar_expression literal{};
+    literal.kind = dist::remote_scalar_expression_kind::immediate;
+    literal.type_payload = dist::encode_remote_type(type::int8{});
+    literal.literal_payload = dist::encode_remote_literal(value::int8{7});
+    auto check = [&](dist::remote_execution_block const& block, bool unsupported) {
+        auto result = dist::build_remote_execution_graph(block, resolver);
+        EXPECT_FALSE(result);
+        EXPECT_EQ(unsupported, result.unsupported) << result.error;
+        EXPECT_EQ(!unsupported, result.invalid_request) << result.error;
+    };
+    for (auto const* name : {"", "future_operation"}) {
+        auto block = *valid;
+        block.scalar_expressions = {literal,
+            {dist::remote_scalar_expression_kind::unary, name, {}, {}, {}, {}, {0}}};
+        check(block, name[0] != '\0');
+    }
+    auto block = *valid;
+    block.scalar_expressions = {literal};
+    proto::distributed_query::PortableType unknown{};
+    unknown.set_kind("future_type");
+    block.scalar_expressions[0].type_payload = unknown.SerializeAsString();
+    block.scalar_expressions[0].literal_payload = dist::encode_remote_literal(value::unknown{value::unknown_kind::null});
+    check(block, true);
+    auto decoded = dist::decode_remote_execution_block(dist::serialize_remote_execution_block_proto(block));
+    EXPECT_FALSE(decoded);
+    EXPECT_TRUE(decoded.unsupported);
+    block.scalar_expressions[0] = literal;
+    block.scalar_expressions[0].kind = static_cast<dist::remote_scalar_expression_kind>(2026);
+    check(block, true);
+    block.scalar_expressions[0].operand_expression_indexes = {0, 999};
+    check(block, true); // Unknown native kinds are not interpreted using known arity rules.
+    block.scalar_expressions.assign(513, literal);
+    check(block, false);
+    block.version = 4;
+    check(block, true); // Version precedes the resource bound, including direct C++ input.
+    EXPECT_EQ("unsupported RemoteExecutionBlock version", dist::build_remote_execution_graph(block, resolver).error);
+    block.version = 0;
+    check(block, false);
+    EXPECT_EQ("missing RemoteExecutionBlock version", dist::build_remote_execution_graph(block, resolver).error);
+}
+
+TEST(remote_execution_block_test, counts_filter_and_storage_key_roots_in_expansion_budget) {
+    for (int root_kind = 0; root_kind != 4; ++root_kind) {
+        SCOPED_TRACE(root_kind);
+        dist::remote_execution_block block{};
+        dist::remote_scalar_expression literal{};
+        literal.kind = dist::remote_scalar_expression_kind::immediate;
+        literal.type_payload = dist::encode_remote_type(type::int8{});
+        literal.literal_payload = dist::encode_remote_literal(value::int8{1});
+        block.scalar_expressions = {literal};
+        for (std::uint64_t index = 1; index != 8; ++index) {
+            block.scalar_expressions.push_back({dist::remote_scalar_expression_kind::binary,
+                "add", {}, {}, {}, {}, {index - 1, index - 1}});
+        }
+        dist::remote_operator roots{};
+        // The other root accounts for one shared tree of 255 nodes.
+        roots.source.emplace();
+        switch (root_kind) {
+            case 0: roots.filter_expression_index = 7; break;
+            case 1: roots.source->find_key_expression_indexes = {7}; break;
+            case 2: roots.source->lower_key_expression_indexes = {7}; break;
+            case 3: roots.source->upper_key_expression_indexes = {7}; break;
+        }
+        for (std::uint64_t index = 0; index != 93; ++index) {
+            roots.project_columns.push_back({index + 1, index < 38 ? 7U : 0U});
+        }
+        block.operators = {roots};
+        // Test the scalar budget independently of the enclosing operator-graph validation.
+        EXPECT_FALSE(dist::validate_remote_scalar_expressions(block));
+        block.operators[0].project_columns.push_back({94, 0});
+        EXPECT_EQ("scalar expression expansion limit exceeded", dist::validate_remote_scalar_expressions(block));
+        block.operators[0].project_columns = {{1, 999}};
+        EXPECT_EQ("scalar expression index is out of range", dist::validate_remote_scalar_expressions(block));
     }
 }
 

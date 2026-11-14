@@ -304,6 +304,21 @@ TEST_F(operation_location_test, absent_placement_remains_local_when_dispatch_is_
     EXPECT_FALSE(selected.server);
 }
 
+TEST_F(operation_location_test, preserves_generation_failure_status_in_both_plan_paths) {
+    auto [source, consumer] = add_fenced_processes();
+    dummy_operation_locations query{{{source, {7}}, {consumer, {0}}}, {{7, "worker"}}};
+    // The table is remote, but this snapshot cannot map its index declaration.
+    dist::remote_catalog_snapshot missing{{}, {{table_.get(), "worker"}}};
+    auto captured = dist::capture_process_locations(plan_, query, &missing);
+    EXPECT_FALSE(captured.locations);
+    EXPECT_EQ(status::err_compiler_error, captured.code);
+    status code{};
+    EXPECT_FALSE(dist::validate_remote_plan(plan_, &missing, {}, &code).empty());
+    EXPECT_EQ(status::err_compiler_error, code);
+    EXPECT_TRUE(dist::validate_remote_plan(plan_, catalogs_.get(), "worker", &code).empty());
+    EXPECT_EQ(status::ok, code);
+}
+
 TEST_F(operation_location_test, queries_each_compiled_process_once_and_keeps_graph) {
     auto [source, consumer] = add_fenced_processes();
     auto source_kinds = kinds(*source);

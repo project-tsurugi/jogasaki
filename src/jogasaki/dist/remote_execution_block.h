@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <takatori/relation/graph.h>
+#include <jogasaki/status.h>
 
 namespace yugawara { class compiled_info; }
 namespace jogasaki::meta { class record_meta; class variable_order; }
@@ -146,12 +147,18 @@ struct remote_execution_block {
     std::uint64_t result_value_id{};
 };
 
+struct remote_execution_block_generation_error {
+    status code{status::ok};
+    std::string message{};
+};
+
 /**
  * @brief creates the structural subset of a remote execution RemoteExecutionBlock.
  * @details This preserves operator order, value connections, and source
  *     storage/column/range structure and the remote execution scalar expression subset.
  *     Result schema types are populated when compiled_info is supplied.
  *     This development subset does not represent full L03 type support.
+ * @param error optional failure status and reason, reset to ok on success. No partial block is returned.
  */
 [[nodiscard]] std::optional<remote_execution_block> create_remote_execution_block(
     takatori::relation::graph_type const& graph,
@@ -159,7 +166,8 @@ struct remote_execution_block {
     meta::record_meta const* result_meta = nullptr,
     meta::variable_order const* result_order = nullptr,
     remote_catalog_snapshot const* catalogs = nullptr,
-    std::string_view remote_server = {});
+    std::string_view remote_server = {},
+    remote_execution_block_generation_error* error = nullptr);
 
 [[nodiscard]] std::string serialize_remote_execution_block(
     remote_execution_block const& block);

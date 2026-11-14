@@ -60,6 +60,10 @@
 #include <jogasaki/dist/remote_sql_error.h>
 #include <jogasaki/dist/remote_rpc_error.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/plan/mirror_container.h>
+#include <takatori/relation/scan.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
@@ -327,6 +331,65 @@ protected:
     std::unique_ptr<grpc::Server> server_{};
     int port_{};
 };
+TEST_F(remote_process_sql_test, task_generation_preserves_failures_without_sending_rpc) {
+    for (int failure = 0; failure < 3; ++failure) {
+        SCOPED_TRACE(failure);
+        std::unique_ptr<api::executable_statement> statement{};
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM worker_schema.T ORDER BY C0", statement));
+        auto& body = *api::impl::get_impl(*statement).body();
+        auto snapshot = body.mirrors()->remote_catalogs();
+        auto definitions = snapshot->definitions();
+        if (failure == 0) definitions.clear();
+        if (failure == 1) {
+            for (auto& entry : definitions) entry.second.remote_definition_id.reset();
+        }
+        // Inject invalid retained metadata after compilation to exercise the final task guard.
+        body.mirrors()->remote_catalogs(std::make_shared<dist::remote_catalog_snapshot>(
+            snapshot->catalogs(), snapshot->locations(), std::move(definitions)));
+        auto& execute = dynamic_cast<executor::common::execute&>(*body.operators());
+        bool remote{};
+        for (auto const& step : execute.operators().steps()) {
+            auto* process = dynamic_cast<executor::process::step*>(step.get());
+            if (!process || !process->info()->details().has_scan_operator()) continue;
+            remote = true;
+            process->info()->captured_location("worker");
+            if (failure == 2) {
+                for (auto const& op : process->info()->relations()) {
+                    if (op.kind() == takatori::relation::expression_kind::scan) {
+                        auto& scan = const_cast<takatori::relation::scan&>(static_cast<takatori::relation::scan const&>(op));
+                        scan.direction() = takatori::relation::scan_direction::backward;
+                    }
+                }
+            }
+        }
+        ASSERT_TRUE(remote);
+        auto tx = utils::create_transaction(*db_, true, false);
+        auto transaction = api::get_transaction_context(*tx);
+        auto store = std::make_unique<data::result_store>();
+        auto channel = std::make_shared<api::impl::result_store_channel>(takatori::util::maybe_shared_ptr{store.get()});
+        auto context = api::impl::create_request_context(api::impl::get_impl(*db_), transaction,
+            channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, true, nullptr);
+        std::size_t completions{};
+        auto calls = service_.calls.load();
+        ASSERT_TRUE(executor::execute_async_on_context(api::impl::get_impl(*db_), context,
+            takatori::util::maybe_shared_ptr{statement.get()},
+            [&](status result, std::shared_ptr<error::error_info> error, std::shared_ptr<request_statistics>) {
+                ++completions;
+                EXPECT_EQ(failure == 0 ? status::err_invalid_state : failure == 1
+                    ? status::err_invalid_argument : status::err_unsupported, result);
+                ASSERT_TRUE(error);
+                EXPECT_EQ(failure == 2 ? error_code::unsupported_runtime_feature_exception
+                    : error_code::internal_exception, error->code());
+                EXPECT_EQ(failure == 2 ? "[distributed-query] unsupported remote execution plan"
+                    : "[distributed-query] failed to generate remote execution plan", error->message());
+            }, true));
+        EXPECT_EQ(1, completions);
+        EXPECT_EQ(calls, service_.calls.load());
+        EXPECT_EQ(0, transaction->termination_mgr().state().task_use_count());
+        if (!transaction->termination_mgr().state().going_to_abort()) EXPECT_EQ(status::ok, tx->abort());
+    }
+}
+
 TEST_F(remote_process_sql_test, streaming_worker_results_reach_existing_downstream_exchange) {
     service_.stream_handler = [this](std::string_view payload, auto const& check, auto const& sink) {
         return dist::remote_process_handler{*db_}.execute_stream(payload, check, sink);

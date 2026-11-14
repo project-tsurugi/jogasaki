@@ -636,6 +636,13 @@ static void handle_compile_errors(
 }
 
 #ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
+// Preserve the L3-04 generation status at each prepare/resolve entry.
+static status set_remote_generation_error(compiler_context& ctx, std::string const& message, status code) {
+    ctx.error_info(create_error_info(code == status::err_unsupported
+        ? error_code::unsupported_compiler_feature_exception : error_code::compile_exception, message, code));
+    return code;
+}
+
 // Failures of the operation location interface are reported as compile errors with their cause.
 static status set_operation_location_error(compiler_context& ctx, std::string_view prefix, std::exception const& e) {
     auto message = string_builder{} << prefix << e.what() << string_builder::to_string;
@@ -656,8 +663,7 @@ static status capture_operation_locations(takatori::plan::graph_type const& grap
         return set_operation_location_error(ctx, "operation location lookup failed: ", e);
     }
     if (!captured.error.empty()) {
-        ctx.error_info(create_error_info(error_code::unsupported_compiler_feature_exception, captured.error, status::err_unsupported));
-        return status::err_unsupported;
+        return set_remote_generation_error(ctx, captured.error, captured.code);
     }
     locations = std::move(captured.locations);
     return status::ok;
@@ -707,10 +713,10 @@ static status create_prepared_statement(
         auto* fallback = std::getenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
         // Mutates graph in place and replaces info with type mappings for the rewritten plan.
         info = dist::adapt_remote_outputs(graph, info, ctx.remote_catalogs().get(), fallback ? fallback : "");
-        auto message = dist::validate_remote_plan(graph, ctx.remote_catalogs().get(), fallback ? fallback : "");
+        status code{};
+        auto message = dist::validate_remote_plan(graph, ctx.remote_catalogs().get(), fallback ? fallback : "", &code);
         if (!message.empty()) {
-            ctx.error_info(create_error_info(error_code::unsupported_compiler_feature_exception, message, status::err_unsupported));
-            return status::err_unsupported;
+            return set_remote_generation_error(ctx, message, code);
         }
     }
 #endif
@@ -1578,12 +1584,12 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
             // Captured operation locations were validated at prepare time and are not rechecked by catalog.
             if (global::config_pool()->distributed_query_coordinator_enabled() && ! p->mirrors()->process_locations()) {
                 auto* fallback = std::getenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
+                status code{};
                 auto message = dist::validate_remote_plan(
                     unsafe_downcast<takatori::statement::execute>(*p->statement()).execution_plan(),
-                    ctx.remote_catalogs().get(), fallback ? fallback : "");
+                    ctx.remote_catalogs().get(), fallback ? fallback : "", &code);
                 if (!message.empty()) {
-                    ctx.error_info(create_error_info(error_code::unsupported_compiler_feature_exception, message, status::err_unsupported));
-                    return status::err_unsupported;
+                    return set_remote_generation_error(ctx, message, code);
                 }
             }
 #endif

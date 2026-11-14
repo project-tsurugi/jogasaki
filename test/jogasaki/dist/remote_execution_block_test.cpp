@@ -177,9 +177,12 @@ TEST(remote_execution_block_test, rejects_multiple_remote_processes_for_one_exec
     add();
     dist::remote_catalog_snapshot catalogs{{}, {{table.get(), "worker"}}, {{index.get(), {"worker", dist::remote_declaration_kind::index, 1257}}}};
     EXPECT_TRUE(dist::validate_remote_plan(plan, &catalogs).empty());
-    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker").find("storage definition identity"));
+    status code{};
+    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker", &code).find("catalog snapshot"));
+    EXPECT_EQ(status::err_compiler_error, code);
     add();
-    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker").find("storage definition identity"));
+    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker", &code).find("catalog snapshot"));
+    EXPECT_EQ(status::err_compiler_error, code);
     EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, &catalogs).find("at most one"));
     // Without remote metadata or an explicit override, both ordinary SQL processes are valid.
     EXPECT_TRUE(dist::validate_remote_plan(plan, nullptr).empty());
@@ -435,6 +438,50 @@ TEST(remote_execution_block_test, creates_ordered_operator_and_value_graph) {
 
 }
 
+TEST(remote_execution_block_test, distinguishes_generation_failures_without_publishing_partial_blocks) {
+    yugawara::binding::factory bindings{};
+    yugawara::storage::configurable_provider storages{};
+    auto table = storages.add_table({"T", {{"C0", type::int8{}}}});
+    auto index = storages.add_index({std::uint64_t{1}, table, "T"});
+    auto input = bindings.stream_variable("input");
+    auto column = bindings.exchange_column("output");
+    takatori::plan::forward output{column};
+    relation::graph_type graph{};
+    auto& scan = graph.insert(relation::scan{bindings(*index), {{bindings(table->columns()[0]), input}}, {}, {}});
+    auto& offer = graph.insert(relation::step::offer{bindings.exchange(output), {{input, column}}});
+    scan.output() >> offer.input();
+    dist::remote_execution_block_generation_error error{};
+    auto generate = [&] { return dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, nullptr, {}, &error); };
+    ASSERT_TRUE(generate());
+    EXPECT_EQ(status::ok, error.code);
+    scan.row_slice() = relation::scan::row_slice_type{1, 25};
+    EXPECT_FALSE(generate());
+    EXPECT_EQ(status::err_unsupported, error.code);
+    scan.row_slice() = relation::scan::row_slice_type{};
+    offer.columns().emplace_back(input, column);
+    EXPECT_FALSE(generate());
+    EXPECT_EQ(status::err_invalid_argument, error.code);
+    offer.columns().pop_back();
+    offer.columns().clear();
+    offer.columns().emplace_back(bindings.stream_variable("undefined"), column);
+    EXPECT_FALSE(generate());
+    EXPECT_EQ(status::err_invalid_argument, error.code);
+    EXPECT_NE(std::string::npos, error.message.find("unresolved stream variable"));
+    offer.columns().clear();
+    offer.columns().emplace_back(input, column);
+    scan.columns().emplace_back(bindings(table->columns()[0]), input);
+    EXPECT_FALSE(generate());
+    EXPECT_EQ(status::err_invalid_argument, error.code);
+    EXPECT_NE(std::string::npos, error.message.find("duplicate stream variable"));
+    scan.columns().pop_back();
+    meta::variable_order missing_order{};
+    EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, &missing_order, nullptr, {}, &error));
+    EXPECT_EQ(status::err_invalid_argument, error.code);
+    ASSERT_TRUE(generate());
+    EXPECT_EQ(status::ok, error.code);
+    EXPECT_TRUE(error.message.empty());
+}
+
 TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {
     yugawara::binding::factory bindings{};
     yugawara::storage::configurable_provider storages{};
@@ -446,7 +493,9 @@ TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {
     auto& scan = graph.insert(relation::scan{bindings(*index), {{bindings(table->columns()[0]), variable}}, {}, {}});
     auto& offer = graph.insert(relation::step::offer{bindings.exchange(output), {{variable, output.columns()[0]}}});
     scan.output() >> offer.input();
-    EXPECT_FALSE(dist::create_remote_execution_block(graph));
+    dist::remote_execution_block_generation_error error{};
+    EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, nullptr, {}, &error));
+    EXPECT_EQ(status::err_invalid_argument, error.code);
     index->definition_id(0);
     auto block = dist::create_remote_execution_block(graph);
     ASSERT_TRUE(block);
@@ -454,7 +503,8 @@ TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {
     // This graph has one BIGINT output; no compiler type map is supplied by this fixture.
     block->result_schema[0].type_payload = dist::encode_remote_type(type::int8{});
     EXPECT_EQ(std::optional<std::uint64_t>{0}, block->operators[0].source->definition_id);
-    EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, nullptr, "worker"));
+    EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, nullptr, "worker", &error));
+    EXPECT_EQ(status::err_compiler_error, error.code);
     using identity = dist::remote_declaration_identity;
     using kind = dist::remote_declaration_kind;
     auto make_snapshot = [&](identity value) {
@@ -463,6 +513,9 @@ TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {
     auto remote = make_snapshot({"worker", kind::index, 5678});
     auto forwarded = dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &remote, "worker");
     ASSERT_TRUE(forwarded);
+    auto checked = dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &remote, "worker", &error);
+    ASSERT_TRUE(checked);
+    EXPECT_EQ(status::ok, error.code);
     EXPECT_EQ(std::optional<std::uint64_t>{5678}, forwarded->operators[0].source->definition_id);
     auto remote_zero = make_snapshot({"worker", kind::index, 0});
     auto zero = dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &remote_zero, "worker");
@@ -470,8 +523,10 @@ TEST(remote_execution_block_test, requires_index_identity_and_preserves_zero) {
     EXPECT_EQ(std::optional<std::uint64_t>{0}, zero->operators[0].source->definition_id);
     for (auto invalid : {identity{"other", kind::index, 5678}, identity{"worker", kind::table, 5678},
                          identity{"worker", kind::index, std::nullopt}}) {
+        auto expected = invalid.remote_definition_id ? status::err_compiler_error : status::err_invalid_argument;
         auto snapshot = make_snapshot(std::move(invalid));
-        EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &snapshot, "worker"));
+        EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &snapshot, "worker", &error));
+        EXPECT_EQ(expected, error.code);
     }
     dist::remote_catalog_snapshot missing_identity{};
     EXPECT_FALSE(dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, &missing_identity, "worker"));
@@ -877,7 +932,7 @@ TEST(remote_execution_block_test, native_external_layout_preserves_order_and_rej
 }
 
 TEST(remote_execution_block_test, rejects_scalar_overflow_and_invalid_literals_before_publication) {
-    auto generate = [](std::size_t count, std::string_view text) {
+    auto generate = [](std::size_t count, std::string_view text, dist::remote_execution_block_generation_error* error = nullptr) {
         yugawara::binding::factory bindings{};
         yugawara::storage::configurable_provider storages{};
         auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
@@ -901,15 +956,18 @@ TEST(remote_execution_block_test, rejects_scalar_overflow_and_invalid_literals_b
         auto& offer = graph.insert(relation::step::offer{destination, {{output, column}}});
         scan.output() >> project.input();
         project.output() >> offer.input();
-        return dist::create_remote_execution_block(graph);
+        return dist::create_remote_execution_block(graph, nullptr, nullptr, nullptr, nullptr, {}, error);
     };
     auto valid = generate(512, {});
     ASSERT_TRUE(valid);
     EXPECT_EQ(512U, valid->scalar_expressions.size());
     EXPECT_FALSE(dist::validate_remote_scalar_expressions(*valid));
-    EXPECT_FALSE(generate(513, {}));
+    dist::remote_execution_block_generation_error error{};
+    EXPECT_FALSE(generate(513, {}, &error));
+    EXPECT_EQ(status::err_invalid_argument, error.code);
     EXPECT_TRUE(generate(1, "ab"));
-    EXPECT_FALSE(generate(1, "abc"));
+    EXPECT_FALSE(generate(1, "abc", &error));
+    EXPECT_EQ(status::err_invalid_argument, error.code);
 }
 
 TEST(remote_execution_block_test, direct_builder_preserves_scalar_failure_classification) {

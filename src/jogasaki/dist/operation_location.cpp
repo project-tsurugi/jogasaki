@@ -66,7 +66,7 @@ process_locations_result capture_process_locations(takatori::plan::graph_type co
         auto const& process = takatori::util::unsafe_downcast<takatori::plan::process>(step);
         auto ids = query.find(process);
         if (ids.empty()) {
-            return {{}, "no executable location for a compiled process"};
+            return {{}, "no executable location for a compiled process", status::err_compiler_error};
         }
         // A location-independent process can also run locally. Prefer the coordinator
         // before requiring a unique remote location (including Phase-C0 relay processes).
@@ -75,17 +75,17 @@ process_locations_result capture_process_locations(takatori::plan::graph_type co
             continue;
         }
         if (ids.size() != 1) {
-            return {{}, "remote execution requires exactly one executable location per process"};
+            return {{}, "remote execution requires exactly one executable location per process", status::err_compiler_error};
         }
         auto id = *ids.begin();
         std::string server{};
         try {
             server = query.location_name(id);
         } catch (std::out_of_range const&) {
-            return {{}, "unknown location ID " + std::to_string(id)};
+            return {{}, "unknown location ID " + std::to_string(id), status::err_compiler_error};
         }
         if (server.empty()) {
-            return {{}, "remote location ID " + std::to_string(id) + " has no server name"};
+            return {{}, "remote location ID " + std::to_string(id) + " has no server name", status::err_compiler_error};
         }
         if (++remotes > 1) {
             return {{}, "remote execution permits at most one remote execution block per SQL execution"};
@@ -98,15 +98,12 @@ process_locations_result capture_process_locations(takatori::plan::graph_type co
         if (!has_single_forward_output(process)) {
             return {{}, "remote process output must be a single forward exchange in remote execution"};
         }
-        try {
-            if (!create_remote_execution_block(process.operators(), nullptr, nullptr, nullptr, catalogs, server)) {
-                return {{}, "unsupported remote expression, host variable, or missing storage definition identity in remote execution"};
-            }
-        } catch (std::invalid_argument const& e) {
-            return {{}, "unsupported remote type or literal in remote execution: " + std::string{e.what()}};
+        remote_execution_block_generation_error error{};
+        if (!create_remote_execution_block(process.operators(), nullptr, nullptr, nullptr, catalogs, server, &error)) {
+            return {{}, std::move(error.message), error.code};
         }
         entity.emplace(&process, process_location{std::move(server), id});
     }
-    return {std::make_shared<process_locations const>(std::move(entity)), {}};
+    return {std::make_shared<process_locations const>(std::move(entity)), {}, status::ok};
 }
 } // namespace jogasaki::dist

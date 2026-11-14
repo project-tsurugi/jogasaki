@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/status.h>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -62,5 +63,5 @@ struct remote_execution_server_selection {
     std::string_view fallback = {});
 /** @brief validate supported remote plans before RPC dispatch; an empty diagnostic means valid. */
 [[nodiscard]] std::string validate_remote_plan(takatori::plan::graph_type const& graph,
-    remote_catalog_snapshot const* catalogs, std::string_view fallback = {});
+    remote_catalog_snapshot const* catalogs, std::string_view fallback = {}, status* code = nullptr);
 } // namespace jogasaki::dist

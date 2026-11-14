@@ -21,6 +21,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <jogasaki/status.h>
 #include <takatori/plan/graph.h>
 #include <takatori/plan/process.h>
 #include <takatori/plan/step.h>
@@ -75,8 +76,9 @@ private:
 
 struct process_locations_result {
     std::shared_ptr<process_locations const> locations{};
-    // Non-empty means the plan is unsupported in remote execution.
+    // Non-empty means remote plan preparation failed; code preserves its classification.
     std::string error{};
+    status code{status::err_unsupported};
 };
 
 /**

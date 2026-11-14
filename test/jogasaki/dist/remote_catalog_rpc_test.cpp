@@ -566,8 +566,10 @@ TEST_F(remote_catalog_rpc_test, missing_worker_index_identity_is_rejected_during
             ASSERT_EQ(status::ok, result) << (info ? info->message() : "");
             EXPECT_EQ(status::ok, db_->destroy_statement(statement));
         } else {
-            EXPECT_EQ(status::err_unsupported, result);
+            EXPECT_EQ(status::err_invalid_argument, result);
             ASSERT_TRUE(info);
+            EXPECT_EQ(error_code::compile_exception, info->code());
+            EXPECT_EQ(status::err_invalid_argument, info->status());
             EXPECT_NE(std::string::npos, info->message().find("storage definition identity"));
         }
         EXPECT_EQ(0, remote_.execution_calls);

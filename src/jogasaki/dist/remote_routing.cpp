@@ -179,7 +179,8 @@ yugawara::compiled_info adapt_remote_outputs(takatori::plan::graph_type& graph, 
     return {std::move(expressions), std::move(variables)};
 }
 std::string validate_remote_plan(takatori::plan::graph_type const& graph, remote_catalog_snapshot const* catalogs,
-                                 std::string_view fallback) {
+                                 std::string_view fallback, status* code) {
+    if (code) *code = status::err_unsupported;
     std::size_t count{};
     for (auto const& step : graph) {
         if (step.kind() != takatori::plan::step_kind::process) {
@@ -196,15 +197,13 @@ std::string validate_remote_plan(takatori::plan::graph_type const& graph, remote
         if (!is_remote_process_execution_block_shape(process.operators())) {
             return "unsupported remote process shape in remote execution";
         }
-        try {
-            if (!create_remote_execution_block(process.operators(), nullptr, nullptr, nullptr, catalogs, *destination)) {
-                return "unsupported remote expression, host variable, or missing storage definition identity in remote execution";
-            }
-        } catch (std::invalid_argument const& e) {
-            // The development codec rejects unsupported types/literals by exception.
-            return std::string{"unsupported remote type or literal in remote execution: "} + e.what();
+        remote_execution_block_generation_error error{};
+        if (!create_remote_execution_block(process.operators(), nullptr, nullptr, nullptr, catalogs, *destination, &error)) {
+            if (code) *code = error.code;
+            return std::move(error.message);
         }
     }
+    if (code) *code = status::ok;
     return {};
 }
 } // namespace jogasaki::dist

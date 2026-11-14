@@ -215,19 +215,14 @@ class remote_process_task final : public executor::common::task,
                                   public std::enable_shared_from_this<remote_process_task> {
 public:
     remote_process_task(request_context& context, executor::process::step& step,
-                        executor::process::processor_info const& info, std::string server)
+                        executor::process::processor_info const& info, std::string server, std::string payload)
         : executor::common::task(&context, &step), server_(std::move(server)),
           meta_(step.io_info()->output_at(0).meta()), state_(std::make_shared<rpc_state>()) {
 
         if (server_.empty() || !context.remote_catalogs()) {
             throw std::invalid_argument("remote process requires a retained catalog snapshot and destination server");
         }
-        auto block = create_remote_execution_block(info.relations(), &info.compiled_info(), meta_.get(),
-                                                   &step.io_info()->output_at(0).column_order(), context.remote_catalogs().get(), server_);
-        if (!block) {
-            throw std::invalid_argument("remote process requires a supported graph and storage definition IDs");
-        }
-        payload_ = serialize_remote_execution_block_proto(*block);
+        payload_ = std::move(payload);
         cancel_kind_ = info.details().has_find_operator() ? request_cancel_kind::find : request_cancel_kind::scan;
         auto& exchanges = *step.io_exchange_map();
         auto& downstream = dynamic_cast<executor::exchange::flow&>(
@@ -511,7 +506,26 @@ std::shared_ptr<model::task> make_remote_process_task(request_context& context, 
         if (step.io_info()->output_count() != 1 || step.io_exchange_map()->output_count() != 1) {
             throw std::invalid_argument("remote process requires exactly one output");
         }
-        return std::make_shared<remote_process_task>(context, step, info, std::move(server));
+        remote_execution_block_generation_error error{};
+        auto block = create_remote_execution_block(info.relations(), &info.compiled_info(),
+            step.io_info()->output_at(0).meta().get(), &step.io_info()->output_at(0).column_order(),
+            context.remote_catalogs().get(), server, &error);
+        if (!block) {
+            if (error.code == status::err_unsupported) {
+                LOG_LP(INFO) << "distributed query server:" << server
+                             << " internal_code:UNSUPPORTED_REMOTE_PLAN reason:" << error.message;
+                return std::make_shared<failed_remote_process_task>(context, step,
+                    "[distributed-query] unsupported remote execution plan",
+                    error_code::unsupported_runtime_feature_exception, error.code);
+            }
+            LOG_LP(INFO) << "distributed query server:" << server
+                         << " internal_code:REMOTE_IR_GENERATION_FAILED reason:" << error.message;
+            return std::make_shared<failed_remote_process_task>(context, step,
+                "[distributed-query] failed to generate remote execution plan", error_code::internal_exception,
+                error.code == status::err_compiler_error ? status::err_invalid_state : error.code);
+        }
+        auto payload = serialize_remote_execution_block_proto(*block);
+        return std::make_shared<remote_process_task>(context, step, info, std::move(server), std::move(payload));
     } catch (std::invalid_argument const& e) {
         LOG_LP(INFO) << "distributed query server:" << server
                      << " internal_code:UNSUPPORTED_REMOTE_PLAN reason:" << e.what();

@@ -17,6 +17,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
+#include <future>
 #include <functional>
 #include <mutex>
 #include <poll.h>
@@ -68,6 +69,9 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/request_statistics.h>
+#include <jogasaki/scheduler/serial_task_scheduler.h>
+#include <jogasaki/scheduler/conditional_task.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/termination_state.h>
 #include <jogasaki/transaction_context.h>
@@ -103,6 +107,31 @@ bool write_message(grpc::ServerWriter<wire::RemoteProcessResult>* writer, std::u
     for (auto const& record : result.encoded_rows()) response.add_record_list(record);
     return writer->Write(response);
 }
+// Hold the RPC reply until its task has registered a wait. With no result messages,
+// the first true check proves that Finish() and the done publication have completed.
+class completion_race_scheduler : public scheduler::serial_task_scheduler {
+public:
+    std::function<void()> on_wait{};
+    std::function<void()> on_ready{};
+    bool injected{};
+    void do_schedule_conditional_task(scheduler::conditional_task&& task) override {
+        if (!injected) {
+            on_wait();
+            // Before cancellation or an existing error, check only observes readiness.
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            bool ready = task.check();
+            while (!ready && std::chrono::steady_clock::now() < deadline) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                ready = task.check();
+            }
+            EXPECT_TRUE(ready) << "RPC did not finish before the test wait limit";
+            injected = true;
+            on_ready();
+            EXPECT_TRUE(task.check()); // Observe cancellation before the task resumes.
+        }
+        scheduler::serial_task_scheduler::do_schedule_conditional_task(std::move(task));
+    }
+};
 class rpc_service final : public wire::DistributedQueryService::Service {
 public:
     std::function<tateyama::grpc::distributed_query::remote_catalog_result()> catalog_handler{};
@@ -515,8 +544,12 @@ TEST_F(remote_process_sql_test, typed_record_batches_cross_dummy_rpc_without_fra
 TEST_F(remote_process_sql_test, response_sequence_gap_fails_sql) {
     service_.sequence_offset = 1;
     auto tx = utils::create_transaction(*db_, true, false); status st{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).run();
+    std::shared_ptr<error::error_info> info{};
+    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
     EXPECT_EQ(status::err_invalid_state, st);
+    ASSERT_TRUE(info);
+    EXPECT_EQ(error_code::internal_exception, info->code());
+    EXPECT_EQ("[distributed-query] invalid remote response sequence or size", info->message());
 }
 TEST_F(remote_process_sql_test, response_sequence_duplicate_fails_sql) {
     service_.raw = [this](std::string_view payload, auto* writer) {
@@ -526,8 +559,12 @@ TEST_F(remote_process_sql_test, response_sequence_duplicate_fails_sql) {
         return grpc::Status::OK;
     };
     auto tx = utils::create_transaction(*db_, true, false); status st{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).run();
+    std::shared_ptr<error::error_info> info{};
+    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
     EXPECT_EQ(status::err_invalid_state, st);
+    ASSERT_TRUE(info);
+    EXPECT_EQ(error_code::internal_exception, info->code());
+    EXPECT_EQ("[distributed-query] invalid remote response sequence or size", info->message());
 }
 TEST_F(remote_process_sql_test, ok_without_result_message_returns_no_rows) {
     service_.raw = [](std::string_view, auto*) { return grpc::Status::OK; };
@@ -843,6 +880,60 @@ TEST_F(remote_process_sql_test, unsupported_small_integer_cast_reports_prepare_e
     builder().text("SELECT C0 FROM worker_schema.T WHERE C0 > 0").tx(*tx).st(result).run();
     EXPECT_EQ(status::ok, result);
     EXPECT_GT(service_.calls.load(), 0);
+}
+
+TEST_F(remote_process_sql_test, cancellation_observed_after_rpc_ok_prevents_sql_success) {
+    setenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS", "5000", 1); // Bound the test RPC independently of the reply gate.
+    auto cancel_config = std::make_shared<request_cancel_config>();
+    cancel_config->enable(request_cancel_kind::scan);
+    cancel_config->enable(request_cancel_kind::find);
+    db_impl()->config()->req_cancel_config(cancel_config); // Only scan/find checks are enabled; downstream cancellation must not hide this result.
+    for (bool prior_error : {false, true}) {
+        SCOPED_TRACE(prior_error);
+        std::promise<void> reply{};
+        auto may_reply = reply.get_future().share();
+        service_.raw = [may_reply](std::string_view, auto*) {
+            if (may_reply.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+                return grpc::Status{grpc::StatusCode::DEADLINE_EXCEEDED, "test reply gate timed out"};
+            }
+            return grpc::Status::OK; // No messages: a ready condition means the RPC has finished.
+        };
+        std::unique_ptr<api::executable_statement> statement{};
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM worker_schema.T ORDER BY C0", statement));
+        auto tx = utils::create_transaction(*db_, true, false);
+        auto transaction = api::get_transaction_context(*tx);
+        auto store = std::make_unique<data::result_store>();
+        auto channel = std::make_shared<api::impl::result_store_channel>(takatori::util::maybe_shared_ptr{store.get()});
+        auto response = std::make_shared<tateyama::api::server::mock::test_response>();
+        completion_race_scheduler scheduler{};
+        auto context = api::impl::create_request_context(api::impl::get_impl(*db_), transaction,
+            channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+            request_info{1, {}, response}, true, nullptr, &scheduler);
+        auto original = create_error_info(error_code::value_evaluation_exception, "earlier SQL failure", status::err_expression_evaluation_failure);
+        scheduler.on_wait = [&] { reply.set_value(); };
+        scheduler.on_ready = [&] {
+            if (prior_error) error::set_error_info(*context, original);
+            response->cancel();
+        };
+        std::size_t completions{};
+        ASSERT_TRUE(executor::execute_async_on_context(api::impl::get_impl(*db_), context,
+            takatori::util::maybe_shared_ptr{statement.get()},
+            [&](status result, std::shared_ptr<error::error_info> error, std::shared_ptr<request_statistics>) {
+                ++completions;
+                EXPECT_EQ(prior_error ? status::err_expression_evaluation_failure : status::request_canceled, result);
+                ASSERT_TRUE(error);
+                EXPECT_EQ(prior_error ? error_code::value_evaluation_exception : error_code::request_canceled, error->code());
+                if (prior_error) EXPECT_EQ(original, error);
+                EXPECT_EQ(0, context->job()->task_count().load());
+                if (auto flows = context->flows()) {
+                    for (std::size_t i = 0; i < flows->size(); ++i) EXPECT_FALSE(flows->exists(i));
+                }
+            }, true));
+        EXPECT_TRUE(scheduler.injected);
+        EXPECT_EQ(1, completions);
+        EXPECT_EQ(0, transaction->termination_mgr().state().task_use_count());
+        if (!transaction->termination_mgr().state().going_to_abort()) EXPECT_EQ(status::ok, tx->abort());
+    }
 }
 
 TEST_F(remote_process_sql_test, completion_releases_tasks_and_flows_on_success) {

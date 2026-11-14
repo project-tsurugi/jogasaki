@@ -259,6 +259,10 @@ public:
             }
             started_ = true;
         }
+        // Cancellation already observed by wait() must not become success even if the RPC finished OK.
+        if (client_cancelled_.load(std::memory_order_acquire)) {
+            return fail(status::request_canceled, "remote process cancelled");
+        }
         for (auto const& payload : state_->take_results()) {
             if (auto result = write_result(payload)) {
                 return *result;

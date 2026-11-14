@@ -32,6 +32,13 @@ classify_remote_rtx_start_failure(status result, bool stopping) noexcept;
 [[nodiscard]] tateyama::grpc::distributed_query::remote_process_result
 remote_output_failure(status result);
 
+/** @brief Apply the L3-05 close condition after the RTX guard has completed cleanup.
+ * @details Preserve an existing execution failure; a successful execution requires an observed successful close.
+ */
+[[nodiscard]] tateyama::grpc::distributed_query::remote_process_result
+finalize_remote_process_result(tateyama::grpc::distributed_query::remote_process_result result,
+                               tateyama::grpc::distributed_query::remote_process_observation observed);
+
 /**
  * @brief execute a distributed-query process against this database and return encoded records.
  * @details Uses the existing process executor and owns no database. The database must outlive active calls.

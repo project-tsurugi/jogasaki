@@ -111,6 +111,19 @@ tateyama::grpc::distributed_query::remote_process_result remote_output_failure(s
     return {false, {}, "remote result encoding or sink failed", kind::internal};
 }
 
+tateyama::grpc::distributed_query::remote_process_result
+finalize_remote_process_result(tateyama::grpc::distributed_query::remote_process_result result,
+                               tateyama::grpc::distributed_query::remote_process_observation observed) {
+    // The close status is the result of removing this internal RTX's database handle.
+    // A missing observation cannot establish the successful close required by L3-05.
+    if (result.success && observed.close_status != static_cast<int>(status::ok)) {
+        result = {false, {}, "failed to close remote RTX",
+                  tateyama::grpc::distributed_query::remote_process_error_kind::internal};
+    }
+    result.observation = std::move(observed);
+    return result;
+}
+
 namespace {
 
 namespace scalar = takatori::scalar;
@@ -762,9 +775,8 @@ dq::remote_process_result remote_process_handler::execute_impl(std::string_view 
     } catch (...) {
         result = {false, {}, "remote process handler threw an unknown exception", remote_error::internal};
     }
-    // The transaction guard has run before its observations are attached to the result.
-    result.observation = std::move(observed);
-    return result;
+    // The guard has run, so close failure can be reflected before publishing a successful result.
+    return finalize_remote_process_result(std::move(result), std::move(observed));
 }
 
 } // namespace jogasaki::dist

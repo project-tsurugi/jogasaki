@@ -106,6 +106,7 @@ public:
 
     std::string location_name(location_id_type id) const override {
         if (id == 7) return "worker";
+        if (id == 8) return {};
         throw std::out_of_range("unknown location");
     }
 
@@ -321,6 +322,17 @@ TEST_F(operation_location_compiler_test, remote_location_on_inline_emit_is_rejec
     EXPECT_EQ(1, observed->extractions);
     EXPECT_EQ(1, observed->queried.size());
     EXPECT_NE(std::string::npos, message().find("did not separate")) << message();
+}
+
+TEST_F(operation_location_compiler_test, ambiguous_or_missing_locations_are_generation_errors) {
+    for (auto ids : {dist::operation_locations::location_id_set_type{}, {7, 8}, {9}, {8}}) {
+        auto observed = std::make_shared<probe>();
+        ctx_.operation_locations(extractor(observed, std::move(ids)));
+        EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM T0", ctx_));
+        ASSERT_TRUE(ctx_.error_info());
+        EXPECT_EQ(error_code::compile_exception, ctx_.error_info()->code());
+        EXPECT_EQ(status::err_compiler_error, ctx_.error_info()->status());
+    }
 }
 
 TEST_F(operation_location_compiler_test, extractor_failure_is_reported_with_error_info) {

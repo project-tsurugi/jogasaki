@@ -164,22 +164,36 @@ class block_builder_context {
 public:
     block_builder_context(remote_execution_block& block, yugawara::compiled_info const* compiled_info,
                           meta::record_meta const* result_meta, meta::variable_order const* result_order,
-                          remote_catalog_snapshot const* catalogs, std::string_view remote_server)
+                          remote_catalog_snapshot const* catalogs, std::string_view remote_server,
+                          remote_execution_block_generation_error& error)
         : block_(&block), compiled_info_(compiled_info), result_meta_(result_meta), result_order_(result_order),
-          catalogs_(catalogs), remote_server_(remote_server) {}
+          catalogs_(catalogs), remote_server_(remote_server), error_(&error) {}
+
+    void fail(status code, std::string message) const {
+        if (error_->code == status::ok) *error_ = {code, std::move(message)};
+    }
+
+    [[nodiscard]] bool failed() const { return error_->code != status::ok; }
 
     [[nodiscard]] std::optional<std::uint64_t> definition_id(yugawara::storage::index const& index) const {
         if (catalogs_) {
             auto identity = catalogs_->remote_definition(index);
             if (!identity || identity->kind != remote_declaration_kind::index ||
                 (!remote_server_.empty() && identity->remote_server_name != remote_server_)) {
+                fail(status::err_compiler_error, "cannot map storage reference to remote identity");
                 return std::nullopt;
             }
+            if (!identity->remote_definition_id) fail(status::err_invalid_argument, "missing storage definition identity");
             return identity->remote_definition_id;
         }
         // Standalone graph conversion may use a local worker declaration. A
         // coordinator sending to a server must use its retained remote snapshot.
-        return remote_server_.empty() ? index.definition_id() : std::nullopt;
+        if (!remote_server_.empty()) {
+            fail(status::err_compiler_error, "cannot map storage reference without a catalog snapshot");
+            return {};
+        }
+        if (!index.definition_id()) fail(status::err_invalid_argument, "missing storage definition identity");
+        return index.definition_id();
     }
 
     [[nodiscard]] std::uint64_t variable_id(takatori::descriptor::variable const& variable) {
@@ -194,8 +208,25 @@ public:
         return id;
     }
 
+    [[nodiscard]] std::uint64_t define_variable(takatori::descriptor::variable const& variable) {
+        if (std::find(variables_.begin(), variables_.end(), variable) != variables_.end()) {
+            fail(status::err_invalid_argument, "duplicate stream variable definition");
+        }
+        return variable_id(variable);
+    }
+
+    [[nodiscard]] std::optional<std::uint64_t> referenced_variable(takatori::descriptor::variable const& variable) {
+        auto it = std::find(variables_.begin(), variables_.end(), variable);
+        if (it == variables_.end()) {
+            fail(status::err_invalid_argument, "unresolved stream variable reference");
+            return {};
+        }
+        return static_cast<std::uint64_t>(it - variables_.begin());
+    }
+
     [[nodiscard]] std::optional<std::uint64_t> expression_index(scalar::expression const& expression) {
         if (++expression_count_ > remote_scalar_expression_limit) {
+            fail(status::err_invalid_argument, "too many scalar expressions");
             return {};
         }
         remote_scalar_expression result{};
@@ -221,7 +252,8 @@ public:
                     return std::nullopt;
                 }
                 result.kind = remote_scalar_expression_kind::variable_reference;
-                result.variable_id = variable_id(e.variable());
+                result.variable_id = referenced_variable(e.variable());
+                if (!result.variable_id) return {};
                 break;
             }
             case scalar::expression_kind::unary: {
@@ -286,6 +318,7 @@ public:
         auto external = yugawara::binding::extract_if<yugawara::binding::external_relation_info>(offer.destination());
         auto external_relation_id = external ? static_cast<std::uint64_t>(external->relation_id()) : 0;
         if (external && external->columns().size() != offer.columns().size()) {
+            fail(status::err_invalid_argument, "external relation column count mismatch");
             return false;
         }
         op.offer = remote_offer{external_relation_id, {}};
@@ -293,24 +326,44 @@ public:
         block_->result_schema.resize(offer.columns().size());
         std::vector<bool> assigned(offer.columns().size());
         if (result_meta_ && result_meta_->field_count() != offer.columns().size()) {
+            fail(status::err_invalid_argument, "result schema width mismatch");
             return false;
         }
+        std::vector<takatori::descriptor::variable> destinations{};
         for (auto const& mapping : offer.columns()) {
+            if (std::find(destinations.begin(), destinations.end(), mapping.destination()) != destinations.end()) {
+                fail(status::err_invalid_argument, "duplicate output column mapping");
+                return false;
+            }
+            destinations.emplace_back(mapping.destination());
+            if (result_order_ && std::find(result_order_->begin(), result_order_->end(), mapping.destination()) == result_order_->end()) {
+                fail(status::err_invalid_argument, "unresolved output column order");
+                return false;
+            }
             auto column_id = result_order_ ? result_order_->index(mapping.destination()) : op.offer->columns.size();
             if (external) {
                 // Native external columns define the output layout, independent of offer order.
                 auto const& columns = external->columns();
                 auto it = std::find(columns.begin(), columns.end(), mapping.destination());
-                if (it == columns.end()) return false;
+                if (it == columns.end()) {
+                    fail(status::err_invalid_argument, "unresolved external output column");
+                    return false;
+                }
                 auto position = static_cast<std::size_t>(it - columns.begin());
-                if (result_order_ && column_id != position) return false;
+                if (result_order_ && column_id != position) {
+                    fail(status::err_invalid_argument, "output column order mismatch");
+                    return false;
+                }
                 column_id = position;
             }
             if (column_id >= assigned.size() || assigned[column_id]) {
+                fail(status::err_invalid_argument, "invalid or duplicate output column mapping");
                 return false;
             }
             assigned[column_id] = true;
-            op.offer->columns.emplace_back(remote_offer_column{variable_id(mapping.source()), column_id});
+            auto source = referenced_variable(mapping.source());
+            if (!source) return false;
+            op.offer->columns.emplace_back(remote_offer_column{*source, column_id});
             remote_result_column result_column{column_id, {}, result_meta_ ? result_meta_->nullable(column_id) : false};
             if (compiled_info_) {
                 std::ostringstream type{};
@@ -332,6 +385,7 @@ private:
     remote_catalog_snapshot const* catalogs_{};
     std::string_view remote_server_{};
     std::vector<takatori::descriptor::variable> variables_{};
+    remote_execution_block_generation_error* error_;
 };
 
 } // namespace
@@ -353,7 +407,7 @@ template <class Source>
             }
         }
         result.columns.emplace_back(remote_source_column{
-            std::string{column.simple_name()}, context.variable_id(mapping.destination()),
+            std::string{column.simple_name()}, context.define_variable(mapping.destination()),
             column_index, encode_remote_type(column.type()),
         });
     }
@@ -427,7 +481,7 @@ template <class Source>
                     return false;
                 }
                 op.project_columns.emplace_back(
-                    remote_project_column{context.variable_id(column.variable()), *expression_index});
+                    remote_project_column{context.define_variable(column.variable()), *expression_index});
             }
             return true;
         case relation::expression_kind::offer:
@@ -442,45 +496,58 @@ std::optional<remote_execution_block> create_remote_execution_block(relation::gr
                                                                     meta::record_meta const* result_meta,
                                                                     meta::variable_order const* result_order,
                                                                     remote_catalog_snapshot const* catalogs,
-                                                                    std::string_view remote_server) {
+                                                                    std::string_view remote_server,
+                                                                    remote_execution_block_generation_error* error) {
+    remote_execution_block_generation_error diagnostic{};
+    if (error) *error = {};
+    auto failure = [&](status code, std::string message) -> std::optional<remote_execution_block> {
+        if (error) *error = diagnostic.code == status::ok
+            ? remote_execution_block_generation_error{code, std::move(message)} : diagnostic;
+        return {};
+    };
     if (!is_remote_process_execution_block_shape(graph)) {
-        return std::nullopt;
+        return failure(status::err_unsupported, "unsupported remote process shape");
     }
 
-    remote_execution_block block{};
-    block_builder_context context{block, compiled_info, result_meta, result_order, catalogs, remote_server};
-    auto const* current = first(graph);
-    std::uint64_t operator_id{};
-    while (current != nullptr) {
-        auto const terminal = current->kind() == relation::expression_kind::offer;
-        remote_operator op{
-            operator_id,
-            operator_kind(current->kind()),
-            operator_id == 0 ? std::nullopt : std::optional<std::uint64_t>{operator_id - 1},
-            terminal ? std::nullopt : std::optional<std::uint64_t>{operator_id},
-            std::nullopt,
-        };
-        if (!create_operator_payload(*current, op, context)) {
-            return std::nullopt;
+    try {
+        remote_execution_block block{};
+        block_builder_context context{block, compiled_info, result_meta, result_order, catalogs, remote_server, diagnostic};
+        auto const* current = first(graph);
+        std::uint64_t operator_id{};
+        while (current != nullptr) {
+            auto const terminal = current->kind() == relation::expression_kind::offer;
+            remote_operator op{
+                operator_id,
+                operator_kind(current->kind()),
+                operator_id == 0 ? std::nullopt : std::optional<std::uint64_t>{operator_id - 1},
+                terminal ? std::nullopt : std::optional<std::uint64_t>{operator_id},
+                std::nullopt,
+            };
+            if (!create_operator_payload(*current, op, context) || context.failed()) {
+                return failure(status::err_unsupported, "unsupported remote expression, type, or operator");
+            }
+            if (op.source && (!op.source->definition_id ||
+                std::any_of(op.source->columns.begin(), op.source->columns.end(), [](auto const& column) {
+                    return !column.column_index || column.type_payload.empty();
+                }))) {
+                return failure(status::err_invalid_argument, "missing storage definition identity, column position, or type");
+            }
+            block.operators.emplace_back(std::move(op));
+            if (!terminal) {
+                block.values.emplace_back(operator_id);
+            }
+            ++operator_id;
+            current = downstream(*current);
         }
-        if (op.source && (!op.source->definition_id ||
-            std::any_of(op.source->columns.begin(), op.source->columns.end(), [](auto const& column) {
-                return !column.column_index || column.type_payload.empty();
-            }))) {
-            return std::nullopt;
+        block.result_value_id = block.values.back();
+        bool unsupported{};
+        if (auto message = validate_remote_scalar_expressions(block, &unsupported)) {
+            return failure(unsupported ? status::err_unsupported : status::err_invalid_argument, std::move(*message));
         }
-        block.operators.emplace_back(std::move(op));
-        if (!terminal) {
-            block.values.emplace_back(operator_id);
-        }
-        ++operator_id;
-        current = downstream(*current);
+        return block;
+    } catch (std::invalid_argument const& e) {
+        return failure(status::err_unsupported, e.what());
     }
-    block.result_value_id = block.values.back();
-    if (validate_remote_scalar_expressions(block)) {
-        return std::nullopt;
-    }
-    return block;
 }
 
 static void serialize_source(std::ostream& out, remote_operator const& op) {

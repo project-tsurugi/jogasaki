@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -61,6 +62,10 @@
 #include <jogasaki/dist/remote_sql_error.h>
 #include <jogasaki/dist/remote_rpc_error.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/exchange/forward/flow.h>
+#include <jogasaki/executor/exchange/forward/sink.h>
+#include <jogasaki/executor/exchange/forward/input_partition.h>
+#include <jogasaki/model/flow_repository.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/plan/mirror_container.h>
@@ -130,6 +135,19 @@ public:
             EXPECT_TRUE(task.check()); // Observe cancellation before the task resumes.
         }
         scheduler::serial_task_scheduler::do_schedule_conditional_task(std::move(task));
+    }
+};
+// Observe a failed remote resume before its queued DAG event can run the downstream reader.
+class batch_observation_scheduler final : public completion_race_scheduler {
+public:
+    std::function<void(request_context&)> after_failure{};
+    bool probed{};
+    void do_schedule_task(scheduler::flat_task&& task, scheduler::schedule_option opt) override {
+        if (injected && !probed && task.req_context()->status_code() == status::err_invalid_state) {
+            probed = true;
+            after_failure(*task.req_context());
+        }
+        scheduler::serial_task_scheduler::do_schedule_task(std::move(task), opt);
     }
 };
 class rpc_service final : public wire::DistributedQueryService::Service {
@@ -573,6 +591,87 @@ TEST_F(remote_process_sql_test, ok_without_result_message_returns_no_rows) {
     EXPECT_TRUE(rows.empty());
     EXPECT_EQ(1, service_.calls.load());
 }
+TEST_F(remote_process_sql_test, invalid_row_in_batch_publishes_no_rows_to_forward_exchange) {
+    setenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS", "5000", 1);
+    for (bool invalid_suffix : {false, true}) {
+        SCOPED_TRACE(invalid_suffix);
+        std::promise<void> reply{};
+        auto may_reply = reply.get_future().share();
+        service_.raw = [this, may_reply, invalid_suffix](std::string_view payload, auto* writer) {
+            auto result = service_.handler(payload);
+            if (!result.success) return grpc::Status{grpc::StatusCode::INTERNAL, result.error};
+            proto::distributed_query::RemoteExecutionResult decoded{};
+            if (!decoded.ParseFromString(result.payload) || decoded.encoded_rows().empty()) {
+                return grpc::Status{grpc::StatusCode::INTERNAL, "missing valid fixture row"};
+            }
+            wire::RemoteProcessResult message{};
+            message.set_sequence_number(0);
+            message.add_record_list(decoded.encoded_rows(0));
+            if (invalid_suffix) message.add_record_list(std::string(1, '\0'));
+            if (may_reply.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+                return grpc::Status{grpc::StatusCode::DEADLINE_EXCEEDED, "test reply gate timed out"};
+            }
+            return writer->Write(message) ? grpc::Status::OK : grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
+        };
+        std::unique_ptr<api::executable_statement> statement{};
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM worker_schema.T", statement));
+        auto tx = utils::create_transaction(*db_, true, false);
+        auto transaction = api::get_transaction_context(*tx);
+        auto store = std::make_unique<data::result_store>();
+        auto channel = std::make_shared<api::impl::result_store_channel>(takatori::util::maybe_shared_ptr{store.get()});
+        batch_observation_scheduler scheduler{};
+        auto context = api::impl::create_request_context(api::impl::get_impl(*db_), transaction,
+            channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, true, nullptr, &scheduler);
+        std::vector<std::shared_ptr<executor::exchange::forward::input_partition>> partitions{};
+        scheduler.on_wait = [&] {
+            auto flows = context->flows();
+            ASSERT_TRUE(flows);
+            for (std::size_t i = 0; i < flows->size(); ++i) {
+                auto* forward = dynamic_cast<executor::exchange::forward::flow*>(flows->at(i));
+                if (!forward) continue;
+                for (std::size_t j = 0; j < forward->sink_count(); ++j) {
+                    auto& sink = dynamic_cast<executor::exchange::forward::sink&>(forward->sink_at(j));
+                    auto partition = sink.partition();
+                    accessor::record_ref row{};
+                    EXPECT_FALSE(partition->try_pop(row)); // Initialize and check before any RPC row arrives.
+                    partitions.emplace_back(std::move(partition));
+                }
+            }
+            EXPECT_FALSE(partitions.empty());
+            reply.set_value();
+        };
+        scheduler.on_ready = [] {};
+        scheduler.after_failure = [&](request_context& request) {
+            auto info = request.error_info();
+            ASSERT_TRUE(info);
+            EXPECT_EQ("[distributed-query] failed to decode remote result record", info->message());
+            for (auto const& partition : partitions) {
+                accessor::record_ref row{};
+                EXPECT_FALSE(partition->try_pop(row)); // The downstream reader has not run yet.
+            }
+        };
+        std::size_t completions{};
+        ASSERT_TRUE(executor::execute_async_on_context(api::impl::get_impl(*db_), context,
+            takatori::util::maybe_shared_ptr{statement.get()},
+            [&](status result, std::shared_ptr<error::error_info> info, std::shared_ptr<request_statistics>) {
+                ++completions;
+                EXPECT_EQ(invalid_suffix ? status::err_invalid_state : status::ok, result);
+                if (invalid_suffix) {
+                    ASSERT_TRUE(info);
+                    EXPECT_EQ(error_code::internal_exception, info->code());
+                }
+            }, true));
+        ASSERT_TRUE(scheduler.injected);
+        EXPECT_EQ(1, completions);
+        EXPECT_EQ(invalid_suffix, scheduler.probed);
+        auto rows = static_cast<std::size_t>(std::distance(store->begin(), store->end()));
+        for (auto const& partition : partitions) rows += partition->count();
+        EXPECT_EQ(invalid_suffix ? 0U : 1U, rows);
+        partitions.clear(); // Release their memory before the transaction/database is destroyed.
+        if (!transaction->termination_mgr().state().going_to_abort()) EXPECT_EQ(status::ok, tx->abort());
+    }
+}
+
 TEST_F(remote_process_sql_test, invalid_record_between_messages_fails_sql) {
     service_.raw = [this](std::string_view payload, auto* writer) {
         auto result = dist::remote_process_handler{*db_}(payload);
@@ -1076,10 +1175,50 @@ TEST(remote_sql_error_test, rejects_duplicate_envelope_fields_and_duplicate_sql_
                 wire_format::WriteBytes(3, detail.SerializeAsString(), &out);
             }
         }
-        bool protocol_error{};
+        bool protocol_error{true};
         EXPECT_FALSE(dist::deserialize_remote_sql_error(bytes, 2, error.detail(), protocol_error));
+        EXPECT_FALSE(protocol_error); // An unparseable envelope falls back before status comparison.
     }
 }
+TEST(remote_sql_error_test, checks_status_consistency_before_selecting_sql_detail) {
+    struct sample {
+        grpc::StatusCode inner;
+        grpc::StatusCode outer;
+        bool same_message;
+        bool sql_detail;
+        bool protocol_error;
+    };
+    for (auto const& test : std::array<sample, 4>{{
+             {grpc::StatusCode::UNKNOWN, grpc::StatusCode::INTERNAL, true, false, true},
+             {grpc::StatusCode::UNKNOWN, grpc::StatusCode::UNKNOWN, false, false, true},
+             {grpc::StatusCode::INTERNAL, grpc::StatusCode::INTERNAL, true, true, false},
+             {grpc::StatusCode::UNKNOWN, grpc::StatusCode::UNKNOWN, true, false, false}}}) {
+        SCOPED_TRACE(::testing::Message{} << "inner=" << test.inner << " outer=" << test.outer
+                     << " same_message=" << test.same_message << " sql_detail=" << test.sql_detail);
+        proto::sql::response::Error error{};
+        error.set_code(proto::sql::error::EVALUATION_EXCEPTION);
+        error.set_detail("worker evaluation failed");
+        std::string bytes{};
+        {
+            google::protobuf::io::StringOutputStream stream{&bytes};
+            google::protobuf::io::CodedOutputStream out{&stream};
+            using format = google::protobuf::internal::WireFormatLite;
+            format::WriteEnum(1, test.inner, &out);
+            format::WriteString(2, "worker status", &out);
+            if (test.sql_detail) {
+                google::protobuf::Any detail{};
+                detail.set_type_url("type.googleapis.com/jogasaki.proto.sql.response.Error");
+                detail.set_value(error.SerializeAsString());
+                format::WriteBytes(3, detail.SerializeAsString(), &out);
+            }
+        }
+        bool protocol_error{true};
+        EXPECT_FALSE(dist::deserialize_remote_sql_error(bytes, test.outer,
+            test.same_message ? "worker status" : "different outer status", protocol_error));
+        EXPECT_EQ(test.protocol_error, protocol_error);
+    }
+}
+
 TEST(remote_sql_error_test, ignores_unrelated_detail_and_restores_sql_status) {
     proto::sql::response::Error error{};
     error.set_code(proto::sql::error::EVALUATION_EXCEPTION);

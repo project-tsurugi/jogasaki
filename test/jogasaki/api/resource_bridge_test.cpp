@@ -16,6 +16,8 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <mutex>
+#include <glog/logging.h>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -474,6 +476,65 @@ TEST_F(remote_bridge_lifecycle_test, destructor_unregisters_both_handlers) {
     EXPECT_EQ(grpc::StatusCode::UNIMPLEMENTED, process_status().error_code());
 }
 
+
+namespace {
+class configuration_log_capture final : public google::LogSink {
+public:
+    void send(google::LogSeverity severity, char const*, char const*, int,
+              google::LogMessageTime const&, char const* message, std::size_t length) override {
+        if (severity != google::GLOG_INFO) return;
+        std::lock_guard lock{mutex_};
+        messages_.append(message, length).append("\n");
+    }
+    [[nodiscard]] std::string messages() const {
+        std::lock_guard lock{mutex_};
+        return messages_;
+    }
+private:
+    mutable std::mutex mutex_{};
+    std::string messages_{};
+};
+}
+
+TEST(resource_bridge_configuration_test, logs_roles_and_server_settings_without_certificate_or_full_uri) {
+    test::temporary_folder directory{};
+    directory.prepare();
+    auto cleanup = utils::finally([&] { directory.clean(); });
+    auto certificate = std::filesystem::path{directory.path()} / "private-root.pem";
+    { std::ofstream out{certificate}; out << ::jogasaki::testing::remote_test_root_certificate; }
+    auto minloglevel = FLAGS_minloglevel;
+    FLAGS_minloglevel = 0;
+    auto restore_logging = utils::finally([&] { FLAGS_minloglevel = minloglevel; });
+    for (bool remote_enabled : {false, true}) {
+        SCOPED_TRACE(remote_enabled);
+        configuration_log_capture capture{};
+        google::AddLogSink(&capture);
+        auto remove_sink = utils::finally([&] { google::RemoveLogSink(&capture); });
+        std::stringstream input{};
+        input << "[distributed_query_coordinator]\nenabled=true\n"
+              << "[distributed_query_remote]\nenabled=" << std::boolalpha << remote_enabled << "\n"
+              << "[distributed_query_client]\nname=worker|second\n"
+              << "uri=dns:///worker.example.test:49381|unix:///tmp/private-dq.sock\n"
+              << "secure=true|false\nroot_cert=" << certificate.string() << "|unused-secret.pem\n";
+        auto config = std::make_shared<tateyama::api::configuration::whole>(input,
+            std::string{default_configuration} + "\n[distributed_query_coordinator]\nenabled=false\n"
+            "[distributed_query_remote]\nenabled=false\n[distributed_query_client]\n"
+            "name=\nuri=\nsecure=false\nroot_cert=grpc_default\n");
+        framework::environment env{framework::boot_mode::database_server, config};
+        bridge resource{};
+        ASSERT_TRUE(resource.setup(env));
+        auto messages = capture.messages();
+        EXPECT_NE(std::string::npos, messages.find("distributed_query_coordinator.enabled=1"));
+        EXPECT_NE(std::string::npos, messages.find(std::string{"distributed_query_remote.enabled="} + (remote_enabled ? "1" : "0")));
+        EXPECT_NE(std::string::npos, messages.find("event:validated server_count:2"));
+        EXPECT_NE(std::string::npos, messages.find("event:server name:worker uri_scheme:dns secure:true"));
+        EXPECT_NE(std::string::npos, messages.find("event:server name:second uri_scheme:unix secure:false"));
+        for (auto const& secret : {"BEGIN CERTIFICATE", "private-root.pem", "unused-secret.pem",
+                                   "worker.example.test", "/tmp/private-dq.sock"}) {
+            EXPECT_EQ(std::string::npos, messages.find(secret)) << secret;
+        }
+    }
+}
 
 TEST(resource_bridge_configuration_test, rejects_invalid_remote_enabled_during_setup) {
     std::stringstream input{"[distributed_query_remote]\nenabled=invalid\n"};

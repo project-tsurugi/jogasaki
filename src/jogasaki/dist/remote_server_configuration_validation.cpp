@@ -27,6 +27,12 @@
 #include <jogasaki/utils/finally.h>
 
 namespace jogasaki::dist {
+std::string_view remote_server_uri_scheme(std::string_view uri) noexcept {
+    if (uri.substr(0, 4) == "dns:") return "dns";
+    if (uri.substr(0, 5) == "unix:") return "unix";
+    return "other";
+}
+
 bool valid_remote_server_uri(std::string_view uri, bool secure) noexcept {
     if (uri.find('\0') != std::string_view::npos) return false;
     constexpr std::string_view unix_prefix{"unix://"};

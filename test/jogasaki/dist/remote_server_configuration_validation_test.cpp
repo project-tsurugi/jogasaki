@@ -25,6 +25,13 @@
 #include <tateyama/api/configuration.h>
 
 namespace jogasaki::testing {
+TEST(remote_server_configuration_validation_test, log_scheme_does_not_expose_unrecognized_targets) {
+    EXPECT_EQ("dns", dist::remote_server_uri_scheme("dns:///worker:49381"));
+    EXPECT_EQ("unix", dist::remote_server_uri_scheme("unix:///tmp/dq.sock"));
+    for (auto uri : {"", "private-target", "private-host:49381", "user:secret@host"}) {
+        EXPECT_EQ("other", dist::remote_server_uri_scheme(uri));
+    }
+}
 TEST(remote_server_configuration_validation_test, accepts_single_dns_and_absolute_plain_unix_targets) {
     for (auto uri : {"dns:///worker:1", "dns:///worker.example:65535", "dns:///127.0.0.1:0080", "dns:///[::1]:12345"}) {
         EXPECT_TRUE(dist::valid_remote_server_uri(uri, false)) << uri;

@@ -84,6 +84,7 @@ bool bridge::setup(framework::environment& env) {
         LOG_LP(ERROR) << "invalid configuration - distributed_query_remote.enabled: " << e.what();
         return false;
     }
+    LOG_LP(INFO) << "distributed_query_remote.enabled=" << remote_enabled_;
     return true;
 }
 
@@ -614,7 +615,7 @@ static bool process_distributed_query_client_config(
         }
         if ((*uris)[i].empty() || ! dist::valid_remote_server_uri((*uris)[i], secure_values[i])) {
             LOG_LP(ERROR) << "invalid configuration - distributed_query_client.uri contains unsupported value: "
-                          << (*uris)[i];
+                          << "scheme=" << dist::remote_server_uri_scheme((*uris)[i]);
             return false;
         }
 
@@ -670,6 +671,15 @@ static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama
         }
     }
 
+    if (coordinator_enabled) {
+        auto const& servers = ret->distributed_query_remote_servers();
+        LOG_LP(INFO) << "distributed query configuration event:validated server_count:" << servers.size();
+        for (auto const& server : servers) {
+            auto scheme = dist::remote_server_uri_scheme(server.uri);
+            LOG_LP(INFO) << "distributed query configuration event:server name:" << server.name
+                         << " uri_scheme:" << scheme << " secure:" << std::boolalpha << server.secure;
+        }
+    }
     return ret;
 }
 

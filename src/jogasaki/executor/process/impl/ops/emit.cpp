@@ -37,7 +37,7 @@
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/string_manipulation.h>
 #include <jogasaki/utils/validation.h>
@@ -82,8 +82,7 @@ operation_status emit::operator()(emit_context &ctx) {
     }
     auto target = ctx.buffer_.ref();
     for(auto &f : fields_) {
-        utils::copy_nullable_field(
-            f.type_,
+        f.operations_.copy_nullable(
             target,
             f.target_offset_,
             f.target_nullity_offset_,
@@ -166,7 +165,7 @@ std::vector<details::emit_field> emit::create_fields(
         auto& info = block_info().at(c.source());
         assert_with_exception(info.region());
         fields.emplace_back(details::emit_field{
-            meta_->at(pos),
+            data::field_operations::for_type(meta_->at(pos)),
             info.value_offset(),
             meta_->value_offset(pos),
             info.nullity_offset(),

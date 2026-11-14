@@ -30,7 +30,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::mock {

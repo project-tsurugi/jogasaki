@@ -30,7 +30,7 @@
 #include <jogasaki/executor/exchange/shuffle/pointer_table.h>
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
 #include <jogasaki/executor/hash.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -53,7 +53,12 @@ input_partition::input_partition(
     initial_hash_table_size_(initial_hash_table_size),
     max_pointers_(pointer_table_size),
     key_buf_(info_->pre().group_meta()->key_shared())
-{}
+{
+    key_operations_.reserve(info_->key_indices().size());
+    for (auto index : info_->key_indices()) {
+        key_operations_.emplace_back(data::field_operations::for_type(info_->record_meta()->at(index)));
+    }
+}
 
 bool input_partition::write(accessor::record_ref record) {
     initialize_lazy();
@@ -63,8 +68,7 @@ bool input_partition::write(accessor::record_ref record) {
     auto& record_meta = info_->record_meta();
     for(std::size_t i=0, n = key_indices.size(); i < n; ++i) {
         auto input_record_field = key_indices[i];
-        utils::copy_nullable_field(
-            record_meta->at(input_record_field),
+        key_operations_[i].copy_nullable(
             key_buf,
             key_meta->value_offset(i),
             key_meta->nullity_offset(i),

@@ -196,4 +196,34 @@ TEST_P(sql_ties_ordered_by_primary_key_test, composite_primary_key) {
     verify("SELECT * FROM ec{} ORDER BY c, a, b LIMIT 25");
 }
 
+TEST_P(sql_ties_ordered_by_primary_key_test, backward_changes_plan) {
+    // make sure the comparison in backward_scan is not trivial - the secondary index is read backward without sort
+    auto q = "SELECT * FROM ev{} WHERE dev = 2 ORDER BY id DESC LIMIT 5"sv;
+    auto with = plan(with_suffix(q, "_on"));
+    auto without = plan(with_suffix(q, "_off"));
+    EXPECT_NE(std::string::npos, with.find(R"("direction":"backward")")) << with;
+    EXPECT_EQ(std::string::npos, with.find(R"("kind":"group")")) << with;
+    EXPECT_NE(std::string::npos, without.find(R"("kind":"group")")) << without;
+}
+
+TEST_P(sql_ties_ordered_by_primary_key_test, backward_scan) {
+    // the secondary index is read backward, where the entries with the same key are in the reverse order of the
+    // primary key
+    verify("SELECT * FROM ev{} WHERE dev = 2 ORDER BY id DESC LIMIT 5");
+    verify("SELECT * FROM ev{} WHERE dev = 2 ORDER BY id DESC");
+    verify("SELECT * FROM ev{} WHERE dev = 3 AND p > 10 ORDER BY id DESC LIMIT 3");
+    verify("SELECT * FROM ev{} ORDER BY dev DESC, id DESC LIMIT 20");
+    verify("SELECT * FROM ev{} WHERE dev > 1 ORDER BY dev DESC, id DESC LIMIT 10");
+    verify("SELECT * FROM ev{} WHERE dev < 2 ORDER BY dev DESC, id DESC LIMIT 10");
+    // the descending primary key is read backward to get the ascending order
+    verify("SELECT * FROM ed{} WHERE dev = 1 ORDER BY id LIMIT 5");
+    verify("SELECT * FROM ed{} ORDER BY dev DESC, id LIMIT 20");
+    // the composite primary key
+    verify("SELECT * FROM ec{} WHERE c = 1 ORDER BY a DESC, b DESC LIMIT 5");
+    verify("SELECT * FROM ec{} WHERE c = 1 ORDER BY a DESC LIMIT 5");
+    verify("SELECT * FROM ec{} ORDER BY c DESC, a DESC, b DESC LIMIT 25");
+    // not optimized - the directions of the sort keys are mixed
+    verify("SELECT * FROM ev{} ORDER BY dev, id DESC LIMIT 20");
+}
+
 }  // namespace jogasaki::testing

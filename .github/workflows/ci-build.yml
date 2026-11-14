@@ -15,9 +15,14 @@ on:
       cmake_build_option:
         type: string
         default: ''
+      distributed_query_stack_root:
+        description: 'Absolute path of an isolated prebuilt stack on the runner'
+        type: string
+        default: ''
 
 jobs:
   Test:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.distributed_query_stack_root == '' }}
     runs-on: [self-hosted, docker]
     permissions:
       checks: write
@@ -70,6 +75,7 @@ jobs:
           ctest_input: 'build/test/gtest_results/**/*.xml'
 
   Analysis:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.distributed_query_stack_root == '' }}
     runs-on: [self-hosted, docker]
     permissions:
       checks: write
@@ -128,3 +134,35 @@ jobs:
       - name: Verify
         uses: project-tsurugi/tsurugi-annotations-action@v2
         if: always()
+
+  Integration:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.distributed_query_stack_root != '' }}
+    runs-on: [self-hosted, docker]
+    timeout-minutes: 60
+    env:
+      DQ_STACK_ROOT: ${{ inputs.distributed_query_stack_root }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run C1, C2 and acceptance checks
+        shell: bash
+        run: |
+          python3 test/integration/distributed_query_suite.py \
+            --stack-manifest "$DQ_STACK_ROOT/stack-manifest.json" \
+            --prefix "$DQ_STACK_ROOT/install" \
+            --server "$DQ_STACK_ROOT/build-bootstrap/src/tsurugidb" \
+            --tgctl "$DQ_STACK_ROOT/build-bootstrap/src/tgctl" \
+            --tgsql "$DQ_STACK_ROOT/tgsql" \
+            --client-jar "$DQ_STACK_ROOT/tgsql.jar" \
+            --jni-library "$DQ_STACK_ROOT/libtsubakuro.so" \
+            --work-dir "$RUNNER_TEMP/dq-integration-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --database-name-prefix "$(id -un)-dq-ci-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+      - name: Preserve results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: distributed-query-results
+          path: |
+            ${{ runner.temp }}/dq-integration-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json
+            ${{ runner.temp }}/dq-integration-${{ github.run_id }}-${{ github.run_attempt }}/**/*.log
+            ${{ runner.temp }}/dq-integration-${{ github.run_id }}-${{ github.run_attempt }}/**/*.ini
+          retention-days: 14

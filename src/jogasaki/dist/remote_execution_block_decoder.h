@@ -1,0 +1,57 @@
+/*
+ * Copyright 2018-2026 Project Tsurugi.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+
+
+#include <cstddef>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include <jogasaki/dist/remote_execution_block.h>
+
+namespace jogasaki::dist {
+
+// Public result fields intentionally remain aggregate-accessible alongside the success query.
+// NOLINTBEGIN(misc-non-private-member-variables-in-classes)
+struct remote_execution_block_decode_result {
+    std::optional<remote_execution_block> block{};
+    std::string error{};
+    bool unsupported{};
+    // Validated source-to-offer indices into block->operators; independent of storage order.
+    std::vector<std::size_t> operator_order{};
+
+    [[nodiscard]] explicit operator bool() const noexcept { return block.has_value(); }
+};
+// NOLINTEND(misc-non-private-member-variables-in-classes)
+
+// Implementation resource guards, independent of the wire version.
+inline constexpr std::size_t remote_scalar_expression_limit = 512;
+inline constexpr std::size_t remote_scalar_expression_expansion_limit = 10000;
+
+/** @brief Validate all scalar definitions without evaluating them, and bound referenced tree expansion. */
+[[nodiscard]] std::optional<std::string> validate_remote_scalar_expressions(
+    remote_execution_block const& block, bool* unsupported = nullptr);
+
+[[nodiscard]] std::optional<std::string> validate_remote_execution_block(
+    remote_execution_block const& block, std::vector<std::size_t>* operator_order = nullptr,
+    bool* unsupported = nullptr);
+
+[[nodiscard]] remote_execution_block_decode_result decode_remote_execution_block(std::string_view payload);
+
+} // namespace jogasaki::dist

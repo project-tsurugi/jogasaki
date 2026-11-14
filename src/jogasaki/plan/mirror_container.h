@@ -15,12 +15,16 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <takatori/plan/process.h>
 
+#include <jogasaki/dist/operation_location.h>
+#include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/plan/statement_work_level.h>
@@ -126,6 +130,38 @@ public:
         has_write_operations_ = arg;
     }
 
+    /**
+     * @brief set the process placement captured from the compiler's operation location result
+     * @param locations the captured placement, or nullptr if the compiler provided no such result
+     */
+    void process_locations(std::shared_ptr<dist::process_locations const> locations) noexcept;
+
+    /**
+     * @brief accessor to the captured process placement
+     * @returns the placement, or nullptr if not captured
+     */
+    [[nodiscard]] std::shared_ptr<dist::process_locations const> const& process_locations() const noexcept;
+
+    // Prepared and executable statements share this snapshot after catalog DROP.
+    void remote_catalogs(std::shared_ptr<dist::remote_catalog_snapshot const> snapshot) noexcept {
+        remote_catalogs_ = std::move(snapshot);
+    }
+    [[nodiscard]] std::shared_ptr<dist::remote_catalog_snapshot const> const& remote_catalogs() const noexcept {
+        return remote_catalogs_;
+    }
+
+    // Keep only registrations actually used by this plan, independently of the full snapshot.
+    void add_remote_catalog_dependency(std::shared_ptr<yugawara::schema::catalog const> const& catalog) {
+        if (std::find(remote_catalog_dependencies_.begin(), remote_catalog_dependencies_.end(), catalog)
+            == remote_catalog_dependencies_.end()) {
+            remote_catalog_dependencies_.push_back(catalog);
+        }
+    }
+    [[nodiscard]] std::vector<std::shared_ptr<yugawara::schema::catalog const>> const&
+    remote_catalog_dependencies() const noexcept {
+        return remote_catalog_dependencies_;
+    }
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
@@ -133,6 +169,9 @@ private:
     statement_work_level work_level_{};
     storage::storage_operation storage_operation_{};
     bool has_write_operations_{};
+    std::shared_ptr<dist::process_locations const> process_locations_{};
+    std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
+    std::vector<std::shared_ptr<yugawara::schema::catalog const>> remote_catalog_dependencies_{};
 };
 
 } // namespace jogasaki::plan

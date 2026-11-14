@@ -580,4 +580,35 @@ TEST_F(storage_metadata_serializer_test, already_exists_error) {
 }
 
 
+TEST_F(storage_metadata_serializer_test, supplied_definition_ids_preserve_presence_through_storage_metadata) {
+    namespace storage = yugawara::storage;
+    for (auto id : {std::optional<std::uint64_t>{}, std::optional<std::uint64_t>{0},
+                    std::optional<std::uint64_t>{1257}}) {
+        auto table = std::make_shared<storage::table>("ID_PROBE",
+            std::initializer_list<storage::column>{{"C0", takatori::type::int8{},
+                yugawara::variable::criteria{yugawara::variable::nullity{false}}}});
+        table->definition_id(id);
+        auto index = std::make_shared<storage::index>(id, table, "ID_PROBE",
+            std::vector<storage::index::key>{table->columns()[0]},
+            std::vector<storage::index::column_ref>{},
+            storage::index_feature_set{storage::index_feature::primary, storage::index_feature::find,
+                storage::index_feature::scan, storage::index_feature::unique});
+        storage::configurable_provider source{};
+        source.add_table(table);
+        source.add_index(index);
+        utils::storage_metadata_serializer serializer{};
+        std::string bytes{};
+        ASSERT_NO_THROW(serializer.serialize(*index, bytes));
+        storage::configurable_provider recovered{};
+        ASSERT_NO_THROW(serializer.deserialize(bytes, source, recovered));
+        auto restored = recovered.find_index("ID_PROBE");
+        ASSERT_TRUE(restored);
+        EXPECT_EQ(id, restored->definition_id());
+        EXPECT_EQ(id, restored->table().definition_id());
+        std::string again{};
+        ASSERT_NO_THROW(serializer.serialize(*restored, again));
+        EXPECT_EQ(bytes, again);
+    }
+}
+
 }

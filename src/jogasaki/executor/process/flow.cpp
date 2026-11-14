@@ -17,13 +17,18 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <utility>
 
-#include <takatori/util/downcast.h>
 #include <takatori/util/string_builder.h>
-#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/dist/remote_catalog_provider.h>
+#include <jogasaki/dist/remote_process_execution_block_shape.h>
+#include <jogasaki/dist/remote_process_task.h>
+#include <jogasaki/dist/remote_routing.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/exchange/flow.h>
 #include <jogasaki/executor/exchange/shuffle/flow.h>
@@ -48,6 +53,13 @@
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/scan_parallel_enabled.h>
+
+#include <takatori/relation/find.h>
+#include <takatori/relation/scan.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/binding/extract.h>
+#include <yugawara/storage/index.h>
 
 namespace jogasaki::executor::process {
 
@@ -93,6 +105,23 @@ std::size_t flow::check_empty_input_and_calculate_partitions() {
 }
 
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
+#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
+    auto selected = dist::select_remote_execution_server(*context_, *info_);
+    if (!selected.error.empty()) {
+        error::set_error_info(*context_, create_error_info(error_code::restricted_operation_exception,
+            selected.error, status::err_illegal_operation));
+        return {};
+    }
+    if (selected.server) {
+        try {
+            tasks_.emplace_back(dist::make_remote_process_task(*context_, *step_, *info_, *selected.server));
+            return tasks_;
+        } catch (std::exception const& e) {
+            error::set_error_info(*context_, create_error_info(error_code::sql_execution_exception, e.what(), status::err_unsupported));
+            return {};
+        }
+    }
+#endif
     std::shared_ptr<impl::processor> proc{};
     try {
         proc = std::make_shared<impl::processor>(

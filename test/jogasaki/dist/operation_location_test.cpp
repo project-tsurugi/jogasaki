@@ -417,10 +417,72 @@ TEST_F(operation_location_test, rejects_empty_multiple_and_unknown_locations) {
     };
 
     EXPECT_NE(std::string::npos, error_for({}).find("no executable location"));
-    EXPECT_NE(std::string::npos, error_for({0, 7}).find("exactly one"));
+    EXPECT_TRUE(error_for({0, 7}).empty());
     EXPECT_NE(std::string::npos, error_for({7, 8}).find("exactly one"));
     EXPECT_NE(std::string::npos, error_for({9}).find("unknown location ID 9"));
     EXPECT_TRUE(error_for({7}).empty());
+}
+
+TEST_F(operation_location_test, prefers_local_including_multiple_remote_candidates) {
+    auto [source, consumer] = add_fenced_processes();
+    auto original_source = kinds(*source);
+    auto original_consumer = kinds(*consumer);
+    for (auto ids : {dist::operation_locations::location_id_set_type{0}, {0, 7}, {7, 0}, {0, 7, 8}, {0, 99}}) {
+        // No remote names are registered: local preference must not query them.
+        dummy_operation_locations query{{{source, ids}, {consumer, ids}}, {}};
+        auto result = dist::capture_process_locations(plan_, query, catalogs_.get());
+        ASSERT_TRUE(result.error.empty()) << result.error;
+        ASSERT_TRUE(result.locations);
+        for (auto* process : {source, consumer}) {
+            auto* location = result.locations->find(*process);
+            ASSERT_TRUE(location);
+            EXPECT_EQ(0, location->id);
+            EXPECT_TRUE(location->server.empty());
+        }
+        EXPECT_EQ((step_set{source, consumer}), step_set(query.queried().begin(), query.queried().end()));
+        EXPECT_EQ(original_source, kinds(*source));
+        EXPECT_EQ(original_consumer, kinds(*consumer));
+    }
+}
+
+TEST_F(operation_location_test, phase_c0_relay_prefers_local_without_counting_another_remote) {
+    auto [source, consumer] = add_fenced_processes();
+    // Insert a take_flat -> offer relay between two forward exchanges.
+    auto& input = takatori::util::unsafe_downcast<takatori::plan::forward>(source->downstreams()[0]);
+    auto& output = plan_.insert(takatori::plan::forward{bindings_.exchange_column("relay_output")});
+    auto& relay = plan_.insert(takatori::plan::process{});
+    auto variable = bindings_.stream_variable("relay_value");
+    variables_->bind(variable, type::int8{});
+    variables_->bind(output.columns()[0], type::int8{});
+    auto& take = relay.operators().insert(relation::step::take_flat{
+        bindings_.exchange(input), {{input.columns()[0], variable}}});
+    auto& offer = relay.operators().insert(relation::step::offer{
+        bindings_.exchange(output), {{variable, output.columns()[0]}}});
+    take.output() >> offer.input();
+    for (auto& op : consumer->operators()) {
+        if (op.kind() != relation::expression_kind::take_flat) continue;
+        auto& sink = takatori::util::unsafe_downcast<relation::step::take_flat>(op);
+        sink.source() = bindings_.exchange(output);
+        sink.columns()[0].source() = output.columns()[0];
+    }
+    input.remove_downstream(*consumer);
+    input >> relay;
+    relay >> output;
+    output >> *consumer;
+    auto source_kinds = kinds(*source);
+    auto relay_kinds = kinds(relay);
+    auto consumer_kinds = kinds(*consumer);
+    dummy_operation_locations query{{{source, {7}}, {&relay, {0, 7}}, {consumer, {0}}}, {{7, "worker"}}};
+    auto result = dist::capture_process_locations(plan_, query, catalogs_.get());
+    ASSERT_TRUE(result.error.empty()) << result.error;
+    ASSERT_TRUE(result.locations);
+    EXPECT_EQ(7, result.locations->find(*source)->id);
+    EXPECT_EQ(0, result.locations->find(relay)->id);
+    EXPECT_EQ(0, result.locations->find(*consumer)->id);
+    EXPECT_EQ((step_set{source, &relay, consumer}), step_set(query.queried().begin(), query.queried().end()));
+    EXPECT_EQ(source_kinds, kinds(*source));
+    EXPECT_EQ(relay_kinds, kinds(relay));
+    EXPECT_EQ(consumer_kinds, kinds(*consumer));
 }
 
 TEST_F(operation_location_test, rejects_multiple_remote_processes) {

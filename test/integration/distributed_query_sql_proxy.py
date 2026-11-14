@@ -1,4 +1,5 @@
 """Loopback-only HTTP/2 frame relay; observe real RPC messages or disrupt delivery."""
+import os
 import socket
 import threading
 import time
@@ -7,7 +8,8 @@ import time
 class Proxy:
     def __init__(self, upstream):
         self.listener = socket.socket()
-        self.listener.bind(('127.0.0.1', 0))
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listener.bind(('127.0.0.1', int(os.environ.get('DQ_TEST_PROXY_PORT', '0'))))
         self.listener.listen()
         self.listener.settimeout(.2)
         self.port = self.listener.getsockname()[1]
@@ -29,15 +31,27 @@ class Proxy:
                 continue
             except OSError:
                 return
-            server = socket.create_connection(('127.0.0.1', self.upstream), timeout=5)
+            try:
+                server = socket.create_connection(('127.0.0.1', self.upstream), timeout=5)
+            except OSError as exc:
+                self.events.append({'upstreamConnectError': str(exc)})
+                client.close()
+                continue
             server.settimeout(None)
             self.sockets.extend([client, server])
+            state = {'connection': len(self.sockets)//2, 'target': None,
+                     'up': server, 'upLock': threading.Lock(), 'downLock': threading.Lock()}
             for direction, src, dst in [('request', client, server), ('response', server, client)]:
-                t = threading.Thread(target=self.relay, args=(src, dst, direction), daemon=True)
+                t = threading.Thread(target=self.relay, args=(src, dst, direction, state), daemon=True)
                 self.threads.append(t)
                 t.start()
 
-    def relay(self, src, dst, direction):
+    @staticmethod
+    def send(dst, payload, direction, state):
+        with state['upLock' if direction == 'request' else 'downLock']:
+            dst.sendall(payload)
+
+    def relay(self, src, dst, direction, state):
         buf = bytearray()
         messages = {}
         preface = direction == 'request'
@@ -51,7 +65,7 @@ class Proxy:
                     if len(buf) < 24:
                         continue
                     assert bytes(buf[:24]) == b'PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n'
-                    dst.sendall(buf[:24]); del buf[:24]; preface = False
+                    self.send(dst, buf[:24], direction, state); del buf[:24]; preface = False
                 while len(buf) >= 9:
                     size = int.from_bytes(buf[:3], 'big')
                     if len(buf) < 9 + size:
@@ -59,7 +73,28 @@ class Proxy:
                     frame = bytes(buf[:9+size]); del buf[:9+size]
                     kind, flags, stream = frame[3], frame[4], int.from_bytes(frame[5:9], 'big') & 0x7fffffff
                     ev = {'direction': direction, 'type': kind, 'stream': stream,
-                          'size': size, 'mode': self.mode}
+                          'size': size, 'mode': self.mode, 'connection': state['connection']}
+                    # Keep a cancellation fixture genuinely in flight at the worker.
+                    # This mode must be selected before opening the HTTP/2 connection.
+                    if direction == 'request' and self.mode in ('stall-active', 'stall-active-multiplexed'):
+                        if kind == 1 and state['target'] is None:
+                            state['target'] = stream
+                        if kind == 4 and not (flags & 1):
+                            settings = bytearray(frame[9:])
+                            credit = 65535
+                            found = False
+                            for offset in range(0, len(settings), 6):
+                                if int.from_bytes(settings[offset:offset+2], 'big') == 4:
+                                    settings[offset+2:offset+6] = credit.to_bytes(4, 'big')
+                                    found = True
+                            if not found:
+                                settings.extend((4).to_bytes(2, 'big') + credit.to_bytes(4, 'big'))
+                            frame = len(settings).to_bytes(3, 'big') + frame[3:9] + bytes(settings)
+                            ev['limitedResponseWindow'] = credit
+                        if kind == 8 and stream and (self.mode == 'stall-active' or stream == state['target']):
+                            ev['suppressedWindowUpdate'] = True
+                            self.events.append(ev)
+                            continue
                     complete = 0
                     if kind == 0 and stream:
                         payload = frame[9:]
@@ -79,15 +114,29 @@ class Proxy:
                         ev['grpcMessages'] = complete
                         if rows:
                             ev['recordCounts'] = rows
-                    if direction == 'response' and kind == 0 and self.mode == 'stall':
+                    if (direction == 'response' and kind == 0 and
+                            self.mode == 'stall-active-multiplexed' and stream == state['target']):
+                        # Withhold this stream only. Return connection-level credit so that
+                        # unrelated streams can progress on the same HTTP/2 connection.
+                        ev['held'] = True
+                        ev['multiplexedHold'] = True
+                        self.events.append(ev)
+                        if size:
+                            update = (4).to_bytes(3, 'big') + bytes([8, 0]) + (0).to_bytes(4, 'big') + size.to_bytes(4, 'big')
+                            self.send(src, update, 'request', state)
+                        continue
+                    if direction == 'response' and kind == 0 and self.mode in ('stall', 'stall-active'):
                         ev['held'] = True
                         self.events.append(ev)
-                        self.release.wait(timeout=10)
+                        released = self.release.wait(timeout=45)
+                        if not released:
+                            ev['holdExpired'] = True
+                            return
                         if self.closed.is_set():
                             return
-                        dst.sendall(frame)
+                        self.send(dst, frame, direction, state)
                         continue
-                    dst.sendall(frame)
+                    self.send(dst, frame, direction, state)
                     ev['forwarded'] = True
                     self.events.append(ev)
                     if direction == 'response' and complete and self.mode == 'cut-after-message':

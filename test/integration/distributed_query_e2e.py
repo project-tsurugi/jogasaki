@@ -12,9 +12,20 @@ import tempfile
 import time
 
 
+_next_test_port = 0
+
+
 def free_port():
+    global _next_test_port
+    base = os.environ.get('DQ_TEST_PORT_BASE')
+    port = int(base) + _next_test_port if base else 0
+    if base:
+        if _next_test_port >= 4:
+            raise RuntimeError('fixture groups reserve four node ports and one proxy port')
+        _next_test_port += 1
     with socket.socket() as channel:
-        channel.bind(('127.0.0.1', 0))
+        channel.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        channel.bind(('127.0.0.1', port))
         return channel.getsockname()[1]
 
 
@@ -41,7 +52,7 @@ class Node:
 
     def start(self):
         self.generation += 1
-        identity = re.sub('-+', '-', re.sub('[^a-z0-9-]', '-', f"{getattr(self.args, 'database_name_prefix', 'dq-e2e')}-{self.root.parent.name}-{self.name}")).strip('-')
+        identity = re.sub('-+', '-', re.sub('[^a-z0-9-]', '-', f"{getattr(self.args, 'database_name_prefix', os.environ.get('DQ_TEST_DATABASE_PREFIX', 'dq-e2e'))}-{self.root.parent.name}-{self.name}")).strip('-')
         self.config = self.root / 'tsurugi.ini'
         client_config = f"""[distributed_query_client]
 name=worker
@@ -95,6 +106,19 @@ enabled={str(self.remote).lower()}
 {client_config}[glog]
 logtostderr=true
 ''')
+        # Test-specific TLS and flow-control settings use the same configuration writer.
+        configuration = self.config.read_text()
+        for section, values in getattr(self, 'config_overrides', {}).items():
+            pattern = re.compile(r'(?ms)^\[' + re.escape(section) + r'\]\n(.*?)(?=^\[|\Z)')
+            match = pattern.search(configuration)
+            if not match:
+                raise ValueError(f'unknown test configuration section: {section}')
+            body = match[1]
+            for key, value in values.items():
+                body = re.sub(r'(?m)^' + re.escape(key) + r'=.*\n?', '', body)
+                body += f'{key}={value}\n'
+            configuration = configuration[:match.start(1)] + body + configuration[match.end(1):]
+        self.config.write_text(configuration)
         environment = os.environ.copy()
         environment['LD_LIBRARY_PATH'] = str(self.args.prefix / 'lib')
         environment['TSURUGI_HOME'] = str(self.args.prefix)

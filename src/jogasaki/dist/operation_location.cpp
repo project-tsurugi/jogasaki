@@ -68,14 +68,16 @@ process_locations_result capture_process_locations(takatori::plan::graph_type co
         if (ids.empty()) {
             return {{}, "no executable location for a compiled process"};
         }
+        // A location-independent process can also run locally. Prefer the coordinator
+        // before requiring a unique remote location (including Phase-C0 relay processes).
+        if (ids.find(operation_locations::local_location_id) != ids.end()) {
+            entity.emplace(&process, process_location{});
+            continue;
+        }
         if (ids.size() != 1) {
             return {{}, "remote execution requires exactly one executable location per process"};
         }
         auto id = *ids.begin();
-        if (id == operation_locations::local_location_id) {
-            entity.emplace(&process, process_location{});
-            continue;
-        }
         std::string server{};
         try {
             server = query.location_name(id);

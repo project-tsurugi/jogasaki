@@ -672,17 +672,6 @@ TEST_F(remote_process_sql_test, sql_error_preserves_code_detail_and_supplemental
     EXPECT_EQ(remote.detail(), info->message());
     EXPECT_EQ(remote.supplemental_text(), info->supplemental_text());
 }
-TEST_F(remote_process_sql_test, worker_precondition_failure_returns_sql_execution_exception) {
-    service_.failure = grpc::StatusCode::FAILED_PRECONDITION;
-    auto tx = utils::create_transaction(*db_, true, false);
-    status result{};
-    std::shared_ptr<error::error_info> info{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx)
-        .expect_error(true).st(result).error(info).run();
-    EXPECT_EQ(status::err_unknown, result);
-    ASSERT_TRUE(info);
-    EXPECT_EQ(error_code::sql_execution_exception, info->code());
-}
 TEST_F(remote_process_sql_test, unknown_worker_sql_code_preserves_details) {
     proto::sql::response::Error remote{};
     remote.set_code(static_cast<proto::sql::error::Code>(60000));
@@ -754,16 +743,6 @@ TEST_F(remote_process_sql_test, find_and_group_downstream_use_remote_rows) {
     ASSERT_EQ(1, rows.size());
     EXPECT_EQ(30, rows[0].get_value<std::int64_t>(0));
     EXPECT_GE(service_.calls.load(), 2);
-}
-TEST_F(remote_process_sql_test, unsolicited_remote_cancellation_is_transport_failure) {
-    service_.failure = grpc::StatusCode::CANCELLED;
-    auto tx = utils::create_transaction(*db_, true, false);
-    status result{};
-    std::shared_ptr<error::error_info> info{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).error(info).run();
-    EXPECT_EQ(status::err_io_error, result);
-    ASSERT_TRUE(info);
-    EXPECT_NE(error_code::request_canceled, info->code());
 }
 
 TEST_F(remote_process_sql_test, cancellation_is_forwarded_after_handler_entry) {

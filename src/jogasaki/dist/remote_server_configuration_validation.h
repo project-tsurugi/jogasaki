@@ -17,6 +17,8 @@
 #include <string_view>
 #include <jogasaki/dist/remote_server_configuration.h>
 namespace jogasaki::dist {
+// Return only recognized schemes, without exposing arbitrary direct API targets.
+[[nodiscard]] std::string_view remote_server_uri_scheme(std::string_view uri) noexcept;
 // INI targets are narrower than the targets accepted by the direct gRPC configuration API.
 [[nodiscard]] bool valid_remote_server_uri(std::string_view uri, bool secure) noexcept;
 [[nodiscard]] bool valid_remote_root_certificates(std::string_view pem);

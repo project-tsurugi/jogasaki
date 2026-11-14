@@ -78,6 +78,7 @@ status remote_server_channel_manager::start(std::vector<remote_server_configurat
             return status::err_invalid_argument;
         }
         if (configuration.name.empty() || configuration.uri.empty() || !names.emplace(configuration.name).second) {
+            LOG_LP(ERROR) << "invalid remote server configuration: empty name or URI, or duplicate name";
             return status::err_invalid_argument;
         }
         if (!valid_remote_server_credentials(configuration)) {
@@ -96,12 +97,15 @@ status remote_server_channel_manager::start(std::vector<remote_server_configurat
         auto credentials = create_credentials(configuration);
         if (!credentials) {
             LOG_LP(ERROR) << "failed to create credentials for remote server channel: name=" << configuration.name
+                          << " uri_scheme=" << remote_server_uri_scheme(configuration.uri)
                           << " secure=" << std::boolalpha << configuration.secure;
             return status::err_unknown;
         }
         auto channel = grpc::CreateCustomChannel(configuration.uri, credentials, arguments);
         if (!channel) {
-            LOG_LP(ERROR) << "failed to create remote server channel: name=" << configuration.name;
+            LOG_LP(ERROR) << "failed to create remote server channel: name=" << configuration.name
+                          << " uri_scheme=" << remote_server_uri_scheme(configuration.uri)
+                          << " secure=" << std::boolalpha << configuration.secure;
             return status::err_unknown;
         }
         channels.emplace(configuration.name, std::move(channel));

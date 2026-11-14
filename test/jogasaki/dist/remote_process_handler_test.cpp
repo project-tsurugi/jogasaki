@@ -177,6 +177,53 @@ TEST(remote_rtx_start_failure_test, classifies_start_failure_by_cause) {
     EXPECT_EQ(kind::internal, dist::classify_remote_rtx_start_failure(status::err_unknown, false));
 }
 
+TEST(remote_process_completion_test, success_requires_observed_successful_close) {
+    namespace dq = tateyama::grpc::distributed_query;
+    for (auto close : {std::optional<int>{static_cast<int>(status::ok)},
+                       std::optional<int>{static_cast<int>(status::err_invalid_argument)},
+                       std::optional<int>{static_cast<int>(status::err_io_error)}, std::optional<int>{}}) {
+        SCOPED_TRACE(close ? std::to_string(*close) : "unobserved");
+        dq::remote_process_observation observed{};
+        observed.begin_status = static_cast<int>(status::ok);
+        observed.commit_status = static_cast<int>(status::ok);
+        observed.close_status = close;
+        auto result = dist::finalize_remote_process_result({true, "result bytes", {}}, observed);
+        EXPECT_EQ(close == static_cast<int>(status::ok), result.success);
+        EXPECT_EQ(close, result.observation.close_status);
+        EXPECT_EQ(observed.commit_status, result.observation.commit_status);
+        if (result.success) {
+            EXPECT_EQ("result bytes", result.payload);
+            EXPECT_TRUE(result.error.empty());
+        } else {
+            EXPECT_EQ(dq::remote_process_error_kind::internal, result.error_kind);
+            EXPECT_EQ("failed to close remote RTX", result.error);
+            EXPECT_TRUE(result.payload.empty());
+        }
+    }
+}
+
+TEST(remote_process_completion_test, close_failure_preserves_the_original_failure_and_observations) {
+    namespace dq = tateyama::grpc::distributed_query;
+    for (auto kind : {dq::remote_process_error_kind::cancelled, dq::remote_process_error_kind::sql_error,
+                      dq::remote_process_error_kind::resource_exhausted, dq::remote_process_error_kind::internal}) {
+        for (auto close : {std::optional<int>{static_cast<int>(status::err_invalid_argument)}, std::optional<int>{}}) {
+            SCOPED_TRACE(close ? std::to_string(*close) : "unobserved");
+            dq::remote_process_observation observed{};
+            observed.rollback_requested = true;
+            observed.rollback_status = static_cast<int>(status::err_io_error);
+            observed.close_status = close;
+            auto result = dist::finalize_remote_process_result({false, {}, "original failure", kind, "SQL details"}, observed);
+            EXPECT_FALSE(result.success);
+            EXPECT_EQ(kind, result.error_kind);
+            EXPECT_EQ("original failure", result.error);
+            EXPECT_EQ("SQL details", result.sql_error_details);
+            EXPECT_TRUE(result.observation.rollback_requested);
+            EXPECT_EQ(observed.rollback_status, result.observation.rollback_status);
+            EXPECT_EQ(observed.close_status, result.observation.close_status);
+        }
+    }
+}
+
 TEST_F(remote_process_handler_test, rebound_worker_process_executes_locally_with_coordinator_enabled) {
     create_with_identity("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (205)");

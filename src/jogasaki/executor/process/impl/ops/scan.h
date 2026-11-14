@@ -73,6 +73,7 @@ public:
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      * @param limit the max number of records passed to the downstream, or nullopt if there is no limit
      * @param use_iscan whether to use the iterator based scan (iscan) of the transaction engine
+     * @param reverse whether to scan the index in reverse order (backward scan)
      */
     scan(
         operator_index_type index,
@@ -85,7 +86,8 @@ public:
         std::vector<details::secondary_index_field_info> secondary_key_fields,
         std::unique_ptr<operator_base> downstream = nullptr,
         std::optional<std::size_t> limit = std::nullopt,
-        bool use_iscan = false
+        bool use_iscan = false,
+        bool reverse = false
     );
 
     /**
@@ -99,6 +101,7 @@ public:
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      * @param limit the max number of records passed to the downstream, or nullopt if there is no limit
      * @param use_iscan whether to use the iterator based scan (iscan) of the transaction engine
+     * @param reverse whether to scan the index in reverse order (backward scan)
      */
     scan(
         operator_index_type index,
@@ -109,7 +112,8 @@ public:
         yugawara::storage::index const* secondary_idx,
         std::unique_ptr<operator_base> downstream,
         std::optional<std::size_t> limit = std::nullopt,
-        bool use_iscan = false
+        bool use_iscan = false,
+        bool reverse = false
     );
 
     /**
@@ -166,6 +170,11 @@ public:
      */
     [[nodiscard]] bool use_iscan() const noexcept;
 
+    /**
+     * @brief accessor for the flag whether the index is scanned in reverse order (backward scan)
+     */
+    [[nodiscard]] bool reverse() const noexcept;
+
 private:
     bool use_secondary_{};
     std::string storage_name_{};
@@ -174,6 +183,7 @@ private:
     index_field_mapper field_mapper_{};
     std::optional<std::size_t> limit_{};
     bool use_iscan_{};
+    bool reverse_{};
 
     [[nodiscard]] status open(scan_context& ctx);
     void close(scan_context& ctx);

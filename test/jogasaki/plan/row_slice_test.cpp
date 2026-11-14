@@ -111,7 +111,9 @@ TEST_F(row_slice_test, scan_with_row_slice) {
 }
 
 TEST_F(row_slice_test, scan_backward) {
-    expect_unsupported([&] { impl::validate_scan(create_scan(scan_direction::backward, {})); });
+    // backward scan is supported (tsurugi-issues#1589 R7)
+    EXPECT_NO_THROW(impl::validate_scan(create_scan(scan_direction::backward, {})));
+    EXPECT_NO_THROW(impl::validate_scan(create_scan(scan_direction::backward, row_slice{{}, 3})));
 }
 
 }  // namespace jogasaki::plan

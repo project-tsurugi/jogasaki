@@ -361,6 +361,117 @@ TEST_F(join_scan_test, left_outer_condition_multiple_rows) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
+class join_scan_order_test : public join_scan_test {
+public:
+    /**
+     * @brief runs join_scan for the left records in the given order, and returns the output records
+     * @details the downstream yields at the second call, and the join resumes the same left record after the yield.
+     * Each output record is (left key, right C0, right C1), where the right columns are NULL for the null-padded record
+     * or semi/anti join.
+     */
+    std::vector<basic_record> run_join_scan_in_left_order(
+        relation::join_kind kind,
+        std::vector<std::int32_t> const& left_keys
+    ) {
+        // T1 (C0, C1) - C0 = 1 has 3 rows, C0 = 2 has 2 rows, and C0 = 3 or 4 has none
+        auto setup = prepare_indices(
+            {"T1", {
+                {"C0", t::int4(), nullity{false}},
+                {"C1", t::int4(), nullity{false}},
+            }},
+            {0, 1}, {}
+        );
+        auto proto = create_nullable_record<kind::int4>(0);
+        auto up = add_upstream_record_provider(proto.record_meta());
+        auto& in = up.in();
+        scan_endpoint_spec lower{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+        scan_endpoint_spec upper{{0}, {in[0]}, relation::endpoint_kind::prefixed_inclusive};
+        auto& target = add_join_scan_node(setup, lower, upper);
+        auto right = destinations(target.columns());
+        std::vector<descriptor::variable> outputs{in[0], right[0], right[1]};
+        auto down = add_downstream_record_verifier(outputs);
+        for(auto&& [c0, c1] : std::vector<std::pair<std::int32_t, std::int32_t>>{{1, 10}, {1, 20}, {1, 30}, {2, 40}, {2, 50}}) {
+            put_row(setup, create_nullable_record<kind::int4, kind::int4>(c0, c1), *db_);
+        }
+        auto tx = wrap(db_->create_transaction());
+        auto ex = make_join_scan_executor(
+            up, target, *setup.primary_idx, nullptr, down,
+            get_storage(*db_, setup.primary_idx->simple_name()), nullptr, tx,
+            nullptr, kind
+        );
+
+        // the downstream yields at the second call without consuming the record, and consumes it on resume
+        std::vector<basic_record> result{};
+        std::size_t calls = 0;
+        bool yielding = false;
+        down.set_body([&]() {
+            ++calls;
+            if (calls == 2) {
+                yielding = true;
+                return;
+            }
+            yielding = false;
+            result.emplace_back(get_variables(ex.variables_list_[0], outputs));
+        });
+        down.set_result([&]() -> operation_status {
+            return yielding ? operation_status_kind::yield : operation_status_kind::ok;
+        });
+        std::size_t yields = 0;
+        for(auto key : left_keys) {
+            auto rec = create_nullable_record<kind::int4>(key);
+            set_variables(ex.variables_list_[0], in, rec.ref());
+            auto st = ex.op_(*ex.ctx_);
+            while(st.kind() == operation_status_kind::yield) {
+                ++yields;
+                st = ex.op_(*ex.ctx_);
+            }
+            EXPECT_EQ(operation_status_kind::ok, st.kind());
+        }
+        EXPECT_EQ(1, yields);
+        ex.ctx_->release();
+        EXPECT_EQ(status::ok, tx->commit());
+        return result;
+    }
+};
+
+TEST_F(join_scan_order_test, outputs_in_left_order_inner) {
+    // tsurugi-issues#1589 - index join outputs the records in the order of the left records, which the compiler
+    // relies on for the ordered scan and the ordered forward exchange
+    auto result = run_join_scan_in_left_order(relation::join_kind::inner, {2, 1, 3});
+    ASSERT_EQ(5, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 2, 40)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 2, 50)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 10)), result[2]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 20)), result[3]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 30)), result[4]);
+}
+
+TEST_F(join_scan_order_test, outputs_in_left_order_left_outer) {
+    auto result = run_join_scan_in_left_order(relation::join_kind::left_outer, {3, 2, 1});
+    ASSERT_EQ(6, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(3, std::nullopt, std::nullopt)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 2, 40)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 2, 50)), result[2]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 10)), result[3]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 20)), result[4]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 30)), result[5]);
+}
+
+TEST_F(join_scan_order_test, outputs_in_left_order_semi) {
+    auto result = run_join_scan_in_left_order(relation::join_kind::semi, {2, 3, 1});
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(2, std::nullopt, std::nullopt)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, std::nullopt, std::nullopt)), result[1]);
+}
+
+TEST_F(join_scan_order_test, outputs_in_left_order_anti) {
+    auto result = run_join_scan_in_left_order(relation::join_kind::anti, {4, 2, 3});
+    ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(4, std::nullopt, std::nullopt)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(3, std::nullopt, std::nullopt)), result[1]);
+}
+
+
 TEST_F(join_scan_test, composite_key_primary) {
     // PK=(C0,C1); scan C0=1 with prefixed_inclusive returns all rows where C0=1.
     auto setup = prepare_indices(

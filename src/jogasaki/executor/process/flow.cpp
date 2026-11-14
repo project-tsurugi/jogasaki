@@ -21,6 +21,7 @@
 #include <utility>
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/string_builder.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/error/error_info_factory.h>
@@ -38,6 +39,7 @@
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/requires_single_partition.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/task.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -49,6 +51,7 @@
 
 namespace jogasaki::executor::process {
 
+using takatori::util::string_builder;
 using takatori::util::unsafe_downcast;
 
 flow::flow(
@@ -111,6 +114,18 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     const auto& scan_ranges = operators.scan_ranges();
     if (!scan_ranges.empty()){
         partitions = scan_ranges.size();
+    }
+    // the process handling ordered relation is not split in advance (see requires_single_partition()), so this
+    // detects only the bug of the plan or the partitioning, e.g. the forward exchange with ordering written by
+    // multiple upstream processes or offers (tsurugi-issues#1589 R4)
+    if (partitions > 1 && requires_single_partition(*info_, *step_->io_exchange_map())) {
+        error::set_error_info(*context_, create_error_info(
+            error_code::sql_execution_exception,
+            string_builder{} << "ordered relation is split into multiple partitions (partitions:" << partitions << ")"
+                             << string_builder::to_string,
+            status::err_unknown
+        ));
+        return {};
     }
     auto external_output = operators.io_exchange_map().external_output();
     auto ch = context_->record_channel();

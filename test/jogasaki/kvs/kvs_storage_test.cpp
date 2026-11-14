@@ -13,10 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 #include <gtest/gtest.h>
 
 #include <takatori/util/fail.h>
@@ -230,5 +234,90 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
     }
 }
 
+// returns the keys read by the scan with the options
+static std::vector<std::string> scan_keys(
+    storage& stg,
+    std::string_view begin,
+    end_point_kind begin_kind,
+    std::string_view end,
+    end_point_kind end_kind,
+    scan_options const& options,
+    transaction& tx
+) {
+    std::vector<std::string> ret{};
+    std::unique_ptr<iterator> it{};
+    EXPECT_EQ(status::ok, stg.content_scan(tx, begin, begin_kind, end, end_kind, options, it));
+    if(! it) {
+        return ret;
+    }
+    while(true) {
+        auto st = it->next();
+        if(st == status::not_found) {
+            break;
+        }
+        EXPECT_EQ(status::ok, st);
+        if(st != status::ok) {
+            break;
+        }
+        std::string_view k{};
+        if(it->read_key(k) == status::not_found) {
+            continue;
+        }
+        ret.emplace_back(k);
+    }
+    return ret;
 }
 
+TEST_F(kvs_storage_test, reverse_scan_with_endpoints) {
+    // tsurugi-issues#1589 R7 - the reverse scan with iscan reads the same range as the forward scan in reverse order,
+    // where the range (begin and end) is given in the order of the key also for the reverse scan
+    auto t1 = db_->create_storage("T1");
+    ASSERT_TRUE(t1);
+    {
+        auto tx = db_->create_transaction();
+        for(auto&& k : {"k0", "k1/0", "k1/1", "k2", "k3/0", "k3/1", "k4", "k5"}) {
+            ASSERT_EQ(status::ok, t1->content_put(*tx, k, "v"));
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        // the deleted entry is skipped
+        auto tx = db_->create_transaction();
+        ASSERT_EQ(status::ok, t1->content_delete(*tx, "k4"));
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    std::vector<std::pair<std::string_view, end_point_kind>> begins{
+        {"", end_point_kind::unbound},
+        {"k1/", end_point_kind::prefixed_inclusive},
+        {"k1/", end_point_kind::prefixed_exclusive},
+        {"k2", end_point_kind::inclusive},
+        {"k2", end_point_kind::exclusive},
+    };
+    std::vector<std::pair<std::string_view, end_point_kind>> ends{
+        {"", end_point_kind::unbound},
+        {"k3/", end_point_kind::prefixed_inclusive},
+        {"k3/", end_point_kind::prefixed_exclusive},
+        {"k4", end_point_kind::inclusive},
+        {"k5", end_point_kind::exclusive},
+    };
+    scan_options forward{};
+    forward.legacy_scan_ = false;
+    scan_options reverse{};
+    reverse.legacy_scan_ = false;
+    reverse.reverse_ = true;
+    for(auto&& [b, bk] : begins) {
+        for(auto&& [e, ek] : ends) {
+            std::stringstream trace{};
+            trace << b << "(" << bk << ") - " << e << "(" << ek << ")";
+            SCOPED_TRACE(trace.str());
+            auto tx = db_->create_transaction();
+            auto expected = scan_keys(*t1, b, bk, e, ek, forward, *tx);
+            std::reverse(expected.begin(), expected.end());
+            auto actual = scan_keys(*t1, b, bk, e, ek, reverse, *tx);
+            EXPECT_EQ(expected, actual);
+            ASSERT_EQ(status::ok, tx->abort_transaction());
+        }
+    }
+}
+
+}

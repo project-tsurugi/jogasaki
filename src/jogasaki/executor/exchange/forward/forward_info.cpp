@@ -31,10 +31,14 @@ using takatori::util::maybe_shared_ptr;
 
 forward_info::forward_info(
     maybe_shared_ptr<meta::record_meta> meta,
-    std::optional<std::size_t> limit
+    std::optional<std::size_t> limit,
+    bool respect_input,
+    bool preserve_output
 ) :
     meta_(std::move(meta)),
-    limit_(limit)
+    limit_(limit),
+    respect_input_(respect_input),
+    preserve_output_(preserve_output)
 {}
 
 maybe_shared_ptr<meta::record_meta> const& forward_info::record_meta() const noexcept {
@@ -43,6 +47,14 @@ maybe_shared_ptr<meta::record_meta> const& forward_info::record_meta() const noe
 
 std::optional<std::size_t> forward_info::limit() const noexcept {
     return limit_;
+}
+
+bool forward_info::respect_input() const noexcept {
+    return respect_input_;
+}
+
+bool forward_info::preserve_output() const noexcept {
+    return preserve_output_;
 }
 
 }  // namespace jogasaki::executor::exchange::forward

@@ -90,6 +90,12 @@ inline std::vector<details::secondary_index_field_info> create_secondary_key_fie
 
 /**
  * @brief index_join class common for join_find/join_scan operators
+ * @details this operator outputs the records in the order of the left (input) records for all join kinds (inner,
+ * left outer, semi and anti): for each left record, it passes all the output records for it (the matched right
+ * records, or the null-padded record, consecutively) to the downstream before returning to the upstream, and it
+ * resumes the same left record after the downstream yields. The compiler relies on this property to keep the order
+ * of the ordered relation across join_find/join_scan (tsurugi-issues#1589), so it must be kept in the future
+ * changes (e.g. this operator must not buffer and reorder the records across left records).
  */
 template <class MatchInfo>
 class index_join : public record_operator {

@@ -15,18 +15,23 @@
  */
 
 #include <atomic>
+#include <chrono>
 #include <future>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 #include <gtest/gtest.h>
-#include <xmmintrin.h>
 
 #include <takatori/util/downcast.h>
+#include <takatori/type/primitive.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
+#include <yugawara/function/configurable_provider.h>
+#include <yugawara/function/declaration.h>
 
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/transaction_option.h>
@@ -35,6 +40,9 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/function/scalar_function_info.h>
+#include <jogasaki/executor/function/scalar_function_kind.h>
+#include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/kvs/id.h>
@@ -75,11 +83,60 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
+        register_wait_function();
     }
 
     void TearDown() override {
         db_teardown();
     }
+
+    /**
+     * @brief register scalar function `wait_while_blocked(int) -> int` used to keep a DML request on-going
+     * @details the function returns the argument as is, but it doesn't return while `function_blocked_` is true.
+     * `function_called_` becomes true when the function is called.
+     * The registration is discarded when the database stops, so no explicit removal is needed.
+     */
+    void register_wait_function() {
+        auto id = 5000000UL;  // any value to avoid conflict
+        global::scalar_function_repository().add(
+            id,
+            std::make_shared<executor::function::scalar_function_info>(
+                executor::function::scalar_function_kind::mock_function_for_testing,
+                [this](executor::expr::evaluator_context&, takatori::util::sequence_view<data::any> args) -> data::any {
+                    function_called_.store(true);
+                    while(function_blocked_.load()) {
+                        std::this_thread::yield();
+                    }
+                    return args[0];
+                },
+                1
+            )
+        );
+        global::regular_function_provider()->add({
+            id,
+            "wait_while_blocked",
+            takatori::type::int4(),
+            {
+                takatori::type::int4(),
+            },
+        });
+    }
+
+    /**
+     * @brief wait until `wait_while_blocked` is called, or the query running in `query` finishes
+     * @return true if the function is called (i.e. the query is on-going and blocked in the function)
+     */
+    bool wait_function_called(std::future<void> const& query) {
+        while(! function_called_.load()) {
+            if(query.wait_for(std::chrono::milliseconds{1}) == std::future_status::ready) {
+                return function_called_.load();  // the query finished without calling the function
+            }
+        }
+        return true;
+    }
+
+    std::atomic_bool function_blocked_{false};  //NOLINT
+    std::atomic_bool function_called_{false};  //NOLINT
 };
 
 using namespace std::string_view_literals;
@@ -138,29 +195,19 @@ TEST_F(exclusive_ddl_dml_test, ddl_and_dml_in_same_tx) {
 TEST_F(exclusive_ddl_dml_test, starting_ddls_blocked_by_dml_req) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     execute_statement("CREATE TABLE t0 (c0 int primary key)");
-    execute_statement("CREATE TABLE t1 (c0 int primary key)");
     execute_statement("INSERT INTO t0 values (1)");
-    std::size_t t0_cnt = 1;
-    std::size_t t1_cnt = 0;
-    for(std::size_t i=0; i < 10; ++i) { // choose count to make the query long enough (e.g. 100ms) to run ddl while query is on-going
-        execute_statement("INSERT INTO t1 SELECT c0+"+std::to_string(t1_cnt)+" FROM t0");
-        t1_cnt += t0_cnt;
-        execute_statement("INSERT INTO t0 SELECT c0+"+std::to_string(t0_cnt)+" FROM t1");
-        t0_cnt += t1_cnt;
-    }
 
-    std::cerr << "number of rows in t0:" << t0_cnt << std::endl;
-    auto& smgr = *global::storage_manager();
-    auto s = smgr.find_by_name("t0");
-    ASSERT_TRUE(s.has_value());
-    auto c = smgr.find_entry(s.value());
-    ASSERT_TRUE(c);
-
-    auto f = std::async(std::launch::async, [&, this]() {
+    // run a query that stays on-going (and keeps holding the shared lock on t0) until function_blocked_ is reset
+    function_blocked_.store(true);
+    auto query = std::async(std::launch::async, [&]() {
         std::vector<mock::basic_record> result{};
-        execute_query("select count(*) from t0", result);
+        execute_query("select wait_while_blocked(c0) from t0", result);
     });
-    while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
+    utils::finally unblock{[&]() {
+        function_blocked_.store(false);
+        query.wait();
+    }};
+    ASSERT_TRUE(wait_function_called(query));
     {
         auto tx = utils::create_transaction(*db_);
         test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
@@ -179,7 +226,6 @@ TEST_F(exclusive_ddl_dml_test, starting_ddls_blocked_by_dml_req) {
         // verify tx abort by the error above
         test_stmt_err("revoke select on table t0 from public", *tx, error_code::inactive_transaction_exception);
     }
-    f.get();
 }
 
 TEST_F(exclusive_ddl_dml_test, dml_error_after_drop) {
@@ -265,33 +311,23 @@ TEST_F(exclusive_ddl_dml_test, create_table_and_create_index_in_same_tx) {
 }
 
 TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req) {
-    // same as starting_create_table_blocked_by_dml_req, except for creating/dropping index
+    // same as starting_ddls_blocked_by_dml_req, except for creating/dropping index
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     execute_statement("CREATE TABLE t0 (c0 int primary key)");
     execute_statement("CREATE INDEX i0 on t0 (c0)");
-    execute_statement("CREATE TABLE t1 (c0 int primary key)");
     execute_statement("INSERT INTO t0 values (1)");
-    std::size_t t0_cnt = 1;
-    std::size_t t1_cnt = 0;
-    for(std::size_t i=0; i < 7; ++i) { // choose count to make the query long enough (e.g. 100ms) to run ddl while query is on-going
-        execute_statement("INSERT INTO t1 SELECT c0+"+std::to_string(t1_cnt)+" FROM t0");
-        t1_cnt += t0_cnt;
-        execute_statement("INSERT INTO t0 SELECT c0+"+std::to_string(t0_cnt)+" FROM t1");
-        t0_cnt += t1_cnt;
-    }
 
-    std::cerr << "number of rows in t0:" << t0_cnt << std::endl;
-    auto& smgr = *global::storage_manager();
-    auto s = smgr.find_by_name("t0");
-    ASSERT_TRUE(s.has_value());
-    auto c = smgr.find_entry(s.value());
-    ASSERT_TRUE(c);
-
-    auto f = std::async(std::launch::async, [&, this]() {
+    // run a query that stays on-going (and keeps holding the shared lock on t0) until function_blocked_ is reset
+    function_blocked_.store(true);
+    auto query = std::async(std::launch::async, [&]() {
         std::vector<mock::basic_record> result{};
-        execute_query("select count(*) from t0", result);
+        execute_query("select wait_while_blocked(c0) from t0", result);
     });
-    while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
+    utils::finally unblock{[&]() {
+        function_blocked_.store(false);
+        query.wait();
+    }};
+    ASSERT_TRUE(wait_function_called(query));
     {
         // drop index is blocked by DML
         auto tx = utils::create_transaction(*db_);
@@ -310,7 +346,6 @@ TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req)
         test_stmt_err("create index i1 on t0 (c0)", *tx, error_code::sql_execution_exception);
     }
     */
-    f.get();
 }
 
 TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_grant_table_tx) {
@@ -365,36 +400,25 @@ TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_truncate_table_tx) {
 TEST_F(exclusive_ddl_dml_test, starting_truncate_blocked_by_dml_req) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     execute_statement("CREATE TABLE t0 (c0 int primary key)");
-    execute_statement("CREATE TABLE t1 (c0 int primary key)");
     execute_statement("INSERT INTO t0 values (1)");
-    std::size_t t0_cnt = 1;
-    std::size_t t1_cnt = 0;
-    for(std::size_t i=0; i < 10; ++i) { // choose count to make the query long enough (e.g. 100ms) to run ddl while query is on-going
-        execute_statement("INSERT INTO t1 SELECT c0+"+std::to_string(t1_cnt)+" FROM t0");
-        t1_cnt += t0_cnt;
-        execute_statement("INSERT INTO t0 SELECT c0+"+std::to_string(t0_cnt)+" FROM t1");
-        t0_cnt += t1_cnt;
-    }
 
-    std::cerr << "number of rows in t0:" << t0_cnt << std::endl;
-    auto& smgr = *global::storage_manager();
-    auto s = smgr.find_by_name("t0");
-    ASSERT_TRUE(s.has_value());
-    auto c = smgr.find_entry(s.value());
-    ASSERT_TRUE(c);
-
-    auto f = std::async(std::launch::async, [&, this]() {
+    // run a query that stays on-going (and keeps holding the shared lock on t0) until function_blocked_ is reset
+    function_blocked_.store(true);
+    auto query = std::async(std::launch::async, [&]() {
         std::vector<mock::basic_record> result{};
-        execute_query("select count(*) from t0", result);
+        execute_query("select wait_while_blocked(c0) from t0", result);
     });
-    while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
+    utils::finally unblock{[&]() {
+        function_blocked_.store(false);
+        query.wait();
+    }};
+    ASSERT_TRUE(wait_function_called(query));
     {
         auto tx = utils::create_transaction(*db_);
         test_stmt_err("TRUNCATE TABLE t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
         // verify tx abort by the error above
         test_stmt_err("TRUNCATE TABLE t0", *tx, error_code::inactive_transaction_exception);
     }
-    f.get();
 }
 
 TEST_F(exclusive_ddl_dml_test, dml_compiled_before_drop_blocked_after_commit) {

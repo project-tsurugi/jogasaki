@@ -7,7 +7,9 @@ add_subdirectory(join_cli)
 add_subdirectory(aggregate_cli)
 add_subdirectory(client_cli)
 add_subdirectory(query_bench_cli)
+add_subdirectory(service_common)
 add_subdirectory(service_benchmark)
+add_subdirectory(nsbench)
 
 # examples requiring perf-tools
 if(PERFORMANCE_TOOLS)

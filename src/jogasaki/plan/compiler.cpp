@@ -675,6 +675,9 @@ static void add_topn_runtime_features(configuration const& cfg, yugawara::runtim
     if(cfg.enable_backward_scan() && (cfg.enable_scan_limit() || cfg.enable_ordered_scan())) {
         runtime_features.insert(yugawara::runtime_feature::backward_scan);
     }
+    if(cfg.enable_apply_preserves_order()) {
+        runtime_features.insert(yugawara::runtime_feature::apply_preserves_order);
+    }
 }
 
 static status prepare(

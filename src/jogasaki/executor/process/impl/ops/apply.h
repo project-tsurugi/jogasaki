@@ -61,6 +61,13 @@ struct apply_field {
  * @details this operator implements the APPLY (CROSS/OUTER) operation,
  *          which calls a table-valued function for each input row and
  *          joins the result with the input.
+ *          This operator outputs the records in the order of the input records: for each input record, it passes all
+ *          the output records for it (the rows of the function result, or the null-padded record of OUTER APPLY,
+ *          consecutively) to the downstream before returning to the upstream, and it resumes the same input record
+ *          after it yields (waiting for the function result or the downstream). The compiler relies on this property
+ *          with runtime_feature::apply_preserves_order to keep the order of the ordered relation across apply
+ *          (tsurugi-issues#1589), so it must be kept in the future changes (e.g. this operator must not buffer and
+ *          reorder the records across input records).
  */
 class apply : public record_operator {
 public:

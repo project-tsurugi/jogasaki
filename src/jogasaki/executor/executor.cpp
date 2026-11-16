@@ -135,7 +135,8 @@ static bool execute_internal(
         s.resource(),
         req_info,
         static_cast<bool>(stmt->mirrors()->external_writer_meta()),
-        std::move(req)
+        std::move(req),
+        stmt->mirrors()->emits_ordered_relation()
     );
     rctx->lightweight(
         stmt->mirrors()->work_level().value() <=
@@ -378,7 +379,8 @@ bool execute_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req_info,
         stmt->has_result_records(),
-        req
+        req,
+        stmt->body()->mirrors()->emits_ordered_relation()
     );
     request_ctx->req_info(req_info);
     request_ctx->lightweight(

@@ -48,6 +48,10 @@ bool requires_single_partition(processor_info const& info, io_exchange_map const
             return true;
         }
     }
+    return emits_ordered_relation(info);
+}
+
+bool emits_ordered_relation(processor_info const& info) {
     for(auto&& e : info.relations()) {
         if (e.kind() == takatori::relation::expression_kind::emit &&
             unsafe_downcast<takatori::relation::emit>(e).ordering().contains(

@@ -144,6 +144,10 @@ std::optional<std::size_t> calculate_max_writer_count(
         partitions = option->scan_parallel().value();
     }
     if (s->kind() == takatori::statement::statement_kind::execute) {
+        if (unsafe_downcast<api::impl::executable_statement>(stmt).body()->mirrors()->emits_ordered_relation()) {
+            // the ordered relation must be written to a single writer (tsurugi-issues#1589)
+            return 1;
+        }
         partitions = impl::get_partitions(s, partitions, option->readonly());
         if (VLOG_IS_ON(log_debug)) {
             std::stringstream ss{};

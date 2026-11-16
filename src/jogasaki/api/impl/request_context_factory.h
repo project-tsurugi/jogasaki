@@ -36,7 +36,8 @@ std::shared_ptr<request_context> create_request_context(
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
     request_info const& req_info,
     bool has_result_records,
-    std::shared_ptr<scheduler::request_detail> request_detail = nullptr
+    std::shared_ptr<scheduler::request_detail> request_detail = nullptr,
+    bool emits_ordered_relation = false
 );
 
 }

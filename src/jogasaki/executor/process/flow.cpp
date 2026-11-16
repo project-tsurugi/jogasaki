@@ -29,6 +29,7 @@
 #include <jogasaki/executor/exchange/shuffle/flow.h>
 #include <jogasaki/executor/exchange/shuffle/run_info.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/io/writer_pool.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
@@ -123,6 +124,18 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             error_code::sql_execution_exception,
             string_builder{} << "ordered relation is split into multiple partitions (partitions:" << partitions << ")"
                              << string_builder::to_string,
+            status::err_unknown
+        ));
+        return {};
+    }
+    // the request emitting ordered relation has only one writer (see create_request_context()), so this detects only
+    // the bug that the records of the ordered relation can be written to multiple writers (tsurugi-issues#1589)
+    if (auto const& pool = context_->writer_pool();
+        pool && pool->capacity() > 1 && emits_ordered_relation(*info_)) {
+        error::set_error_info(*context_, create_error_info(
+            error_code::sql_execution_exception,
+            string_builder{} << "ordered relation can be written to multiple writers (writers:" << pool->capacity()
+                             << ")" << string_builder::to_string,
             status::err_unknown
         ));
         return {};

@@ -126,6 +126,23 @@ public:
         has_write_operations_ = arg;
     }
 
+    /**
+     * @brief returns whether the statement emits the ordered relation (emit with preserve_output)
+     * @details the records of the ordered relation must be written to a single writer, because the order among the
+     * records written to different writers is not kept
+     */
+    [[nodiscard]] bool emits_ordered_relation() const noexcept {
+        return emits_ordered_relation_;
+    }
+
+    /**
+     * @brief sets whether the statement emits the ordered relation
+     * @param arg the flag value
+     */
+    void emits_ordered_relation(bool arg) noexcept {
+        emits_ordered_relation_ = arg;
+    }
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
@@ -133,6 +150,7 @@ private:
     statement_work_level work_level_{};
     storage::storage_operation storage_operation_{};
     bool has_write_operations_{};
+    bool emits_ordered_relation_{};
 };
 
 } // namespace jogasaki::plan

@@ -355,6 +355,9 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<bool>("dev_enable_ties_ordered_by_primary_key")) {
         ret->enable_ties_ordered_by_primary_key(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_apply_preserves_order")) {
+        ret->enable_apply_preserves_order(v.value());
+    }
     constexpr std::string_view KEY_SCAN_IMPL{"dev_scan_impl"};
     if (auto v = jogasaki_config->get<std::string>(KEY_SCAN_IMPL)) {
         std::int32_t idx{};

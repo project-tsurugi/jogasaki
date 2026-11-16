@@ -33,4 +33,12 @@ namespace jogasaki::executor::process {
  */
 [[nodiscard]] bool requires_single_partition(processor_info const& info, io_exchange_map const& exchanges);
 
+/**
+ * @brief returns whether the process emits the ordered relation (emit with preserve_output)
+ * @param info the processor information
+ * @return true if the process emits the ordered relation
+ * @return false otherwise
+ */
+[[nodiscard]] bool emits_ordered_relation(processor_info const& info);
+
 }  // namespace jogasaki::executor::process

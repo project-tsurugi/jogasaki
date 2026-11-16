@@ -664,6 +664,18 @@ public:
     }
 
     /**
+     * @brief whether the apply operator outputs records in the order of its input records
+     * (runtime_feature::apply_preserves_order)
+     */
+    [[nodiscard]] bool enable_apply_preserves_order() const noexcept {
+        return enable_apply_preserves_order_;
+    }
+
+    void enable_apply_preserves_order(bool arg) noexcept {
+        enable_apply_preserves_order_ = arg;
+    }
+
+    /**
      * @brief whether the forward exchange with row count stops its upstream early when it receives the records of the count
      */
     [[nodiscard]] bool enable_early_stop() const noexcept {
@@ -800,6 +812,7 @@ public:
         print_non_default(enable_ordered_forward);
         print_non_default(enable_backward_scan);
         print_non_default(enable_ties_ordered_by_primary_key);
+        print_non_default(enable_apply_preserves_order);
         print_non_default(scan_impl);
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
@@ -885,6 +898,7 @@ private:
     bool enable_ordered_forward_ = true;
     bool enable_backward_scan_ = true;
     bool enable_ties_ordered_by_primary_key_ = true;
+    bool enable_apply_preserves_order_ = true;
     scan_impl_kind scan_impl_{scan_impl_kind::automatic};
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;

@@ -275,6 +275,9 @@ void preprocess(
             case takatori::relation::expression_kind::emit: {
                 auto& e = unsafe_downcast<takatori::relation::emit>(op);
                 container->external_writer_meta(executor::process::impl::ops::emit::create_meta(info, e.columns()));
+                if(e.ordering().contains(takatori::relation::emit_ordering::preserve_output)) {
+                    container->emits_ordered_relation(true);
+                }
                 container->work_level().set_minimum(statement_work_level_kind::key_operation);
                 break;
             }
@@ -674,6 +677,9 @@ static void add_topn_runtime_features(configuration const& cfg, yugawara::runtim
     // backward_scan requires scan_limit or ordered_scan
     if(cfg.enable_backward_scan() && (cfg.enable_scan_limit() || cfg.enable_ordered_scan())) {
         runtime_features.insert(yugawara::runtime_feature::backward_scan);
+    }
+    if(cfg.enable_apply_preserves_order()) {
+        runtime_features.insert(yugawara::runtime_feature::apply_preserves_order);
     }
 }
 

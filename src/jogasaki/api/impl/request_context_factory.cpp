@@ -36,7 +36,8 @@ std::shared_ptr<request_context> create_request_context(
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
     request_info const& req_info,
     bool has_result_records,
-    std::shared_ptr<scheduler::request_detail> request_detail
+    std::shared_ptr<scheduler::request_detail> request_detail,
+    bool emits_ordered_relation
 ) {
     auto& c = db.configuration();
     auto rctx = std::make_shared<request_context>(
@@ -67,6 +68,12 @@ std::shared_ptr<request_context> create_request_context(
         // set channel, and performance is not important.
         std::size_t max_writers =
             channel->max_writer_count().has_value() ? channel->max_writer_count().value() : c->max_result_set_writers();
+        if(emits_ordered_relation) {
+            // the ordered relation must be written to a single writer, because the order among the records written
+            // to different writers is not kept. The task of the process emitting it can yield and resume with
+            // another seat, so the pool must have only one seat (tsurugi-issues#1589)
+            max_writers = 1;
+        }
         rctx->writer_pool(std::make_shared<executor::io::writer_pool>(*channel, max_writers));
     }
 

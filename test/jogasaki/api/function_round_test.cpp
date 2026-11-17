@@ -97,69 +97,120 @@ struct TestCaseInt {
 };
 
 using namespace std::string_view_literals;
-TEST_F(function_round_test, int) {
-    execute_statement("create table t (c0 INT)");
-    execute_statement("insert into t values (-8)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int4>(-8)), result[0]) << "Failed query: " << query;
+TEST_F(function_round_test, int_default_precision) {
+    execute_statement("CREATE TABLE t (c0 INT)");
+    for (auto value : {std::int64_t{-8}, std::int64_t{-2147483647} - 1, std::int64_t{2147483647}}) {
+        SCOPED_TRACE(value);
+        execute_statement("INSERT INTO t VALUES (" + std::to_string(value) + ")");
+        for (auto const& scale : {"", ",0"}) {
+            std::vector<mock::basic_record> result{};
+            execute_query(std::string("SELECT ROUND(c0") + scale + ") FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ(create_nullable_record<kind::int4>(value), result[0]);
+        }
+        execute_statement("DELETE FROM t");
+    }
 }
-TEST_F(function_round_test, maxint) {
-    execute_statement("create table t (c0 INT)");
-    execute_statement("insert into t values (2147483647)");
 
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int4>(2147483647)), result[0])
-        << "Failed query: " << query;
+TEST_F(function_round_test, bigint_default_precision) {
+    execute_statement("CREATE TABLE t (c0 BIGINT)");
+    for (auto value : {std::int64_t{-8}, std::int64_t{-9223372036854775807} - 1, std::int64_t{9223372036854775807}}) {
+        SCOPED_TRACE(value);
+        execute_statement("INSERT INTO t VALUES (" + std::to_string(value) + ")");
+        for (auto const& scale : {"", ",0"}) {
+            std::vector<mock::basic_record> result{};
+            execute_query(std::string("SELECT ROUND(c0") + scale + ") FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ(create_nullable_record<kind::int8>(value), result[0]);
+        }
+        execute_statement("DELETE FROM t");
+    }
 }
-TEST_F(function_round_test, minint) {
-    execute_statement("create table t (c0 INT)");
-    execute_statement("insert into t values (-2147483648)");
-    std::string query = std::string("SELECT round(c0) FROM t");
 
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int4>(-2147483648)), result[0])
-        << "Failed query: " << query;
-}
-TEST_F(function_round_test, bigint) {
-    execute_statement("create table t (c0 BIGINT)");
-    execute_statement("insert into t values (-8)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int8>(-8)), result[0]) << "Failed query: " << query;
-}
-TEST_F(function_round_test, maxbigint) {
-    execute_statement("create table t (c0 BIGINT)");
-    execute_statement("insert into t values (9223372036854775807)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int8>(9223372036854775807)), result[0])
-        << "Failed query: " << query;
-}
-TEST_F(function_round_test, minbigint) {
-    execute_statement("create table t (c0 BIGINT)");
-    execute_statement("insert into t values (-9223372036854775808)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int8>(-9223372036854775808UL)), result[0])
-        << "Failed query: " << query;
+TEST_F(function_round_test, integral_rounding_boundaries) {
+    struct Case { const char* type; const char* input; int scale; const char* expected; };
+    const std::vector<Case> cases{
+        {"INT", "2147483647", -1, nullptr},
+        {"INT", "-2147483648", -1, nullptr},
+        {"INT", "2147483647", -2, "2147483600"},
+        {"INT", "-2147483648", -2, "-2147483600"},
+        {"INT", "2147483647", -3, nullptr},
+        {"INT", "-2147483648", -3, nullptr},
+        {"INT", "2147483647", -4, "2147480000"},
+        {"INT", "-2147483648", -4, "-2147480000"},
+        {"INT", "2147483647", -5, nullptr},
+        {"INT", "-2147483648", -5, nullptr},
+        {"INT", "2147483647", -6, "2147000000"},
+        {"INT", "-2147483648", -6, "-2147000000"},
+        {"INT", "2147483647", -7, nullptr},
+        {"INT", "-2147483648", -7, nullptr},
+        {"INT", "2147483647", -8, "2100000000"},
+        {"INT", "-2147483648", -8, "-2100000000"},
+        {"INT", "2147483647", -9, "2000000000"},
+        {"INT", "-2147483648", -9, "-2000000000"},
+        {"INT", "2147483644", -1, "2147483640"},
+        {"INT", "2147483645", -1, nullptr},
+        {"INT", "-2147483644", -1, "-2147483640"},
+        {"INT", "-2147483645", -1, nullptr},
+        {"BIGINT", "9223372036854775807", -1, nullptr},
+        {"BIGINT", "-9223372036854775808", -1, nullptr},
+        {"BIGINT", "9223372036854775807", -2, "9223372036854775800"},
+        {"BIGINT", "-9223372036854775808", -2, "-9223372036854775800"},
+        {"BIGINT", "9223372036854775807", -3, nullptr},
+        {"BIGINT", "-9223372036854775808", -3, nullptr},
+        {"BIGINT", "9223372036854775807", -4, nullptr},
+        {"BIGINT", "-9223372036854775808", -4, nullptr},
+        {"BIGINT", "9223372036854775807", -5, nullptr},
+        {"BIGINT", "-9223372036854775808", -5, nullptr},
+        {"BIGINT", "9223372036854775807", -6, nullptr},
+        {"BIGINT", "-9223372036854775808", -6, nullptr},
+        {"BIGINT", "9223372036854775807", -7, "9223372036850000000"},
+        {"BIGINT", "-9223372036854775808", -7, "-9223372036850000000"},
+        {"BIGINT", "9223372036854775807", -8, nullptr},
+        {"BIGINT", "-9223372036854775808", -8, nullptr},
+        {"BIGINT", "9223372036854775807", -9, nullptr},
+        {"BIGINT", "-9223372036854775808", -9, nullptr},
+        {"BIGINT", "9223372036854775807", -10, nullptr},
+        {"BIGINT", "-9223372036854775808", -10, nullptr},
+        {"BIGINT", "9223372036854775807", -11, "9223372000000000000"},
+        {"BIGINT", "-9223372036854775808", -11, "-9223372000000000000"},
+        {"BIGINT", "9223372036854775807", -12, "9223372000000000000"},
+        {"BIGINT", "-9223372036854775808", -12, "-9223372000000000000"},
+        {"BIGINT", "9223372036854775807", -13, "9223370000000000000"},
+        {"BIGINT", "-9223372036854775808", -13, "-9223370000000000000"},
+        {"BIGINT", "9223372036854775807", -14, nullptr},
+        {"BIGINT", "-9223372036854775808", -14, nullptr},
+        {"BIGINT", "9223372036854775807", -15, "9223000000000000000"},
+        {"BIGINT", "-9223372036854775808", -15, "-9223000000000000000"},
+        {"BIGINT", "9223372036854775807", -16, "9220000000000000000"},
+        {"BIGINT", "-9223372036854775808", -16, "-9220000000000000000"},
+        {"BIGINT", "9223372036854775807", -17, "9200000000000000000"},
+        {"BIGINT", "-9223372036854775808", -17, "-9200000000000000000"},
+        {"BIGINT", "9223372036854775807", -18, "9000000000000000000"},
+        {"BIGINT", "-9223372036854775808", -18, "-9000000000000000000"},
+        {"BIGINT", "9223372036854775804", -1, "9223372036854775800"},
+        {"BIGINT", "9223372036854775805", -1, nullptr},
+        {"BIGINT", "-9223372036854775804", -1, "-9223372036854775800"},
+        {"BIGINT", "-9223372036854775805", -1, nullptr},
+    };
+    for (auto const& c : cases) {
+        auto sql = std::string("SELECT ROUND(CAST(") + c.input + " AS " + c.type + "), " +
+            std::to_string(c.scale) + ")";
+        SCOPED_TRACE(sql);
+        if (c.expected == nullptr) {
+            test_stmt_err(sql, error_code::value_evaluation_exception);
+        } else {
+            std::vector<mock::basic_record> result{};
+            execute_query(sql, result);
+            ASSERT_EQ(1, result.size());
+            auto expected = std::stoll(c.expected);
+            if (std::string_view(c.type) == "INT") {
+                EXPECT_EQ(create_nullable_record<kind::int4>(expected), result[0]);
+            } else {
+                EXPECT_EQ(create_nullable_record<kind::int8>(expected), result[0]);
+            }
+        }
+    }
 }
 
 TEST_F(function_round_test, null) {

@@ -42,6 +42,7 @@ ROUND(numeric_expression[, integer_expression])
 * `integer_expression` の型としては `INTEGER` または `BIGINT` を許容します。
 * `numeric_expression` または `integer_expression` のいずれかが `NULL` の場合、戻り値は `NULL` となります。
 * `numeric_expression` が `REAL` または `DOUBLE` 型の `Infinity`、`-Infinity`、`-0.0`、`NaN` のいずれかである場合は、その値をそのまま返します。
+* `numeric_expression` が `INTEGER` または `BIGINT` の場合、戻り値も同じ型となります。丸めた結果がその型の範囲を超える場合は、`VALUE_EVALUATION_EXCEPTION`（overflow）となります。
 * `integer_expression` にはnumeric_expressionの型に対応した上下限値が定められており、その範囲を超えた場合エラーとなります。
 
 | `numeric_expression` の型 | 上限値 | 下限値 |

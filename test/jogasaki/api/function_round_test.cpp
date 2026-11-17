@@ -15,6 +15,7 @@
  */
 
 #include <boost/move/utility_core.hpp>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -31,6 +32,10 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/executor/function/builtin_scalar_functions.h>
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/commit_response.h>
@@ -223,92 +228,87 @@ TEST_F(function_round_test, null) {
     EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
 }
 
-TEST_F(function_round_test, decimal_38_38_min) {
-    execute_statement("create table t (c0 DECIMAL(38, 38))");
-    execute_statement("insert into t values (-0.99999999999999999999999999999999999999)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type()},
-        runtime_t<meta::field_type_kind::decimal>(-1, 0, 1, 0)
-    );
-    EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
+TEST_F(function_round_test, decimal_precision_boundaries) {
+    struct Case { const char* input; const char* type; int scale; const char* expected; };
+    const std::vector<Case> cases{
+        {"1.5", "DECIMAL(2,1)", 38, "1.5"},
+        {"-1.5", "DECIMAL(2,1)", 38, "-1.5"},
+        {"10", "DECIMAL(2,0)", 38, "10"},
+        {"0", "DECIMAL(38,38)", 38, "0"},
+        {"0", "DECIMAL(38,38)", -38, "0"},
+        {"1.5", "DECIMAL(2,1)", 37, "1.5"},
+        {"0.99999999999999999999999999999999999999", "DECIMAL(38,38)", 37, "1"},
+        {"-0.99999999999999999999999999999999999999", "DECIMAL(38,38)", 37, "-1"},
+        {"1.5", "DECIMAL(2,1)", -38, "0"},
+        {"-1.5", "DECIMAL(2,1)", -38, "0"},
+        {"1.50", "DECIMAL(3,2)", 2, "1.5"},
+        {"1.500", "DECIMAL(4,3)", 1, "1.5"},
+        {"99999999999999999999999999999999999999", "DECIMAL(38,0)", 38,
+            "99999999999999999999999999999999999999"},
+    };
+    for (auto const& c : cases) {
+        auto input = std::string("CAST(") + c.input + " AS " + c.type + ")";
+        auto sql = "SELECT ROUND(" + input + "," + std::to_string(c.scale) + ")";
+        SCOPED_TRACE(sql);
+        std::vector<mock::basic_record> actual{};
+        std::vector<mock::basic_record> expected{};
+        execute_query(sql, actual);
+        execute_query(std::string("SELECT CAST(") + c.expected + " AS DECIMAL(*,*))", expected);
+        ASSERT_EQ(1, actual.size());
+        ASSERT_EQ(1, expected.size());
+        EXPECT_EQ(expected[0], actual[0]);
+    }
 }
 
-TEST_F(function_round_test, decimal_38_38_max) {
-    execute_statement("create table t (c0 DECIMAL(38, 38))");
-    execute_statement("insert into t values (0.99999999999999999999999999999999999999)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type()},
-        runtime_t<meta::field_type_kind::decimal>(1, 5421010862427522170, 687399551400673280, -38)
-    );
-    EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
+TEST(function_round_error_test, decimal_round_propagates_arithmetic_error) {
+    namespace expr = jogasaki::executor::expr;
+    expr::details::ensure_decimal_context();
+    struct RestoreContext {
+        decimal::Context saved{decimal::context};
+        ~RestoreContext() { decimal::context = saved; }
+    } restore{};
+    // Force the remainder's integer quotient (15) to exceed the test context precision.
+    decimal::context.prec(1);
+    expr::evaluator_context ctx{nullptr};
+    std::array<data::any, 2> args{
+        data::any{std::in_place_type<triple>, triple{1, 0, 155, -2}},
+        data::any{std::in_place_type<std::int32_t>, std::int32_t{1}},
+    };
+    auto result = executor::function::builtin::round(ctx, takatori::util::sequence_view<data::any>{args.data(), args.size()});
+    ASSERT_TRUE(result.error());
+    EXPECT_EQ(expr::error_kind::arithmetic_error, result.to<expr::error>().kind());
+    ASSERT_EQ(1, ctx.errors().size());
+    EXPECT_EQ(expr::error_kind::arithmetic_error, ctx.errors()[0].code());
 }
 
-TEST_F(function_round_test, decimal_38_0_min) {
-    execute_statement("create table t (c0 DECIMAL(38, 0))");
-    execute_statement("insert into t values (-99999999999999999999999999999999999999)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type()},
-        runtime_t<meta::field_type_kind::decimal>(-1, 5421010862427522170, 687399551400673279, 0)
-    );
-    EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
+TEST_F(function_round_test, decimal_default_precision_boundaries) {
+    struct Case { const char* type; const char* input; triple expected; };
+    const std::vector<Case> cases{
+        {"DECIMAL(38,38)", "-0.99999999999999999999999999999999999999", {-1, 0, 1, 0}},
+        {"DECIMAL(38,38)", "0.99999999999999999999999999999999999999",
+            {1, 5421010862427522170, 687399551400673280, -38}},
+        {"DECIMAL(38,0)", "-99999999999999999999999999999999999999",
+            {-1, 5421010862427522170, 687399551400673279, 0}},
+        {"DECIMAL(38,0)", "99999999999999999999999999999999999999",
+            {1, 5421010862427522170, 687399551400673279, 0}},
+        {"DECIMAL(1,1)", "-0.9", {-1, 0, 1, 0}},
+        {"DECIMAL(1,1)", "0.9", {1, 0, 10, -1}},
+    };
+    for (std::size_t i = 0; i < cases.size(); ++i) {
+        auto const& c = cases[i];
+        SCOPED_TRACE(std::string(c.type) + ":" + c.input);
+        auto table = "t" + std::to_string(i);
+        execute_statement("CREATE TABLE " + table + " (c0 " + c.type + ")");
+        execute_statement("INSERT INTO " + table + " VALUES (" + c.input + ")");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT ROUND(c0) FROM " + table, result);
+        ASSERT_EQ(1, result.size());
+        auto expected = mock::typed_nullable_record<kind::decimal>(
+            std::tuple{decimal_type()}, c.expected);
+        EXPECT_EQ(expected, result[0]);
+    }
 }
-TEST_F(function_round_test, decimal_38_0_max) {
-    execute_statement("create table t (c0 DECIMAL(38, 0))");
-    execute_statement("insert into t values (99999999999999999999999999999999999999)");
 
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type()},
-        runtime_t<meta::field_type_kind::decimal>(1, 5421010862427522170, 687399551400673279, 0)
-    );
-    EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
-}
-TEST_F(function_round_test, decimal_1_1_min) {
-    execute_statement("create table t (c0 DECIMAL(1, 1))");
-    execute_statement("insert into t values (-0.9)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type()},
-        runtime_t<meta::field_type_kind::decimal>(-1, 0, 1, 0)
-    );
-    EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
-}
-TEST_F(function_round_test, decimal_1_1_max) {
-    execute_statement("create table t (c0 DECIMAL(1, 1))");
-    execute_statement("insert into t values (0.9)");
-
-    std::string query = std::string("SELECT round(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type()},
-        runtime_t<meta::field_type_kind::decimal>(1, 0, 10, -1)
-    );
-    EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
-}
 TEST_F(function_round_test, float_normal) {
     execute_statement("create table t (c0 float)");
     execute_statement("insert into t values (-3.14159265358979323846)");

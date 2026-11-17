@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -870,9 +871,17 @@ static data::any round_integral(data::any src, int32_t precision, evaluator_cont
     auto fix_value = (value / divide) * divide;
     auto remain    = value - fix_value;
 
-    if (remain > 0 && remain >= divide / 2) {
+    const bool round_up = remain > 0 && remain >= divide / 2;
+    const bool round_down = remain < 0 && remain <= -divide / 2;
+    if ((round_up && fix_value > std::numeric_limits<T>::max() - divide) ||
+        (round_down && fix_value < std::numeric_limits<T>::min() + divide)) {
+        ctx.add_error({error_kind::overflow,
+            std::string("integer out of range: ROUND result exceeds ") + type_name + " range."});
+        return data::any{std::in_place_type<error>, error(error_kind::overflow)};
+    }
+    if (round_up) {
         fix_value += divide;
-    } else if (remain < 0 && remain <= -divide / 2) {
+    } else if (round_down) {
         fix_value -= divide;
     }
 

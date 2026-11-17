@@ -701,8 +701,9 @@ static size_t get_size_byte(std::string_view view, const size_t start_byte, cons
     if (!is_character_type) { return letter_count; }
     size_t tmp_byte = 0;
     size_t offset   = start_byte;
-    for (size_t i = 0; i < letter_count; ++i) {
+    for (size_t i = 0; i < letter_count && offset < view.size(); ++i) {
         tmp_byte = get_byte(detect_next_encoding(view, offset));
+        if (tmp_byte == 0) { break; }
         offset += tmp_byte;
     }
     // offset is sum of tmp_bytes

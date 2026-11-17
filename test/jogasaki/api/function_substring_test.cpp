@@ -96,6 +96,22 @@ struct TestCase {
 
 using namespace std::string_view_literals;
 
+TEST_F(function_substring_test, length_beyond_input) {
+    for (auto const& type : {"CHAR", "VARCHAR"}) {
+        for (auto const& input : {"abcdef", "aあ𠮷"}) {
+            for (auto const& length : {"100000000", "9223372036854775807"}) {
+                SCOPED_TRACE(std::string(type) + ":" + input + ":" + length);
+                std::vector<mock::basic_record> result{};
+                execute_query(std::string("SELECT SUBSTRING(CAST('") + input + "' AS " + type + "(" +
+                    std::to_string(std::string_view(input).size()) + ")) FROM 2 FOR " + length + ")", result);
+                ASSERT_EQ(1, result.size());
+                EXPECT_EQ(create_nullable_record<kind::character>(accessor::text{
+                    std::string_view(input).substr(1)}), result[0]);
+            }
+        }
+    }
+}
+
 TEST_F(function_substring_test, varbinary) {
     execute_statement("create table t (c0 varbinary(20))");
     execute_statement("insert into t values ('01c2e0f0bf')");
@@ -505,118 +521,22 @@ TEST_F(function_substring_test, null) {
     } 
 }
 
-TEST_F(function_substring_test, invalidutf8_1byte) {
-    execute_statement("create table t (c0 varchar(100))");
+TEST_F(function_substring_test, invalid_utf8) {
+    execute_statement("CREATE TABLE t (c0 VARCHAR(100))");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::character}};
-    auto ps = api::create_parameter_set();
-    ps->set_character("p0", "\x80");
-    execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
-
-    std::vector<TestCase> test_cases = {{1, std::nullopt, std::nullopt}};
-    for (const auto& test : test_cases) {
-        std::string query =
-            std::string("SELECT substring(c0 FROM ") + std::to_string(test.from_value);
-        std::vector<mock::basic_record> result{};
-        if (test.for_value.has_value()) {
-            query += " FOR " + std::to_string(test.for_value.value());
+    for (auto const& input : {"\x80", "\xC0\x80", "\xE2\x28\xA1", "\xF4\x27\x80\x80"}) {
+        auto ps = api::create_parameter_set();
+        ps->set_character("p0", input);
+        execute_statement("INSERT INTO t VALUES (:p0)", variables, *ps);
+        for (auto const& suffix : {"", " FOR 9223372036854775807"}) {
+            SCOPED_TRACE(::testing::PrintToString(std::string(input)) + suffix);
+            std::vector<mock::basic_record> result{};
+            execute_query(std::string("SELECT SUBSTRING(c0 FROM 1") + suffix + ") FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_TRUE(result[0].is_null(0));
         }
-        query += ") FROM t";
-        execute_query(query, result);
-        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        if (test.expected) {
-            accessor::text expected_text(*test.expected);
-            EXPECT_EQ(create_nullable_record<kind::character>(expected_text), result[0])
-                << "Failed query: " << query;
-        } else {
-            EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
-        }
-    }
-}
-
-TEST_F(function_substring_test, invalid_utf8_2byte) {
-    execute_statement("create table t (c0 varchar(100))");
-    std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::character}};
-    auto ps = api::create_parameter_set();
-    ps->set_character("p0", "\xC0\x80");
-    execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
-
-    std::vector<TestCase> test_cases = {{1, std::nullopt, std::nullopt}};
-    for (const auto& test : test_cases) {
-        std::string query =
-            std::string("SELECT substring(c0 FROM ") + std::to_string(test.from_value);
-        std::vector<mock::basic_record> result{};
-        if (test.for_value.has_value()) {
-            query += " FOR " + std::to_string(test.for_value.value());
-        }
-        query += ") FROM t";
-        execute_query(query, result);
-        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        if (test.expected) {
-            accessor::text expected_text(*test.expected);
-            EXPECT_EQ(create_nullable_record<kind::character>(expected_text), result[0])
-                << "Failed query: " << query;
-        } else {
-            EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
-        }
-    }
-}
-TEST_F(function_substring_test, invalid_utf8_3byte) {
-    execute_statement("create table t (c0 varchar(100))");
-    std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::character}};
-    auto ps = api::create_parameter_set();
-    ps->set_character("p0", "\xE2\x28\xA1");
-    execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
-
-    std::vector<TestCase> test_cases = {{1, std::nullopt, std::nullopt}};
-    for (const auto& test : test_cases) {
-        std::string query =
-            std::string("SELECT substring(c0 FROM ") + std::to_string(test.from_value);
-        std::vector<mock::basic_record> result{};
-        if (test.for_value.has_value()) {
-            query += " FOR " + std::to_string(test.for_value.value());
-        }
-        query += ") FROM t";
-        execute_query(query, result);
-        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        if (test.expected) {
-            accessor::text expected_text(*test.expected);
-            EXPECT_EQ(create_nullable_record<kind::character>(expected_text), result[0])
-                << "Failed query: " << query;
-        } else {
-            EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
-        }
-    }
-}
-
-TEST_F(function_substring_test, invalid_utf8_4byte) {
-    execute_statement("create table t (c0 varchar(100))");
-    std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::character}};
-    auto ps = api::create_parameter_set();
-    ps->set_character("p0", "\xF4\x27\x80\x80");
-    execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
-
-    std::vector<TestCase> test_cases = {{1, std::nullopt, std::nullopt}};
-    for (const auto& test : test_cases) {
-        std::string query =
-            std::string("SELECT substring(c0 FROM ") + std::to_string(test.from_value);
-        std::vector<mock::basic_record> result{};
-        if (test.for_value.has_value()) {
-            query += " FOR " + std::to_string(test.for_value.value());
-        }
-        query += ") FROM t";
-        execute_query(query, result);
-        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        if (test.expected) {
-            accessor::text expected_text(*test.expected);
-            EXPECT_EQ(create_nullable_record<kind::character>(expected_text), result[0])
-                << "Failed query: " << query;
-        } else {
-            EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
-        }
+        execute_statement("DELETE FROM t");
     }
 }
 

@@ -4,10 +4,21 @@
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         "-DCMAKE_BUILD_TYPE=${env:CAPITAL_BUILD_TYPE}",
         "-DSHARKSFIN_IMPLEMENTATION=${env:SHARKSFIN_IMPLEMENTATION}",
-        "-DENABLE_ALTIMETER=ON"
+        "-DENABLE_ALTIMETER=ON",
+        "-DBUILD_TESTS=ON",
+        "-DBUILD_EXAMPLES=ON",
+        "-DBUILD_DOCUMENTS=ON"
     ],
     "cmake.installPrefix": "${env:HOME}/git/.local-${env:BUILD_TYPE}/",
     "cmake.buildDirectory": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}",
+    "cmake.testEnvironment": {
+        "GLOG_v": "50"
+    },
+    "cmake.ctestArgs": [
+        "-V",
+        "--test-output-size-passed", "104857600",
+        "--test-output-size-failed", "104857600"
+    ],
     "testMate.cpp.log.logpanel": true,
     "testMate.cpp.log.logfile": "/tmp/testMate-jogasaki-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}.log",
     "testMate.cpp.discovery.testListCaching": true,
@@ -133,6 +144,15 @@
         "variant": "cpp",
         "source_location": "cpp",
         "format": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "barrier": "cpp",
+        "coroutine": "cpp",
+        "expected": "cpp",
+        "latch": "cpp",
+        "ranges": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp",
+        "stdfloat": "cpp",
+        "syncstream": "cpp"
     }
 }

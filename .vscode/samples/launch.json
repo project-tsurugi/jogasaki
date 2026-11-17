@@ -76,6 +76,12 @@
             "request": "launch",
             // Resolved by CMake Tools:
             "program": "${cmake.testProgram}",
+            "environment": [
+                {
+                    "name": "ASAN_OPTIONS",
+                    "value": "detect_leaks=0"
+                }
+            ],
             "args": [
                 "${cmake.testArgs}"
             ],

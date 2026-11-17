@@ -108,18 +108,18 @@ public:
     }
 
     /**
-     * @brief returns whether the statement (not only this process) writes to tables via relational operators
+     * @brief returns whether the statement (not only this process) reads the tables written by the statement itself
      */
-    [[nodiscard]] bool statement_has_write_operations() const noexcept {
-        return statement_has_write_operations_;
+    [[nodiscard]] bool statement_reads_written_tables() const noexcept {
+        return statement_reads_written_tables_;
     }
 
     /**
-     * @brief sets whether the statement (not only this process) writes to tables via relational operators
+     * @brief sets whether the statement (not only this process) reads the tables written by the statement itself
      * @param arg the flag value
      */
-    void statement_has_write_operations(bool arg) noexcept {
-        statement_has_write_operations_ = arg;
+    void statement_reads_written_tables(bool arg) noexcept {
+        statement_reads_written_tables_ = arg;
     }
 
 private:
@@ -129,7 +129,7 @@ private:
     maybe_shared_ptr<impl::block_indices const> block_indices_{};
     processor_details details_{};
     variable_table const* host_variables_{};
-    bool statement_has_write_operations_{};
+    bool statement_reads_written_tables_{};
 
     processor_details create_details();
 };

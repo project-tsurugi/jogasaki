@@ -35,10 +35,11 @@ namespace jogasaki::plan {
 using namespace std::string_view_literals;
 
 /**
- * @brief tests for the flag whether the statement has write operations
- * @details the flag is used not to use iscan for the statements with write operations (tsurugi-issues#1491, #1589)
+ * @brief tests for the flag whether the statement reads the tables written by the statement itself
+ * @details the flag is used not to use iscan and not to give TOP-N runtime features for such statements
+ * (tsurugi-issues#1491, #1589)
  */
-class plan_write_operations_test :
+class plan_reads_written_tables_test :
     public ::testing::Test,
     public testing::api_test_base {
 
@@ -51,37 +52,57 @@ public:
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
         execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY, c1 INT)");
+        execute_statement("CREATE INDEX t_c1 ON t (c1)");
+        execute_statement("CREATE TABLE d (c0 INT PRIMARY KEY, c1 INT)");
     }
 
     void TearDown() override {
         db_teardown();
     }
 
-    bool has_write_operations(std::string_view sql) {
+    bool reads_written_tables(std::string_view sql) {
         api::statement_handle prepared{};
         std::unordered_map<std::string, api::field_type_kind> variables{};
         EXPECT_EQ(status::ok, db_->prepare(sql, variables, prepared));
         auto ret = reinterpret_cast<api::impl::prepared_statement*>(prepared.get())  //NOLINT
-            ->body()->mirrors()->has_write_operations();
+            ->body()->mirrors()->reads_written_tables();
         EXPECT_EQ(status::ok, db_->destroy_statement(prepared));
         return ret;
     }
 };
 
-TEST_F(plan_write_operations_test, query) {
-    EXPECT_FALSE(has_write_operations("SELECT * FROM t WHERE c1 > 0 LIMIT 3"));
+TEST_F(plan_reads_written_tables_test, query) {
+    EXPECT_FALSE(reads_written_tables("SELECT * FROM t WHERE c1 > 0 LIMIT 3"));
 }
 
-TEST_F(plan_write_operations_test, insert_select) {
-    EXPECT_TRUE(has_write_operations("INSERT INTO t SELECT c0 + 10, c1 FROM t WHERE c1 > 0 LIMIT 3"));
+TEST_F(plan_reads_written_tables_test, insert_values) {
+    EXPECT_FALSE(reads_written_tables("INSERT INTO t VALUES (1, 1)"));
 }
 
-TEST_F(plan_write_operations_test, update) {
-    EXPECT_TRUE(has_write_operations("UPDATE t SET c1 = 1 WHERE c1 > 0"));
+TEST_F(plan_reads_written_tables_test, insert_select_same_table) {
+    EXPECT_TRUE(reads_written_tables("INSERT INTO t SELECT c0 + 10, c1 FROM t WHERE c1 > 0 LIMIT 3"));
 }
 
-TEST_F(plan_write_operations_test, delete) {
-    EXPECT_TRUE(has_write_operations("DELETE FROM t WHERE c1 > 0"));
+TEST_F(plan_reads_written_tables_test, insert_select_same_table_secondary_index) {
+    // the secondary index of the written table is read
+    EXPECT_TRUE(reads_written_tables("INSERT INTO t SELECT c0 + 10, c1 FROM t WHERE c1 = 1"));
+}
+
+TEST_F(plan_reads_written_tables_test, insert_select_other_table) {
+    EXPECT_FALSE(reads_written_tables("INSERT INTO d SELECT * FROM t WHERE c1 > 0 LIMIT 3"));
+}
+
+TEST_F(plan_reads_written_tables_test, insert_select_other_table_with_subquery) {
+    // the subquery reads the written table
+    EXPECT_TRUE(reads_written_tables("INSERT INTO d SELECT * FROM t WHERE c0 IN (SELECT c0 FROM d)"));
+}
+
+TEST_F(plan_reads_written_tables_test, update) {
+    EXPECT_TRUE(reads_written_tables("UPDATE t SET c1 = 1 WHERE c1 > 0"));
+}
+
+TEST_F(plan_reads_written_tables_test, delete) {
+    EXPECT_TRUE(reads_written_tables("DELETE FROM t WHERE c1 > 0"));
 }
 
 }  // namespace jogasaki::plan

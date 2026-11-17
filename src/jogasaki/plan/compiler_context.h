@@ -129,20 +129,20 @@ public:
     }
 
     /**
-     * @brief sets whether the statement being prepared writes to tables via relational operators
+     * @brief sets whether the statement being prepared reads the tables written by the statement itself
      * @param arg the flag value
      */
-    void statement_has_write_operations(bool arg) noexcept {
-        statement_has_write_operations_ = arg;
+    void statement_reads_written_tables(bool arg) noexcept {
+        statement_reads_written_tables_ = arg;
     }
 
     /**
-     * @brief returns whether the statement being prepared writes to tables via relational operators
+     * @brief returns whether the statement being prepared reads the tables written by the statement itself
      * @details this is available only while preparing the statement, and is kept in the prepared statement
-     * (mirror_container::has_write_operations()) for later use
+     * (mirror_container::reads_written_tables()) for later use
      */
-    [[nodiscard]] bool statement_has_write_operations() const noexcept {
-        return statement_has_write_operations_;
+    [[nodiscard]] bool statement_reads_written_tables() const noexcept {
+        return statement_reads_written_tables_;
     }
 
 private:
@@ -156,7 +156,7 @@ private:
     std::shared_ptr<std::string> sql_text_{};
     std::shared_ptr<error::error_info> error_info_{};
     compile_option option_{};
-    bool statement_has_write_operations_{};
+    bool statement_reads_written_tables_{};
 
 };
 

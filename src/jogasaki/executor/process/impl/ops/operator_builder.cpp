@@ -178,10 +178,9 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
         case scan_impl_kind::automatic:
             // iscan reads the transaction engine incrementally, so the scan can finish without reading the whole range
             // when it reaches the row count or is stopped early by the forward exchange with row count
-            // (tsurugi-issues#1589). iscan is not used for the statement with write operations because it is more
-            // sensitive to Halloween problem than legacy scan (tsurugi-issues#1491). The scan with row count appears
-            // only in the statement without write operations (see plan::compiler).
-            use_iscan = ! info_->statement_has_write_operations();
+            // (tsurugi-issues#1589). iscan is not used for the statement reading the tables written by itself because
+            // it is more sensitive to Halloween problem than legacy scan (tsurugi-issues#1491).
+            use_iscan = ! info_->statement_reads_written_tables();
             break;
         case scan_impl_kind::legacy: use_iscan = false; break;
         case scan_impl_kind::iscan: use_iscan = true; break;

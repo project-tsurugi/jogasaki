@@ -111,19 +111,20 @@ public:
     [[nodiscard]] storage::storage_operation const& storage_operation() const noexcept;
 
     /**
-     * @brief returns whether the statement writes to tables via relational operators (e.g. INSERT ... SELECT)
-     * @details this is for the whole statement, not for each process
+     * @brief returns whether the statement reads the tables written by the statement itself
+     * @details such statement can read the rows written by itself (Halloween problem), so the executor does not use
+     * iscan, which is more sensitive to the problem. This is for the whole statement, not for each process.
      */
-    [[nodiscard]] bool has_write_operations() const noexcept {
-        return has_write_operations_;
+    [[nodiscard]] bool reads_written_tables() const noexcept {
+        return reads_written_tables_;
     }
 
     /**
-     * @brief sets whether the statement writes to tables via relational operators
+     * @brief sets whether the statement reads the tables written by the statement itself
      * @param arg the flag value
      */
-    void has_write_operations(bool arg) noexcept {
-        has_write_operations_ = arg;
+    void reads_written_tables(bool arg) noexcept {
+        reads_written_tables_ = arg;
     }
 
     /**
@@ -149,7 +150,7 @@ private:
     std::shared_ptr<meta::external_record_meta> external_writer_meta_{};
     statement_work_level work_level_{};
     storage::storage_operation storage_operation_{};
-    bool has_write_operations_{};
+    bool reads_written_tables_{};
     bool emits_ordered_relation_{};
 };
 

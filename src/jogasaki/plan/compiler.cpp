@@ -25,6 +25,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
@@ -56,6 +57,7 @@
 #include <takatori/relation/scan.h>
 #include <takatori/relation/sort_direction.h>
 #include <takatori/relation/step/offer.h>
+#include <takatori/relation/write.h>
 #include <takatori/relation/write_kind.h>
 #include <takatori/statement/create_index.h>
 #include <takatori/statement/create_table.h>
@@ -621,7 +623,7 @@ static status create_prepared_statement(
     auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
     auto [mirror_status, mirror] = preprocess_mirror(s, provider, result.info(), ctx);
     if (mirror_status != status::ok) { return mirror_status; }
-    mirror->has_write_operations(ctx.statement_has_write_operations());
+    mirror->reads_written_tables(ctx.statement_reads_written_tables());
     check_blob_relay_availability(*s, result.info());
     out = std::make_shared<plan::prepared_statement>(
         s,
@@ -681,6 +683,133 @@ static void add_topn_runtime_features(configuration const& cfg, yugawara::runtim
     if(cfg.enable_apply_preserves_order()) {
         runtime_features.insert(yugawara::runtime_feature::apply_preserves_order);
     }
+}
+
+/**
+ * @brief compiles the analyzed statement
+ * @param analysis the analysis result, which is consumed by this function
+ * @param with_topn_features whether to give the TOP-N runtime features to the compiler
+ * @param ctx the compiler context
+ * @param out the prepared statement as the result
+ * @return status::ok if successful, or error status otherwise
+ */
+static status compile_analysis(
+    mizugaki::analyzer::sql_analyzer_result analysis,
+    bool with_topn_features,
+    compiler_context &ctx,
+    std::shared_ptr<plan::prepared_statement>& out
+) {
+    auto cfg = global::config_pool();
+    yugawara::runtime_feature_set runtime_features {
+        //TODO enable features
+//        yugawara::runtime_feature::broadcast_exchange,
+        yugawara::runtime_feature::aggregate_exchange,
+//        yugawara::runtime_feature::broadcast_join_scan,
+        yugawara::runtime_feature::always_inline_scalar_local_variables,
+    };
+
+    if(cfg && with_topn_features) {
+        add_topn_runtime_features(*cfg, runtime_features);
+    }
+    if(cfg && cfg->enable_index_join()) {
+        runtime_features.insert(yugawara::runtime_feature::index_join);
+    }
+    if(cfg && cfg->enable_join_scan()) {
+        runtime_features.insert(yugawara::runtime_feature::index_join_scan);
+    }
+    std::shared_ptr<yugawara::analyzer::index_estimator> indices{};
+    auto sp = std::make_shared<storage_processor>();
+    yugawara::compiler_options c_options{
+        runtime_features,
+        sp,
+        indices,
+    };
+    if(cfg) {
+        c_options.enable_disjunction_range_hinting() = cfg->enable_disjunction_range_hinting();
+    }
+
+    // Reject foreign catalog DDL until runtime support is available, including text-only EXPLAIN.
+    c_options.restricted_features() += {
+        yugawara::restricted_feature::statement_create_foreign_catalog,
+        yugawara::restricted_feature::statement_drop_foreign_catalog,
+    };
+
+    // restricted features - jogasaki does not implement yet
+    if(! ctx.option().explain_by_text_only()) {
+        c_options.restricted_features() += {
+            yugawara::restricted_feature::relation_identify,
+            yugawara::restricted_feature::relation_difference,
+            yugawara::restricted_feature::relation_intersection,
+            yugawara::restricted_feature::exchange_broadcast,
+            yugawara::restricted_feature::exchange_discard,
+            yugawara::restricted_feature::statement_write_delete,
+            yugawara::restricted_feature::statement_write_update,
+            yugawara::restricted_feature::statement_rename_column,
+            yugawara::restricted_feature::statement_rename_index,
+            yugawara::restricted_feature::statement_rename_table,
+            // row slice with start position or variable row count is not supported by scan yet
+            yugawara::restricted_feature::relation_scan_row_slice_start,
+            yugawara::restricted_feature::relation_scan_row_slice_variable,
+            // only immediate row count is supported for row slice of exchanges
+            yugawara::restricted_feature::exchange_forward_row_slice_start,
+            yugawara::restricted_feature::exchange_forward_row_slice_variable,
+            yugawara::restricted_feature::exchange_group_row_slice_start,
+            yugawara::restricted_feature::exchange_group_row_slice_variable,
+        };
+        if(cfg && ! cfg->enable_truncate()) {
+            c_options.restricted_features() += {
+                yugawara::restricted_feature::statement_truncate_table,
+                yugawara::restricted_feature::statement_truncate_table_restart_identity,
+            };
+        }
+    }
+
+    return create_prepared_statement(std::move(analysis), ctx.variable_provider(), c_options, sp, ctx, out);
+}
+
+/**
+ * @brief returns whether the compiled statement reads the tables written by the statement itself
+ * @details the scan, find, join_find and join_scan operators read the tables (including their secondary indices),
+ * and the write operator writes to the table
+ */
+static bool reads_written_tables(takatori::statement::statement const& statement) {
+    if(statement.kind() != takatori::statement::statement_kind::execute) {
+        return false;
+    }
+    std::unordered_set<yugawara::storage::table const*> read{};
+    std::unordered_set<yugawara::storage::table const*> written{};
+    auto table_of = [](takatori::descriptor::relation const& source) {
+        return std::addressof(yugawara::binding::extract<yugawara::storage::index>(source).table());
+    };
+    takatori::plan::sort_from_upstream(
+        unsafe_downcast<takatori::statement::execute>(statement).execution_plan(),
+        [&](takatori::plan::step const& s) {
+            if(s.kind() != takatori::plan::step_kind::process) {
+                return;
+            }
+            for(auto&& op : unsafe_downcast<takatori::plan::process const>(s).operators()) {
+                switch(op.kind()) {
+                    case takatori::relation::expression_kind::scan:
+                        read.emplace(table_of(unsafe_downcast<takatori::relation::scan const>(op).source()));
+                        break;
+                    case takatori::relation::expression_kind::find:
+                        read.emplace(table_of(unsafe_downcast<takatori::relation::find const>(op).source()));
+                        break;
+                    case takatori::relation::expression_kind::join_find:
+                        read.emplace(table_of(unsafe_downcast<takatori::relation::join_find const>(op).source()));
+                        break;
+                    case takatori::relation::expression_kind::join_scan:
+                        read.emplace(table_of(unsafe_downcast<takatori::relation::join_scan const>(op).source()));
+                        break;
+                    case takatori::relation::expression_kind::write:
+                        written.emplace(table_of(unsafe_downcast<takatori::relation::write const>(op).destination()));
+                        break;
+                    default: break;
+                }
+            }
+        }
+    );
+    return std::any_of(written.begin(), written.end(), [&](auto* t) { return read.count(t) != 0; });
 }
 
 static status prepare(
@@ -780,79 +909,40 @@ static status prepare(
         return status::err_compiler_error;
     }
 
-    yugawara::runtime_feature_set runtime_features {
-        //TODO enable features
-//        yugawara::runtime_feature::broadcast_exchange,
-        yugawara::runtime_feature::aggregate_exchange,
-//        yugawara::runtime_feature::broadcast_join_scan,
-        yugawara::runtime_feature::always_inline_scalar_local_variables,
-    };
-
-    // TOP-N runtime features are not given for statements with write operations because they remove exchanges
-    // between scan and write, and the scan can read rows written by the statement itself
-    // (Halloween problem, tsurugi-issues#1491, #1492). This is the only place to judge the problem
-    // for TOP-N optimizations - the scan with row count or direction appears only in the statements without writes,
-    // and the result is passed to the executor (mirror_container::has_write_operations()) not to use iscan, which is
-    // more sensitive to the problem, for such statements.
-    bool const has_write_operations = has_write_operator(analysis);
-    ctx.statement_has_write_operations(has_write_operations);
-    if(cfg && ! has_write_operations) {
-        add_topn_runtime_features(*cfg, runtime_features);
+    // The statement reading the tables written by itself can read the rows written by itself (Halloween problem,
+    // tsurugi-issues#1491, #1492). The TOP-N runtime features are not given for such statement because they can
+    // remove the exchanges between the scan and the write, and the result is passed to the executor
+    // (mirror_container::reads_written_tables()) not to use iscan, which is more sensitive to the problem.
+    // Such statement is judged by the compiled plan, so the statement with write operations is compiled without the
+    // features first, and compiled again with them if it does not read the tables written by itself.
+    // Note that whether the scan and the write are separated by an exchange is not used for the judgement, because
+    // the forward exchange can run its upstream and downstream in parallel in the future.
+    if(! has_write_operator(analysis)) {
+        ctx.statement_reads_written_tables(false);
+        return compile_analysis(std::move(analysis), true, ctx, out);
     }
-    if(cfg && cfg->enable_index_join()) {
-        runtime_features.insert(yugawara::runtime_feature::index_join);
+    ctx.statement_reads_written_tables(true);
+    if(auto rc = compile_analysis(std::move(analysis), false, ctx, out); rc != status::ok) {
+        return rc;
     }
-    if(cfg && cfg->enable_join_scan()) {
-        runtime_features.insert(yugawara::runtime_feature::index_join_scan);
+    if(! cfg || reads_written_tables(*out->statement())) {
+        return status::ok;
     }
-    std::shared_ptr<yugawara::analyzer::index_estimator> indices{};
-    auto sp = std::make_shared<storage_processor>();
-    yugawara::compiler_options c_options{
-        runtime_features,
-        sp,
-        indices,
-    };
-    if(cfg) {
-        c_options.enable_disjunction_range_hinting() = cfg->enable_disjunction_range_hinting();
+    mizugaki::placeholder_map placeholders_again{};
+    auto reanalysis = analyzer(
+        opts, *stmt, *compilation_unit, placeholders_again,
+        takatori::util::optional_ptr<::yugawara::variable::provider const>{ctx.variable_provider().get()}
+    );
+    // the statement compiled first is not returned on errors below, which are not expected because the same statement
+    // was analyzed and compiled successfully
+    out.reset();
+    if(! reanalysis.is_valid()) {
+        auto r = reanalysis.release<mizugaki::analyzer::sql_analyzer_result_kind::diagnostics>();
+        handle_compile_errors(r, status::err_compiler_error, ctx);
+        return status::err_compiler_error;
     }
-
-    // Reject foreign catalog DDL until runtime support is available, including text-only EXPLAIN.
-    c_options.restricted_features() += {
-        yugawara::restricted_feature::statement_create_foreign_catalog,
-        yugawara::restricted_feature::statement_drop_foreign_catalog,
-    };
-
-    // restricted features - jogasaki does not implement yet
-    if(! ctx.option().explain_by_text_only()) {
-        c_options.restricted_features() += {
-            yugawara::restricted_feature::relation_identify,
-            yugawara::restricted_feature::relation_difference,
-            yugawara::restricted_feature::relation_intersection,
-            yugawara::restricted_feature::exchange_broadcast,
-            yugawara::restricted_feature::exchange_discard,
-            yugawara::restricted_feature::statement_write_delete,
-            yugawara::restricted_feature::statement_write_update,
-            yugawara::restricted_feature::statement_rename_column,
-            yugawara::restricted_feature::statement_rename_index,
-            yugawara::restricted_feature::statement_rename_table,
-            // row slice with start position or variable row count is not supported by scan yet
-            yugawara::restricted_feature::relation_scan_row_slice_start,
-            yugawara::restricted_feature::relation_scan_row_slice_variable,
-            // only immediate row count is supported for row slice of exchanges
-            yugawara::restricted_feature::exchange_forward_row_slice_start,
-            yugawara::restricted_feature::exchange_forward_row_slice_variable,
-            yugawara::restricted_feature::exchange_group_row_slice_start,
-            yugawara::restricted_feature::exchange_group_row_slice_variable,
-        };
-        if(cfg && ! cfg->enable_truncate()) {
-            c_options.restricted_features() += {
-                yugawara::restricted_feature::statement_truncate_table,
-                yugawara::restricted_feature::statement_truncate_table_restart_identity,
-            };
-        }
-    }
-
-    return create_prepared_statement(std::move(analysis), ctx.variable_provider(), c_options, sp, ctx, out);
+    ctx.statement_reads_written_tables(false);
+    return compile_analysis(std::move(reanalysis), true, ctx, out);
 }
 
 static std::vector<takatori::relation::step::offer const*> enumerate_offers(takatori::plan::process const& process) {
@@ -883,7 +973,7 @@ executor::process::step create(
         mirror.second,
         host_variables
     );
-    pinfo->statement_has_write_operations(mirrors->has_write_operations());
+    pinfo->statement_reads_written_tables(mirrors->reads_written_tables());
 
     yugawara::binding::factory bindings{};
     std::unordered_map<takatori::descriptor::relation, std::size_t> inputs{};

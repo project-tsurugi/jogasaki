@@ -30,8 +30,8 @@ namespace jogasaki::dist {
 class remote_catalog_snapshot;
 /**
  * @brief Engine-side boundary for the compiler's operation location result (L3-03 [4], [5]).
- * @details Yugawara does not provide compiler_result::operation_location_query() yet, so only
- * explicit injections implement this. An adapter for the formal API wraps that query together with
+ * @details The formal compiler adapter and UT injections implement this interface.
+ * The formal adapter wraps compiler_result::operation_location_query() together with
  * the engine's location_info registry. The result is defined only for steps of the graph it was
  * computed for; steps added after compilation must never be passed.
  */

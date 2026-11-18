@@ -15,195 +15,58 @@
  */
 #include "remote_routing.h"
 
-#include <cstdlib>
-#include <stdexcept>
-#include <vector>
-
-#include <takatori/plan/forward.h>
-#include <takatori/plan/process.h>
-#include <takatori/relation/emit.h>
 #include <takatori/relation/find.h>
 #include <takatori/relation/join_find.h>
 #include <takatori/relation/join_scan.h>
 #include <takatori/relation/scan.h>
-#include <takatori/relation/step/offer.h>
-#include <takatori/relation/step/take_flat.h>
 #include <takatori/util/downcast.h>
-#include <yugawara/analyzer/expression_mapping.h>
-#include <yugawara/analyzer/variable_mapping.h>
 #include <yugawara/binding/extract.h>
-#include <yugawara/binding/factory.h>
 #include <yugawara/storage/index.h>
 
-#include <jogasaki/dist/remote_execution_block.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/transaction_context.h>
-#include <jogasaki/dist/remote_process_execution_block_shape.h>
+#include <jogasaki/dist/remote_catalog_provider.h>
 
 namespace jogasaki::dist {
+namespace {
+// Inspection is only a fail-closed guard for internal callers without captured locations.
+// Never select a destination from this metadata or run a remote declaration locally.
+bool has_remote_source(takatori::relation::graph_type const& graph, remote_catalog_snapshot const* catalogs) {
+    if (!catalogs) return false;
+    for (auto const& relation : graph) {
+        takatori::descriptor::relation const* source{};
+        using kind = takatori::relation::expression_kind;
+        switch (relation.kind()) {
+            case kind::scan: source = &takatori::util::unsafe_downcast<takatori::relation::scan>(relation).source(); break;
+            case kind::find: source = &takatori::util::unsafe_downcast<takatori::relation::find>(relation).source(); break;
+            case kind::join_find: source = &takatori::util::unsafe_downcast<takatori::relation::join_find>(relation).source(); break;
+            case kind::join_scan: source = &takatori::util::unsafe_downcast<takatori::relation::join_scan>(relation).source(); break;
+            default: break;
+        }
+        if (!source) continue;
+        auto const& index = yugawara::binding::extract<yugawara::storage::index>(*source);
+        if (catalogs->remote_server(index.table()) || catalogs->remote_definition(index.table()) ||
+            catalogs->remote_definition(index)) return true;
+    }
+    return false;
+}
+} // namespace
+
 remote_execution_server_selection select_remote_execution_server(
     request_context const& context, executor::process::processor_info const& info) {
     auto dispatch_allowed = !context.remote_worker() && context.configuration()->distributed_query_coordinator_enabled();
-    auto select = [&](std::string const& server) -> remote_execution_server_selection {
-        if (server.empty()) return {};
+    if (auto const& captured = info.captured_location()) {
+        if (captured->empty()) return {};
         if (!dispatch_allowed) {
             return {{}, "Remote query execution is not available in this execution context."};
         }
-        return {server, {}};
-    };
-    if (auto const& captured = info.captured_location()) {
-        return captured->empty() ? remote_execution_server_selection{} : select(*captured);
+        return {*captured, {}};
     }
-    if (auto server = remote_server(info.relations(), context.remote_catalogs().get())) {
-        return select(*server);
+    if (has_remote_source(info.relations(), context.remote_catalogs().get())) {
+        return {{}, dispatch_allowed
+            ? "Compiler-provided execution locations are required for a remote process."
+            : "Remote query execution is not available in this execution context."};
     }
-    // An environment-only development override does not define a remote catalog placement.
-    auto* server = std::getenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
-    if (!server || *server == '\0' || !dispatch_allowed) {
-        return {};
-    }
-    auto const& transaction = context.transaction();
-    if (!transaction || !transaction->option() || !transaction->option()->readonly()
-        || !is_remote_process_execution_block_shape(info.relations())) {
-        return {};
-    }
-    return {std::string{server}, {}};
-}
-
-std::optional<std::string> remote_server(takatori::relation::graph_type const& graph,
-                                         remote_catalog_snapshot const* catalogs, std::string_view fallback) {
-    if (catalogs) {
-        for (auto const& relation : graph) {
-            takatori::descriptor::relation const* source{};
-            if (relation.kind() == takatori::relation::expression_kind::scan) {
-                source = &takatori::util::unsafe_downcast<takatori::relation::scan>(relation).source();
-            }
-            if (relation.kind() == takatori::relation::expression_kind::find) {
-                source = &takatori::util::unsafe_downcast<takatori::relation::find>(relation).source();
-            }
-            if (relation.kind() == takatori::relation::expression_kind::join_find) {
-                source = &takatori::util::unsafe_downcast<takatori::relation::join_find>(relation).source();
-            }
-            if (relation.kind() == takatori::relation::expression_kind::join_scan) {
-                source = &takatori::util::unsafe_downcast<takatori::relation::join_scan>(relation).source();
-            }
-            if (!source) {
-                continue;
-            }
-            auto const& index = yugawara::binding::extract<yugawara::storage::index>(*source);
-            if (auto* location = catalogs->remote_server(index.table())) {
-                return *location;
-            }
-        }
-    }
-    if (!fallback.empty() && is_remote_process_execution_block_shape(graph)) {
-        return std::string{fallback};
-    }
-    return {};
-}
-yugawara::compiled_info adapt_remote_outputs(takatori::plan::graph_type& graph, yugawara::compiled_info const& info,
-                                             remote_catalog_snapshot const* catalogs, std::string_view fallback) {
-    using kind = takatori::relation::expression_kind;
-    std::vector<takatori::plan::process*> processes{};
-    for (auto& step : graph) {
-        if (step.kind() == takatori::plan::step_kind::process) {
-            processes.push_back(&takatori::util::unsafe_downcast<takatori::plan::process>(step));
-        }
-    }
-    auto variables = std::make_shared<yugawara::analyzer::variable_mapping>(info.variables());
-    auto expressions = std::make_shared<yugawara::analyzer::expression_mapping>(info.expressions());
-    yugawara::binding::factory bindings{};
-    for (auto* process : processes) {
-        takatori::relation::emit* emit{};
-        std::size_t sources{};
-        bool simple = true;
-        for (auto& relation : process->operators()) {
-            switch (relation.kind()) {
-                case kind::scan:
-                case kind::find:
-                    ++sources;
-                    break;
-                case kind::filter:
-                case kind::project:
-                    break;
-                case kind::emit:
-                    if (emit != nullptr) {
-                        simple = false;
-                    }
-                    emit = &takatori::util::unsafe_downcast<takatori::relation::emit>(relation);
-                    break;
-                default:
-                    simple = false;
-                    break;
-            }
-        }
-        if (!simple || sources != 1 || (emit == nullptr) || !emit->input().opposite()) {
-            continue;
-        }
-        if (!remote_server(process->operators(), catalogs) && fallback.empty()) {
-            continue;
-        }
-        // Each emitted field gets a distinct exchange column and consumer variable,
-        // including SELECT c, c. Neither labels nor column order are changed.
-        std::vector<takatori::descriptor::variable> columns{};
-        std::vector<takatori::relation::step::offer::column> offered{};
-        std::vector<takatori::relation::step::take_flat::column> taken{};
-        auto emitted = emit->columns();
-        for (auto& column : emitted) {
-            auto exchange = bindings.exchange_column();
-            auto consumer = bindings.stream_variable();
-            auto type = std::shared_ptr<takatori::type::data const>{info.type_of(column.source()).clone()};
-            variables->bind(exchange, type);
-            variables->bind(consumer, type);
-            offered.emplace_back(column.source(), exchange);
-            taken.emplace_back(exchange, consumer);
-            columns.emplace_back(exchange);
-            column.source() = consumer;
-        }
-        auto& forward = graph.insert(takatori::plan::forward{std::move(columns)});
-        auto& consumer = graph.insert(takatori::plan::process{});
-        auto& take = consumer.operators().insert(
-            takatori::relation::step::take_flat{bindings.exchange(forward), std::move(taken)});
-        auto& output = consumer.operators().insert(takatori::relation::emit{std::move(emitted)});
-        take.output() >> output.input();
-        auto* upstream = emit->input().opposite().get();
-        emit->input().disconnect_all();
-        process->operators().erase(*emit);
-        auto& offer = process->operators().insert(
-            takatori::relation::step::offer{bindings.exchange(forward), std::move(offered)});
-        *upstream >> offer.input();
-        *process >> forward;
-        forward >> consumer;
-    }
-    return {std::move(expressions), std::move(variables)};
-}
-std::string validate_remote_plan(takatori::plan::graph_type const& graph, remote_catalog_snapshot const* catalogs,
-                                 std::string_view fallback, status* code) {
-    if (code) *code = status::err_unsupported;
-    std::size_t count{};
-    for (auto const& step : graph) {
-        if (step.kind() != takatori::plan::step_kind::process) {
-            continue;
-        }
-        auto const& process = takatori::util::unsafe_downcast<takatori::plan::process>(step);
-        auto destination = remote_server(process.operators(), catalogs, fallback);
-        if (!destination) {
-            continue;
-        }
-        if (++count > 1) {
-            return "remote execution permits at most one remote execution block per SQL execution";
-        }
-        if (!is_remote_process_execution_block_shape(process.operators())) {
-            return "unsupported remote process shape in remote execution";
-        }
-        remote_execution_block_generation_error error{};
-        if (!create_remote_execution_block(process.operators(), nullptr, nullptr, nullptr, catalogs, *destination, &error)) {
-            if (code) *code = error.code;
-            return std::move(error.message);
-        }
-    }
-    if (code) *code = status::ok;
     return {};
 }
 } // namespace jogasaki::dist

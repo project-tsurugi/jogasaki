@@ -84,7 +84,8 @@ private:
 };
 /**
  * @brief Engine implementation boundary for L3-03 symbol placement.
- * @details Formal Yugawara base class is not available yet. Catalogs and placement are captured
+ * @details compiler_symbol_locations exposes this through the formal Yugawara API.
+ * Catalogs and placement are captured
  * together from the same immutable snapshot. Unknown declarations return no location; they are
  * never guessed to be local by name. Local tables are resolved by provider identity.
  */

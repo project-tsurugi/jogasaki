@@ -163,8 +163,7 @@ public:
         if (!response.mutable_catalog_fragment()->ParseFromString(result.catalog)) {
             return {grpc::StatusCode::INTERNAL, "invalid catalog"};
         }
-        // The current compiler adapter resolves schema.table. A distinct fixture
-        // schema prevents these reads from resolving to the coordinator's local T.
+        // Keep a distinct schema to exercise the fixture's full catalog.schema.table name.
         for (auto& schema : *response.mutable_catalog_fragment()->mutable_schema_list()) {
             schema.set_schema_name("worker_schema");
         }
@@ -242,9 +241,6 @@ class remote_process_sql_test : public ::testing::Test, public api_test_base {
 public:
     bool to_explain() override { return false; }
     void SetUp() override {
-#ifndef ENABLE_DISTRIBUTED_QUERY_FIXTURES
-        GTEST_SKIP() << "development remote selection is disabled";
-#else
         grpc::ServerBuilder builder{};
         builder.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &port_);
         bool external = std::string{::testing::UnitTest::GetInstance()->current_test_info()->name()}.find("two_process_") == 0;
@@ -269,7 +265,6 @@ public:
         } else {
             refresh_catalog();
         }
-#endif
     }
     void install_identity(std::string_view name, std::uint64_t identity) {
         auto original = db_impl()->tables()->find_index(name);
@@ -286,7 +281,6 @@ public:
             << diagnostic;
     }
     void TearDown() override {
-        unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
         unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS");
         if (server_) server_->Shutdown();
         if (db_) db_teardown();
@@ -309,7 +303,7 @@ public:
     }
     void expect_remote_termination(bool expect_success, request_info info = {}) {
         std::unique_ptr<api::executable_statement> statement{};
-        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM worker_schema.T ORDER BY C0", statement));
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", statement));
         auto tx = utils::create_transaction(*db_, true, false);
         auto transaction = api::get_transaction_context(*tx);
         auto store = std::make_unique<data::result_store>();
@@ -317,7 +311,8 @@ public:
             takatori::util::maybe_shared_ptr{store.get()});
         auto context = api::impl::create_request_context(api::impl::get_impl(*db_), transaction,
             channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
-            std::move(info), true, nullptr);
+            std::move(info), true, nullptr, nullptr,
+            api::impl::get_impl(*statement).body()->mirrors()->emits_ordered_relation());
         auto* raw = context.get();
         std::size_t completions{};
         ASSERT_TRUE(executor::execute_async_on_context(api::impl::get_impl(*db_), context,
@@ -382,7 +377,7 @@ TEST_F(remote_process_sql_test, task_generation_preserves_failures_without_sendi
     for (int failure = 0; failure < 3; ++failure) {
         SCOPED_TRACE(failure);
         std::unique_ptr<api::executable_statement> statement{};
-        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM worker_schema.T ORDER BY C0", statement));
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", statement));
         auto& body = *api::impl::get_impl(*statement).body();
         auto snapshot = body.mirrors()->remote_catalogs();
         auto definitions = snapshot->definitions();
@@ -415,7 +410,8 @@ TEST_F(remote_process_sql_test, task_generation_preserves_failures_without_sendi
         auto store = std::make_unique<data::result_store>();
         auto channel = std::make_shared<api::impl::result_store_channel>(takatori::util::maybe_shared_ptr{store.get()});
         auto context = api::impl::create_request_context(api::impl::get_impl(*db_), transaction,
-            channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, true, nullptr);
+            channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, true, nullptr, nullptr,
+            api::impl::get_impl(*statement).body()->mirrors()->emits_ordered_relation());
         std::size_t completions{};
         auto calls = service_.calls.load();
         ASSERT_TRUE(executor::execute_async_on_context(api::impl::get_impl(*db_), context,
@@ -442,7 +438,7 @@ TEST_F(remote_process_sql_test, streaming_worker_results_reach_existing_downstre
         return dist::remote_process_handler{*db_}.execute_stream(payload, check, sink);
     };
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+    query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
     ASSERT_EQ(2, rows.size());
     EXPECT_GT(service_.chunks.load(), 0);
     EXPECT_EQ(1, service_.calls.load());
@@ -451,7 +447,7 @@ TEST_F(remote_process_sql_test, streaming_worker_results_reach_existing_downstre
 TEST_F(remote_process_sql_test, downstream_satisfied_write_preserves_remote_success) {
     db_impl()->config()->enable_early_stop(true);
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T LIMIT 1", rows);
+    query("SELECT C0 FROM remote.worker_schema.T LIMIT 1", rows);
     ASSERT_EQ(1U, rows.size());
     auto value = rows[0].get_value<std::int64_t>(0);
     EXPECT_TRUE(value == 10 || value == 20);
@@ -469,7 +465,7 @@ TEST_F(remote_process_sql_test, downstream_satisfied_write_does_not_hide_final_r
     auto tx = utils::create_transaction(*db_, true, false);
     status st{};
     std::shared_ptr<error::error_info> info{};
-    builder().text("SELECT C0 FROM worker_schema.T LIMIT 1").tx(*tx).expect_error(true).st(st).error(info).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T LIMIT 1").tx(*tx).expect_error(true).st(st).error(info).run();
     EXPECT_EQ(status::err_unknown, st);
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::internal_exception, info->code());
@@ -496,8 +492,11 @@ TEST_F(remote_process_sql_test, sql_generated_literals_preserve_utf8_and_decimal
         return dist::remote_process_handler{*db_}.execute_stream(payload, check, sink);
     };
     std::vector<mock::basic_record> rows{};
+    // Output-only constants stay local with the formal compiler. Put literals in remote
+    // predicates as well, so the RPC observation really checks SQL-generated Portable IR.
     query("SELECT CAST('あ' AS VARCHAR(3)), CAST(1.10 AS DECIMAL(3,1)), "
-          "CAST(0.001 AS DECIMAL(3,3)) FROM worker_schema.T WHERE C0=10", rows);
+          "CAST(0.001 AS DECIMAL(3,3)) FROM remote.worker_schema.T "
+          "WHERE C0=10 AND C1 <> 'あ' AND C2 > 1.10 AND C2 <> 0.001", rows);
     ASSERT_EQ(1U, rows.size());
     auto text = rows[0].get_value<accessor::text>(0);
     EXPECT_EQ("あ", static_cast<std::string_view>(text));
@@ -524,7 +523,7 @@ TEST_F(remote_process_sql_test, multiple_result_messages_preserve_rows_and_conti
         return result;
     };
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+    query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
     ASSERT_EQ(2, rows.size());
     EXPECT_EQ(10, rows[0].get_value<std::int64_t>(0));
     EXPECT_EQ(20, rows[1].get_value<std::int64_t>(0));
@@ -563,7 +562,7 @@ TEST_F(remote_process_sql_test, response_sequence_gap_fails_sql) {
     service_.sequence_offset = 1;
     auto tx = utils::create_transaction(*db_, true, false); status st{};
     std::shared_ptr<error::error_info> info{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
     EXPECT_EQ(status::err_invalid_state, st);
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::internal_exception, info->code());
@@ -578,7 +577,7 @@ TEST_F(remote_process_sql_test, response_sequence_duplicate_fails_sql) {
     };
     auto tx = utils::create_transaction(*db_, true, false); status st{};
     std::shared_ptr<error::error_info> info{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
     EXPECT_EQ(status::err_invalid_state, st);
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::internal_exception, info->code());
@@ -587,7 +586,7 @@ TEST_F(remote_process_sql_test, response_sequence_duplicate_fails_sql) {
 TEST_F(remote_process_sql_test, ok_without_result_message_returns_no_rows) {
     service_.raw = [](std::string_view, auto*) { return grpc::Status::OK; };
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+    query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
     EXPECT_TRUE(rows.empty());
     EXPECT_EQ(1, service_.calls.load());
 }
@@ -614,14 +613,15 @@ TEST_F(remote_process_sql_test, invalid_row_in_batch_publishes_no_rows_to_forwar
             return writer->Write(message) ? grpc::Status::OK : grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
         };
         std::unique_ptr<api::executable_statement> statement{};
-        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM worker_schema.T", statement));
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM remote.worker_schema.T", statement));
         auto tx = utils::create_transaction(*db_, true, false);
         auto transaction = api::get_transaction_context(*tx);
         auto store = std::make_unique<data::result_store>();
         auto channel = std::make_shared<api::impl::result_store_channel>(takatori::util::maybe_shared_ptr{store.get()});
         batch_observation_scheduler scheduler{};
         auto context = api::impl::create_request_context(api::impl::get_impl(*db_), transaction,
-            channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, true, nullptr, &scheduler);
+            channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, true, nullptr, &scheduler,
+            api::impl::get_impl(*statement).body()->mirrors()->emits_ordered_relation());
         std::vector<std::shared_ptr<executor::exchange::forward::input_partition>> partitions{};
         scheduler.on_wait = [&] {
             auto flows = context->flows();
@@ -688,7 +688,7 @@ TEST_F(remote_process_sql_test, invalid_record_between_messages_fails_sql) {
         return grpc::Status::OK;
     };
     auto tx = utils::create_transaction(*db_, true, false); status st{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).run();
     EXPECT_EQ(status::err_invalid_state, st);
 }
 TEST_F(remote_process_sql_test, error_after_partial_results_fails_whole_sql) {
@@ -701,14 +701,13 @@ TEST_F(remote_process_sql_test, error_after_partial_results_fails_whole_sql) {
     auto tx = utils::create_transaction(*db_, true, false);
     status st{};
     std::shared_ptr<error::error_info> info{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(st).error(info).run();
     EXPECT_EQ(status::err_unknown, st);
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::internal_exception, info->code());
     EXPECT_EQ("[distributed-query] ExecuteRemoteProcess failed: RPC internal error", info->message());
 }
 TEST_F(remote_process_sql_test, single_worker_blocked_remote_stream_does_not_block_other_sql) {
-    unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
     execute_statement("CREATE TABLE L(C0 BIGINT PRIMARY KEY, C1 VARCHAR(*))");
     install_identity("L", 1258);
     std::string value(30000, 'x');
@@ -754,7 +753,7 @@ TEST_F(remote_process_sql_test, single_worker_blocked_remote_stream_does_not_blo
     }};
     blocked = std::thread{[&] {
         std::vector<mock::basic_record> rows{};
-        query("SELECT C0, C1 FROM worker_schema.L ORDER BY C0", rows);
+        query("SELECT C0, C1 FROM remote.worker_schema.L ORDER BY C0", rows);
         blocked_rows = rows.size();
         blocked_done = true;
     }};
@@ -764,7 +763,7 @@ TEST_F(remote_process_sql_test, single_worker_blocked_remote_stream_does_not_blo
     }
     other = std::thread{[&] {
         std::vector<mock::basic_record> rows{};
-        query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+        query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
         other_rows = rows.size();
         other_done = true;
     }};
@@ -784,7 +783,7 @@ TEST_F(remote_process_sql_test, single_worker_blocked_remote_stream_does_not_blo
 }
 TEST_F(remote_process_sql_test, select_uses_rpc_and_existing_downstream_exchange) {
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0, C1, C2 FROM worker_schema.T WHERE C0 > 0 ORDER BY C0", rows);
+    query("SELECT C0, C1, C2 FROM remote.worker_schema.T WHERE C0 > 0 ORDER BY C0", rows);
     ASSERT_EQ(2, rows.size());
     EXPECT_GT(service_.calls, 0);
     EXPECT_EQ(10, rows[0].ref().get_value<std::int64_t>(rows[0].record_meta()->value_offset(0)));
@@ -792,7 +791,7 @@ TEST_F(remote_process_sql_test, select_uses_rpc_and_existing_downstream_exchange
 TEST_F(remote_process_sql_test, delayed_rpc_releases_scheduler_worker) {
     service_.delay = std::chrono::milliseconds(100);
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+    query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
     ASSERT_EQ(2, rows.size());
     EXPECT_GT(service_.calls, 0);
 }
@@ -812,14 +811,14 @@ TEST_F(remote_process_sql_test, worker_process_helper) {
 }
 TEST_F(remote_process_sql_test, two_process_select_returns_worker_values) {
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0, C1, C2 FROM worker_schema.T WHERE C0 > 0 ORDER BY C0", rows);
+    query("SELECT C0, C1, C2 FROM remote.worker_schema.T WHERE C0 > 0 ORDER BY C0", rows);
     ASSERT_EQ(2, rows.size());
     EXPECT_EQ(900, rows[0].get_value<std::int64_t>(0));
     EXPECT_EQ(1000, rows[1].get_value<std::int64_t>(0));
 }
 TEST_F(remote_process_sql_test, two_process_find_without_order_uses_worker_values) {
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 AS A, C0 AS B FROM worker_schema.T WHERE C0 = 900", rows);
+    query("SELECT C0 AS A, C0 AS B FROM remote.worker_schema.T WHERE C0 = 900", rows);
     ASSERT_EQ(1, rows.size());
     EXPECT_EQ(900, rows[0].get_value<std::int64_t>(0));
     EXPECT_EQ(900, rows[0].get_value<std::int64_t>(1));
@@ -828,7 +827,7 @@ TEST_F(remote_process_sql_test, no_implicit_five_second_deadline) {
     service_.delay = std::chrono::milliseconds(5200);
     unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS");
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+    query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
     EXPECT_EQ(2, rows.size());
 }
 TEST_F(remote_process_sql_test, rpc_deadline_fails_sql_and_releases_resources) {
@@ -836,7 +835,7 @@ TEST_F(remote_process_sql_test, rpc_deadline_fails_sql_and_releases_resources) {
     setenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS", "100", 1);
     auto tx = utils::create_transaction(*db_, true, false);
     status result{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
     EXPECT_EQ(status::err_time_out, result);
     std::shared_ptr<api::error_info> info{};
     ASSERT_EQ(status::ok, tx->error_info(info));
@@ -846,7 +845,7 @@ TEST_F(remote_process_sql_test, rpc_deadline_fails_sql_and_releases_resources) {
 TEST_F(remote_process_sql_test, occ_is_rejected_before_remote_execution) {
     auto tx = utils::create_transaction(*db_, false, false);
     status result{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
     EXPECT_EQ(status::err_illegal_operation, result);
     std::shared_ptr<api::error_info> info{};
     ASSERT_EQ(status::ok, tx->error_info(info));
@@ -862,7 +861,7 @@ TEST_F(remote_process_sql_test, sql_error_preserves_code_detail_and_supplemental
     service_.injected_status = sql_failure(remote);
     auto tx = utils::create_transaction(*db_, true, false);
     status result{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
     EXPECT_EQ(status::err_expression_evaluation_failure, result);
     std::shared_ptr<api::error_info> info{};
     ASSERT_EQ(status::ok, tx->error_info(info));
@@ -879,7 +878,7 @@ TEST_F(remote_process_sql_test, unknown_worker_sql_code_preserves_details) {
     service_.injected_status = sql_failure(remote);
     auto tx = utils::create_transaction(*db_, true, false);
     status result{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
     EXPECT_EQ(status::err_unknown, result);
     std::shared_ptr<api::error_info> info{};
     ASSERT_EQ(status::ok, tx->error_info(info));
@@ -895,7 +894,7 @@ TEST_F(remote_process_sql_test, resource_error_is_not_reported_as_expression_fai
     service_.injected_status = sql_failure(remote);
     auto tx = utils::create_transaction(*db_, true, false);
     status result{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
     EXPECT_EQ(status::err_resource_limit_reached, result);
     std::shared_ptr<api::error_info> info{};
     ASSERT_EQ(status::ok, tx->error_info(info));
@@ -913,7 +912,7 @@ TEST_F(remote_process_sql_test, mismatched_sql_status_details_are_protocol_error
         service_.injected_status = invalid;
         auto tx = utils::create_transaction(*db_, true, false);
         status result{};
-        builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+        builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
         EXPECT_EQ(status::err_invalid_state, result);
         std::shared_ptr<api::error_info> info{};
         ASSERT_EQ(status::ok, tx->error_info(info));
@@ -925,7 +924,7 @@ TEST_F(remote_process_sql_test, malformed_sql_status_details_fall_back_to_transp
     service_.injected_status = {grpc::StatusCode::UNKNOWN, "original transport error", "invalid protobuf"};
     auto tx = utils::create_transaction(*db_, true, false);
     status result{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
     EXPECT_EQ(status::err_unknown, result);
     std::shared_ptr<api::error_info> info{};
     ASSERT_EQ(status::ok, tx->error_info(info));
@@ -934,11 +933,11 @@ TEST_F(remote_process_sql_test, malformed_sql_status_details_fall_back_to_transp
 }
 TEST_F(remote_process_sql_test, find_and_group_downstream_use_remote_rows) {
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T WHERE C0 = 10", rows);
+    query("SELECT C0 FROM remote.worker_schema.T WHERE C0 = 10", rows);
     ASSERT_EQ(1, rows.size());
     EXPECT_EQ(10, rows[0].get_value<std::int64_t>(0));
     rows.clear();
-    query("SELECT SUM(C0) FROM worker_schema.T", rows);
+    query("SELECT SUM(C0) FROM remote.worker_schema.T", rows);
     ASSERT_EQ(1, rows.size());
     EXPECT_EQ(30, rows[0].get_value<std::int64_t>(0));
     EXPECT_GE(service_.calls.load(), 2);
@@ -955,30 +954,12 @@ TEST_F(remote_process_sql_test, cancellation_is_forwarded_after_handler_entry) {
     }};
     status result{};
     std::shared_ptr<error::error_info> info{};
-    builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).error(info).req_info(request_info{1, {}, response}).run();
+    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).error(info).req_info(request_info{1, {}, response}).run();
     cancel.join();
     EXPECT_EQ(status::request_canceled, result);
     EXPECT_GT(service_.calls, 0);
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::request_canceled, info->code());
-}
-TEST_F(remote_process_sql_test, unsupported_small_integer_cast_reports_prepare_error_before_rpc) {
-    for (auto const* type : {"TINYINT", "SMALLINT"}) {
-        api::statement_handle statement{};
-        std::shared_ptr<error::error_info> info{};
-        auto result = api::impl::get_impl(*db_).prepare(
-            std::string{"SELECT CAST(C0 AS "} + type + ") FROM worker_schema.T", statement, info);
-        EXPECT_EQ(status::err_unsupported, result) << type;
-        ASSERT_TRUE(info) << type;
-        EXPECT_EQ(error_code::unsupported_compiler_feature_exception, info->code());
-        EXPECT_NE(std::string::npos, info->message().find("unsupported remote execution type"));
-        EXPECT_EQ(0, service_.calls.load());
-    }
-    auto tx = utils::create_transaction(*db_, true, false);
-    status result{};
-    builder().text("SELECT C0 FROM worker_schema.T WHERE C0 > 0").tx(*tx).st(result).run();
-    EXPECT_EQ(status::ok, result);
-    EXPECT_GT(service_.calls.load(), 0);
 }
 
 TEST_F(remote_process_sql_test, cancellation_observed_after_rpc_ok_prevents_sql_success) {
@@ -998,7 +979,7 @@ TEST_F(remote_process_sql_test, cancellation_observed_after_rpc_ok_prevents_sql_
             return grpc::Status::OK; // No messages: a ready condition means the RPC has finished.
         };
         std::unique_ptr<api::executable_statement> statement{};
-        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM worker_schema.T ORDER BY C0", statement));
+        ASSERT_EQ(status::ok, db_->create_executable("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", statement));
         auto tx = utils::create_transaction(*db_, true, false);
         auto transaction = api::get_transaction_context(*tx);
         auto store = std::make_unique<data::result_store>();
@@ -1007,7 +988,8 @@ TEST_F(remote_process_sql_test, cancellation_observed_after_rpc_ok_prevents_sql_
         completion_race_scheduler scheduler{};
         auto context = api::impl::create_request_context(api::impl::get_impl(*db_), transaction,
             channel, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
-            request_info{1, {}, response}, true, nullptr, &scheduler);
+            request_info{1, {}, response}, true, nullptr, &scheduler,
+            api::impl::get_impl(*statement).body()->mirrors()->emits_ordered_relation());
         auto original = create_error_info(error_code::value_evaluation_exception, "earlier SQL failure", status::err_expression_evaluation_failure);
         scheduler.on_wait = [&] { reply.set_value(); };
         scheduler.on_ready = [&] {
@@ -1131,7 +1113,7 @@ TEST_F(remote_process_sql_test, transport_status_mapping_preserves_failure_categ
         auto tx = utils::create_transaction(*db_, true, false);
         status actual{};
         std::shared_ptr<error::error_info> info{};
-        builder().text("SELECT C0 FROM worker_schema.T ORDER BY C0").tx(*tx)
+        builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx)
             .expect_error(true).st(actual).error(info).run();
         EXPECT_EQ(expected.internal, actual);
         ASSERT_TRUE(info);
@@ -1255,7 +1237,7 @@ TEST_F(remote_process_sql_test, many_result_messages_deliver_every_row) {
         return grpc::Status::OK;
     };
     std::vector<mock::basic_record> rows{};
-    query("SELECT C0 FROM worker_schema.T ORDER BY C0", rows);
+    query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
     ASSERT_EQ(400U, rows.size());
     EXPECT_EQ(10, rows.front().get_value<std::int64_t>(0));
     EXPECT_EQ(20, rows.back().get_value<std::int64_t>(0));

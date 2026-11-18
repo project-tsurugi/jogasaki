@@ -106,7 +106,6 @@ std::size_t flow::check_empty_input_and_calculate_partitions() {
 }
 
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
-#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
     auto selected = dist::select_remote_execution_server(*context_, *info_);
     if (!selected.error.empty()) {
         error::set_error_info(*context_, create_error_info(error_code::restricted_operation_exception,
@@ -122,7 +121,6 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             return {};
         }
     }
-#endif
     std::shared_ptr<impl::processor> proc{};
     try {
         proc = std::make_shared<impl::processor>(

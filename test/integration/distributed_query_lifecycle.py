@@ -16,7 +16,7 @@ from distributed_query_e2e import Node, rows
 TABLE = 'C1_DUMMY_T'
 CREATE = f'CREATE TABLE {TABLE}(C0 BIGINT PRIMARY KEY,C1 VARCHAR(40),C2 DECIMAL(10,2),C3 BIGINT)'
 LOCAL_SQL = f'SELECT C0,C1,C2 FROM {TABLE} WHERE C0 > 0 ORDER BY C0'
-REMOTE_SQL = LOCAL_SQL.replace(f'FROM {TABLE}', f'FROM worker_schema.{TABLE}')
+REMOTE_SQL = LOCAL_SQL.replace(f'FROM {TABLE}', f'FROM remote_catalog.worker_schema.{TABLE}')
 REMOTE_ROWS = [
     {'C0': 900, 'C1': 'remote-process', 'C2': Decimal('12.34')},
     {'C0': 1000, 'C1': None, 'C2': Decimal('56.78')},

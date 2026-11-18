@@ -59,6 +59,8 @@
 #include <jogasaki/model/step_kind.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/plan/prepared_statement.h>
+#include <jogasaki/plan/mirror_container.h>
 #include <jogasaki/storage/storage_manager.h>
 
 namespace jogasaki::testing {
@@ -135,9 +137,6 @@ plan::compiler_context::operation_locations_extractor extractor(
 class operation_location_compiler_test : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Without fixtures, the compiler has no distributed branch to exercise.
-        if (!dist::distributed_query_fixtures_available()) GTEST_SKIP();
-        unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER");
         previous_ = global::config_pool();
         coordinator(true);
         previous_storage_ = global::storage_manager();
@@ -239,12 +238,12 @@ TEST_F(operation_location_compiler_test, remote_writes_do_not_use_same_named_loc
     struct sample { std::string_view sql; status result; error_code code; };
     for (auto const& test : {
         sample{"INSERT INTO T0(C0) VALUES(999)", status::err_illegal_operation, error_code::restricted_operation_exception},
-        sample{"UPDATE T0 SET C1=1.0 WHERE C0=999", status::err_unsupported, error_code::unsupported_compiler_feature_exception},
-        sample{"DELETE FROM T0 WHERE C0=999", status::err_unsupported, error_code::unsupported_compiler_feature_exception}}) {
+        sample{"UPDATE T0 SET C1=1.0 WHERE C0=999", status::err_illegal_operation, error_code::restricted_operation_exception},
+        sample{"DELETE FROM T0 WHERE C0=999", status::err_illegal_operation, error_code::restricted_operation_exception}}) {
         plan::compiler_context ctx{};
         ctx.storage_provider(remote);
         ctx.remote_catalogs(snapshot);
-        // INSERT reaches runtime metadata preparation; the existing plan validation rejects UPDATE/DELETE earlier.
+        // This injected analyzer input binds all three writes to the remote declaration.
         EXPECT_EQ(test.result, plan::prepare(test.sql, ctx)) << test.sql;
         ASSERT_TRUE(ctx.error_info());
         EXPECT_EQ(test.code, ctx.error_info()->code()) << test.sql;
@@ -384,83 +383,6 @@ TEST_F(operation_location_compiler_test, extractor_is_not_used_without_coordinat
 }
 
 
-// Dummy E3 consumes the engine's symbol query and produces locations for the actual compiler steps.
-// It supports only a single scan/find source; it does not implement formal compiler placement.
-class symbol_backed_locations final : public dist::operation_locations {
-public:
-    symbol_backed_locations(std::shared_ptr<dist::symbol_locations const> symbols,
-        std::shared_ptr<std::vector<yugawara::storage::table const*>> observed)
-        : symbols_(std::move(symbols)), observed_(std::move(observed)) {}
-    location_id_set_type find(takatori::plan::step const& step) const override {
-        if (step.kind() != takatori::plan::step_kind::process) return {0};
-        auto const& process = static_cast<takatori::plan::process const&>(step);
-        for (auto const& relation : process.operators()) {
-            takatori::descriptor::relation const* source{};
-            if (relation.kind() == takatori::relation::expression_kind::scan)
-                source = &static_cast<takatori::relation::scan const&>(relation).source();
-            if (relation.kind() == takatori::relation::expression_kind::find)
-                source = &static_cast<takatori::relation::find const&>(relation).source();
-            if (source) {
-                auto const& index = yugawara::binding::extract<yugawara::storage::index>(*source);
-                observed_->emplace_back(&index.table());
-                return symbols_->find(index.table());
-            }
-        }
-        return {0};
-    }
-    std::string location_name(location_id_type id) const override { return symbols_->of(id).name; }
-private:
-    std::shared_ptr<dist::symbol_locations const> symbols_{};
-    std::shared_ptr<std::vector<yugawara::storage::table const*>> observed_{};
-};
-
-class symbol_location_compiler_test : public operation_location_compiler_test {};
-
-TEST_F(symbol_location_compiler_test, local_compilation_uses_symbol_identity_for_operation_locations) {
-    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>();
-    auto registry = std::make_shared<dist::location_registry>();
-    auto symbols = std::make_shared<dist::symbol_locations>(snapshot, registry, ctx_.storage_provider());
-    ctx_.remote_catalogs(snapshot);
-    ctx_.symbol_locations(symbols);
-    auto observed = std::make_shared<std::vector<yugawara::storage::table const*>>();
-    ctx_.operation_locations([symbols, observed](yugawara::compiler_result const&) {
-        return std::make_shared<symbol_backed_locations>(symbols, observed);
-    });
-    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM T0", ctx_)) << message();
-    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
-    ASSERT_EQ(1U, observed->size());
-    EXPECT_EQ(ctx_.storage_provider()->find_table("T0").get(), observed->front());
-    for (auto* process : runtime_processes()) {
-        ASSERT_TRUE(process->info()->captured_location());
-        EXPECT_TRUE(process->info()->captured_location()->empty());
-    }
-}
-
-TEST_F(symbol_location_compiler_test, remote_declaration_reaches_formal_graph_boundary_without_fixture_split) {
-    auto remote_storage = tables();
-    auto remote_table = remote_storage->find_table("T0");
-    auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
-    schemas->add(yugawara::schema::declaration{std::nullopt, "remote_schema", remote_storage});
-    auto catalog = std::make_shared<yugawara::schema::catalog>("remote_catalog", std::nullopt, schemas);
-    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
-        dist::remote_catalog_snapshot::catalogs_type{catalog},
-        dist::remote_catalog_snapshot::locations_type{{remote_table.get(), "worker"}});
-    auto registry = std::make_shared<dist::location_registry>();
-    auto symbols = std::make_shared<dist::symbol_locations>(snapshot, registry, ctx_.storage_provider());
-    ctx_.remote_catalogs(snapshot);
-    ctx_.symbol_locations(symbols);
-    auto observed = std::make_shared<std::vector<yugawara::storage::table const*>>();
-    ctx_.operation_locations([symbols, observed](yugawara::compiler_result const&) {
-        return std::make_shared<symbol_backed_locations>(symbols, observed);
-    });
-    // Existing compiler leaves emit inline. The formal branch must reject it, not invent a new step.
-    EXPECT_EQ(status::err_unsupported, plan::prepare("SELECT C0 FROM remote_schema.T0", ctx_));
-    ASSERT_EQ(1U, observed->size());
-    EXPECT_EQ(remote_table.get(), observed->front());
-    EXPECT_EQ(catalog.get(), symbols->external_catalogs().front().get());
-    EXPECT_NE(std::string::npos, message().find("did not separate the remote process")) << message();
-}
-
 } // namespace
 
 TEST_F(operation_location_compiler_test, unsupported_remote_type_has_prepare_diagnostic) {
@@ -477,4 +399,131 @@ TEST_F(operation_location_compiler_test, unsupported_remote_type_has_prepare_dia
     EXPECT_NE(std::string::npos, message().find("unsupported remote execution type")) << message();
 }
 
+} // namespace jogasaki::testing
+
+namespace jogasaki::testing {
+namespace {
+class native_location_compiler_test : public operation_location_compiler_test {
+protected:
+    void SetUp() override {
+        operation_location_compiler_test::SetUp();
+        auto remote = tables();
+        auto table = remote->find_table("T0");
+        auto index = remote->find_index("I0");
+        auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
+        schemas->add(yugawara::schema::declaration{std::nullopt, "remote_schema", remote});
+        auto catalog = std::make_shared<yugawara::schema::catalog>("branch", std::nullopt, schemas);
+        auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
+            dist::remote_catalog_snapshot::catalogs_type{catalog},
+            dist::remote_catalog_snapshot::locations_type{{table.get(), "worker"}},
+            dist::remote_catalog_snapshot::definitions_type{{index.get(), {"worker", dist::remote_declaration_kind::index, 1257}}});
+        ctx_.remote_catalogs(snapshot);
+        ctx_.symbol_locations(std::make_shared<dist::symbol_locations>(snapshot,
+            std::make_shared<dist::location_registry>(), ctx_.storage_provider()));
+    }
+    std::vector<takatori::relation::expression_kind> remote_kinds(std::string_view sql) {
+        if (plan::prepare(sql, ctx_) != status::ok) { ADD_FAILURE() << message(); return {}; }
+        auto const& prepared = ctx_.prepared_statement();
+        auto const& statement = static_cast<takatori::statement::execute const&>(*prepared->statement());
+        std::vector<takatori::relation::expression_kind> kinds{};
+        for (auto const& step : statement.execution_plan()) {
+            if (step.kind() != takatori::plan::step_kind::process) continue;
+            auto const& process = static_cast<takatori::plan::process const&>(step);
+            auto* location = prepared->mirrors()->process_locations()->find(process);
+            EXPECT_NE(nullptr, location);
+            if (!location || location->server.empty()) continue;
+            EXPECT_EQ("worker", location->server);
+            takatori::relation::sort_from_upstream(process.operators(), [&](auto const& op) { kinds.push_back(op.kind()); });
+        }
+        return kinds;
+    }
+};
+
+TEST_F(native_location_compiler_test, formal_three_part_name_pushes_project_and_filter) {
+    using k = takatori::relation::expression_kind;
+    EXPECT_EQ((std::vector<k>{k::scan, k::project, k::filter, k::offer}),
+        remote_kinds("SELECT X FROM (SELECT C0 + 1 AS X FROM branch.remote_schema.T0) S WHERE X > 10"));
+}
+
+TEST_F(native_location_compiler_test, formal_key_condition_becomes_remote_find) {
+    using k = takatori::relation::expression_kind;
+    EXPECT_EQ((std::vector<k>{k::find, k::offer}),
+        remote_kinds("SELECT C0 FROM branch.remote_schema.T0 WHERE C0=10"));
+}
+
+TEST_F(native_location_compiler_test, casts_stay_local_and_keep_supported_output_type) {
+    using k = takatori::relation::expression_kind;
+    EXPECT_EQ((std::vector<k>{k::scan, k::offer}),
+        remote_kinds("SELECT C0 FROM branch.remote_schema.T0 WHERE CAST(C0 AS VARCHAR(20))='10'"));
+}
+
+TEST_F(native_location_compiler_test, local_only_sql_keeps_local_storage_and_location) {
+    EXPECT_TRUE(remote_kinds("SELECT C0 FROM T0 WHERE C0=10").empty());
+    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
+    for (auto* process : runtime_processes()) {
+        ASSERT_TRUE(process->info()->captured_location());
+        EXPECT_TRUE(process->info()->captured_location()->empty());
+    }
+}
+
+TEST_F(native_location_compiler_test, catalog_omission_does_not_find_remote_schema) {
+    EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM remote_schema.T0", ctx_));
+    ASSERT_TRUE(ctx_.error_info());
+    EXPECT_EQ(error_code::symbol_analyze_exception, ctx_.error_info()->code());
+}
+
+TEST_F(native_location_compiler_test, phase1_rejects_remote_writes_without_local_storage_fallback) {
+    for (auto sql : {"INSERT INTO branch.remote_schema.T0(C0) VALUES(1)",
+                     "UPDATE branch.remote_schema.T0 SET C1=1.0 WHERE C0=1",
+                     "DELETE FROM branch.remote_schema.T0 WHERE C0=1"}) {
+        EXPECT_EQ(status::err_compiler_error, plan::prepare(sql, ctx_)) << sql;
+        ASSERT_TRUE(ctx_.error_info());
+        EXPECT_EQ(error_code::unsupported_compiler_feature_exception, ctx_.error_info()->code()) << message();
+        EXPECT_NE(std::string::npos, message().find("empty_operation_location")) << message();
+    }
+}
+TEST_F(native_location_compiler_test, trailing_project_stays_on_coordinator) {
+    using k = takatori::relation::expression_kind;
+    EXPECT_EQ((std::vector<k>{k::scan, k::offer}),
+        remote_kinds("SELECT C0+1 AS X FROM branch.remote_schema.T0"));
+}
+
+TEST_F(native_location_compiler_test, host_variable_stays_on_coordinator) {
+    auto vars = std::make_shared<yugawara::variable::configurable_provider>();
+    vars->add(yugawara::variable::declaration{"key", takatori::type::int8{}});
+    ctx_.variable_provider(vars);
+    ctx_.symbol_locations(std::make_shared<dist::symbol_locations>(ctx_.remote_catalogs(),
+        std::make_shared<dist::location_registry>(), ctx_.storage_provider(),
+        std::shared_ptr<yugawara::function::provider const>{},
+        std::shared_ptr<yugawara::aggregate::provider const>{}, vars));
+    using k = takatori::relation::expression_kind;
+    EXPECT_EQ((std::vector<k>{k::scan, k::offer}),
+        remote_kinds("SELECT C0 FROM branch.remote_schema.T0 WHERE C0=:key"));
+}
+
+TEST_F(native_location_compiler_test, unsupported_narrow_cast_does_not_enter_portable_ir) {
+    using k = takatori::relation::expression_kind;
+    for (auto sql : {"SELECT C0 FROM branch.remote_schema.T0 WHERE CAST(C0 AS TINYINT)>0",
+                     "SELECT C0 FROM branch.remote_schema.T0 WHERE CAST(C0 AS SMALLINT)>0"}) {
+        EXPECT_EQ((std::vector<k>{k::scan, k::offer}), remote_kinds(sql));
+    }
+}
+TEST_F(native_location_compiler_test, missing_location_query_never_uses_local_or_fixture_fallback) {
+    ctx_.operation_locations([](yugawara::compiler_result const&) -> std::shared_ptr<dist::operation_locations const> { return {}; });
+    EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM branch.remote_schema.T0", ctx_));
+    ASSERT_TRUE(ctx_.error_info());
+    EXPECT_EQ(error_code::compile_exception, ctx_.error_info()->code());
+    EXPECT_EQ("Compiler did not provide execution locations.", message());
+}
+
+TEST_F(native_location_compiler_test, missing_worker_definition_id_fails_before_execution) {
+    auto catalogs = ctx_.remote_catalogs()->catalogs();
+    auto table = catalogs.front()->schema_provider().find("remote_schema")->storage_provider().find_table("T0");
+    ctx_.remote_catalogs(std::make_shared<dist::remote_catalog_snapshot>(catalogs,
+        dist::remote_catalog_snapshot::locations_type{{table.get(), "worker"}}));
+    EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM branch.remote_schema.T0", ctx_));
+    ASSERT_TRUE(ctx_.error_info());
+    EXPECT_NE(std::string::npos, message().find("remote identity")) << message();
+}
+} // namespace
 } // namespace jogasaki::testing

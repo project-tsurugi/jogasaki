@@ -136,7 +136,7 @@ def main():
         worker_log_offset = len(worker.log_path.read_text())
         worker_pid=worker.process.pid
         coordinator_pid=coordinator.process.pid
-        fault_sql=f'SELECT C0,C1,C2,C3 FROM worker_schema.{TABLE} WHERE C0>=10000'
+        fault_sql=f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
         process=subprocess.Popen(command(coordinator,fault_sql),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         try:
             event=wait_for(lambda: next((e for e in proxy.events[start:] if e.get('held')),None))
@@ -192,7 +192,7 @@ def main():
         go=root/'cancel-now'
         java=args.client_dir
         log=root/'cancel-client.log'
-        sql=f'SELECT C0,C1,C2,C3 FROM worker_schema.{TABLE} WHERE C0>=10000'
+        sql=f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
         cmd=['java','-cp',f'{java}:{java}/tgsql.jar','DistributedQueryProbe','cancel',endpoint(coordinator),sql,str(go)]
         with log.open('w') as stream:
             process=subprocess.Popen(cmd,stdout=stream,stderr=subprocess.STDOUT,text=True)
@@ -231,7 +231,7 @@ def main():
     def cut_and_recover():
         before = len(proxy.events)
         pid = coordinator.process.pid
-        text = f'SELECT C0,C1,C2,C3 FROM worker_schema.{TABLE} WHERE C0>=10000'
+        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
         proxy.mode = 'cut-after-message'
         try:
             failure = query(coordinator, text)
@@ -261,7 +261,7 @@ def main():
         coordinator.start(); healthy(coordinator)
         trigger = root / 'release-slow-reader'
         log = root / 'slow-reader.log'
-        text = f'SELECT C0,C1,C2,C3 FROM worker_schema.{TABLE} WHERE C0>=10000'
+        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
         cmd = ['java', '-cp', f'{args.client_dir}:{args.client_dir}/tgsql.jar',
                'DistributedQueryProbe', 'slow', endpoint(coordinator), text, str(trigger)]
         with log.open('w') as stream:
@@ -293,7 +293,7 @@ def main():
         before = len(proxy.events)
         trigger = root/'cancel-blocked-worker'
         log = root/'blocked-worker-client.log'
-        text = f'SELECT C0,C1,C2,C3 FROM worker_schema.{TABLE} WHERE C0>=10000'
+        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
         cmd = ['java', '-cp', f'{args.client_dir}:{args.client_dir}/tgsql.jar',
                'DistributedQueryProbe', 'cancel', endpoint(coordinator), text, str(trigger)]
         with log.open('w') as stream:
@@ -383,9 +383,8 @@ def main():
             elif isinstance(x, list):
                 for value in x:yield from entries(value)
         placed = [x for x in entries(explanation) if 'location_id' in x and 'location_name' in x]
-        # The fixture adapter does not capture the formal operation-location query.
-        # Do not invent local/remote placement fields for an uncaptured plan.
-        assert not placed, explanation
+        assert any(x['location_id'] == 0 and x['location_name'] == 'local' for x in placed), explanation
+        assert any(x['location_id'] != 0 and x['location_name'] == 'worker' for x in placed), explanation
         completion = wait_for(lambda: next((c for c in worker_calls('finish', worker_log_offset)), None))
         cleanup = worker_cleanup(completion['execution_id'], worker_log_offset)
         assert cleanup['grpc_status'] == '0' and int(cleanup['row_count']) > 0, cleanup
@@ -400,7 +399,7 @@ def main():
         assert int(completion['row_count']) == len(REMOTE_ROWS), completion
         return {'SQL':read['log'], 'workerFinish':completion, 'coordinatorFinish':matching[-1],
                 'explain':'explain.json', 'locations':placed,
-                'placementStatus':'not-captured-by-fixture; formal-location-SQL-check-pending'}
+                'placementStatus':'captured-from-formal-compiler-query'}
 
     small_sql = REMOTE_SQL.replace('C0 > 0','C0 < 10000')
 

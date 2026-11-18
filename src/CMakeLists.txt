@@ -158,10 +158,6 @@ set_source_files_properties(
 )
 if(ENABLE_DISTRIBUTED_QUERY_FIXTURES)
     set_source_files_properties(jogasaki/dist/fixture_remote_catalog_provider.cpp
-        jogasaki/dist/remote_process_handler.cpp
-        jogasaki/api/resource/bridge.cpp
-        jogasaki/executor/process/flow.cpp
-        jogasaki/plan/compiler.cpp
         PROPERTIES COMPILE_DEFINITIONS ENABLE_DISTRIBUTED_QUERY_FIXTURES)
 endif()
 

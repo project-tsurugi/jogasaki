@@ -3,6 +3,8 @@ import com.tsurugidb.sql.proto.SqlRequest.TransactionOption;
 import com.tsurugidb.sql.proto.SqlRequest.TransactionType;
 import com.tsurugidb.tsubakuro.common.SessionBuilder;
 import com.tsurugidb.tsubakuro.sql.SqlClient;
+import com.tsurugidb.tsubakuro.sql.Placeholders;
+import com.tsurugidb.tsubakuro.sql.Parameters;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -24,6 +26,23 @@ class DistributedQueryProbe {
                 return;
             }
             var option = TransactionOption.newBuilder().setType(TransactionType.READ_ONLY).build();
+            if (args[0].equals("prepared")) {
+                try (var statement = sql.prepare(args[2], Placeholders.of("key", long.class)).await()) {
+                    for (long key : new long[] {900, 1000}) {
+                        try (var tx = sql.createTransaction(option).await()) {
+                            try (var result = tx.executeQuery(statement, Parameters.of("key", key)).await()) {
+                                if (!result.nextRow() || !result.nextColumn() || result.isNull()
+                                        || result.fetchInt8Value() != key || result.nextColumn() || result.nextRow()) {
+                                    throw new IllegalStateException("Unexpected prepared result for " + key);
+                                }
+                            }
+                            tx.commit().await();
+                            System.out.println("BIND_OK " + key);
+                        }
+                    }
+                }
+                return;
+            }
             try (var tx = sql.createTransaction(option).await()) {
                 try (var pending = tx.executeQuery(args[2])) {
                     System.out.println("SQL_SUBMITTED");

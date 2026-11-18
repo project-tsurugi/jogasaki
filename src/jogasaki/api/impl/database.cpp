@@ -227,6 +227,13 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_enable_ordered_forward) " << cfg.enable_ordered_forward() << " : whether the forward exchange respects the order of its input and output (effective only with dev_enable_ordered_scan)";
     LOGCFG << "(dev_enable_backward_scan) " << cfg.enable_backward_scan() << " : whether the scan operator reads the index in reverse order given by the compiler (effective only with dev_enable_scan_limit or dev_enable_ordered_scan)";
     LOGCFG << "(dev_enable_ties_ordered_by_primary_key) " << cfg.enable_ties_ordered_by_primary_key() << " : whether the secondary indices tell the compiler that the entries with the same key are ordered by the primary key";
+    LOGCFG << "(dev_index_equivalent_selectivity) " << cfg.index_equivalent_selectivity() << " : selectivity factor for each equivalent condition of the index key";
+    LOGCFG << "(dev_index_full_bound_selectivity) " << cfg.index_full_bound_selectivity() << " : selectivity factor for the range condition with both bounds of the index key";
+    LOGCFG << "(dev_index_half_bound_selectivity) " << cfg.index_half_bound_selectivity() << " : selectivity factor for the range condition with only one bound of the index key";
+    LOGCFG << "(dev_index_selectivity_decay) " << cfg.index_selectivity_decay() << " : decay of the selectivity factors for the subsequent index key conditions";
+    LOGCFG << "(dev_index_indirect_access_weight) " << cfg.index_indirect_access_weight() << " : weight of the index access which looks up the primary index again";
+    LOGCFG << "(dev_index_sort_cost) " << cfg.index_sort_cost() << " : cost factor of sorting the candidate without the order required by the downstream";
+    LOGCFG << "(dev_index_max_early_stop_limit_count) " << cfg.index_max_early_stop_limit_count() << " : maximum row count of LIMIT to choose the index in the order without comparing the estimation";
     LOGCFG << "(dev_enable_apply_preserves_order) " << cfg.enable_apply_preserves_order() << " : whether the apply operator tells the compiler that it outputs records in the order of its input records";
     LOGCFG << "(dev_scan_impl) " << cfg.scan_impl() << " : transaction engine scan implementation used by scan operator (auto, legacy or iscan)";
 }

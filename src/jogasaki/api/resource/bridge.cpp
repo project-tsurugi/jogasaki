@@ -160,6 +160,74 @@ static bool validate_enum_strings(std::string_view name, std::string_view value,
     return false;
 }
 
+/**
+ * @brief reads the double value of the parameter and verifies it is in the range
+ * @param section the configuration section
+ * @param name the parameter name
+ * @param min the minimum value
+ * @param min_inclusive whether the minimum value is allowed
+ * @param max the maximum value (inclusive), or nullopt if no maximum
+ * @param out the value read, or unchanged if the parameter is not specified
+ * @return false if the value is out of the range, true otherwise
+ */
+static bool read_double_in_range(
+    tateyama::api::configuration::section const& section,
+    std::string_view name,
+    double min,
+    bool min_inclusive,
+    std::optional<double> max,
+    double& out
+) {
+    auto v = section.get<double>(name);
+    if (! v) {
+        return true;
+    }
+    auto value = v.value();
+    if ((min_inclusive ? value < min : value <= min) || (max && value > *max)) {
+        LOG_LP(ERROR) << "invalid configuration - value " << value << " specified for parameter \"" << name
+                      << "\" is out of the range";
+        return false;
+    }
+    out = value;
+    return true;
+}
+
+/**
+ * @brief reads the parameters for the index selection of the compiler from the sql section
+ * @details see yugawara::analyzer::parametric_index_estimator and yugawara::analyzer::index_selection_parameters for
+ * the meaning of the values
+ */
+static bool process_index_selection_config(
+    std::shared_ptr<jogasaki::configuration>& ret,
+    tateyama::api::configuration::section const& section
+) {
+    double equivalent = ret->index_equivalent_selectivity();
+    double full_bound = ret->index_full_bound_selectivity();
+    double half_bound = ret->index_half_bound_selectivity();
+    double decay = ret->index_selectivity_decay();
+    double indirect_access_weight = ret->index_indirect_access_weight();
+    double sort_cost = ret->index_sort_cost();
+    if (! read_double_in_range(section, "dev_index_equivalent_selectivity", 0.0, false, 1.0, equivalent) ||
+        ! read_double_in_range(section, "dev_index_full_bound_selectivity", 0.0, false, 1.0, full_bound) ||
+        ! read_double_in_range(section, "dev_index_half_bound_selectivity", 0.0, false, 1.0, half_bound) ||
+        ! read_double_in_range(section, "dev_index_selectivity_decay", 0.0, true, 1.0, decay) ||
+        ! read_double_in_range(section, "dev_index_indirect_access_weight", 0.0, false, std::nullopt,
+            indirect_access_weight) ||
+        ! read_double_in_range(section, "dev_index_sort_cost", 0.0, true, std::nullopt, sort_cost)) {
+        return false;
+    }
+    ret->index_equivalent_selectivity(equivalent);
+    ret->index_full_bound_selectivity(full_bound);
+    ret->index_half_bound_selectivity(half_bound);
+    ret->index_selectivity_decay(decay);
+    ret->index_indirect_access_weight(indirect_access_weight);
+    ret->index_sort_cost(sort_cost);
+    if (auto v = section.get<std::size_t>("dev_index_max_early_stop_limit_count")) {
+        ret->index_max_early_stop_limit_count(v.value());
+    }
+    return true;
+}
+
 static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     // sql section
     auto jogasaki_config = cfg.get_section("sql");
@@ -366,6 +434,10 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
             return false;
         }
         ret->scan_impl(static_cast<scan_impl_kind>(idx));
+    }
+    if (! process_index_selection_config(ret, *jogasaki_config)) {
+        ret = {};
+        return false;
     }
     return true;
 }

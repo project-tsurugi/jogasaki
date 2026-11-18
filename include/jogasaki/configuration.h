@@ -729,6 +729,87 @@ public:
         apply_max_polls_ = arg;
     }
 
+    /**
+     * @brief the selectivity factor for each equivalent condition of the index key (parametric_index_estimator)
+     */
+    [[nodiscard]] double index_equivalent_selectivity() const noexcept {
+        return index_equivalent_selectivity_;
+    }
+
+    void index_equivalent_selectivity(double arg) noexcept {
+        index_equivalent_selectivity_ = arg;
+    }
+
+    /**
+     * @brief the selectivity factor for the range condition with both bounds of the index key
+     * (parametric_index_estimator)
+     */
+    [[nodiscard]] double index_full_bound_selectivity() const noexcept {
+        return index_full_bound_selectivity_;
+    }
+
+    void index_full_bound_selectivity(double arg) noexcept {
+        index_full_bound_selectivity_ = arg;
+    }
+
+    /**
+     * @brief the selectivity factor for the range condition with only one bound of the index key
+     * (parametric_index_estimator)
+     */
+    [[nodiscard]] double index_half_bound_selectivity() const noexcept {
+        return index_half_bound_selectivity_;
+    }
+
+    void index_half_bound_selectivity(double arg) noexcept {
+        index_half_bound_selectivity_ = arg;
+    }
+
+    /**
+     * @brief the decay of the selectivity factors for the subsequent index key conditions (parametric_index_estimator)
+     */
+    [[nodiscard]] double index_selectivity_decay() const noexcept {
+        return index_selectivity_decay_;
+    }
+
+    void index_selectivity_decay(double arg) noexcept {
+        index_selectivity_decay_ = arg;
+    }
+
+    /**
+     * @brief the weight of the index access which looks up the primary index again (index_selection_parameters)
+     */
+    [[nodiscard]] double index_indirect_access_weight() const noexcept {
+        return index_indirect_access_weight_;
+    }
+
+    void index_indirect_access_weight(double arg) noexcept {
+        index_indirect_access_weight_ = arg;
+    }
+
+    /**
+     * @brief the cost factor of sorting the candidate without the order required by the downstream
+     * (index_selection_parameters)
+     */
+    [[nodiscard]] double index_sort_cost() const noexcept {
+        return index_sort_cost_;
+    }
+
+    void index_sort_cost(double arg) noexcept {
+        index_sort_cost_ = arg;
+    }
+
+    /**
+     * @brief the maximum row count of LIMIT to choose the index in the order without comparing the estimation
+     * (index_selection_parameters)
+     */
+    [[nodiscard]] std::size_t index_max_early_stop_limit_count() const noexcept {
+        return index_max_early_stop_limit_count_;
+    }
+
+    void index_max_early_stop_limit_count(std::size_t arg) noexcept {
+        index_max_early_stop_limit_count_ = arg;
+    }
+
     [[nodiscard]] std::size_t udf_client_timeout() const noexcept {
         return udf_client_timeout_;
     }
@@ -818,6 +899,13 @@ public:
         print_non_default(grpc_server_secure);
         print_non_default(udf_pass_mock_tag);
         print_non_default(apply_max_polls);
+        print_non_default(index_equivalent_selectivity);
+        print_non_default(index_full_bound_selectivity);
+        print_non_default(index_half_bound_selectivity);
+        print_non_default(index_selectivity_decay);
+        print_non_default(index_indirect_access_weight);
+        print_non_default(index_sort_cost);
+        print_non_default(index_max_early_stop_limit_count);
         print_non_default(udf_client_timeout);
 
         if(cfg.req_cancel_config()) {
@@ -904,6 +992,13 @@ private:
     bool grpc_server_secure_ = false;
     bool udf_pass_mock_tag_ = false;
     std::size_t apply_max_polls_ = 0;
+    double index_equivalent_selectivity_ = 0.1;
+    double index_full_bound_selectivity_ = 0.3;
+    double index_half_bound_selectivity_ = 0.6;
+    double index_selectivity_decay_ = 1.0;
+    double index_indirect_access_weight_ = 2.0;
+    double index_sort_cost_ = 0.1;
+    std::size_t index_max_early_stop_limit_count_ = 10000;
     std::size_t udf_client_timeout_ = 0;
 };
 

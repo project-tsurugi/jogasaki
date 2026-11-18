@@ -81,6 +81,7 @@
 #include <takatori/util/string_builder.h>
 #include <yugawara/aggregate/declaration.h>
 #include <yugawara/analyzer/index_estimator.h>
+#include <yugawara/analyzer/parametric_index_estimator.h>
 #include <yugawara/analyzer/variable_mapping.h>
 #include <yugawara/analyzer/variable_resolution.h>
 #include <yugawara/analyzer/variable_resolution_kind.h>
@@ -718,6 +719,14 @@ static status compile_analysis(
         runtime_features.insert(yugawara::runtime_feature::index_join_scan);
     }
     std::shared_ptr<yugawara::analyzer::index_estimator> indices{};
+    if(cfg) {
+        yugawara::analyzer::parametric_index_estimator::parameters_type params{};
+        params.equivalent_selectivity() = cfg->index_equivalent_selectivity();
+        params.full_bound_selectivity() = cfg->index_full_bound_selectivity();
+        params.half_bound_selectivity() = cfg->index_half_bound_selectivity();
+        params.selectivity_decay() = cfg->index_selectivity_decay();
+        indices = std::make_shared<yugawara::analyzer::parametric_index_estimator>(params);
+    }
     auto sp = std::make_shared<storage_processor>();
     yugawara::compiler_options c_options{
         runtime_features,
@@ -726,6 +735,10 @@ static status compile_analysis(
     };
     if(cfg) {
         c_options.enable_disjunction_range_hinting() = cfg->enable_disjunction_range_hinting();
+        auto& selection = c_options.index_selection_parameters();
+        selection.indirect_access_weight() = cfg->index_indirect_access_weight();
+        selection.sort_cost() = cfg->index_sort_cost();
+        selection.max_early_stop_limit_count() = cfg->index_max_early_stop_limit_count();
     }
 
     // Reject foreign catalog DDL until runtime support is available, including text-only EXPLAIN.

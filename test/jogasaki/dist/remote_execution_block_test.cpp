@@ -60,7 +60,6 @@
 #include <jogasaki/dist/remote_execution_graph_compiler.h>
 #include <jogasaki/dist/remote_execution_result.h>
 #include <jogasaki/dist/remote_process_execution_block_shape.h>
-#include <jogasaki/dist/remote_routing.h>
 #include <jogasaki/executor/process/process_preparation.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/meta/variable_order.h>
@@ -159,34 +158,6 @@ private:
     takatori::descriptor::variable external_column_;
 };
 
-TEST(remote_execution_block_test, rejects_multiple_remote_processes_for_one_execution) {
-    yugawara::binding::factory bindings{};
-    yugawara::storage::configurable_provider storages{};
-    auto table = storages.add_table({"T0", {{"C0", type::int8{}}}});
-    auto index = storages.add_index({std::uint64_t{1257}, table, "I0"});
-    takatori::plan::graph_type plan{};
-    auto add = [&] {
-        auto& process = plan.insert(takatori::plan::process{});
-        auto variable = bindings.stream_variable();
-        auto& scan = process.operators().insert(relation::scan{bindings(*index), {{bindings(table->columns()[0]), variable}}, {}, {}});
-        auto& forward = plan.insert(takatori::plan::forward{bindings.exchange_column()});
-        auto& offer = process.operators().insert(relation::step::offer{bindings.exchange(forward), {{variable, forward.columns()[0]}}});
-        scan.output() >> offer.input();
-        process >> forward;
-    };
-    add();
-    dist::remote_catalog_snapshot catalogs{{}, {{table.get(), "worker"}}, {{index.get(), {"worker", dist::remote_declaration_kind::index, 1257}}}};
-    EXPECT_TRUE(dist::validate_remote_plan(plan, &catalogs).empty());
-    status code{};
-    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker", &code).find("catalog snapshot"));
-    EXPECT_EQ(status::err_compiler_error, code);
-    add();
-    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, nullptr, "worker", &code).find("catalog snapshot"));
-    EXPECT_EQ(status::err_compiler_error, code);
-    EXPECT_NE(std::string::npos, dist::validate_remote_plan(plan, &catalogs).find("at most one"));
-    // Without remote metadata or an explicit override, both ordinary SQL processes are valid.
-    EXPECT_TRUE(dist::validate_remote_plan(plan, nullptr).empty());
-}
 TEST(remote_execution_block_test, common_preparation_requires_processor_and_relation_map) {
     using namespace executor::process;
     auto processor = std::make_shared<processor_info>();

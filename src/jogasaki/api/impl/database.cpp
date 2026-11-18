@@ -352,11 +352,7 @@ status database::start_distributed_query() {
             LOG_LP(ERROR) << "distributed query coordinator requires at least one remote server";
             return status::err_invalid_argument;
         }
-#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
-        if (auto* override_server = std::getenv("JOGASAKI_DQ_REMOTE_EXECUTION_SERVER"); override_server && *override_server) {
-            LOG_LP(WARNING) << "development remote execution override is enabled; matching local plans may be sent to a remote worker";
-        }
-#endif
+
         if (auto st = remote_server_channels_->start(cfg_->distributed_query_remote_servers()); st != status::ok) {
             return st;
         }

@@ -137,6 +137,7 @@ static bool execute_internal(
         req_info,
         static_cast<bool>(stmt->mirrors()->external_writer_meta()),
         std::move(req),
+        nullptr,
         stmt->mirrors()->emits_ordered_relation()
     );
     rctx->lightweight(
@@ -381,6 +382,7 @@ bool execute_async(
         req_info,
         stmt->has_result_records(),
         req,
+        nullptr,
         stmt->body()->mirrors()->emits_ordered_relation()
     );
     request_ctx->req_info(req_info);

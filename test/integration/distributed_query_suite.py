@@ -78,7 +78,7 @@ def main():
                     str(source/'DistributedQueryProbe.java')], check=True)
     env = os.environ.copy()
     for key in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS',
-                'JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS', 'JOGASAKI_DQ_REMOTE_EXECUTION_SERVER'):
+                'JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS'):
         env.pop(key, None)
     env['LD_LIBRARY_PATH'] = str(args.prefix.resolve()/'lib')
     env['DQ_TEST_DATABASE_PREFIX'] = args.database_name_prefix

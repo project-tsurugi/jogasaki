@@ -129,10 +129,9 @@ validation or provide remote query results.
 
 For C1 with a standard Bootstrap server, also enable
 `ENABLE_DISTRIBUTED_QUERY_FIXTURES`, provide a coordinator catalog fixture for
-`worker_schema.C1_DUMMY_T` with `definition_id=8101` and
-`index_definition_id=9101`, and leave
-`JOGASAKI_DQ_REMOTE_EXECUTION_SERVER` unset. Use a readonly transaction to query
-`worker_schema.C1_DUMMY_T`; use `C1_DUMMY_T` for the coordinator's local table.
+`remote_catalog.worker_schema.C1_DUMMY_T` with `definition_id=8101` and
+`index_definition_id=9101`. Use an RTX to query
+`remote_catalog.worker_schema.C1_DUMMY_T`; use `C1_DUMMY_T` for the coordinator's local table.
 The metadata option is for isolated integration tests, not production builds.
 
 Run `test/integration/distributed_query_lifecycle.py` with `--prefix`, `--server`,

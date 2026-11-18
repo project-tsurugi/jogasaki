@@ -178,7 +178,7 @@ def main():
                 raise TimeoutError('Worker RPC did not reconnect within 30 seconds')
             progress['attempts'] += 1
             evidence = query(coordinator,
-                             f'SELECT C0 FROM worker_schema.{TABLE} WHERE C0=900',
+                             f'SELECT C0 FROM remote_catalog.worker_schema.{TABLE} WHERE C0=900',
                              expected=[{'C0': 900}], readiness_probe=True, timeout=remaining)
             progress['elapsedSeconds'] = time.monotonic() - started
             if evidence['readiness'] == 'ready':
@@ -193,8 +193,8 @@ def main():
         restart(coordinator)
         query(coordinator, f'SELECT C0 FROM {TABLE} ORDER BY C0',
               expected=[{'C0': 10}, {'C0': 20}])
-        query(coordinator, f'SELECT C0 FROM worker_schema.{TABLE} ORDER BY C0',
-              error_pattern=r'schema_not_found', expected_code='SQL-03004')
+        query(coordinator, f'SELECT C0 FROM remote_catalog.worker_schema.{TABLE} ORDER BY C0',
+              error_pattern=r'catalog_not_found', expected_code='SQL-03004')
         coordinator.coordinator = True
         coordinator.catalog_enabled = True
         restart(coordinator)
@@ -207,10 +207,9 @@ def main():
             assert failed['rows'] == [], failed
         query(coordinator, followup, expected=expected)
 
-    remote = f'worker_schema.{TABLE}'
+    remote = f'remote_catalog.worker_schema.{TABLE}'
     try:
         assert len(set(ports)) == 4 and not listeners(ports), ports
-        assert not os.environ.get('JOGASAKI_DQ_REMOTE_EXECUTION_SERVER')
         assert not os.environ.get('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS')
         worker.start()
         coordinator.start()
@@ -252,7 +251,7 @@ def main():
                       kind=kind, expected=[{'C0':900},{'C0':1000}], unordered=True)
             rejected(
              f'SELECT A.C0 FROM {remote} A JOIN {remote} B ON A.C0=B.C0',
-             r'unsupported remote process shape', code='SQL-03010', no_rows=True)
+             r'at most one remote execution block', code='SQL-03010', no_rows=True)
         case('C2-09', unsupported_join)
 
         def wrong_transaction():
@@ -330,12 +329,16 @@ def main():
         for number, template, expected, columns, types in normal_samples:
             case('C2-'+number, lambda q=template, e=expected, c=columns, t=types:
                  equivalent(q, e, c, t))
+        coordinator_samples = [
+            ('C2-N09', 'SELECT ABS(C0) AS V FROM {t} ORDER BY C0', [{'V': 900}, {'V': 1000}]),
+            ('C2-N10', "SELECT COALESCE(C1,'missing') AS V FROM {t} ORDER BY C0", [{'V': 'remote-process'}, {'V': 'missing'}]),
+            ('C2-N11', 'SELECT CASE WHEN C0=900 THEN 1 ELSE 2 END AS V FROM {t} ORDER BY C0', [{'V': 1}, {'V': 2}]),
+        ]
+        for number, template, expected in coordinator_samples:
+            case(number, lambda q=template, e=expected: equivalent(q, e, ['V'], None))
         rejection_samples = [
-            ('C2-R01', 'SELECT ABS(C0) AS V FROM {t} ORDER BY C0', [{'V': 900}, {'V': 1000}], 'unsupported remote expression'),
-            ('C2-R02', "SELECT COALESCE(C1,'missing') AS V FROM {t} ORDER BY C0", [{'V': 'remote-process'}, {'V': 'missing'}], 'unsupported remote expression'),
-            ('C2-R03', 'SELECT CASE WHEN C0=900 THEN 1 ELSE 2 END AS V FROM {t} ORDER BY C0', [{'V': 1}, {'V': 2}], 'unsupported remote expression'),
             ('C2-R04', 'SELECT C0 FROM {t} UNION ALL SELECT C0 FROM {t}', [{'C0': 900}, {'C0': 1000}, {'C0': 900}, {'C0': 1000}], 'at most one remote execution block'),
-            ('C2-R05', 'SELECT C0 FROM {t} WHERE C0 IN (SELECT C0 FROM {t}) ORDER BY C0', [{'C0': 900}, {'C0': 1000}], 'unsupported remote process shape'),
+            ('C2-R05', 'SELECT C0 FROM {t} WHERE C0 IN (SELECT C0 FROM {t}) ORDER BY C0', [{'C0': 900}, {'C0': 1000}], 'at most one remote execution block'),
         ]
         for number, template, expected, pattern in rejection_samples:
             def distributed_rejection(q=template, e=expected, pat=pattern, unordered=(number == 'C2-R04')):

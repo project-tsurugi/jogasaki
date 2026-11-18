@@ -427,11 +427,8 @@ TEST_F(remote_catalog_rpc_test, create_fetches_over_rpc_and_publishes_resolvable
     EXPECT_TRUE(aggregate->incremental());
     EXPECT_EQ(504U, snapshot->remote_definition(*aggregate)->remote_definition_id);
 
-    if (!dist::distributed_query_fixtures_available()) {
-        GTEST_SKIP() << "SQL name resolution of remote catalogs needs the development search-path adapter";
-    }
     std::unique_ptr<api::executable_statement> statement{};
-    EXPECT_EQ(status::ok, db_->create_executable("SELECT C0 FROM remote_schema.T", statement));
+    EXPECT_EQ(status::ok, db_->create_executable("SELECT C0 FROM remote.remote_schema.T", statement));
     // the fetch happened only once, during CREATE
     EXPECT_EQ(1, remote_.calls);
 }
@@ -461,10 +458,8 @@ TEST_F(remote_catalog_rpc_test, drop_keeps_references_obtained_before) {
     old_snapshot.reset();
     EXPECT_EQ(0U, ids->reserved_count());
 
-    if (dist::distributed_query_fixtures_available()) {
-        std::unique_ptr<api::executable_statement> statement{};
-        EXPECT_NE(status::ok, db_->create_executable("SELECT C0 FROM remote_schema.T", statement));
-    }
+    std::unique_ptr<api::executable_statement> statement{};
+    EXPECT_NE(status::ok, db_->create_executable("SELECT C0 FROM remote.remote_schema.T", statement));
     // a new CREATE fetches again
     ASSERT_EQ(status::ok, create("remote", diagnostic)) << diagnostic;
     EXPECT_EQ(2, remote_.calls);
@@ -553,7 +548,6 @@ TEST_F(remote_catalog_rpc_test, local_catalog_round_trips_through_rpc_into_manag
 }
 
 TEST_F(remote_catalog_rpc_test, missing_worker_index_identity_is_rejected_during_prepare) {
-    if (!dist::distributed_query_fixtures_available()) GTEST_SKIP();
     for (auto identity : {std::optional<std::uint64_t>{502}, std::optional<std::uint64_t>{}}) {
         SCOPED_TRACE(identity ? "defined index ID" : "missing index ID");
         remote_.handler = std::make_shared<encoding_handler>(remote_catalog(false, identity));
@@ -561,7 +555,7 @@ TEST_F(remote_catalog_rpc_test, missing_worker_index_identity_is_rejected_during
         ASSERT_EQ(status::ok, create("remote", diagnostic)) << diagnostic;
         api::statement_handle statement{};
         std::shared_ptr<error::error_info> info{};
-        auto result = db_impl()->prepare("SELECT C0 FROM remote_schema.T", statement, info);
+        auto result = db_impl()->prepare("SELECT C0 FROM remote.remote_schema.T", statement, info);
         if (identity) {
             ASSERT_EQ(status::ok, result) << (info ? info->message() : "");
             EXPECT_EQ(status::ok, db_->destroy_statement(statement));
@@ -578,7 +572,6 @@ TEST_F(remote_catalog_rpc_test, missing_worker_index_identity_is_rejected_during
 }
 
 TEST_F(remote_catalog_rpc_test, remote_only_functions_never_compile_for_local_execution) {
-    if (!dist::distributed_query_fixtures_available()) GTEST_SKIP();
     std::string diagnostic{};
     ASSERT_EQ(status::ok, create("remote", diagnostic)) << diagnostic;
     auto snapshot = manager()->snapshot();

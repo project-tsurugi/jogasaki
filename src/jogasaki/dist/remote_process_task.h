@@ -22,7 +22,7 @@
 namespace jogasaki { class request_context; }
 namespace jogasaki::executor::process { class step; class processor_info; }
 namespace jogasaki::dist {
-// Development selection is explicit; native location resolution will supply this binding.
+// The compiler-captured process location supplies the server binding.
 [[nodiscard]] std::shared_ptr<model::task> make_remote_process_task(
     request_context& context, executor::process::step& step,
     executor::process::processor_info const& info, std::string server);

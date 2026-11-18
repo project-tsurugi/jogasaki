@@ -53,7 +53,6 @@ def main():
     small_sql=REMOTE_SQL.replace('C0 > 0','C0 < 10000')
     try:
         assert len(set(ports))==4 and not listeners(ports)
-        assert not os.environ.get('JOGASAKI_DQ_REMOTE_EXECUTION_SERVER')
         assert not os.environ.get('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS')
         worker.start();coordinator.start();initial={n.name:n.config.read_bytes()for n in nodes}
         for node,data in [(worker,"(900,'remote-process',12.34,0),(1000,NULL,56.78,2)"),
@@ -69,7 +68,7 @@ def main():
         sql=f'SELECT C0,C1,C2,C3 FROM {{t}} WHERE C0>=10000 ORDER BY C0'
         begin=len(proxy.events)
         ordinary=query(worker,sql.format(t=TABLE)); ordinary_occ=query(worker,sql.format(t=TABLE),'OCC')
-        distributed=query(coordinator,sql.format(t='worker_schema.'+TABLE))
+        distributed=query(coordinator,sql.format(t='remote_catalog.worker_schema.'+TABLE))
         expected=[{'C0':i,'C1':'a'*40,'C2':Decimal('12.34'),'C3':2}for i in range(10000,50000)]
         for row in [ordinary,ordinary_occ,distributed]:
             assert row['status']=='success' and row['rows']==expected,row['diagnostic']
@@ -86,9 +85,9 @@ def main():
             try:coordinator.start()
             finally:os.environ.pop('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS',None)
             assert query(coordinator,small_sql)['rows']==REMOTE_ROWS
-            fault_sql=(sql.format(t='worker_schema.'+TABLE).replace(' ORDER BY C0','')
+            fault_sql=(sql.format(t='remote_catalog.worker_schema.'+TABLE).replace(' ORDER BY C0','')
                        if mode=='cut-after-message' else small_sql)
-            local_sql=fault_sql.replace('worker_schema.'+TABLE,TABLE)
+            local_sql=fault_sql.replace('remote_catalog.worker_schema.'+TABLE,TABLE)
             for kind in ('RTX','OCC'):
                 control=query(worker,local_sql,kind)
                 assert control['status']=='success',control['diagnostic']

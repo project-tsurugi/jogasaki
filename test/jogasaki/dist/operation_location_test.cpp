@@ -196,20 +196,18 @@ TEST_F(operation_location_test, rejects_remote_placement_when_request_role_forbi
                 auto selected = dist::select_remote_execution_server(request, *processor);
                 EXPECT_FALSE(selected.server);
                 EXPECT_EQ("Remote query execution is not available in this execution context.", selected.error);
-#ifdef ENABLE_DISTRIBUTED_QUERY_FIXTURES
                 // Rejection must happen before dereferencing the local execution step or starting an RPC.
                 executor::process::flow flow{&request, nullptr, processor};
                 EXPECT_TRUE(flow.create_tasks().empty());
                 ASSERT_TRUE(request.error_info());
                 EXPECT_EQ(error_code::restricted_operation_exception, request.error_info()->code());
                 EXPECT_EQ(status::err_illegal_operation, request.error_info()->status());
-#endif
             }
         }
     }
 }
 
-TEST_F(operation_location_test, retains_remote_placement_when_dispatch_is_allowed) {
+TEST_F(operation_location_test, requires_captured_remote_placement_when_dispatch_is_allowed) {
     auto [source, consumer] = add_fenced_processes();
     auto config = std::make_shared<configuration>();
     config->distributed_query_coordinator_enabled(true);
@@ -217,12 +215,17 @@ TEST_F(operation_location_test, retains_remote_placement_when_dispatch_is_allowe
     request.remote_catalogs(std::make_shared<dist::remote_catalog_snapshot>(
         dist::remote_catalog_snapshot::catalogs_type{},
         dist::remote_catalog_snapshot::locations_type{{table_.get(), "worker"}}));
-    executor::process::processor_info processor{source->operators(), info()};
-    auto selected = dist::select_remote_execution_server(request, processor);
-    EXPECT_TRUE(selected.error.empty());
-    EXPECT_EQ(std::optional<std::string>{"worker"}, selected.server);
-    processor.captured_location("captured-worker");
-    selected = dist::select_remote_execution_server(request, processor);
+    auto processor = std::make_shared<executor::process::processor_info>(source->operators(), info());
+    auto selected = dist::select_remote_execution_server(request, *processor);
+    EXPECT_FALSE(selected.server);
+    EXPECT_EQ("Compiler-provided execution locations are required for a remote process.", selected.error);
+    // A null local step would fail if the guard incorrectly continued into local execution.
+    executor::process::flow flow{&request, nullptr, processor};
+    EXPECT_TRUE(flow.create_tasks().empty());
+    ASSERT_TRUE(request.error_info());
+    EXPECT_EQ(error_code::restricted_operation_exception, request.error_info()->code());
+    processor->captured_location("captured-worker");
+    selected = dist::select_remote_execution_server(request, *processor);
     EXPECT_TRUE(selected.error.empty());
     EXPECT_EQ(std::optional<std::string>{"captured-worker"}, selected.server);
 }
@@ -248,7 +251,7 @@ TEST_F(operation_location_test, explicit_local_placement_does_not_route_again_on
     }
 }
 
-TEST_F(operation_location_test, environment_only_override_is_ignored_when_dispatch_is_forbidden) {
+TEST_F(operation_location_test, removed_environment_override_is_always_ignored) {
     constexpr auto name = "JOGASAKI_DQ_REMOTE_EXECUTION_SERVER";
     auto* original = std::getenv(name);
     class restore_environment {
@@ -269,7 +272,6 @@ TEST_F(operation_location_test, environment_only_override_is_ignored_when_dispat
     auto transaction = std::make_shared<transaction_context>(nullptr, option);
     for (bool coordinator : {false, true}) {
         for (bool worker : {false, true}) {
-            if (coordinator && !worker) continue;
             auto config = std::make_shared<configuration>();
             config->distributed_query_coordinator_enabled(coordinator);
             request_context request{config};
@@ -286,7 +288,7 @@ TEST_F(operation_location_test, environment_only_override_is_ignored_when_dispat
     request.transaction(transaction);
     auto selected = dist::select_remote_execution_server(request, processor);
     EXPECT_TRUE(selected.error.empty());
-    EXPECT_EQ(std::optional<std::string>{"environment-only-worker"}, selected.server);
+    EXPECT_FALSE(selected.server);
     processor.captured_location({});
     selected = dist::select_remote_execution_server(request, processor);
     EXPECT_TRUE(selected.error.empty());
@@ -304,7 +306,7 @@ TEST_F(operation_location_test, absent_placement_remains_local_when_dispatch_is_
     EXPECT_FALSE(selected.server);
 }
 
-TEST_F(operation_location_test, preserves_generation_failure_status_in_both_plan_paths) {
+TEST_F(operation_location_test, preserves_generation_failure_status_at_capture) {
     auto [source, consumer] = add_fenced_processes();
     dummy_operation_locations query{{{source, {7}}, {consumer, {0}}}, {{7, "worker"}}};
     // The table is remote, but this snapshot cannot map its index declaration.
@@ -312,11 +314,10 @@ TEST_F(operation_location_test, preserves_generation_failure_status_in_both_plan
     auto captured = dist::capture_process_locations(plan_, query, &missing);
     EXPECT_FALSE(captured.locations);
     EXPECT_EQ(status::err_compiler_error, captured.code);
-    status code{};
-    EXPECT_FALSE(dist::validate_remote_plan(plan_, &missing, {}, &code).empty());
-    EXPECT_EQ(status::err_compiler_error, code);
-    EXPECT_TRUE(dist::validate_remote_plan(plan_, catalogs_.get(), "worker", &code).empty());
-    EXPECT_EQ(status::ok, code);
+    auto valid = dist::capture_process_locations(plan_, query, catalogs_.get());
+    EXPECT_TRUE(valid.error.empty()) << valid.error;
+    EXPECT_EQ(status::ok, valid.code);
+
 }
 
 TEST_F(operation_location_test, queries_each_compiled_process_once_and_keeps_graph) {
@@ -553,29 +554,6 @@ TEST_F(operation_location_test, rejects_remote_output_not_connected_downstream) 
     EXPECT_FALSE(captured.locations);
 }
 
-TEST_F(operation_location_test, fixture_split_is_separate_from_operation_locations) {
-    auto& process = add_inline_process();
-    // A result computed for the graph as compiled, before any development split.
-    dummy_operation_locations stale{{{&process, {7}}}, {{7, "worker"}}};
-    dist::remote_catalog_snapshot catalogs{{}, {{table_.get(), "worker"}}, catalogs_->definitions()};
-
-    auto adapted = dist::adapt_remote_outputs(plan_, info(), &catalogs);
-    (void) adapted;
-
-    ASSERT_EQ(3, plan_.size());
-    EXPECT_EQ(relation::expression_kind::offer, kinds(process).back());
-    std::size_t consumers{};
-    for (auto const& step : plan_) {
-        if (step.kind() != takatori::plan::step_kind::process || &step == &process) continue;
-        ++consumers;
-        EXPECT_EQ((std::vector<relation::expression_kind>{relation::expression_kind::take_flat, relation::expression_kind::emit}),
-            kinds(static_cast<takatori::plan::process const&>(step)));
-    }
-    EXPECT_EQ(1, consumers);
-    EXPECT_TRUE(dist::validate_remote_plan(plan_, &catalogs).empty());
-    // The consumer added by the split has no operation location in the earlier result.
-    EXPECT_THROW((void) dist::capture_process_locations(plan_, stale, catalogs_.get()), std::out_of_range);
-}
 
 } // namespace
 

@@ -49,8 +49,8 @@ class cache_align compiler_context {
 public:
     /**
      * @brief extracts the operation location result from a compiler result
-     * @details returns nullptr if the compiler computed no locations. Until Yugawara provides
-     * compiler_result::operation_location_query(), only explicit injections set this.
+     * @details UT-only override; production uses compiler_result::operation_location_query().
+     * Returns nullptr if the injected compiler computed no locations.
      */
     using operation_locations_extractor = std::function<
         std::shared_ptr<dist::operation_locations const>(::yugawara::compiler_result const&)>;

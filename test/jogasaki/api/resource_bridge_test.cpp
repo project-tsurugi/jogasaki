@@ -215,4 +215,71 @@ TEST_F(resource_bridge_test, invalid_udf_multi_secure_cfg) {
     EXPECT_FALSE(c);
 }
 
+
+TEST_F(resource_bridge_test, index_selection_cfg) {
+    // verify the parameters for the index selection of the compiler are read
+    std::stringstream ss{
+        "[sql]\n"
+        "dev_index_equivalent_selectivity=0.2\n"
+        "dev_index_full_bound_selectivity=0.4\n"
+        "dev_index_half_bound_selectivity=1\n"
+        "dev_index_selectivity_decay=0\n"
+        "dev_index_indirect_access_weight=0.5\n"
+        "dev_index_sort_cost=0\n"
+        "dev_index_max_early_stop_limit_count=0\n"
+    };
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
+    auto c = api::resource::convert_config(cfg);
+    ASSERT_TRUE(c);
+    EXPECT_DOUBLE_EQ(0.2, c->index_equivalent_selectivity());
+    EXPECT_DOUBLE_EQ(0.4, c->index_full_bound_selectivity());
+    EXPECT_DOUBLE_EQ(1.0, c->index_half_bound_selectivity());
+    EXPECT_DOUBLE_EQ(0.0, c->index_selectivity_decay());
+    EXPECT_DOUBLE_EQ(0.5, c->index_indirect_access_weight());
+    EXPECT_DOUBLE_EQ(0.0, c->index_sort_cost());
+    EXPECT_EQ(0, c->index_max_early_stop_limit_count());
+}
+
+TEST_F(resource_bridge_test, index_selection_cfg_default_value) {
+    std::stringstream ss{
+        "[sql]\n"
+    };
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
+    auto c = api::resource::convert_config(cfg);
+    ASSERT_TRUE(c);
+    EXPECT_DOUBLE_EQ(0.1, c->index_equivalent_selectivity());
+    EXPECT_DOUBLE_EQ(0.3, c->index_full_bound_selectivity());
+    EXPECT_DOUBLE_EQ(0.6, c->index_half_bound_selectivity());
+    EXPECT_DOUBLE_EQ(1.0, c->index_selectivity_decay());
+    EXPECT_DOUBLE_EQ(2.0, c->index_indirect_access_weight());
+    EXPECT_DOUBLE_EQ(0.1, c->index_sort_cost());
+    EXPECT_EQ(10000, c->index_max_early_stop_limit_count());
+}
+
+TEST_F(resource_bridge_test, index_selection_cfg_out_of_range) {
+    // verify the values out of the range (including NaN, infinity and negative integer) are rejected
+    for(auto&& entry : {
+        "dev_index_equivalent_selectivity=0",
+        "dev_index_equivalent_selectivity=1.5",
+        "dev_index_equivalent_selectivity=nan",
+        "dev_index_full_bound_selectivity=0",
+        "dev_index_half_bound_selectivity=1.01",
+        "dev_index_selectivity_decay=-0.1",
+        "dev_index_selectivity_decay=1.1",
+        "dev_index_selectivity_decay=nan",
+        "dev_index_indirect_access_weight=0",
+        "dev_index_indirect_access_weight=inf",
+        "dev_index_sort_cost=-1",
+        "dev_index_sort_cost=nan",
+        "dev_index_sort_cost=inf",
+        "dev_index_max_early_stop_limit_count=-1",
+    }) {
+        SCOPED_TRACE(entry);
+        std::stringstream ss{"[sql]\n"s + entry + "\n"};
+        tateyama::api::configuration::whole cfg{ss, default_configuration};
+        auto c = api::resource::convert_config(cfg);
+        EXPECT_FALSE(c);
+    }
+}
+
 }

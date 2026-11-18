@@ -15,6 +15,7 @@
  */
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -161,7 +162,7 @@ static bool validate_enum_strings(std::string_view name, std::string_view value,
 }
 
 /**
- * @brief reads the double value of the parameter and verifies it is in the range
+ * @brief reads the double value of the parameter and verifies it is finite and in the range
  * @param section the configuration section
  * @param name the parameter name
  * @param min the minimum value
@@ -183,7 +184,10 @@ static bool read_double_in_range(
         return true;
     }
     auto value = v.value();
-    if ((min_inclusive ? value < min : value <= min) || (max && value > *max)) {
+    // written as the negation of "in range" so that NaN is rejected, and infinity is rejected explicitly
+    bool const in_range =
+        std::isfinite(value) && (min_inclusive ? value >= min : value > min) && (! max || value <= *max);
+    if (! in_range) {
         LOG_LP(ERROR) << "invalid configuration - value " << value << " specified for parameter \"" << name
                       << "\" is out of the range";
         return false;
@@ -222,8 +226,14 @@ static bool process_index_selection_config(
     ret->index_selectivity_decay(decay);
     ret->index_indirect_access_weight(indirect_access_weight);
     ret->index_sort_cost(sort_cost);
-    if (auto v = section.get<std::size_t>("dev_index_max_early_stop_limit_count")) {
-        ret->index_max_early_stop_limit_count(v.value());
+    // read as signed integer, because negative value is wrapped around when read as std::size_t
+    if (auto v = section.get<std::int64_t>("dev_index_max_early_stop_limit_count")) {
+        if (v.value() < 0) {
+            LOG_LP(ERROR) << "invalid configuration - value " << v.value()
+                          << " specified for parameter \"dev_index_max_early_stop_limit_count\" is out of the range";
+            return false;
+        }
+        ret->index_max_early_stop_limit_count(static_cast<std::size_t>(v.value()));
     }
     return true;
 }

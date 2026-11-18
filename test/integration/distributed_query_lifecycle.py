@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""C1 lifecycle checks using standard Bootstrap and Jogasaki test metadata."""
+"""C1 lifecycle checks using standard Bootstrap and persistent definition IDs."""
 import argparse
 from decimal import Decimal
 import json
@@ -16,7 +16,7 @@ from distributed_query_e2e import Node, rows
 TABLE = 'C1_DUMMY_T'
 CREATE = f'CREATE TABLE {TABLE}(C0 BIGINT PRIMARY KEY,C1 VARCHAR(40),C2 DECIMAL(10,2),C3 BIGINT)'
 LOCAL_SQL = f'SELECT C0,C1,C2 FROM {TABLE} WHERE C0 > 0 ORDER BY C0'
-REMOTE_SQL = LOCAL_SQL.replace(f'FROM {TABLE}', f'FROM remote_catalog.worker_schema.{TABLE}')
+REMOTE_SQL = LOCAL_SQL.replace(f'FROM {TABLE}', f'FROM remote_catalog."public".{TABLE}')
 REMOTE_ROWS = [
     {'C0': 900, 'C1': 'remote-process', 'C2': Decimal('12.34')},
     {'C0': 1000, 'C1': None, 'C2': Decimal('56.78')},
@@ -27,20 +27,9 @@ LOCAL_ROWS = [
 ]
 
 
-def fixture():
-    return {'version': 1, 'catalogs': [{
-        'name': 'remote_catalog', 'server': 'worker', 'schemas': [{
-            'name': 'worker_schema', 'tables': [{
-                'name': TABLE, 'definition_id': 8101, 'index_definition_id': 9101,
-                'columns': [
-                    {'name': 'C0', 'type': 'bigint', 'nullable': False},
-                    {'name': 'C1', 'type': 'varchar', 'length': 40, 'nullable': True},
-                    {'name': 'C2', 'type': 'decimal', 'precision': 10, 'scale': 2, 'nullable': True},
-                    {'name': 'C3', 'type': 'bigint', 'nullable': True},
-                ], 'primary_key': ['C0'],
-            }],
-        }],
-    }]}
+def register_catalog(node):
+    if node.coordinator and node.catalog_enabled:
+        node.sql('CREATE FOREIGN CATALOG remote_catalog SERVER worker')
 
 
 def listeners(ports):
@@ -133,12 +122,11 @@ def main():
     args = parser.parse_args()
     for name in ('prefix', 'server', 'tgctl', 'tgsql', 'work_dir'):
         setattr(args, name, getattr(args, name).resolve())
-    args.catalog_routing = True  # Existing fixture path; no forced remote override.
+    args.catalog_routing = True  # Register the catalog through the real RPC.
     args.work_dir.mkdir(parents=True, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix='c1-', dir=args.work_dir))
-    (root / 'catalog.json').write_text(json.dumps(fixture(), indent=2))
-    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True)
-    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True, minimal_roles=True)
+    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True, formal_catalog=True)
+    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True, minimal_roles=True, formal_catalog=True)
     nodes = [coordinator, worker]
     ports = [port for node in nodes for port in (node.sql_port, node.grpc_port)]
     result = {'status': 'running', 'scenarios': [], 'stops': [], 'cleanupErrors': []}
@@ -158,6 +146,7 @@ def main():
         ]:
             node.sql(CREATE)
             node.sql(f'INSERT INTO {TABLE} VALUES {data}')
+        register_catalog(coordinator)
         record('C1-02', select(coordinator))
         configuration = {node.name: node.config.read_bytes() for node in nodes}
         record('C1-03', {'stop': stop(coordinator, result['stops']),
@@ -165,14 +154,16 @@ def main():
         record('C1-04', stop(worker, result['stops']))
         worker.start()
         coordinator.start()
+        register_catalog(coordinator)
         assert {node.name: node.config.read_bytes() for node in nodes} == configuration
-        restart = {'sameConfiguration': True, 'dataReinserted': False,
+        restart = {'sameConfiguration': True, 'dataReinserted': False, 'catalogRecreated': True,
                    'results': select(coordinator)}
         restart['coordinatorStop'] = stop(coordinator, result['stops'])
         restart['workerStop'] = stop(worker, result['stops'])
         record('C1-05', restart)
         worker.start()
         coordinator.start()
+        register_catalog(coordinator)
         actual = rows(coordinator.sql(REMOTE_SQL, readonly=True))
         assert actual == REMOTE_ROWS, actual
         first_stop = len(result['stops'])

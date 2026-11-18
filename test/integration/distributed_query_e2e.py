@@ -56,6 +56,8 @@ class Node:
 name=worker
 uri=dns:///127.0.0.1:{self.worker_grpc}
 """
+        if self.formal_catalog and self.coordinator and not self.catalog_enabled:
+            client_config += 'catalog_source=disabled\n'
         if not self.formal_catalog:
             client_config += f"""catalog_source={'fixture' if self.coordinator and self.catalog_enabled else 'disabled'}
 fixture_path={self.root.parent / 'catalog.json' if self.coordinator and self.catalog_enabled else ''}

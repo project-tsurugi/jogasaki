@@ -16,6 +16,8 @@
 #include "database.h"
 
 #include <algorithm>
+#include <limits>
+#include <jogasaki/storage/definition_id_allocator.h>
 #include <chrono>
 #include <cstdint>
 #include <map>
@@ -405,6 +407,11 @@ status database::start() {
     if(auto res = kvs::setup_system_storage(); res != status::ok) {
         return res;
     }
+    definition_ids_ = std::make_unique<storage::definition_id_allocator>(*kvs_db_);
+    if (auto rc = definition_ids_->initialize(); rc != status::ok) return rc;
+    if (auto rc = kvs_db_->register_durability_callback([marker = definition_ids_->durable_marker()](auto value) {
+            marker->store(value, std::memory_order_release);
+        }); rc != status::ok) return rc;
     if (auto res = prepare_analytics_benchmark_tables(); res != status::ok) {
         return res;
     }
@@ -430,7 +437,10 @@ status database::start() {
     }
 
     commit_stats_->enabled(cfg_->profile_commits());
-    kvs_db_->register_durability_callback(durability_callback{*this});
+    kvs_db_->register_durability_callback([marker = definition_ids_->durable_marker(), callback = durability_callback{*this}](auto value) mutable {
+        marker->store(value, std::memory_order_release);
+        callback(value);
+    });
 
     stop_requested_ = false;
 
@@ -505,6 +515,7 @@ status database::shutdown() {
         task_scheduler_->stop();
         task_scheduler_.reset();
     }
+    definition_ids_.reset();
     sequence_manager_.reset();
     deinit();
     prepared_statements_.clear();
@@ -555,6 +566,8 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 }
 
 database::database() : database(std::make_shared<class configuration>()) {}
+
+database::~database() = default;
 
 bool database::init() {
     global::storage_manager()->clear(); // clean up global objects first
@@ -1271,6 +1284,9 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         return err->status();
     }
 
+    if (definition_ids_) {
+        if (auto rc = definition_ids_->assign(storage); rc != status::ok) return rc;
+    }
     auto target = std::make_shared<yugawara::storage::configurable_provider>();
     if(auto err = recovery::deserialize_storage_option_into_provider(storage, *tables_, *target, false)) {
         if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
@@ -1525,6 +1541,45 @@ status database::recover_metadata() {
         // found deprecated system table - db should not start
         LOG(ERROR) << "database metadata version is too old to recover";
         return status::err_invalid_state;
+    }
+
+    // Seed from all durable declarations, including delete-reserved storage, before assigning any missing ID.
+    std::uint64_t minimum_id = 1;
+    for (auto const& name : names) {
+        auto storage = kvs_db_->get_storage(name);
+        if (!storage) return status::err_invalid_state;
+        sharksfin::StorageOptions options{};
+        if (auto rc = storage->get_options(options); rc != status::ok) return rc;
+        if (options.payload().empty()) continue;
+        proto::metadata::storage::IndexDefinition index{};
+        std::uint64_t version{};
+        if (auto err = recovery::validate_extract(options.payload(), index, version)) return err->status();
+        auto advance = [&](std::uint64_t id) {
+            minimum_id = std::max(minimum_id, id == std::numeric_limits<std::uint64_t>::max() ? id : id + 1);
+        };
+        if (index.definition_id_optional_case() != proto::metadata::storage::IndexDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) advance(index.definition_id());
+        if (index.has_table_definition() && index.table_definition().definition_id_optional_case() != proto::metadata::storage::TableDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) advance(index.table_definition().definition_id());
+    }
+    std::uint64_t ignored{};
+    if (auto rc = definition_ids_->reserve(0, minimum_id, ignored); rc != status::ok) return rc;
+    for (auto const& name : names) {
+        auto storage = kvs_db_->get_storage(name);
+        if (!storage) return status::err_invalid_state;
+        sharksfin::StorageOptions options{};
+        if (auto rc = storage->get_options(options); rc != status::ok) return rc;
+        auto payload = std::string{options.payload()};
+        if (payload.empty()) continue;
+        proto::metadata::storage::Storage metadata{};
+        if (!metadata.ParseFromString(payload)) return status::err_invalid_state;
+        auto const& index = metadata.index();
+        if (index.definition_id_optional_case() != proto::metadata::storage::IndexDefinition::DEFINITION_ID_OPTIONAL_NOT_SET &&
+            (!index.has_table_definition() || index.table_definition().definition_id_optional_case() != proto::metadata::storage::TableDefinition::DEFINITION_ID_OPTIONAL_NOT_SET)) continue;
+        auto before = payload;
+        if (auto rc = definition_ids_->assign(payload); rc != status::ok) return rc;
+        if (payload != before) {
+            options.payload(std::move(payload));
+            if (auto rc = storage->set_options(options); rc != status::ok) return rc;
+        }
     }
 
     std::uint64_t max_surrogate_id = 0;

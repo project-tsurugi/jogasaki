@@ -12,7 +12,7 @@ import traceback
 import time
 from distributed_query_sql_proxy import Proxy
 from distributed_query_e2e import Node
-from distributed_query_lifecycle import CREATE, TABLE, REMOTE_SQL, REMOTE_ROWS, fixture, listeners, stop
+from distributed_query_lifecycle import CREATE, TABLE, REMOTE_SQL, REMOTE_ROWS, register_catalog, listeners, stop
 
 
 def main():
@@ -26,10 +26,9 @@ def main():
         setattr(args,n,getattr(args,n).resolve())
     args.catalog_routing = True
     root = Path(tempfile.mkdtemp(prefix='c2-validity-',dir=args.work_dir))
-    (root/'catalog.json').write_text(json.dumps(fixture(),indent=2))
-    worker = Node(root,'worker',args,None,remote=True)
+    worker = Node(root,'worker',args,None,remote=True, formal_catalog=True)
     proxy = Proxy(worker.grpc_port)
-    coordinator = Node(root,'coordinator',args,proxy.port,coordinator=True)
+    coordinator = Node(root,'coordinator',args,proxy.port,coordinator=True, formal_catalog=True)
     nodes=[coordinator,worker];ports=[p for n in nodes for p in [n.sql_port,n.grpc_port]]
     result={'status':'running','cases':[],'queries':[],'stops':[],'cleanupErrors':[]}
     initial={}
@@ -59,6 +58,7 @@ def main():
                           (coordinator,"(10,'coordinator-only',1.23,1),(20,NULL,4.56,2)")]:
             assert query(node,CREATE,'OCC')['status']=='success'
             assert query(node,f'INSERT INTO {TABLE} VALUES {data}','OCC')['status']=='success'
+        register_catalog(coordinator)
         assert query(worker,f'SELECT C0,C1,C2 FROM {TABLE} ORDER BY C0')['rows']==REMOTE_ROWS
         assert query(coordinator,small_sql)['rows']==REMOTE_ROWS
         # Send enough actual SQL rows for more than one gRPC result message.
@@ -68,7 +68,7 @@ def main():
         sql=f'SELECT C0,C1,C2,C3 FROM {{t}} WHERE C0>=10000 ORDER BY C0'
         begin=len(proxy.events)
         ordinary=query(worker,sql.format(t=TABLE)); ordinary_occ=query(worker,sql.format(t=TABLE),'OCC')
-        distributed=query(coordinator,sql.format(t='remote_catalog.worker_schema.'+TABLE))
+        distributed=query(coordinator,sql.format(t='remote_catalog."public".'+TABLE))
         expected=[{'C0':i,'C1':'a'*40,'C2':Decimal('12.34'),'C3':2}for i in range(10000,50000)]
         for row in [ordinary,ordinary_occ,distributed]:
             assert row['status']=='success' and row['rows']==expected,row['diagnostic']
@@ -82,12 +82,14 @@ def main():
         for case, mode in [('C2-T02','cut-after-message'),('C2-T03','stall')]:
             stop(coordinator,result['stops'])
             if mode=='stall':os.environ['JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS']='1000'
-            try:coordinator.start()
+            try:
+                coordinator.start()
+                register_catalog(coordinator)
             finally:os.environ.pop('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS',None)
             assert query(coordinator,small_sql)['rows']==REMOTE_ROWS
-            fault_sql=(sql.format(t='remote_catalog.worker_schema.'+TABLE).replace(' ORDER BY C0','')
+            fault_sql=(sql.format(t='remote_catalog."public".'+TABLE).replace(' ORDER BY C0','')
                        if mode=='cut-after-message' else small_sql)
-            local_sql=fault_sql.replace('remote_catalog.worker_schema.'+TABLE,TABLE)
+            local_sql=fault_sql.replace('remote_catalog."public".'+TABLE,TABLE)
             for kind in ('RTX','OCC'):
                 control=query(worker,local_sql,kind)
                 assert control['status']=='success',control['diagnostic']
@@ -118,7 +120,7 @@ def main():
             result['cases'].append({'case':case,'status':'passed','error':row['diagnostic'],
                 'sqlRowsBeforeFailure':row['rows'],'elapsedSeconds':elapsed,'proxyEvents':events})
             print('TRANSPORT fault',case,row['sqlCodes'],row['diagnostic'],'rows',len(row['rows']),flush=True)
-            stop(coordinator,result['stops']);coordinator.start()
+            stop(coordinator,result['stops']);coordinator.start();register_catalog(coordinator)
             assert query(coordinator,small_sql)['rows']==REMOTE_ROWS
         result['status']='completed'
     except BaseException as exc:

@@ -15,6 +15,7 @@ class Proxy:
         self.port = self.listener.getsockname()[1]
         self.upstream = upstream
         self.mode = 'pass'
+        self.limit_response_window = False
         self.events = []
         self.release = threading.Event()
         self.closed = threading.Event()
@@ -75,11 +76,12 @@ class Proxy:
                     ev = {'direction': direction, 'type': kind, 'stream': stream,
                           'size': size, 'mode': self.mode, 'connection': state['connection']}
                     # Keep a cancellation fixture genuinely in flight at the worker.
-                    # This mode must be selected before opening the HTTP/2 connection.
-                    if direction == 'request' and self.mode in ('stall-active', 'stall-active-multiplexed'):
-                        if kind == 1 and state['target'] is None:
+                    # A formal catalog fetch may open the connection before fault injection.
+                    if direction == 'request':
+                        active_hold = self.mode in ('stall-active', 'stall-active-multiplexed')
+                        if active_hold and kind == 1 and state['target'] is None:
                             state['target'] = stream
-                        if kind == 4 and not (flags & 1):
+                        if (self.limit_response_window or active_hold) and kind == 4 and not (flags & 1):
                             settings = bytearray(frame[9:])
                             credit = 65535
                             found = False
@@ -91,7 +93,7 @@ class Proxy:
                                 settings.extend((4).to_bytes(2, 'big') + credit.to_bytes(4, 'big'))
                             frame = len(settings).to_bytes(3, 'big') + frame[3:9] + bytes(settings)
                             ev['limitedResponseWindow'] = credit
-                        if kind == 8 and stream and (self.mode == 'stall-active' or stream == state['target']):
+                        if active_hold and kind == 8 and stream and (self.mode == 'stall-active' or stream == state['target']):
                             ev['suppressedWindowUpdate'] = True
                             self.events.append(ev)
                             continue

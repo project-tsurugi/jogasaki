@@ -15,6 +15,8 @@
  */
 #include "ddl_common.h"
 
+#include <jogasaki/storage/definition_id_allocator.h>
+
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -174,6 +176,30 @@ bool create_primary_storage(
     auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
     auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
 
+    std::string storage{};
+    if(auto err = recovery::create_storage_option(
+           primary_idx,
+           storage,
+           utils::metadata_serializer_option{
+               false,
+               authorized_actions,
+               public_actions,
+               opt
+           }
+       )) {
+        set_error_info(context, err);
+        return false;
+    }
+
+    if (!context.definition_ids()) {
+        set_error_context(context, error_code::internal_exception, "Definition ID allocator is not initialized.", status::err_invalid_state);
+        return false;
+    }
+    if (auto rc = context.definition_ids()->assign(storage); rc != status::ok) {
+        set_error_context(context, error_code::sql_execution_exception, "Failed to allocate definition IDs.", rc);
+        return false;
+    }
+
     // the new entry is locked by the transaction before it becomes visible by name so that DML can't use it
     // until the DDL transaction completes
     auto& lock = transaction_storage_lock(context);
@@ -216,21 +242,6 @@ bool create_primary_storage(
         new_se->public_actions() = *public_actions;
     }
 
-    std::string storage{};
-    if(auto err = recovery::create_storage_option(
-           primary_idx,
-           storage,
-           utils::metadata_serializer_option{
-               false,
-               std::addressof(new_se->authorized_actions()),
-               std::addressof(new_se->public_actions()),
-               opt
-           }
-       )) {
-        set_error_info(context, err);
-        return false;
-    }
-
     if(serialized != nullptr) {
         *serialized = storage;
     }
@@ -265,6 +276,25 @@ bool create_secondary_storage(
     auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
     auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
 
+    std::string storage{};
+    if(auto err = recovery::create_storage_option(
+           sec_idx,
+           storage,
+           utils::metadata_serializer_option{false, nullptr, nullptr, opt}
+       )) {
+        set_error_info(context, err);
+        return false;
+    }
+
+    if (!context.definition_ids()) {
+        set_error_context(context, error_code::internal_exception, "Definition ID allocator is not initialized.", status::err_invalid_state);
+        return false;
+    }
+    if (auto rc = context.definition_ids()->assign(storage); rc != status::ok) {
+        set_error_context(context, error_code::sql_execution_exception, "Failed to allocate definition IDs.", rc);
+        return false;
+    }
+
     if(replacing) {
         if(! smgr.replace_entry(
                entry_id, replacing.value(), sec_idx.simple_name(), opt, false, primary_entry,
@@ -287,16 +317,6 @@ bool create_secondary_storage(
             string_builder{} << "Index id:" << entry_id << " already exists" << string_builder::to_string,
             status::err_already_exists
         );
-        return false;
-    }
-
-    std::string storage{};
-    if(auto err = recovery::create_storage_option(
-           sec_idx,
-           storage,
-           utils::metadata_serializer_option{false, nullptr, nullptr, opt}
-       )) {
-        set_error_info(context, err);
         return false;
     }
 

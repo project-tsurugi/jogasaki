@@ -64,6 +64,7 @@ std::shared_ptr<request_context> create_request_context(
         )
     );
     rctx->storage_provider(db.tables());
+    rctx->definition_ids(db.definition_ids());
     rctx->remote_catalogs(db.remote_catalogs());
     rctx->remote_catalogs_manager(db.remote_catalogs_manager());
     rctx->remote_server_channels(std::addressof(db.remote_server_channels()));

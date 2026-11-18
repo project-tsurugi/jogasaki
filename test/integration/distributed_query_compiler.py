@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Formal compiler API acceptance on two real Bootstrap processes (no catalog fixture).
 
-Until worker definition-ID allocation is provided, build with TEST_METADATA=ON
-and FIXTURES=OFF. Only the existing C1_DUMMY_T metadata helper is used.
+Build with FIXTURES=OFF. Normal DDL allocates and persists definition IDs;
+no fixed-ID metadata helper is required.
 """
 import argparse
 from decimal import Decimal
@@ -43,7 +43,7 @@ def main():
                        minimal_roles=True, formal_catalog=True,
                        ports=(args.port_base + 2, args.port_base + 3))
     result = {'status': 'running', 'catalogSource': 'CREATE FOREIGN CATALOG / RPC',
-              'fixture': False, 'testMetadata': True, 'cases': [], 'stops': [], 'cleanupErrors': []}
+              'fixture': False, 'definitionIDSource': 'ordinary-DDL', 'cases': [], 'stops': [], 'cleanupErrors': []}
     table = 'branch."public".C1_DUMMY_T'
 
     def query(name, template, expected):

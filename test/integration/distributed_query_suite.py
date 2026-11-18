@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI entry point for an isolated, prebuilt fixture-enabled distributed-query stack."""
+"""CI entry point for an isolated, prebuilt distributed-query stack with persistent definition IDs."""
 import argparse
 import hashlib
 import json
@@ -69,8 +69,8 @@ def main():
                             for f in (args.prefix/'lib').glob('*.so*') if f.is_file()}
         if recorded_libraries != actual_libraries:
             raise RuntimeError('stack library set mismatch')
-        if not all(manifest['buildOptions'].get(key) for key in ('FIXTURES', 'TEST_METADATA')):
-            raise RuntimeError('fixture and test-metadata options must both be ON')
+        if manifest['buildOptions'].get('FIXTURES') is not False or manifest['buildOptions'].get('TEST_METADATA'):
+            raise RuntimeError('C1/C2 require the normal stack without metadata fixtures or fixed-ID helpers')
     client = out / 'client'; client.mkdir()
     shutil.copyfile(args.client_jar, client / 'tgsql.jar')
     shutil.copyfile(args.jni_library, client / 'libtsubakuro.so')

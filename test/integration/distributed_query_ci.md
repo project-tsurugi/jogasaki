@@ -1,8 +1,8 @@
 # Distributed Query integration checks
 
-`distributed_query_suite.py` is the shared entry point for a private prebuilt stack and the optional integration job in the existing CI workflow. It uses fixture catalog input with the formal compiler API. It does not certify normal worker definition-ID allocation or the final publication policy.
+`distributed_query_suite.py` is the shared entry point for a private prebuilt stack and the optional integration job in the existing CI workflow. It uses ordinary DDL with persistent definition IDs, catalog RPC, and the compiler API.
 
-The stack must contain the standard Bootstrap server and tgctl, the feature Tateyama library, and Jogasaki built with both `ENABLE_DISTRIBUTED_QUERY_FIXTURES=ON` and `ENABLE_DISTRIBUTED_QUERY_TEST_METADATA=ON`. Supply a matching tgsql Java client and its IPC JNI library. The runner requires Python 3.10+, a JDK, OpenSSL and `ss`. It writes only under its work directory and starts loopback-only DB processes with distinct PID, data and IPC names.
+The stack must contain the standard Bootstrap server and tgctl, the feature Tateyama library, and Jogasaki built with `ENABLE_DISTRIBUTED_QUERY_FIXTURES=OFF` and normal persistent definition-ID allocation. Supply a matching tgsql Java client and its IPC JNI library. The runner requires Python 3.10+, a JDK, OpenSSL and `ss`. It writes only under its work directory and starts loopback-only DB processes with distinct PID, data and IPC names.
 
 ```sh
 python3 test/integration/distributed_query_suite.py \
@@ -28,9 +28,9 @@ On a shared development host, add `--port-base` with five consecutive ports assi
 
 The acceptance tests distinguish a SQL client that pauses row consumption from a worker RPC that remains active under flow control. A paused SQL client does not imply that the worker is still running, because rows may already be buffered. The blocked-worker relay withholds only the first stream's DATA, suppresses its stream credit and returns connection credit, while forwarding unrelated streams. The control SQL must complete on another stream of the same HTTP/2 connection. Both cases run with one coordinator SQL worker; cancellation verifies the matching worker RTX cleanup.
 
-Fixture input also uses the formal operation-location query. EXPLAIN JSON must show local location ID 0 and a nonzero worker location with the configured server name.
+The compiler operation-location query determines each process destination. EXPLAIN JSON must show local location ID 0 and a nonzero worker location with the configured server name.
 
-The stack manifest contains `commits`, `jogasakiProductionFiles` (SHA-256 of every file under `src` and `include`), `buildOptions` (`FIXTURES` and `TEST_METADATA`) and `binaries` (relative paths and SHA-256 within the stack root). The suite checks the complete production-source file set, every execution input and the complete prefix shared-library set before running. Shared-library symlink names and their targets are both recorded and hashed; all supplied paths use the same absolute stack-root spelling. A base commit alone is insufficient for an uncommitted build. A transferred source snapshot can be specified with `--source-root`.
+The stack manifest contains `commits`, `jogasakiProductionFiles` (SHA-256 of every file under `src` and `include`), `buildOptions` (`FIXTURES=false`; a legacy `TEST_METADATA` entry must be false or absent) and `binaries` (relative paths and SHA-256 within the stack root). The suite checks the complete production-source file set, every execution input and the complete prefix shared-library set before running. Shared-library symlink names and their targets are both recorded and hashed; all supplied paths use the same absolute stack-root spelling. A base commit alone is insufficient for an uncommitted build. A transferred source snapshot can be specified with `--source-root`.
 
 Each run preserves input hashes, group logs, SQL diagnostics, configuration, fault events and result JSON. The manual workflow uploads JSON, logs and INI files, not private TLS keys or database data files. Expected SQL codes come from the error contract; library message text is not an error identifier. The test-control timeout is a failure, never an expected SQL timeout.
 
@@ -46,10 +46,7 @@ fixture-ON build; RPC-backed process tests also run with fixtures OFF.
 `distributed_query_compiler.py` runs two standard Bootstrap processes and uses
 `CREATE FOREIGN CATALOG` plus catalog RPC, the compiler's external catalogs and
 process-location query. Build Jogasaki with `ENABLE_DISTRIBUTED_QUERY_FIXTURES=OFF`.
-Until normal worker definition-ID allocation is available, enable
-`ENABLE_DISTRIBUTED_QUERY_TEST_METADATA=ON` for the existing `C1_DUMMY_T` table.
-This helper supplies IDs only; no catalog JSON or forced server environment
-variable is used by these checks.
+Normal CREATE TABLE/INDEX assigns persistent IDs, and catalogs are fetched by RPC.
 
 ```sh
 python3 test/integration/distributed_query_compiler.py \

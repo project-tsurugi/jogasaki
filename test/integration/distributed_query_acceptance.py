@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixture-path acceptance: IPC, cancellation, recovery, concurrency, TLS and observation."""
+"""Formal-catalog acceptance: IPC, cancellation, recovery, concurrency, TLS and observation."""
 import argparse
 from decimal import Decimal
 import json
@@ -12,7 +12,7 @@ import time
 import traceback
 
 from distributed_query_e2e import Node
-from distributed_query_lifecycle import CREATE, TABLE, LOCAL_SQL, LOCAL_ROWS, REMOTE_SQL, REMOTE_ROWS, fixture, listeners, stop, healthy
+from distributed_query_lifecycle import CREATE, TABLE, LOCAL_SQL, LOCAL_ROWS, REMOTE_SQL, REMOTE_ROWS, register_catalog, listeners, stop, healthy
 from distributed_query_sql_proxy import Proxy
 
 
@@ -26,10 +26,10 @@ def main():
         raise RuntimeError('Run acceptance checks without Python optimization')
     args.catalog_routing=True
     root=Path(tempfile.mkdtemp(prefix='dq-extra-',dir=args.work_dir))
-    (root/'catalog.json').write_text(json.dumps(fixture()))
-    worker=Node(root,'worker',args,None,remote=True,minimal_roles=True)
+    worker=Node(root,'worker',args,None,remote=True,minimal_roles=True,formal_catalog=True)
     proxy=Proxy(worker.grpc_port)
-    coordinator=Node(root,'coordinator',args,worker.grpc_port,coordinator=True,minimal_roles=True)
+    proxy.limit_response_window=True
+    coordinator=Node(root,'coordinator',args,worker.grpc_port,coordinator=True,minimal_roles=True,formal_catalog=True)
     def connections(primary):
         return {'distributed_query_client': {'name':'worker', 'uri':f'dns:///127.0.0.1:{primary}'}}
     coordinator.config_overrides = connections(worker.grpc_port)
@@ -128,15 +128,16 @@ def main():
     def kill_and_recover():
         # Observe request admission and first real response on the worker side before killing.
         stop(coordinator, result['stops'])
-        proxy.mode='stall-active'
-        proxy.release.clear()
+        proxy.mode='pass'
+        proxy.release.set()
         coordinator.config_overrides = connections(proxy.port)
-        coordinator.start(); healthy(coordinator)
+        coordinator.start(); register_catalog(coordinator); healthy(coordinator)
+        proxy.mode = 'stall-active'; proxy.release.clear()
         start=len(proxy.events)
         worker_log_offset = len(worker.log_path.read_text())
         worker_pid=worker.process.pid
         coordinator_pid=coordinator.process.pid
-        fault_sql=f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
+        fault_sql=f'SELECT C0,C1,C2,C3 FROM remote_catalog."public".{TABLE} WHERE C0>=10000'
         process=subprocess.Popen(command(coordinator,fault_sql),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         try:
             event=wait_for(lambda: next((e for e in proxy.events[start:] if e.get('held')),None))
@@ -183,16 +184,17 @@ def main():
 
     def cancellation():
         stop(coordinator, result['stops'])
-        proxy.mode='stall-active'
-        proxy.release.clear()
+        proxy.mode='pass'
+        proxy.release.set()
         coordinator.config_overrides = connections(proxy.port)
-        coordinator.start(); healthy(coordinator)
+        coordinator.start(); register_catalog(coordinator); healthy(coordinator)
+        proxy.mode = 'stall-active'; proxy.release.clear()
         start=len(proxy.events)
         worker_log_offset = len(worker.log_path.read_text())
         go=root/'cancel-now'
         java=args.client_dir
         log=root/'cancel-client.log'
-        sql=f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
+        sql=f'SELECT C0,C1,C2,C3 FROM remote_catalog."public".{TABLE} WHERE C0>=10000'
         cmd=['java','-cp',f'{java}:{java}/tgsql.jar','DistributedQueryProbe','cancel',endpoint(coordinator),sql,str(go)]
         with log.open('w') as stream:
             process=subprocess.Popen(cmd,stdout=stream,stderr=subprocess.STDOUT,text=True)
@@ -204,7 +206,8 @@ def main():
                 time.sleep(2)
                 assert process.poll() is None
                 assert metric(worker, 'distributed_query_requests_active') >= 1
-                assert any(e.get('limitedResponseWindow')==65535 for e in proxy.events[start:])
+                assert any(e.get('limitedResponseWindow')==65535 and e.get('connection')==event['connection']
+                           for e in proxy.events)
                 go.touch()
                 reset=wait_for(lambda: next((e for e in proxy.events[start:] if e.get('direction')=='request'
                    and e.get('type')==3 and e.get('stream')==event['stream'] and e.get('forwarded')),None),8)
@@ -231,7 +234,7 @@ def main():
     def cut_and_recover():
         before = len(proxy.events)
         pid = coordinator.process.pid
-        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
+        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog."public".{TABLE} WHERE C0>=10000'
         proxy.mode = 'cut-after-message'
         try:
             failure = query(coordinator, text)
@@ -258,10 +261,10 @@ def main():
         stop(coordinator, result['stops'])
         coordinator.config_overrides = connections(proxy.port)
         coordinator.config_overrides['sql'] = {'thread_pool_size':'1'}
-        coordinator.start(); healthy(coordinator)
+        coordinator.start(); register_catalog(coordinator); healthy(coordinator)
         trigger = root / 'release-slow-reader'
         log = root / 'slow-reader.log'
-        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
+        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog."public".{TABLE} WHERE C0>=10000'
         cmd = ['java', '-cp', f'{args.client_dir}:{args.client_dir}/tgsql.jar',
                'DistributedQueryProbe', 'slow', endpoint(coordinator), text, str(trigger)]
         with log.open('w') as stream:
@@ -285,15 +288,16 @@ def main():
 
     def blocked_worker():
         stop(coordinator, result['stops'])
-        proxy.mode = 'stall-active-multiplexed'; proxy.release.clear()
+        proxy.mode = 'pass'; proxy.release.set()
         coordinator.config_overrides = connections(proxy.port)
         coordinator.config_overrides['sql'] = {'thread_pool_size':'1'}
-        coordinator.start(); healthy(coordinator)
+        coordinator.start(); register_catalog(coordinator); healthy(coordinator)
+        proxy.mode = 'stall-active-multiplexed'; proxy.release.clear()
         worker_log_offset = len(worker.log_path.read_text())
         before = len(proxy.events)
         trigger = root/'cancel-blocked-worker'
         log = root/'blocked-worker-client.log'
-        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog.worker_schema.{TABLE} WHERE C0>=10000'
+        text = f'SELECT C0,C1,C2,C3 FROM remote_catalog."public".{TABLE} WHERE C0>=10000'
         cmd = ['java', '-cp', f'{args.client_dir}:{args.client_dir}/tgsql.jar',
                'DistributedQueryProbe', 'cancel', endpoint(coordinator), text, str(trigger)]
         with log.open('w') as stream:
@@ -338,12 +342,12 @@ def main():
             coordinator.worker_grpc = worker.grpc_port
             coordinator.config_overrides = connections(worker.grpc_port)
             coordinator.config_overrides['distributed_query_client'].update(secure='true', root_cert=str(certs/'trusted.pem'))
-            coordinator.start(); healthy(coordinator)
+            coordinator.start(); register_catalog(coordinator); healthy(coordinator)
             good = query(coordinator, small_sql, expected=REMOTE_ROWS)
             stop(coordinator,result['stops'])
             coordinator.config_overrides['distributed_query_client']['root_cert'] = str(certs/'untrusted.pem')
             coordinator.start(); healthy(coordinator)
-            failed = query(coordinator, small_sql)
+            failed = query(coordinator, 'CREATE FOREIGN CATALOG remote_catalog SERVER worker;', kind='OCC')
             assert failed['codes'] == ['SQL-02000'] and not failed['rows'], failed
             events = coordinator.log_path.read_text()
             assert 'grpc_status:14' in events, events[-4000:]
@@ -352,7 +356,7 @@ def main():
             worker.config_overrides = {}; coordinator.config_overrides = connections(proxy.port)
             worker.start(); healthy(worker)
             coordinator.worker_grpc = proxy.port
-            coordinator.start(); healthy(coordinator)
+            coordinator.start(); register_catalog(coordinator); healthy(coordinator)
             query(coordinator, small_sql, expected=REMOTE_ROWS)
         return {'trustedSQL':good['log'], 'untrustedSQL':failed['log'], 'grpcStatus':14}
 
@@ -412,6 +416,7 @@ def main():
                           (coordinator,"(10,'coordinator-only',1.23,1),(20,NULL,4.56,2)")]:
             query(node,CREATE,'OCC',expected=[])
             query(node,f'INSERT INTO {TABLE} VALUES {data}','OCC',expected=[])
+        register_catalog(coordinator)
         case('LTX',ltx)
         case('IPC-worker-local',lambda:ipc(worker,LOCAL_SQL,REMOTE_ROWS,'RTX'))
         case('IPC-coordinator-local',lambda:ipc(coordinator,LOCAL_SQL,LOCAL_ROWS,'OCC'))
@@ -422,7 +427,7 @@ def main():
         stop(coordinator,result['stops'])
         coordinator.worker_grpc=proxy.port
         coordinator.config_overrides = connections(proxy.port)
-        coordinator.start(); healthy(coordinator)
+        coordinator.start(); register_catalog(coordinator); healthy(coordinator)
         case('SQL-cancel-propagation',cancellation)
         case('worker-SIGKILL-and-recover',kill_and_recover)
         case('transport-cut-and-recover-same-coordinator',cut_and_recover)

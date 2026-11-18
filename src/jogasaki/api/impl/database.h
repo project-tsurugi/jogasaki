@@ -80,6 +80,8 @@
 
 #include "commit_stats.h"
 
+namespace jogasaki::storage { class definition_id_allocator; }
+
 namespace jogasaki::scheduler {
 class task_scheduler;
 }
@@ -104,6 +106,7 @@ public:
     using create_transaction_callback_error_info = std::function<void(transaction_handle, status, std::shared_ptr<api::error_info>)>;
 
     database();
+    ~database() override;
 
     /**
      * @brief create new object with new kvs instance (sharksfin)
@@ -297,6 +300,7 @@ public:
     [[nodiscard]] utils::use_counter const& requests_inprocess() const noexcept;
 
     [[nodiscard]] std::shared_ptr<durability_manager> const& durable_manager() const noexcept;
+    [[nodiscard]] storage::definition_id_allocator* definition_ids() const { return definition_ids_.get(); }
 
     // synchronous, not wait for epoch - public just for testing
     status create_transaction_internal(std::shared_ptr<transaction_context>& out, transaction_option const& option);
@@ -380,6 +384,7 @@ private:
     tbb::concurrent_hash_map<api::statement_handle, std::shared_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::shared_ptr<transaction_context>> transactions_{};
     bool initialized_{false};
+    std::unique_ptr<storage::definition_id_allocator> definition_ids_{};
     std::shared_ptr<durability_manager> durability_manager_{std::make_shared<durability_manager>()};
     std::atomic_bool stop_requested_{false};
     utils::use_counter requests_inprocess_{};

@@ -13,7 +13,7 @@ import traceback
 
 from distributed_query_e2e import Node
 from distributed_query_lifecycle import (
-    CREATE, TABLE, LOCAL_SQL, REMOTE_SQL, LOCAL_ROWS, REMOTE_ROWS, fixture,
+    CREATE, TABLE, LOCAL_SQL, REMOTE_SQL, LOCAL_ROWS, REMOTE_ROWS, register_catalog,
     listeners, stop,
 )
 
@@ -30,9 +30,8 @@ def main():
     args.catalog_routing = True
     args.work_dir.mkdir(parents=True, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix='c2-', dir=args.work_dir))
-    (root / 'catalog.json').write_text(json.dumps(fixture(), indent=2))
-    worker = Node(root, 'worker', args, None, remote=True)
-    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True)
+    worker = Node(root, 'worker', args, None, remote=True, formal_catalog=True)
+    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True, formal_catalog=True)
     nodes = [coordinator, worker]
     ports = [p for n in nodes for p in (n.sql_port, n.grpc_port)]
     result = {'status': 'running', 'cases': [], 'queries': [], 'stops': [],
@@ -151,6 +150,8 @@ def main():
         stop(node, result['stops'])
         node.start()
         query(node, 'SELECT 1 AS READY', expected=[{'READY': 1}])
+        if node is coordinator:
+            register_catalog(coordinator)
 
     def worker_off():
         worker.remote = False
@@ -178,7 +179,7 @@ def main():
                 raise TimeoutError('Worker RPC did not reconnect within 30 seconds')
             progress['attempts'] += 1
             evidence = query(coordinator,
-                             f'SELECT C0 FROM remote_catalog.worker_schema.{TABLE} WHERE C0=900',
+                             f'SELECT C0 FROM remote_catalog."public".{TABLE} WHERE C0=900',
                              expected=[{'C0': 900}], readiness_probe=True, timeout=remaining)
             progress['elapsedSeconds'] = time.monotonic() - started
             if evidence['readiness'] == 'ready':
@@ -193,7 +194,7 @@ def main():
         restart(coordinator)
         query(coordinator, f'SELECT C0 FROM {TABLE} ORDER BY C0',
               expected=[{'C0': 10}, {'C0': 20}])
-        query(coordinator, f'SELECT C0 FROM remote_catalog.worker_schema.{TABLE} ORDER BY C0',
+        query(coordinator, f'SELECT C0 FROM remote_catalog."public".{TABLE} ORDER BY C0',
               error_pattern=r'catalog_not_found', expected_code='SQL-03004')
         coordinator.coordinator = True
         coordinator.catalog_enabled = True
@@ -207,7 +208,7 @@ def main():
             assert failed['rows'] == [], failed
         query(coordinator, followup, expected=expected)
 
-    remote = f'remote_catalog.worker_schema.{TABLE}'
+    remote = f'remote_catalog."public".{TABLE}'
     try:
         assert len(set(ports)) == 4 and not listeners(ports), ports
         assert not os.environ.get('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS')
@@ -220,6 +221,7 @@ def main():
         ]:
             query(node, CREATE, kind='OCC')
             query(node, f'INSERT INTO {TABLE} VALUES {data}', kind='OCC')
+        register_catalog(coordinator)
         case('C2-01', baseline)
         case('C2-02', lambda: query(coordinator, LOCAL_SQL, kind='OCC',
                                   expected=LOCAL_ROWS, columns=['C0', 'C1', 'C2']))

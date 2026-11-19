@@ -162,6 +162,8 @@ namespace wire = ::tateyama::grpc::proto;
         out.add_features(wire::REMOTE_INDEX_FEATURE_UNIQUE);
     } else if (feature == index_feature::unique_constraint) {
         out.add_features(wire::REMOTE_INDEX_FEATURE_UNIQUE_CONSTRAINT);
+    } else if (feature == index_feature::ties_ordered_by_primary_key) {
+        out.add_features(wire::REMOTE_INDEX_FEATURE_TIES_ORDERED_BY_PRIMARY_KEY);
     } else {
         return status::err_unsupported;
     }

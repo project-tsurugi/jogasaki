@@ -368,6 +368,8 @@ using owners_type = std::vector<std::optional<std::size_t>>;
             return error;
         }
     }
+    // Keys and values each prohibit duplicates; a declared key may also be stored as a value.
+    used.clear();
     for (auto value : index.values) {
         if (auto error = check(value); !error.empty()) {
             return error;

@@ -17,7 +17,7 @@ python3 test/integration/distributed_query_suite.py \
   --database-name-prefix "$USER-dq-ci"
 ```
 
-On a shared development host, add `--port-base` with five consecutive ports assigned to the executing user. The first four are node endpoints and the fifth is the fault relay. Groups run sequentially. Use `--groups c1 c2 transport acceptance` to select groups; omitting the option runs all four.
+On a shared development host, add `--port-base` with five consecutive ports assigned to the executing user. The first four are node endpoints and the fifth is the fault relay. Groups run sequentially. Use `--groups c1 c2 transport acceptance catalog` to select groups; omitting the option runs all five.
 
 | Group | Checks |
 | --- | --- |
@@ -25,6 +25,9 @@ On a shared development host, add `--port-base` with five consecutive ports assi
 | c2 | 34 SQL scenarios with ordinary SQL controls |
 | transport | Multiple real RPC messages and interrupted delivery |
 | acceptance | LTX, three IPC comparisons, in-flight cancellation and RTX cleanup, worker termination/recovery, connection-only interruption/recovery, a slow reader with concurrent SQL, an independently blocked worker RPC with concurrent SQL, trusted/untrusted TLS, metrics and correlated execution logs, and EXPLAIN JSON retrieval |
+| catalog | 16 prepared/catalog/DDL cases with ordinary SQL controls and default secondary-index features |
+
+The catalog group checks retained prepared statements (NULL, invalid bindings, DROP and re-registration), worker table/index identity changes, remote DDL rejection with unchanged worker definitions, and ORDER BY/LIMIT over repeated secondary keys, descending/composite primary keys, NULL secondary keys, and bounded secondary scans. It uses default worker settings throughout, including `ties_ordered_by_primary_key`; it does not disable the feature to register the catalog.
 
 The acceptance tests distinguish a SQL client that pauses row consumption from a worker RPC that remains active under flow control. A paused SQL client does not imply that the worker is still running, because rows may already be buffered. The blocked-worker relay withholds only the first stream's DATA, suppresses its stream credit and returns connection credit, while forwarding unrelated streams. The control SQL must complete on another stream of the same HTTP/2 connection. Both cases run with one coordinator SQL worker; cancellation verifies the matching worker RTX cleanup.
 

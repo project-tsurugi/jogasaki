@@ -497,6 +497,19 @@ TEST(remote_function_id_registry_test, concurrent_reservations_are_unique_and_re
 
 
 
+TEST_F(remote_catalog_manager_test, key_column_may_also_be_an_index_value) {
+    // Real composite-primary-key metadata may keep a key column in the value list as well.
+    fetcher->info.indices[0].values = {0};
+    ASSERT_EQ(status::ok, manager.create({"remote", "worker"}, channels, diagnostic)) << diagnostic;
+    auto schema = manager.find_catalog("remote")->schema_provider().find("public");
+    ASSERT_TRUE(schema);
+    auto index = schema->storage_provider().find_index("pk");
+    ASSERT_TRUE(index);
+    ASSERT_EQ(1U, index->keys().size());
+    ASSERT_EQ(1U, index->values().size());
+    EXPECT_EQ(&index->keys()[0].column(), &static_cast<yugawara::storage::column const&>(index->values()[0]));
+}
+
 TEST_F(remote_catalog_manager_test, malformed_table_index_and_schema_metadata_preserves_published_snapshot) {
     ASSERT_EQ(status::ok, manager.create({"existing", "worker"}, channels));
     auto existing = manager.find_catalog("existing");
@@ -513,6 +526,12 @@ TEST_F(remote_catalog_manager_test, malformed_table_index_and_schema_metadata_pr
         info.schemas[0].tables.push_back(1);
     };
     std::vector<invalid_case> cases{
+        {"duplicate index key", "duplicate index column", [](auto& i) {
+            i.indices[0].keys.push_back(i.indices[0].keys[0]);
+        }},
+        {"duplicate index value", "duplicate index column", [](auto& i) {
+            i.indices[0].values = {0, 0};
+        }},
         {"foreign column", "index column is not in its table", [=](auto& i) {
             second_table(i); i.indices[0].keys[0].column = 1;
         }},

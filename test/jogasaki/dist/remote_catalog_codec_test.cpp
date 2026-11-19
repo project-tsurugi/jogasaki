@@ -173,7 +173,8 @@ std::shared_ptr<yugawara::schema::catalog> source_catalog() {
     secondary_keys.emplace_back(table->columns()[2], takatori::relation::sort_direction::ascendant);
     storage->add_index(yugawara::storage::index{
         std::optional<yugawara::storage::index::definition_id_type>{43}, table, "t_vc", std::move(secondary_keys),
-        {}, {index_feature::find, index_feature::scan, index_feature::unique_constraint}, std::string{}});
+        {}, {index_feature::find, index_feature::scan, index_feature::unique_constraint,
+             index_feature::ties_ordered_by_primary_key}, std::string{}});
 
     auto functions = std::make_shared<yugawara::function::configurable_provider>();
     std::vector<type_ptr> scalar_parameters{std::make_shared<t::int1>(), std::make_shared<t::int2>(),
@@ -283,6 +284,7 @@ TEST(remote_catalog_codec_test, round_trip_preserves_types_features_and_remote_i
     auto const& secondary = named(decoded.indices, "t_vc");
     EXPECT_EQ(43U, secondary.remote_definition_id);
     EXPECT_TRUE(secondary.features.contains(index_feature::unique_constraint));
+    EXPECT_TRUE(secondary.features.contains(index_feature::ties_ordered_by_primary_key));
     EXPECT_FALSE(secondary.features.contains(index_feature::unique));
     EXPECT_FALSE(secondary.features.contains(index_feature::primary));
     ASSERT_EQ(2U, secondary.keys.size());
@@ -341,10 +343,32 @@ TEST(remote_catalog_codec_test, decoded_catalog_is_restored_by_manager_with_new_
     ASSERT_TRUE(index);
     EXPECT_EQ(43U, accepted.snapshot()->remote_definition(*index)->remote_definition_id);
     EXPECT_TRUE(index->features().contains(index_feature::unique_constraint));
+    EXPECT_TRUE(index->features().contains(index_feature::ties_ordered_by_primary_key));
     ASSERT_EQ(2U, index->keys().size());
     EXPECT_EQ("vc", index->keys()[0].column().simple_name());
     EXPECT_EQ(takatori::relation::sort_direction::descendant, index->keys()[0].direction());
     EXPECT_EQ(4U, ids->reserved_count());
+}
+
+TEST(remote_catalog_codec_test, absent_tie_ordering_feature_is_not_inferred) {
+    auto message = encoded_source();
+    for (auto& index : *message.mutable_index_list()) {
+        auto features = index.features();
+        index.clear_features();
+        for (auto feature : features) {
+            if (feature != wire::REMOTE_INDEX_FEATURE_TIES_ORDERED_BY_PRIMARY_KEY) {
+                index.add_features(static_cast<wire::RemoteIndexFeature>(feature));
+            }
+        }
+    }
+    remote_catalog_information decoded{};
+    std::string diagnostic{};
+    ASSERT_EQ(status::ok, remote_catalog_decoder{}.decode(message, decoded, diagnostic)) << diagnostic;
+    ASSERT_EQ(2U, decoded.indices.size());
+    EXPECT_TRUE(named(decoded.indices, "t_vc").features.contains(index_feature::unique_constraint));
+    for (auto const& index : decoded.indices) {
+        EXPECT_FALSE(index.features.contains(index_feature::ties_ordered_by_primary_key));
+    }
 }
 
 TEST(remote_catalog_codec_test, optional_indices_distinguish_absent_from_zero) {

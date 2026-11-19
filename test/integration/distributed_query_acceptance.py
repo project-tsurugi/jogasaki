@@ -335,15 +335,45 @@ def main():
                 '-subj', '/CN=localhost', '-addext', 'subjectAltName=IP:127.0.0.1,DNS:localhost'],
                 capture_output=True, text=True, timeout=20)
             assert generated.returncode == 0, generated.stderr
+        def healthy_server_logs(label, checked_nodes):
+            logs = {}
+            for node in checked_nodes:
+                content = node.log_path.read_text()
+                snapshot = root / f'{label}-{node.name}.log'
+                snapshot.write_text(content)
+                errors = [line for line in content.splitlines() if re.match(r'^[EF]\d{4,8}\s', line)]
+                assert not errors, {'node': node.name, 'phase': label, 'errors': errors}
+                logs[node.name] = snapshot.name
+            return logs
+
         try:
+            # Omitted TLS lists must still cover every configured server.
+            stop(coordinator,result['stops'])
+            coordinator.worker_grpc = worker.grpc_port
+            coordinator.config_overrides = {'distributed_query_client': {
+                'name': 'worker|second',
+                'uri': f'dns:///127.0.0.1:{worker.grpc_port}|dns:///127.0.0.1:{worker.grpc_port}'}}
+            coordinator.start(); register_catalog(coordinator); healthy(coordinator)
+            defaults = query(coordinator, small_sql, expected=REMOTE_ROWS)
+            client_section = re.search(r'(?ms)^\[distributed_query_client\]\n(.*?)(?=^\[|\Z)', coordinator.config.read_text())[1]
+            assert not re.search(r'(?m)^(secure|root_cert)=', client_section), client_section
+            configured_log = coordinator.log_path.read_text()
+            assert 'event:validated server_count:2' in configured_log
+            for name in ('worker', 'second'):
+                assert f'event:server name:{name} uri_scheme:dns secure:false' in configured_log
+            defaults_logs = healthy_server_logs('multiple-server-defaults', [coordinator])
             stop(coordinator,result['stops']); stop(worker,result['stops'])
             worker.config_overrides = {'grpc_server':{'secure':'true', 'fullchain_crt':str(certs/'trusted.pem'), 'server_key':str(certs/'trusted.key')}}
-            worker.start(); healthy(worker)
+            worker.start()
+            assert worker.process.poll() is None and listeners([worker.grpc_port])
+            query(worker, 'SELECT 1 AS "READY"', kind='OCC', expected=[{'READY':1}])
             coordinator.worker_grpc = worker.grpc_port
             coordinator.config_overrides = connections(worker.grpc_port)
             coordinator.config_overrides['distributed_query_client'].update(secure='true', root_cert=str(certs/'trusted.pem'))
             coordinator.start(); register_catalog(coordinator); healthy(coordinator)
             good = query(coordinator, small_sql, expected=REMOTE_ROWS)
+            # Check the successful phase before deliberately causing a TLS handshake failure.
+            trusted_logs = healthy_server_logs('tls-trusted', nodes)
             stop(coordinator,result['stops'])
             coordinator.config_overrides['distributed_query_client']['root_cert'] = str(certs/'untrusted.pem')
             coordinator.start(); healthy(coordinator)
@@ -358,7 +388,9 @@ def main():
             coordinator.worker_grpc = proxy.port
             coordinator.start(); register_catalog(coordinator); healthy(coordinator)
             query(coordinator, small_sql, expected=REMOTE_ROWS)
-        return {'trustedSQL':good['log'], 'untrustedSQL':failed['log'], 'grpcStatus':14}
+        return {'trustedSQL':good['log'], 'untrustedSQL':failed['log'], 'grpcStatus':14,
+                'trustedServerLogs':trusted_logs, 'trustedServerErrors':[],
+                'omittedTLSMultipleServers':{'serverCount':2, 'SQL':defaults['log'], 'serverLogs':defaults_logs}}
 
     def observation():
         listed = stats(worker, 'list')

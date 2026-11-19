@@ -21,7 +21,6 @@
 #include <cstdlib>
 #include <vector>
 
-#include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/dist/remote_server_configuration.h>
 #include <jogasaki/request_cancel_config.h>
 
@@ -840,14 +839,6 @@ public:
         distributed_query_coordinator_enabled_ = arg;
     }
 
-    [[nodiscard]] dist::remote_catalog_options const& distributed_query_catalog() const noexcept {
-        return distributed_query_catalog_;
-    }
-
-    void distributed_query_catalog(dist::remote_catalog_options arg) {
-        distributed_query_catalog_ = std::move(arg);
-    }
-
     [[nodiscard]] std::vector<dist::remote_server_configuration> const& distributed_query_remote_servers() const noexcept {
         return distributed_query_remote_servers_;
     }
@@ -1042,7 +1033,6 @@ private:
     std::size_t udf_client_timeout_ = 0;
     bool distributed_query_coordinator_enabled_{};
     std::vector<dist::remote_server_configuration> distributed_query_remote_servers_{};
-    dist::remote_catalog_options distributed_query_catalog_{};
 };
 
 }  // namespace jogasaki

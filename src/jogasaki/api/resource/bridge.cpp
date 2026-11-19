@@ -638,45 +638,6 @@ static bool process_grpc_server_config(std::shared_ptr<jogasaki::configuration>&
     return contents;
 }
 
-static bool process_distributed_query_catalog_config(
-    std::shared_ptr<jogasaki::configuration>& ret,
-    tateyama::api::configuration::whole& cfg)
-{
-    auto section = cfg.get_section("distributed_query_client");
-    if (!section) { return true; }
-    dist::remote_catalog_options options{};
-    auto source = section->get<std::string>("catalog_source").value_or("disabled");
-    if (source == "disabled") { options.source = dist::remote_catalog_source::disabled; }
-    else if (source == "rpc") { options.source = dist::remote_catalog_source::rpc; }
-    else if (source == "fixture") { options.source = dist::remote_catalog_source::fixture; }
-    else {
-        LOG_LP(ERROR) << "invalid distributed_query_client.catalog_source: " << source;
-        return false;
-    }
-    auto fixture = section->get<std::string>("fixture_path").value_or("");
-    if (options.source == dist::remote_catalog_source::fixture) {
-        if (!dist::distributed_query_fixtures_available() || fixture.empty()) {
-            LOG_LP(ERROR) << "fixture catalogs require ENABLE_DISTRIBUTED_QUERY_FIXTURES and fixture_path";
-            return false;
-        }
-        std::filesystem::path path{fixture};
-        if (!path.is_absolute()) {
-            auto base = cfg.base_path();
-            if (!base) {
-                LOG_LP(ERROR) << "relative fixture_path requires configuration base path";
-                return false;
-            }
-            path = *base / path;
-        }
-        options.fixture_path = path.string();
-    } else if (!fixture.empty()) {
-        LOG_LP(ERROR) << "fixture_path requires catalog_source=fixture";
-        return false;
-    }
-    ret->distributed_query_catalog(std::move(options));
-    return true;
-}
-
 static bool process_distributed_query_client_config(
     std::shared_ptr<jogasaki::configuration>& ret,
     tateyama::api::configuration::whole& cfg)
@@ -771,8 +732,7 @@ static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama
     ret->distributed_query_coordinator_enabled(coordinator_enabled);
     LOG_LP(INFO) << "distributed_query_coordinator.enabled=" << coordinator_enabled;
     if (coordinator_enabled) {
-        if (! process_distributed_query_catalog_config(ret, cfg) ||
-            ! process_distributed_query_client_config(ret, cfg)) {
+        if (! process_distributed_query_client_config(ret, cfg)) {
             return {};
         }
         if (ret->distributed_query_remote_servers().empty()) {

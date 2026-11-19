@@ -83,7 +83,6 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/dist/rpc_remote_catalog_fetcher.h>
-#include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info_factory.h>
@@ -177,7 +176,7 @@ dist::remote_server_channel_manager& database::remote_server_channels() noexcept
 }
 
 std::shared_ptr<dist::remote_catalog_snapshot const> database::remote_catalogs() const noexcept {
-    return remote_catalogs_manager_ ? remote_catalogs_manager_->snapshot() : remote_catalogs_;
+    return remote_catalogs_manager_ ? remote_catalogs_manager_->snapshot() : nullptr;
 }
 
 std::shared_ptr<dist::remote_catalog_manager> database::remote_catalogs_manager() const noexcept {
@@ -315,21 +314,7 @@ status database::init_kvs_db() noexcept {
     return status::ok;
 }
 status database::initialize_remote_catalogs() {
-    // Formal startup is empty. CREATE fetches over RPC without an additional catalog setting.
-    // Only the development fixture replaces the fetcher and preloads metadata.
-    std::shared_ptr<dist::remote_catalog_fetcher> fetcher = std::make_shared<dist::rpc_remote_catalog_fetcher>();
-    std::shared_ptr<dist::snapshot_remote_catalog_fetcher> fixture_fetcher{};
-    if (cfg_->distributed_query_catalog().source == dist::remote_catalog_source::fixture) {
-        std::string diagnostic{};
-        if (auto st = dist::load_remote_catalogs(cfg_->distributed_query_catalog(),
-                cfg_->distributed_query_remote_servers(), remote_catalogs_, diagnostic); st != status::ok) {
-            LOG_LP(ERROR) << diagnostic;
-            return st;
-        }
-        fixture_fetcher = std::make_shared<dist::snapshot_remote_catalog_fetcher>(remote_catalogs_);
-        fetcher = fixture_fetcher;
-    }
-    // local built-in and user-defined declarations were registered by init(); remote IDs never collide with them
+    auto fetcher = std::make_shared<dist::rpc_remote_catalog_fetcher>();
     remote_function_ids_ = std::make_shared<dist::remote_function_id_registry>();
     global::function_registry().regular_provider()->each([&](std::shared_ptr<yugawara::function::declaration const> const& function) {
         if (function) remote_function_ids_->exclude_function(function->definition_id());
@@ -340,17 +325,6 @@ status database::initialize_remote_catalogs() {
     remote_catalogs_manager_ = std::make_shared<dist::remote_catalog_manager>(std::move(fetcher),
         dist::remote_catalog_manager::default_fetch_timeout, remote_function_ids_);
     if (auto st = remote_catalogs_manager_->start(); st != status::ok) return st;
-    if (fixture_fetcher) {
-        LOG_LP(WARNING) << "distributed query catalog source=fixture (development metadata)";
-        for (auto const& reference : fixture_fetcher->references()) {
-            std::string diagnostic{};
-            if (auto st = remote_catalogs_manager_->create(reference, *remote_server_channels_, diagnostic);
-                    st != status::ok) {
-                LOG_LP(ERROR) << diagnostic;
-                return st;
-            }
-        }
-    }
     return status::ok;
 }
 
@@ -503,7 +477,6 @@ status database::shutdown() {
     // snapshots still borrowed elsewhere keep their declarations; their leases no longer have IDs to release
     remote_function_ids_.reset();
     remote_server_channels_->stop();
-    remote_catalogs_.reset();
     remote_location_registry_.reset();
     stop_requested_ = true;
     if (maintenance_thread_.joinable()) {

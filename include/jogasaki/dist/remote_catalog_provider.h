@@ -36,12 +36,6 @@
 
 namespace jogasaki::dist {
 
-enum class remote_catalog_source { disabled, rpc, fixture };
-
-struct remote_catalog_options {
-    remote_catalog_source source{remote_catalog_source::disabled};
-    std::string fixture_path{};
-};
 
 enum class remote_declaration_kind { table, index, function, aggregate_function };
 
@@ -60,7 +54,7 @@ struct remote_declaration_identity {
  * @brief Metadata owned for the lifetime of a compilation.
  * @details Remote tables are separate from local storage. Location lookup uses
  * the same table identity as the catalog, never an unqualified table name.
- * This is the engine-side boundary for the compiler's future location query.
+ * This is the engine-side boundary for the compiler's declaration/location contract.
  */
 class remote_catalog_snapshot {
 public:
@@ -87,8 +81,6 @@ public:
     [[nodiscard]] remote_declaration_identity const*
     remote_definition(yugawara::aggregate::declaration const& function) const noexcept;
 
-    // Check ownership and placement before publishing an RPC snapshot.
-    [[nodiscard]] std::string validation_error(std::vector<remote_server_configuration> const& servers) const;
 
 private:
     catalogs_type catalogs_{};
@@ -96,32 +88,5 @@ private:
     definitions_type definitions_{};
 };
 
-/** @brief A real transport and development fixtures return the same metadata. */
-class remote_catalog_provider {
-public:
-    remote_catalog_provider() = default;
-    remote_catalog_provider(remote_catalog_provider const&) = default;
-    remote_catalog_provider& operator=(remote_catalog_provider const&) = default;
-    remote_catalog_provider(remote_catalog_provider&&) = default;
-    remote_catalog_provider& operator=(remote_catalog_provider&&) = default;
-    virtual ~remote_catalog_provider() = default;
-    virtual status load(std::vector<remote_server_configuration> const& servers,
-                        std::shared_ptr<remote_catalog_snapshot const>& result, std::string& diagnostic) = 0;
-};
-
-/**
- * @brief Loads one snapshot, publishing it only on success.
- * @details This startup loader is retained for development fixtures and an
- * explicitly supplied provider. Normal CREATE FOREIGN CATALOG uses
- * remote_catalog_manager and its GetRemoteCatalog RPC fetcher instead.
- * Transport failure never enables fixtures. Fixture code is excluded unless
- * ENABLE_DISTRIBUTED_QUERY_FIXTURES was enabled at build time.
- */
-[[nodiscard]] status load_remote_catalogs(remote_catalog_options const& options,
-                                          std::vector<remote_server_configuration> const& servers,
-                                          std::shared_ptr<remote_catalog_snapshot const>& result,
-                                          std::string& diagnostic, remote_catalog_provider* rpc_provider = nullptr);
-
-[[nodiscard]] bool distributed_query_fixtures_available() noexcept;
 
 } // namespace jogasaki::dist

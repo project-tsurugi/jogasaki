@@ -108,8 +108,8 @@ struct remote_catalog_information {
 /**
  * @brief Lists the tables, indices, and function declarations of a Yugawara catalog in remote_catalog_information form.
  * @details Serves as the encoding plan of remote_catalog_encoder: objects are enumerated once by identity, and
- * ownership, order and 0-origin transfer indices are fixed here. Development fetchers and tests also use it to
- * exercise the same resolve path as a real fetch. An absent table/index definition_id remains absent; the valid ID zero is not a sentinel.
+ * ownership, order and 0-origin transfer indices are fixed here. Tests also use it to
+ * exercise the same encoding path as a real fetch. An absent table/index definition_id remains absent; the valid ID zero is not a sentinel.
  * @return status::ok on success, status::err_unsupported for a declaration outside remote execution, or
  * status::err_unknown if enumeration fails; destination is unchanged on failure
  */

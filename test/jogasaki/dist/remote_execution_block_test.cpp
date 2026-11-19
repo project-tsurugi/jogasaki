@@ -58,7 +58,7 @@
 #include <jogasaki/dist/remote_execution_block_proto.h>
 #include <jogasaki/dist/remote_execution_graph_builder.h>
 #include <jogasaki/dist/remote_execution_graph_compiler.h>
-#include <jogasaki/dist/remote_execution_result.h>
+#include <jogasaki/test_utils/int8_remote_result.h>
 #include <jogasaki/dist/remote_process_execution_block_shape.h>
 #include <jogasaki/executor/process/process_preparation.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -74,15 +74,15 @@ namespace type = takatori::type;
 namespace value = takatori::value;
 
 TEST(remote_execution_result_test, round_trips_multiple_rows_columns_and_null) {
-    dist::remote_execution_result source{
+    test_utils::int8_remote_result source{
         {{0, "int8()", false, dist::encode_remote_type(type::int8{})},
          {1, "int8()", true, dist::encode_remote_type(type::int8{})}},
         {{10, 20}, {30, std::nullopt}},
     };
 
-    auto payload = dist::serialize_remote_execution_result(source);
+    auto payload = test_utils::serialize_int8_remote_result(source);
     std::string error{};
-    auto result = dist::deserialize_remote_execution_result(payload, error);
+    auto result = test_utils::deserialize_int8_remote_result(payload, error);
 
     ASSERT_TRUE(result) << error;
     ASSERT_EQ(2, result->columns.size());
@@ -94,8 +94,8 @@ TEST(remote_execution_result_test, round_trips_multiple_rows_columns_and_null) {
 }
 
 TEST(remote_execution_result_test, does_not_supply_a_missing_type_payload) {
-    dist::remote_execution_result source{{{0, "int8()", false}}, {{7}}};
-    auto payload = dist::serialize_remote_execution_result(source);
+    test_utils::int8_remote_result source{{{0, "int8()", false}}, {{7}}};
+    auto payload = test_utils::serialize_int8_remote_result(source);
     std::string error{};
     EXPECT_FALSE(dist::deserialize_remote_execution_result(payload, error));
     EXPECT_EQ("invalid remote result schema", error);

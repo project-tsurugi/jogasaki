@@ -28,7 +28,7 @@
 namespace jogasaki::dist {
 
 /**
- * @brief GetRemoteCatalog client (L3-07) used by remote_catalog_manager for catalog_source=rpc.
+ * @brief GetRemoteCatalog client (L3-07) used by remote_catalog_manager for CREATE FOREIGN CATALOG.
  * @details Sends one request over the given channel with the manager's deadline, validates and reassembles the
  * stream, and decodes the complete catalog. The result is set only if the stream ended with OK and every
  * fragment and the decoded catalog were valid; otherwise all received fragments are discarded.

@@ -69,71 +69,6 @@ namespace {
 
 namespace type = takatori::type;
 
-using step_set = std::multiset<takatori::plan::step const*>;
-
-// Observations shared between a test and the injected extractor.
-struct probe {
-    std::size_t extractions{};
-    std::vector<takatori::plan::step const*> queried{};
-    std::weak_ptr<dist::operation_locations const> query{};
-};
-
-// Stands in for the formal operation location query until the compiler provides it.
-class probing_locations final : public dist::operation_locations {
-public:
-    probing_locations(std::shared_ptr<probe> observed, location_id_set_type ids, bool fail_lookup, yugawara::compiler_result const* owner = nullptr, bool remote_read_only = false) :
-        observed_(std::move(observed)),
-        ids_(std::move(ids)),
-        fail_lookup_(fail_lookup),
-        owner_(owner),
-        remote_read_only_(remote_read_only)
-    {}
-
-    location_id_set_type find(takatori::plan::step const& step) const override {
-        if (owner_ != nullptr && !owner_->optional_statement()) {
-            throw std::runtime_error("compiler result no longer owns the statement during location lookup");
-        }
-        observed_->queried.push_back(&step);
-        if (fail_lookup_) throw std::runtime_error("lookup failed for test");
-        if (remote_read_only_) {
-            auto const& process = static_cast<takatori::plan::process const&>(step);
-            for (auto const& op : process.operators()) {
-                if (op.kind() == takatori::relation::expression_kind::scan ||
-                    op.kind() == takatori::relation::expression_kind::find) return {7};
-            }
-            return {0};
-        }
-        return ids_;
-    }
-
-    std::string location_name(location_id_type id) const override {
-        if (id == 7) return "worker";
-        if (id == 8) return {};
-        throw std::out_of_range("unknown location");
-    }
-
-private:
-    std::shared_ptr<probe> observed_;
-    location_id_set_type ids_;
-    bool fail_lookup_;
-    yugawara::compiler_result const* owner_{};
-    bool remote_read_only_{};
-};
-
-// The extractor keeps no reference to the query it returns, as the compiler result owns it.
-plan::compiler_context::operation_locations_extractor extractor(
-    std::shared_ptr<probe> observed,
-    dist::operation_locations::location_id_set_type ids,
-    bool fail_lookup = false) {
-    return [observed = std::move(observed), ids = std::move(ids), fail_lookup](yugawara::compiler_result const&)
-        -> std::shared_ptr<dist::operation_locations const> {
-        ++observed->extractions;
-        auto query = std::make_shared<probing_locations const>(observed, ids, fail_lookup);
-        observed->query = query;
-        return query;
-    };
-}
-
 class operation_location_compiler_test : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -189,16 +124,6 @@ protected:
         return storages;
     }
 
-    // Processes of the compiled graph, i.e. the identities the compiler would have placed.
-    step_set compiled_processes() {
-        step_set result{};
-        auto& execute = dynamic_cast<takatori::statement::execute const&>(*ctx_.executable_statement()->statement());
-        for (auto const& step : execute.execution_plan()) {
-            if (step.kind() == takatori::plan::step_kind::process) result.insert(&step);
-        }
-        return result;
-    }
-
     std::vector<executor::process::step*> runtime_processes() {
         std::vector<executor::process::step*> result{};
         auto& execute = dynamic_cast<executor::common::execute&>(*ctx_.executable_statement()->operators());
@@ -250,154 +175,18 @@ TEST_F(operation_location_compiler_test, remote_writes_do_not_use_same_named_loc
     }
 }
 
-TEST_F(operation_location_compiler_test, location_lookup_precedes_statement_ownership_transfer) {
-    auto observed = std::make_shared<probe>();
-    ctx_.operation_locations([observed](yugawara::compiler_result const& result)
-        -> std::shared_ptr<dist::operation_locations const> {
-        return std::make_shared<probing_locations const>(observed,
-            dist::operation_locations::location_id_set_type{0}, false, &result);
-    });
-    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM T0", ctx_)) << message();
-    EXPECT_FALSE(observed->queried.empty());
-    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
-    EXPECT_EQ(compiled_processes(), step_set(observed->queried.begin(), observed->queried.end()));
-}
 
-TEST_F(operation_location_compiler_test, all_local_locations_prepare_and_resolve_with_captured_placement) {
-    auto observed = std::make_shared<probe>();
-    ctx_.operation_locations(extractor(observed, {0}));
 
-    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM T0", ctx_)) << message();
-    EXPECT_EQ(1, observed->extractions);
-    EXPECT_FALSE(observed->queried.empty());
-    // The compiler-side query is gone once prepare has copied the placement.
-    EXPECT_TRUE(observed->query.expired());
 
-    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
-    // Every compiled process was queried exactly once, by its own identity.
-    EXPECT_EQ(compiled_processes(), step_set(observed->queried.begin(), observed->queried.end()));
-    auto processes = runtime_processes();
-    ASSERT_FALSE(processes.empty());
-    for (auto* process : processes) {
-        ASSERT_TRUE(process);
-        auto const& location = process->info()->captured_location();
-        ASSERT_TRUE(location.has_value());
-        EXPECT_TRUE(location->empty());
-    }
-    // Resolving uses the copy; neither extraction nor lookup is repeated.
-    EXPECT_EQ(1, observed->extractions);
-    EXPECT_EQ(compiled_processes().size(), observed->queried.size());
-}
 
-TEST_F(operation_location_compiler_test, explain_reports_captured_process_locations) {
-    ctx_.operation_locations(extractor(std::make_shared<probe>(), {0}));
-    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM T0", ctx_)) << message();
-    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
 
-    api::impl::database database{};
-    api::impl::executable_statement executable{ctx_.executable_statement(), {}, {}};
-    std::ostringstream output{};
-    ASSERT_EQ(status::ok, database.explain(executable, output));
-    auto const json = nlohmann::json::parse(output.str());
-    auto const& steps = json.at("execution_plan");
-    std::size_t placed{};
-    for (auto const& step : steps) {
-        if (step.contains("location_id")) {
-            EXPECT_EQ(0U, step.at("location_id"));
-            EXPECT_EQ("local", step.at("location_name"));
-            ++placed;
-        }
-    }
-    EXPECT_GT(placed, 0U);
-    EXPECT_EQ(compiled_processes().size(), placed);
-}
 
-TEST_F(operation_location_compiler_test, remote_location_on_inline_emit_is_rejected_by_formal_branch) {
-    auto observed = std::make_shared<probe>();
-    ctx_.operation_locations(extractor(observed, {7}));
 
-    // The compiler emits scan -> emit in one process; the formal branch must not split it.
-    EXPECT_EQ(status::err_unsupported, plan::prepare("SELECT C0 FROM T0", ctx_));
-    EXPECT_EQ(1, observed->extractions);
-    EXPECT_EQ(1, observed->queried.size());
-    EXPECT_NE(std::string::npos, message().find("did not separate")) << message();
-}
 
-TEST_F(operation_location_compiler_test, ambiguous_or_missing_locations_are_generation_errors) {
-    for (auto ids : {dist::operation_locations::location_id_set_type{}, {7, 8}, {9}, {8}}) {
-        auto observed = std::make_shared<probe>();
-        ctx_.operation_locations(extractor(observed, std::move(ids)));
-        EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM T0", ctx_));
-        ASSERT_TRUE(ctx_.error_info());
-        EXPECT_EQ(error_code::compile_exception, ctx_.error_info()->code());
-        EXPECT_EQ(status::err_compiler_error, ctx_.error_info()->status());
-    }
-}
-
-TEST_F(operation_location_compiler_test, extractor_failure_is_reported_with_error_info) {
-    ctx_.operation_locations([](yugawara::compiler_result const&) -> std::shared_ptr<dist::operation_locations const> {
-        throw std::runtime_error("extractor unavailable");
-    });
-
-    EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM T0", ctx_));
-    ASSERT_TRUE(ctx_.error_info());
-    EXPECT_NE(std::string::npos, message().find("failed to obtain operation locations")) << message();
-    EXPECT_NE(std::string::npos, message().find("extractor unavailable")) << message();
-}
-
-TEST_F(operation_location_compiler_test, lookup_failure_is_reported_with_error_info) {
-    auto observed = std::make_shared<probe>();
-    ctx_.operation_locations(extractor(observed, {0}, true));
-
-    EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM T0", ctx_));
-    EXPECT_EQ(1, observed->queried.size());
-    ASSERT_TRUE(ctx_.error_info());
-    EXPECT_NE(std::string::npos, message().find("operation location lookup failed")) << message();
-    EXPECT_NE(std::string::npos, message().find("lookup failed for test")) << message();
-}
-
-TEST_F(operation_location_compiler_test, extractor_is_not_used_for_write_statements) {
-    // Keep the successful local-write path covered independently of remote target rejection.
-    ctx_.remote_catalogs(std::make_shared<dist::remote_catalog_snapshot>());
-    auto observed = std::make_shared<probe>();
-    ctx_.operation_locations(extractor(observed, {7}));
-
-    ASSERT_EQ(status::ok, plan::prepare("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", ctx_)) << message();
-    EXPECT_EQ(0, observed->extractions);
-    EXPECT_TRUE(observed->queried.empty());
-}
-
-TEST_F(operation_location_compiler_test, extractor_is_not_used_without_coordinator) {
-    coordinator(false);
-    auto observed = std::make_shared<probe>();
-    ctx_.operation_locations(extractor(observed, {7}));
-
-    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM T0", ctx_)) << message();
-    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
-    EXPECT_EQ(0, observed->extractions);
-    // No placement was captured, so runtime keeps its existing selection.
-    for (auto* process : runtime_processes()) {
-        ASSERT_TRUE(process);
-        EXPECT_FALSE(process->info()->captured_location().has_value());
-    }
-}
 
 
 } // namespace
 
-TEST_F(operation_location_compiler_test, unsupported_remote_type_has_prepare_diagnostic) {
-    auto observed = std::make_shared<probe>();
-    ctx_.operation_locations([observed](yugawara::compiler_result const& result)
-        -> std::shared_ptr<dist::operation_locations const> {
-        return std::make_shared<probing_locations const>(observed,
-            dist::operation_locations::location_id_set_type{0}, false, &result, true);
-    });
-    // Filter before LIMIT to keep the cast in the worker process.
-    EXPECT_EQ(status::err_unsupported,
-        plan::prepare("SELECT C0 FROM T0 WHERE CAST(C0 AS TINYINT) > 0 LIMIT 1", ctx_));
-    ASSERT_TRUE(ctx_.error_info());
-    EXPECT_NE(std::string::npos, message().find("unsupported remote execution type")) << message();
-}
 
 } // namespace jogasaki::testing
 
@@ -438,6 +227,66 @@ protected:
         return kinds;
     }
 };
+
+TEST_F(native_location_compiler_test, formal_locations_survive_prepare_and_resolve) {
+    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM branch.remote_schema.T0", ctx_)) << message();
+    auto prepared = ctx_.prepared_statement();
+    ASSERT_TRUE(prepared);
+    auto locations = prepared->mirrors()->process_locations();
+    ASSERT_TRUE(locations);
+    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
+    std::size_t remote{};
+    for (auto* process : runtime_processes()) {
+        auto const& location = process->info()->captured_location();
+        ASSERT_TRUE(location.has_value());
+        if (!location->empty()) {
+            EXPECT_EQ("worker", *location);
+            ++remote;
+        }
+    }
+    EXPECT_EQ(1U, remote);
+    auto const& statement = static_cast<takatori::statement::execute const&>(*prepared->statement());
+    for (auto const& step : statement.execution_plan()) {
+        if (step.kind() == takatori::plan::step_kind::process) {
+            EXPECT_NE(nullptr, locations->find(static_cast<takatori::plan::process const&>(step)));
+        }
+    }
+}
+
+TEST_F(native_location_compiler_test, explain_reports_formal_local_and_remote_locations) {
+    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM branch.remote_schema.T0", ctx_)) << message();
+    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
+    api::impl::database database{};
+    api::impl::executable_statement executable{ctx_.executable_statement(), {}, {}};
+    std::ostringstream output{};
+    ASSERT_EQ(status::ok, database.explain(executable, output));
+    auto const json = nlohmann::json::parse(output.str());
+    std::size_t local{}, remote{};
+    for (auto const& step : json.at("execution_plan")) {
+        if (!step.contains("location_id")) continue;
+        if (step.at("location_id") == 0) {
+            EXPECT_EQ("local", step.at("location_name"));
+            ++local;
+        } else {
+            EXPECT_EQ("worker", step.at("location_name"));
+            ++remote;
+        }
+    }
+    EXPECT_GT(local, 0U);
+    EXPECT_EQ(1U, remote);
+}
+
+TEST_F(native_location_compiler_test, local_write_does_not_capture_remote_processes) {
+    ASSERT_EQ(status::ok, plan::prepare("INSERT INTO T0(C0) VALUES(99)", ctx_)) << message();
+    EXPECT_FALSE(ctx_.prepared_statement()->mirrors()->process_locations());
+}
+
+TEST_F(native_location_compiler_test, disabled_coordinator_keeps_local_prepare_and_resolve) {
+    coordinator(false);
+    ASSERT_EQ(status::ok, plan::prepare("SELECT C0 FROM T0", ctx_)) << message();
+    EXPECT_FALSE(ctx_.prepared_statement()->mirrors()->process_locations());
+    ASSERT_EQ(status::ok, plan::compile(ctx_)) << message();
+}
 
 TEST_F(native_location_compiler_test, formal_three_part_name_pushes_project_and_filter) {
     using k = takatori::relation::expression_kind;
@@ -507,13 +356,6 @@ TEST_F(native_location_compiler_test, unsupported_narrow_cast_does_not_enter_por
                      "SELECT C0 FROM branch.remote_schema.T0 WHERE CAST(C0 AS SMALLINT)>0"}) {
         EXPECT_EQ((std::vector<k>{k::scan, k::offer}), remote_kinds(sql));
     }
-}
-TEST_F(native_location_compiler_test, missing_location_query_never_uses_local_or_fixture_fallback) {
-    ctx_.operation_locations([](yugawara::compiler_result const&) -> std::shared_ptr<dist::operation_locations const> { return {}; });
-    EXPECT_EQ(status::err_compiler_error, plan::prepare("SELECT C0 FROM branch.remote_schema.T0", ctx_));
-    ASSERT_TRUE(ctx_.error_info());
-    EXPECT_EQ(error_code::compile_exception, ctx_.error_info()->code());
-    EXPECT_EQ("Compiler did not provide execution locations.", message());
 }
 
 TEST_F(native_location_compiler_test, missing_worker_definition_id_fails_before_execution) {

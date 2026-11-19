@@ -281,7 +281,6 @@ public:
             << diagnostic;
     }
     void TearDown() override {
-        unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS");
         if (server_) server_->Shutdown();
         if (db_) db_teardown();
         if (child_ > 0) {
@@ -591,7 +590,6 @@ TEST_F(remote_process_sql_test, ok_without_result_message_returns_no_rows) {
     EXPECT_EQ(1, service_.calls.load());
 }
 TEST_F(remote_process_sql_test, invalid_row_in_batch_publishes_no_rows_to_forward_exchange) {
-    setenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS", "5000", 1);
     for (bool invalid_suffix : {false, true}) {
         SCOPED_TRACE(invalid_suffix);
         std::promise<void> reply{};
@@ -681,7 +679,6 @@ TEST_F(remote_process_sql_test, invalid_record_between_messages_fails_sql) {
         if (!decoded || decoded->columns.empty()) return grpc::Status{grpc::StatusCode::INTERNAL, "invalid fixture"};
         auto changed = *decoded;
         changed.encoded_rows = {std::string{1, char{0}}};
-        changed.rows.clear();
         if (write_message(writer, 0, result.payload)) {
             (void) write_message(writer, 1, dist::serialize_remote_execution_result(changed));
         }
@@ -825,14 +822,12 @@ TEST_F(remote_process_sql_test, two_process_find_without_order_uses_worker_value
 }
 TEST_F(remote_process_sql_test, no_implicit_five_second_deadline) {
     service_.delay = std::chrono::milliseconds(5200);
-    unsetenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS");
     std::vector<mock::basic_record> rows{};
     query("SELECT C0 FROM remote.worker_schema.T ORDER BY C0", rows);
     EXPECT_EQ(2, rows.size());
 }
-TEST_F(remote_process_sql_test, rpc_deadline_fails_sql_and_releases_resources) {
-    service_.delay = std::chrono::milliseconds(500);
-    setenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS", "100", 1);
+TEST_F(remote_process_sql_test, worker_timeout_status_fails_sql) {
+    service_.failure = grpc::StatusCode::DEADLINE_EXCEEDED;
     auto tx = utils::create_transaction(*db_, true, false);
     status result{};
     builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
@@ -963,7 +958,6 @@ TEST_F(remote_process_sql_test, cancellation_is_forwarded_after_handler_entry) {
 }
 
 TEST_F(remote_process_sql_test, cancellation_observed_after_rpc_ok_prevents_sql_success) {
-    setenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS", "5000", 1); // Bound the test RPC independently of the reply gate.
     auto cancel_config = std::make_shared<request_cancel_config>();
     cancel_config->enable(request_cancel_kind::scan);
     cancel_config->enable(request_cancel_kind::find);
@@ -1059,12 +1053,10 @@ TEST_F(remote_process_sql_test, completion_releases_tasks_and_flows_after_partia
     expect_remote_termination(false);
     EXPECT_EQ(1, service_.calls.load());
 }
-TEST_F(remote_process_sql_test, completion_releases_tasks_and_flows_on_rpc_timeout) {
-    service_.delay = std::chrono::seconds(1);
-    setenv("JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS", "100", 1);
+TEST_F(remote_process_sql_test, completion_releases_tasks_and_flows_on_worker_timeout_status) {
+    service_.failure = grpc::StatusCode::DEADLINE_EXCEEDED;
     expect_remote_termination(false);
-    // A deadline includes connection setup, so handler entry is not required.
-    EXPECT_LE(service_.calls.load(), 1);
+    EXPECT_EQ(1, service_.calls.load());
 }
 
 

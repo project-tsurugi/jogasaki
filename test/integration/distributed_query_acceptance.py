@@ -26,10 +26,10 @@ def main():
         raise RuntimeError('Run acceptance checks without Python optimization')
     args.catalog_routing=True
     root=Path(tempfile.mkdtemp(prefix='dq-extra-',dir=args.work_dir))
-    worker=Node(root,'worker',args,None,remote=True,minimal_roles=True,formal_catalog=True)
+    worker=Node(root,'worker',args,None,remote=True,minimal_roles=True)
     proxy=Proxy(worker.grpc_port)
     proxy.limit_response_window=True
-    coordinator=Node(root,'coordinator',args,worker.grpc_port,coordinator=True,minimal_roles=True,formal_catalog=True)
+    coordinator=Node(root,'coordinator',args,worker.grpc_port,coordinator=True,minimal_roles=True)
     def connections(primary):
         return {'distributed_query_client': {'name':'worker', 'uri':f'dns:///127.0.0.1:{primary}'}}
     coordinator.config_overrides = connections(worker.grpc_port)

@@ -30,8 +30,8 @@ def main():
     args.catalog_routing = True
     args.work_dir.mkdir(parents=True, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix='c2-', dir=args.work_dir))
-    worker = Node(root, 'worker', args, None, remote=True, formal_catalog=True)
-    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True, formal_catalog=True)
+    worker = Node(root, 'worker', args, None, remote=True)
+    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True)
     nodes = [coordinator, worker]
     ports = [p for n in nodes for p in (n.sql_port, n.grpc_port)]
     result = {'status': 'running', 'cases': [], 'queries': [], 'stops': [],
@@ -211,7 +211,6 @@ def main():
     remote = f'remote_catalog."public".{TABLE}'
     try:
         assert len(set(ports)) == 4 and not listeners(ports), ports
-        assert not os.environ.get('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS')
         worker.start()
         coordinator.start()
         initial = {n.name: n.config.read_bytes() for n in nodes}

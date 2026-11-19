@@ -36,10 +36,9 @@ def main():
     root = Path(tempfile.mkdtemp(prefix='e1-', dir=args.work_dir))
     worker_ports = None if args.port_base is None else (args.port_base, args.port_base + 1)
     coordinator_ports = None if args.port_base is None else (args.port_base + 2, args.port_base + 3)
-    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True,
-                  formal_catalog=True, ports=worker_ports)
+    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True, ports=worker_ports)
     coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True,
-                       minimal_roles=True, formal_catalog=True, ports=coordinator_ports)
+                       minimal_roles=True, ports=coordinator_ports)
     result = {'status': 'running', 'scenarios': [], 'stops': [], 'cleanupErrors': [],
               'catalogSource': 'formal-DDL/RPC', 'sql': [], 'configurationChecks': []}
 

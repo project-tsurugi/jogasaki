@@ -17,11 +17,9 @@
 
 
 #include <cstddef>
-#include <functional>
 #include <memory>
 
 #include <yugawara/aggregate/configurable_provider.h>
-#include <yugawara/compiler_result.h>
 #include <yugawara/function/configurable_provider.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/variable/configurable_provider.h>
@@ -47,22 +45,6 @@ namespace jogasaki::plan {
  */
 class cache_align compiler_context {
 public:
-    /**
-     * @brief extracts the operation location result from a compiler result
-     * @details UT-only override; production uses compiler_result::operation_location_query().
-     * Returns nullptr if the injected compiler computed no locations.
-     */
-    using operation_locations_extractor = std::function<
-        std::shared_ptr<dist::operation_locations const>(::yugawara::compiler_result const&)>;
-
-    void operation_locations(operation_locations_extractor extractor) noexcept {
-        operation_locations_ = std::move(extractor);
-    }
-
-    [[nodiscard]] operation_locations_extractor const& operation_locations() const noexcept {
-        return operation_locations_;
-    }
-
     void prepared_statement(std::shared_ptr<prepared_statement> statement) noexcept {
         prepared_statement_ = std::move(statement);
     }
@@ -187,7 +169,6 @@ private:
     std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider_{};
     std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
     std::shared_ptr<dist::symbol_locations const> symbol_locations_{};
-    operation_locations_extractor operation_locations_{};
     std::shared_ptr<::yugawara::variable::configurable_provider> variable_provider_{};
     std::shared_ptr<::yugawara::function::configurable_provider> function_provider_{};
     std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_provider_{};

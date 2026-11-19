@@ -156,10 +156,6 @@ set_source_files_properties(
         GENERATED TRUE
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
 )
-if(ENABLE_DISTRIBUTED_QUERY_FIXTURES)
-    set_source_files_properties(jogasaki/dist/fixture_remote_catalog_provider.cpp
-        PROPERTIES COMPILE_DEFINITIONS ENABLE_DISTRIBUTED_QUERY_FIXTURES)
-endif()
 
 
 add_library(${ENGINE}

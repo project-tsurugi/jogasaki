@@ -639,7 +639,13 @@ static bool process_distributed_query_client_config(
         return false;
     }
 
+    auto const configured_client = cfg.get_ptree().get_child_optional("distributed_query_client");
     auto secure_values = section->get_vector<bool>("secure", "|").value_or(std::vector<bool>(names->size(), false));
+    // A scalar default applies to every server; an explicitly supplied list must match its count.
+    if (configured_client && !configured_client->get_optional<std::string>("secure") && secure_values.size() == 1) {
+        bool const default_secure = secure_values.front();
+        secure_values.assign(names->size(), default_secure);
+    }
     if (secure_values.size() != names->size()) {
         LOG_LP(ERROR) << "invalid configuration - distributed_query_client.secure count mismatch";
         return false;
@@ -647,6 +653,10 @@ static bool process_distributed_query_client_config(
 
     auto root_cert_values = section->get_vector<std::string>("root_cert", "|")
         .value_or(std::vector<std::string>(names->size(), "grpc_default"));
+    if (configured_client && !configured_client->get_optional<std::string>("root_cert") && root_cert_values.size() == 1) {
+        auto const default_root_cert = root_cert_values.front();
+        root_cert_values.assign(names->size(), default_root_cert);
+    }
     if (root_cert_values.size() != names->size()) {
         LOG_LP(ERROR) << "invalid configuration - distributed_query_client.root_cert count mismatch";
         return false;

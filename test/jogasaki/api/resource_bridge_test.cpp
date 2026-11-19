@@ -606,6 +606,9 @@ TEST_F(resource_bridge_test, rejects_invalid_client_lists_and_uris_when_enabled)
     for (auto const& client : {
         "name=worker|second\nuri=dns:///localhost:12345\n",
         "name=worker\nuri=dns:///localhost:12345\nsecure=true|false\n",
+        "name=first|second\nuri=dns:///localhost:12345|dns:///localhost:12346\nsecure=false\n",
+        "name=first|second\nuri=dns:///localhost:12345|dns:///localhost:12346\nroot_cert=grpc_default\n",
+        "name=worker\nuri=dns:///localhost:12345\nsecure=\n",
         "name=worker\nuri=dns:///localhost:12345\nroot_cert=grpc_default|grpc_default\n",
         "name=worker\nuri=unsupported://host\n",
         "name=worker\nuri=dns:///localhost:12345\nsecure=invalid\n",
@@ -613,23 +616,39 @@ TEST_F(resource_bridge_test, rejects_invalid_client_lists_and_uris_when_enabled)
         SCOPED_TRACE(client);
         std::stringstream input{std::string{"[distributed_query_coordinator]\nenabled=true\n[distributed_query_client]\n"} + client};
         tateyama::api::configuration::whole config{input,
-            "[distributed_query_coordinator]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
+            "[distributed_query_coordinator]\nenabled=false\n[distributed_query_client]\nname=\nuri=\nsecure=false\nroot_cert=grpc_default\n"};
         EXPECT_FALSE(api::resource::convert_config(config));
     }
 }
-TEST_F(resource_bridge_test, enabled_client_uses_default_tls_roots) {
-    std::stringstream input{"[distributed_query_coordinator]\nenabled=true\n[distributed_query_client]\nname=worker\nuri=dns:///localhost:12345\nsecure=true\n"};
-    tateyama::api::configuration::whole config{input,
-        "[distributed_query_coordinator]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
-    auto converted = api::resource::convert_config(config);
-    ASSERT_TRUE(converted);
-    ASSERT_EQ(1U, converted->distributed_query_remote_servers().size());
-    auto const& server = converted->distributed_query_remote_servers().front();
-    EXPECT_TRUE(server.secure);
-    EXPECT_EQ(dist::root_certificate_source::grpc_default_roots, server.root_certificate);
-    EXPECT_TRUE(server.pem_root_certs.empty());
+TEST(resource_bridge_configuration_test, tls_defaults_cover_each_server) {
+    constexpr std::string_view base_defaults{
+        "[distributed_query_coordinator]\nenabled=false\n[distributed_query_client]\n"
+        "name=\nuri=\n"};
+    for (bool declared_defaults : {false, true}) {
+        auto defaults = std::string{base_defaults};
+        if (declared_defaults) defaults += "secure=false\nroot_cert=grpc_default\n";
+        for (std::size_t count : {1U, 2U}) {
+            for (bool tls : {false, true}) {
+                SCOPED_TRACE(::testing::Message{} << "declared defaults=" << declared_defaults << ", servers=" << count << ", explicit TLS=" << tls);
+                std::stringstream input{};
+                input << "[distributed_query_coordinator]\nenabled=true\n[distributed_query_client]\n"
+                      << "name=first" << (count == 2 ? "|second" : "") << "\n"
+                      << "uri=dns:///localhost:12345" << (count == 2 ? "|dns:///localhost:12346" : "") << "\n";
+                if (tls) input << "secure=true" << (count == 2 ? "|true" : "") << "\n";
+                tateyama::api::configuration::whole config{input, defaults};
+                auto converted = api::resource::convert_config(config);
+                ASSERT_TRUE(converted);
+                ASSERT_EQ(count, converted->distributed_query_remote_servers().size());
+                for (auto const& server : converted->distributed_query_remote_servers()) {
+                    EXPECT_EQ(tls, server.secure);
+                    EXPECT_EQ(tls ? dist::root_certificate_source::grpc_default_roots
+                                  : dist::root_certificate_source::none, server.root_certificate);
+                    EXPECT_TRUE(server.pem_root_certs.empty());
+                }
+            }
+        }
+    }
 }
-
 
 TEST_F(resource_bridge_test, resolves_relative_certificate_and_rejects_missing_or_non_pem_file) {
     test::temporary_folder directory{};

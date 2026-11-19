@@ -48,6 +48,7 @@ class Node:
         self.generation = 0
 
     def start(self):
+        (self.root / 'plugins').mkdir(exist_ok=True)
         self.generation += 1
         identity = re.sub('-+', '-', re.sub('[^a-z0-9-]', '-', f"{getattr(self.args, 'database_name_prefix', os.environ.get('DQ_TEST_DATABASE_PREFIX', 'dq-e2e'))}-{self.root.parent.name}-{self.name}")).strip('-')
         self.config = self.root / 'tsurugi.ini'
@@ -84,6 +85,8 @@ recover_max_parallelism=2
 index_restore_threads=1
 [authentication]
 enabled=false
+[udf]
+plugin_directory={self.root / 'plugins'}
 [blob_relay]
 enabled=false
 session_store={self.root / 'blob'}

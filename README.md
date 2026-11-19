@@ -105,23 +105,6 @@ available options:
   * `-DTRACY_ENABLE=ON` - enable tracy profiler for multi-thread debugging. See section below.
   * `-DLIKWID_ENABLE=ON` - enable LIKWID for performance metrics. See section below.
 
-### Distributed-query integration checks
-
-Normal CREATE TABLE and CREATE INDEX assign persistent definition IDs. Reservations
-are committed independently of the SQL transaction and are not undone by rollback
-or DROP. Existing metadata without IDs is upgraded on database startup.
-
-C1/C2 use the standard Bootstrap server.
-They create ordinary tables and register `remote_catalog` with
-`CREATE FOREIGN CATALOG remote_catalog SERVER worker`, then query
-`remote_catalog."public".C1_DUMMY_T` in an RTX. Repeat catalog registration after
-restarting the coordinator; table data and definition IDs survive restart.
-
-Run `test/integration/distributed_query_lifecycle.py` with `--prefix`, `--server`,
-`--tgctl`, `--tgsql`, and `--work-dir` pointing to a private test installation and
-output directory. C1-06 deliberately fails a result comparison to verify cleanup.
-The configuration, SQL/server/shutdown logs and result JSON are preserved.
-
 ### install
 
 ```sh

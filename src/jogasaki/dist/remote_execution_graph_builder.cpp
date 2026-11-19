@@ -243,13 +243,13 @@ private:
             case remote_operator_kind::scan: {
                 auto const& source = *op.source;
                 auto storage = resolver_->resolve_storage(source);
-                auto mappings = columns(source);
-                auto lower_keys = keys<relation::scan::key>(source, source.lower_key_expression_indexes);
-                auto upper_keys = keys<relation::scan::key>(source, source.upper_key_expression_indexes);
                 if (!storage) {
                     error_ = missing("storage", source.table_name + "." + source.index_name);
                     return {};
                 }
+                auto mappings = columns(source);
+                auto lower_keys = keys<relation::scan::key>(source, source.lower_key_expression_indexes);
+                auto upper_keys = keys<relation::scan::key>(source, source.upper_key_expression_indexes);
                 if (!mappings || !lower_keys || !upper_keys) {
                     return {};
                 }
@@ -264,12 +264,12 @@ private:
             case remote_operator_kind::find: {
                 auto const& source = *op.source;
                 auto storage = resolver_->resolve_storage(source);
-                auto mappings = columns(source);
-                auto find_keys = keys<relation::find::key>(source, source.find_key_expression_indexes);
                 if (!storage) {
                     error_ = missing("storage", source.table_name + "." + source.index_name);
                     return {};
                 }
+                auto mappings = columns(source);
+                auto find_keys = keys<relation::find::key>(source, source.find_key_expression_indexes);
                 if (!mappings || !find_keys) {
                     return {};
                 }

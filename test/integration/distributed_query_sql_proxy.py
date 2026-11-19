@@ -17,6 +17,7 @@ class Proxy:
         self.mode = 'pass'
         self.limit_response_window = False
         self.events = []
+        self.response_observer = None
         self.release = threading.Event()
         self.closed = threading.Event()
         self.sockets = []
@@ -113,6 +114,9 @@ class Proxy:
                             complete += 1
                             if direction == 'response':
                                 rows.append(self.record_count(raw))
+                                observer = self.response_observer
+                                if observer is not None:
+                                    observer(raw)
                         ev['grpcMessages'] = complete
                         if rows:
                             ev['recordCounts'] = rows

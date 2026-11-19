@@ -351,9 +351,31 @@ TEST_F(remote_process_handler_test, releases_transaction_registration_after_canc
 TEST_F(remote_process_handler_test, rejects_missing_worker_definition_without_name_fallback) {
     execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY)");
     dist::remote_process_handler handler{*db_};
-    auto response = handler(dist::serialize_remote_execution_block_proto(scan_block()));
-    EXPECT_FALSE(response.success);
-    EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::failed_precondition, response.error_kind);
+    using error_kind = tateyama::grpc::distributed_query::remote_process_error_kind;
+    auto before = db_impl()->transaction_count();
+    for (int source_kind : {0, 1, 2}) { // unbound scan, bounded scan, find
+        SCOPED_TRACE(source_kind);
+        auto block = scan_block();
+        block.scalar_expressions = {int8_literal(205)};
+        auto& source = *block.operators.front().source;
+        if (source_kind == 1) {
+            source.lower_endpoint_kind = dist::remote_endpoint_kind::inclusive;
+            source.lower_key_expression_indexes = {0};
+        } else if (source_kind == 2) {
+            block.operators.front().kind = dist::remote_operator_kind::find;
+            source.find_key_expression_indexes = {0};
+        }
+        auto response = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(response.success);
+        EXPECT_EQ(error_kind::failed_precondition, response.error_kind);
+        EXPECT_EQ(before, db_impl()->transaction_count());
+        // Malformed IR must still be rejected before consulting the worker's catalog.
+        block.scalar_expressions.front().literal_payload.clear();
+        auto malformed = handler(dist::serialize_remote_execution_block_proto(block));
+        EXPECT_FALSE(malformed.success);
+        EXPECT_EQ(error_kind::invalid_request, malformed.error_kind);
+        EXPECT_EQ(before, db_impl()->transaction_count());
+    }
 }
 
 TEST_F(remote_process_handler_test, resolves_identity_and_rejects_mismatched_column_metadata) {

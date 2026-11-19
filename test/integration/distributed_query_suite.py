@@ -18,6 +18,7 @@ GROUPS = {
     'c2': ('distributed_query_sql.py', 34),
     'transport': ('distributed_query_sql_transport.py', 2),
     'acceptance': ('distributed_query_acceptance.py', 11),
+    'catalog': ('distributed_query_catalog_acceptance.py', 16),
 }
 
 
@@ -72,8 +73,9 @@ def main():
     client = out / 'client'; client.mkdir()
     shutil.copyfile(args.client_jar, client / 'tgsql.jar')
     shutil.copyfile(args.jni_library, client / 'libtsubakuro.so')
+    probes = sorted(source.glob('DistributedQuery*Probe.java'))
     subprocess.run(['javac', '-cp', str(client/'tgsql.jar'), '-d', str(client),
-                    str(source/'DistributedQueryProbe.java')], check=True)
+                    *map(str, probes)], check=True)
     env = os.environ.copy()
     for key in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS'):
         env.pop(key, None)
@@ -84,7 +86,7 @@ def main():
             parser.error('port-base must leave room for five unprivileged ports')
         env['DQ_TEST_PORT_BASE'] = str(args.port_base)
         env['DQ_TEST_PROXY_PORT'] = str(args.port_base + 4)
-    tracked = [*source.glob('distributed_query*.py'), source/'DistributedQueryProbe.java',
+    tracked = [*source.glob('distributed_query*.py'), *probes,
                args.server.resolve(), args.tgctl.resolve(), args.tgsql.resolve(), args.client_jar.resolve(), args.jni_library.resolve(),
                *sorted((args.prefix.resolve()/'lib').glob('*.so*'))]
     result = {'groups': {}, 'inputsSha256': {str(p): digest(p) for p in tracked if p.is_file()},
@@ -106,7 +108,7 @@ def main():
                 'runpy.run_path(sys.argv[0],run_name="__main__")', str(source), str(source/script),
                 '--prefix', str(args.prefix.resolve()), '--server', str(args.server.resolve()),
                 '--tgctl', str(args.tgctl.resolve()), '--tgsql', str(args.tgsql.resolve()), '--work-dir', str(dest)]
-            if group == 'acceptance':command += ['--client-dir', str(client)]
+            if group in ('acceptance', 'catalog'):command += ['--client-dir', str(client)]
             print('BEGIN', group, dest, flush=True)
             with (dest/'console.log').open('w') as log:
                 active = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT,

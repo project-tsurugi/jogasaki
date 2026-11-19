@@ -299,6 +299,8 @@ private:
                 case wire::REMOTE_INDEX_FEATURE_SCAN: out.insert(index_feature::scan); break;
                 case wire::REMOTE_INDEX_FEATURE_UNIQUE: out.insert(index_feature::unique); break;
                 case wire::REMOTE_INDEX_FEATURE_UNIQUE_CONSTRAINT: out.insert(index_feature::unique_constraint); break;
+                case wire::REMOTE_INDEX_FEATURE_TIES_ORDERED_BY_PRIMARY_KEY:
+                    out.insert(index_feature::ties_ordered_by_primary_key); break;
                 default: return unsupported("unhandled index feature " + std::to_string(value));
             }
         }

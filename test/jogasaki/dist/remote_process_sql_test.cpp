@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <array>
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -21,6 +22,9 @@
 #include <future>
 #include <functional>
 #include <mutex>
+#include <optional>
+#include <sstream>
+#include <unordered_map>
 #include <poll.h>
 #include <spawn.h>
 #include <thread>
@@ -42,6 +46,7 @@
 #include <tateyama/proto/distributed_query/remote_catalog.grpc.pb.h>
 
 #include <jogasaki/api/api_test_base.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/dist/local_catalog_handler.h>
 #include <jogasaki/dist/remote_type_codec.h>
@@ -372,6 +377,259 @@ protected:
     std::unique_ptr<grpc::Server> server_{};
     int port_{};
 };
+// Keep prepared-parameter coverage at the SQL API boundary, using the same fixture and runner as other SQL tests.
+TEST_F(remote_process_sql_test, prepared_bindings_match_local_sql_and_recover_after_invalid_parameters) {
+    for (bool remote : {false, true}) {
+        SCOPED_TRACE(remote);
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{{"key", api::field_type_kind::int8}};
+        auto sql = remote ? "SELECT C0 FROM remote.worker_schema.T WHERE C0=:key" : "SELECT C0 FROM T WHERE C0=:key";
+        ASSERT_EQ(status::ok, db_->prepare(sql, variables, prepared));
+        auto bind = [&](std::optional<std::int64_t> key) {
+            auto parameters = api::create_parameter_set();
+            if (key) parameters->set_int8("key", *key);
+            else parameters->set_null("key");
+            auto tx = utils::create_transaction(*db_, true, false);
+            std::vector<mock::basic_record> actual{}, control{};
+            auto before = service_.calls.load();
+            auto run = builder().prepared(prepared).params(*parameters).tx(*tx).output_records(actual);
+            ASSERT_TRUE(run.run()) << run.report();
+            ASSERT_EQ(status::ok, tx->commit());
+            query("SELECT C0 FROM T WHERE C0=" + (key ? std::to_string(*key) : "CAST(NULL AS BIGINT)"), control);
+            EXPECT_EQ(control, actual);
+            ASSERT_EQ(key ? 1U : 0U, actual.size());
+            if (key) EXPECT_EQ(*key, actual.front().get_value<std::int64_t>(0));
+            if (remote && key) EXPECT_EQ(before + 1, service_.calls.load());
+            if (!remote) EXPECT_EQ(before, service_.calls.load());
+        };
+        ASSERT_NO_FATAL_FAILURE(bind(10));
+        ASSERT_NO_FATAL_FAILURE(bind(std::nullopt));
+        ASSERT_NO_FATAL_FAILURE(bind(20));
+        for (bool wrong_type : {false, true}) {
+            auto parameters = api::create_parameter_set();
+            if (wrong_type) parameters->set_character("key", "not-an-integer");
+            std::unique_ptr<api::executable_statement> executable{};
+            std::shared_ptr<error::error_info> info{};
+            auto before = service_.calls.load();
+            EXPECT_EQ(status::err_unresolved_host_variable,
+                db_impl()->resolve(prepared, std::shared_ptr{std::move(parameters)}, executable, info));
+            ASSERT_TRUE(info);
+            EXPECT_EQ(wrong_type ? error_code::parameter_exception : error_code::unresolved_placeholder_exception, info->code());
+            EXPECT_FALSE(executable);
+            EXPECT_EQ(before, service_.calls.load());
+            ASSERT_NO_FATAL_FAILURE(bind(wrong_type ? 20 : 10));
+        }
+        EXPECT_EQ(status::ok, db_->destroy_statement(prepared));
+    }
+}
+
+TEST_F(remote_process_sql_test, secondary_index_queries_match_local_order_nulls_and_limits) {
+    execute_statement("CREATE TABLE S(C0 BIGINT PRIMARY KEY,C1 BIGINT)");
+    execute_statement("CREATE INDEX I_S ON S(C1)");
+    execute_statement("INSERT INTO S VALUES(308,1),(101,1),(205,1),(401,2),(501,NULL),(502,NULL),(601,0)");
+    execute_statement("CREATE TABLE SD(C0 BIGINT,C1 BIGINT,PRIMARY KEY(C0 DESC))");
+    execute_statement("CREATE INDEX I_SD ON SD(C1)");
+    execute_statement("INSERT INTO SD VALUES(308,1),(101,1),(205,1)");
+    execute_statement("CREATE TABLE SC(C0 BIGINT,C1 BIGINT,C2 BIGINT,PRIMARY KEY(C0,C1 DESC))");
+    execute_statement("CREATE INDEX I_SC ON SC(C2)");
+    execute_statement("INSERT INTO SC VALUES(2,1,7),(1,1,7),(1,3,7),(1,2,8)");
+    refresh_catalog();
+    EXPECT_TRUE(db_impl()->tables()->find_index("I_S")->features().contains(yugawara::storage::index_feature::ties_ordered_by_primary_key));
+    struct sample {
+        std::string_view table;
+        std::string_view columns;
+        std::string_view clause;
+        std::vector<mock::basic_record> expected;
+        std::string_view index;
+    };
+    using k = meta::field_type_kind;
+    std::vector<sample> samples{
+        {"S", "C0", "WHERE C1=1 ORDER BY C0 LIMIT 2",
+            {mock::create_nullable_record<k::int8>(101), mock::create_nullable_record<k::int8>(205)}, "I_S"},
+        {"S", "C0", "WHERE C1=1 ORDER BY C0 DESC LIMIT 2",
+            {mock::create_nullable_record<k::int8>(308), mock::create_nullable_record<k::int8>(205)}, "I_S"},
+        {"SD", "C0", "WHERE C1=1 ORDER BY C0 DESC LIMIT 2",
+            {mock::create_nullable_record<k::int8>(308), mock::create_nullable_record<k::int8>(205)}, "I_SD"},
+        {"SC", "C0,C1", "WHERE C2=7 ORDER BY C0,C1 DESC LIMIT 2",
+            {mock::create_nullable_record<k::int8,k::int8>(1,3), mock::create_nullable_record<k::int8,k::int8>(1,1)}, "I_SC"},
+        {"SC", "C0,C1", "WHERE C2=7 ORDER BY C0 DESC,C1 LIMIT 2",
+            {mock::create_nullable_record<k::int8,k::int8>(2,1), mock::create_nullable_record<k::int8,k::int8>(1,1)}, "I_SC"},
+        {"S", "C0,C1", "WHERE C1 IS NULL ORDER BY C0 LIMIT 1",
+            {mock::create_nullable_record<k::int8,k::int8>(501,std::nullopt)}, {}},
+        {"S", "C0,C1", "WHERE C1>=1 AND C1<=1 ORDER BY C1 DESC,C0 LIMIT 2",
+            {mock::create_nullable_record<k::int8,k::int8>(101,1), mock::create_nullable_record<k::int8,k::int8>(205,1)}, {}},
+        {"S", "C0,C1", "WHERE C1>=1 AND C1<=1 ORDER BY C1,C0 LIMIT 4",
+            {mock::create_nullable_record<k::int8,k::int8>(101,1), mock::create_nullable_record<k::int8,k::int8>(205,1),
+             mock::create_nullable_record<k::int8,k::int8>(308,1)}, {}},
+    };
+    for (auto const& sample : samples) {
+        SCOPED_TRACE(sample.clause);
+        auto select = "SELECT " + std::string{sample.columns} + " FROM ";
+        auto suffix = std::string{sample.table} + " " + std::string{sample.clause};
+        std::vector<mock::basic_record> actual{}, control{};
+        query(select + suffix, control);
+        EXPECT_EQ(sample.expected, control);
+        auto before = service_.calls.load();
+        query(select + "remote.worker_schema." + suffix, actual);
+        EXPECT_EQ(sample.expected, actual);
+        EXPECT_EQ(control, actual);
+        EXPECT_EQ(before + 1, service_.calls.load());
+        if (!sample.index.empty()) {
+            std::unique_ptr<api::executable_statement> statement{};
+            ASSERT_EQ(status::ok, db_->create_executable(select + "remote.worker_schema." + suffix, statement));
+            std::ostringstream plan{};
+            db_->explain(*statement, plan);
+            EXPECT_NE(std::string::npos, plan.str().find("\"simple_name\":\"" + std::string{sample.index} + "\""));
+        }
+    }
+}
+
+TEST_F(remote_process_sql_test, stale_worker_definitions_fail_until_catalog_is_registered_again) {
+    execute_statement("DELETE FROM T");
+    execute_statement("CREATE INDEX I_T ON T(C1)");
+    execute_statement("INSERT INTO T VALUES(10,'worker-value',12.34),(20,NULL,56.78)");
+    refresh_catalog();
+    // This fixture uses a loopback RPC and the same database as worker. Observe the real handler classification,
+    // then expose its failure to the coordinator. Tateyama's service adapter is tested in its own repository.
+    service_.raw = [this](std::string_view payload, auto* writer) {
+        auto result = dist::remote_process_handler{*db_}(payload);
+        if (!result.success) {
+            EXPECT_EQ(tateyama::grpc::distributed_query::remote_process_error_kind::failed_precondition, result.error_kind);
+            return grpc::Status{grpc::StatusCode::FAILED_PRECONDITION, result.error};
+        }
+        return write_message(writer, 0, result.payload) ? grpc::Status::OK :
+            grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
+    };
+    std::string sql{"SELECT C0 FROM remote.worker_schema.T WHERE C1='worker-value'"};
+    auto reject = [&](api::statement_handle handle, error_code expected) {
+        std::unique_ptr<api::executable_statement> statement{};
+        ASSERT_EQ(status::ok, db_->resolve(handle, std::shared_ptr{api::create_parameter_set()}, statement));
+        auto tx = utils::create_transaction(*db_, true, false);
+        std::unique_ptr<api::result_set> results{};
+        std::shared_ptr<error::error_info> error{};
+        std::shared_ptr<request_statistics> statistics{};
+        auto before = service_.calls.load();
+        EXPECT_EQ(expected == error_code::target_not_found_exception ? status::err_not_found : status::err_unknown,
+            executor::execute(*db_impl(), api::get_transaction_context(*tx), *statement, results, error, statistics));
+        ASSERT_TRUE(error);
+        EXPECT_EQ(expected, error->code());
+        if (expected == error_code::sql_execution_exception) {
+            EXPECT_NE(std::string::npos, error->message().find("remote precondition not satisfied"));
+            EXPECT_EQ(before + 1, service_.calls.load());
+        } else EXPECT_EQ(before, service_.calls.load());
+        if (!api::get_transaction_context(*tx)->termination_mgr().state().going_to_abort()) {
+            EXPECT_EQ(status::ok, tx->abort());
+        }
+        db_impl()->task_scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
+    };
+    for (bool index_only : {false, true}) {
+        SCOPED_TRACE(index_only);
+        api::statement_handle prepared{};
+        ASSERT_EQ(status::ok, db_->prepare(sql, prepared));
+        std::unique_ptr<api::executable_statement> statement{};
+        ASSERT_EQ(status::ok, db_->resolve(prepared, std::shared_ptr{api::create_parameter_set()}, statement));
+        std::ostringstream plan{};
+        db_->explain(*statement, plan);
+        ASSERT_NE(std::string::npos, plan.str().find("\"simple_name\":\"I_T\""));
+        std::vector<mock::basic_record> initial{};
+        query(sql, initial);
+        ASSERT_EQ(1U, initial.size());
+        auto old_primary = db_impl()->tables()->find_index("T")->definition_id();
+        auto old_secondary = db_impl()->tables()->find_index("I_T")->definition_id();
+        if (index_only) {
+            execute_statement("DELETE FROM T");
+            execute_statement("DROP INDEX I_T");
+        } else {
+            execute_statement("DROP TABLE T");
+            execute_statement("CREATE TABLE T(C0 BIGINT PRIMARY KEY,C1 VARCHAR(20),C2 DECIMAL(10,2))");
+        }
+        execute_statement("CREATE INDEX I_T ON T(C1)");
+        execute_statement("INSERT INTO T VALUES(10,'worker-value',12.34),(20,NULL,56.78)");
+        EXPECT_NE(old_secondary, db_impl()->tables()->find_index("I_T")->definition_id());
+        if (index_only) EXPECT_EQ(old_primary, db_impl()->tables()->find_index("T")->definition_id());
+        else EXPECT_NE(old_primary, db_impl()->tables()->find_index("T")->definition_id());
+        std::vector<mock::basic_record> control{};
+        query("SELECT C0 FROM T WHERE C1='worker-value'", control);
+        EXPECT_EQ(initial, control);
+        ASSERT_NO_FATAL_FAILURE(reject(prepared, error_code::sql_execution_exception));
+        api::statement_handle stale{};
+        ASSERT_EQ(status::ok, db_->prepare(sql, stale));
+        ASSERT_NO_FATAL_FAILURE(reject(stale, error_code::sql_execution_exception));
+        EXPECT_EQ(status::ok, db_->destroy_statement(stale));
+        refresh_catalog();
+        std::vector<mock::basic_record> fresh{};
+        query(sql, fresh);
+        EXPECT_EQ(initial, fresh);
+        ASSERT_NO_FATAL_FAILURE(reject(prepared, error_code::target_not_found_exception));
+        EXPECT_EQ(status::ok, db_->destroy_statement(prepared));
+    }
+}
+
+TEST_F(remote_process_sql_test, unsupported_sql_combinations_are_rejected_before_remote_execution) {
+    struct sample {
+        std::string_view local;
+        std::string_view remote;
+        std::vector<std::int64_t> expected;
+    };
+    std::vector<sample> samples{
+        {"SELECT a.C0 FROM T a JOIN T b ON a.C0=b.C0",
+         "SELECT a.C0 FROM remote.worker_schema.T a JOIN remote.worker_schema.T b ON a.C0=b.C0", {10,20}},
+        {"SELECT C0 FROM T UNION ALL SELECT C0 FROM T",
+         "SELECT C0 FROM remote.worker_schema.T UNION ALL SELECT C0 FROM remote.worker_schema.T", {10,10,20,20}},
+        {"SELECT C0 FROM T WHERE C0 IN (SELECT C0 FROM T)",
+         "SELECT C0 FROM remote.worker_schema.T WHERE C0 IN (SELECT C0 FROM remote.worker_schema.T)", {10,20}},
+    };
+    for (auto const& sample : samples) {
+        SCOPED_TRACE(sample.remote);
+        std::vector<mock::basic_record> rows{};
+        query(sample.local, rows);
+        std::vector<std::int64_t> keys{};
+        for (auto const& row : rows) keys.emplace_back(row.get_value<std::int64_t>(0));
+        std::sort(keys.begin(), keys.end());
+        EXPECT_EQ(sample.expected, keys);
+        auto before = service_.calls.load();
+        test_stmt_err(sample.remote, error_code::unsupported_compiler_feature_exception);
+        EXPECT_EQ(before, service_.calls.load());
+    }
+}
+
+TEST_F(remote_process_sql_test, formal_remote_ddl_is_rejected_without_changing_storage) {
+    execute_statement("CREATE TABLE DDL_T(C0 BIGINT PRIMARY KEY,C1 BIGINT)");
+    execute_statement("CREATE INDEX DDL_I ON DDL_T(C1)");
+    execute_statement("INSERT INTO DDL_T VALUES(1,2)");
+    execute_statement("CREATE TABLE DDL_CONTROL(C0 BIGINT PRIMARY KEY,C1 BIGINT)");
+    refresh_catalog();
+    auto table = db_impl()->tables()->find_table("DDL_T");
+    auto primary = db_impl()->tables()->find_index("DDL_T");
+    auto secondary = db_impl()->tables()->find_index("DDL_I");
+    auto control = db_impl()->tables()->find_table("DDL_CONTROL");
+    std::vector<mock::basic_record> before{};
+    query("SELECT C0,C1 FROM DDL_T", before);
+    for (auto sql : {"CREATE TABLE remote.worker_schema.DDL_NEW(C0 BIGINT PRIMARY KEY)",
+                     "DROP TABLE remote.worker_schema.DDL_T",
+                     "CREATE INDEX DDL_NEW_I ON remote.worker_schema.DDL_CONTROL(C1)",
+                     "DROP INDEX remote.worker_schema.DDL_I"}) {
+        SCOPED_TRACE(sql);
+        auto calls = service_.calls.load();
+        test_stmt_err(sql, error_code::unsupported_compiler_feature_exception);
+        EXPECT_EQ(calls, service_.calls.load());
+        EXPECT_EQ(table, db_impl()->tables()->find_table("DDL_T"));
+        EXPECT_EQ(primary, db_impl()->tables()->find_index("DDL_T"));
+        EXPECT_EQ(secondary, db_impl()->tables()->find_index("DDL_I"));
+        EXPECT_EQ(control, db_impl()->tables()->find_table("DDL_CONTROL"));
+        EXPECT_FALSE(db_impl()->tables()->find_table("DDL_NEW"));
+        EXPECT_FALSE(db_impl()->tables()->find_index("DDL_NEW_I"));
+        std::vector<mock::basic_record> after{};
+        query("SELECT C0,C1 FROM DDL_T", after);
+        EXPECT_EQ(before, after);
+    }
+    // The same DDL families remain available for local storage.
+    execute_statement("CREATE TABLE DDL_NEW(C0 BIGINT PRIMARY KEY)");
+    execute_statement("CREATE INDEX DDL_NEW_I ON DDL_CONTROL(C1)");
+    execute_statement("DROP INDEX DDL_NEW_I");
+    execute_statement("DROP TABLE DDL_NEW");
+}
+
 TEST_F(remote_process_sql_test, task_generation_preserves_failures_without_sending_rpc) {
     for (int failure = 0; failure < 3; ++failure) {
         SCOPED_TRACE(failure);
@@ -837,16 +1095,19 @@ TEST_F(remote_process_sql_test, worker_timeout_status_fails_sql) {
     ASSERT_TRUE(info);
     EXPECT_EQ(error_code::sql_request_timeout_exception, info->code());
 }
-TEST_F(remote_process_sql_test, occ_is_rejected_before_remote_execution) {
-    auto tx = utils::create_transaction(*db_, false, false);
-    status result{};
-    builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
-    EXPECT_EQ(status::err_illegal_operation, result);
-    std::shared_ptr<api::error_info> info{};
-    ASSERT_EQ(status::ok, tx->error_info(info));
-    ASSERT_TRUE(info);
-    EXPECT_EQ(error_code::restricted_operation_exception, info->code());
-    EXPECT_EQ(0, service_.calls.load());
+TEST_F(remote_process_sql_test, non_rtx_transactions_are_rejected_before_remote_execution) {
+    for (bool is_long : {false, true}) {
+        SCOPED_TRACE(is_long);
+        auto tx = utils::create_transaction(*db_, false, is_long);
+        status result{};
+        builder().text("SELECT C0 FROM remote.worker_schema.T ORDER BY C0").tx(*tx).expect_error(true).st(result).run();
+        EXPECT_EQ(status::err_illegal_operation, result);
+        std::shared_ptr<api::error_info> info{};
+        ASSERT_EQ(status::ok, tx->error_info(info));
+        ASSERT_TRUE(info);
+        EXPECT_EQ(error_code::restricted_operation_exception, info->code());
+        EXPECT_EQ(0, service_.calls.load());
+    }
 }
 TEST_F(remote_process_sql_test, sql_error_preserves_code_detail_and_supplemental_text) {
     proto::sql::response::Error remote{};
@@ -935,7 +1196,14 @@ TEST_F(remote_process_sql_test, find_and_group_downstream_use_remote_rows) {
     query("SELECT SUM(C0) FROM remote.worker_schema.T", rows);
     ASSERT_EQ(1, rows.size());
     EXPECT_EQ(30, rows[0].get_value<std::int64_t>(0));
-    EXPECT_GE(service_.calls.load(), 2);
+    rows.clear();
+    std::vector<mock::basic_record> control{};
+    query("SELECT SUM(CASE WHEN COALESCE(C1,'missing')='missing' THEN ABS(C0) ELSE C0+1 END) FROM T", control);
+    query("SELECT SUM(CASE WHEN COALESCE(C1,'missing')='missing' THEN ABS(C0) ELSE C0+1 END) FROM remote.worker_schema.T", rows);
+    ASSERT_EQ(1U, rows.size());
+    EXPECT_EQ(31, rows.front().get_value<std::int64_t>(0));
+    EXPECT_EQ(control, rows);
+    EXPECT_GE(service_.calls.load(), 3);
 }
 
 TEST_F(remote_process_sql_test, cancellation_is_forwarded_after_handler_entry) {

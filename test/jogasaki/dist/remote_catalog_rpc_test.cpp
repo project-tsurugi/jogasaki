@@ -55,6 +55,7 @@
 #include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/utils/create_req_info.h>
+#include <jogasaki/utils/create_tx.h>
 #include <jogasaki/dist/local_catalog_handler.h>
 #include <jogasaki/dist/remote_catalog_command.h>
 #include <jogasaki/dist/remote_catalog_decoder.h>
@@ -284,6 +285,22 @@ TEST_F(remote_catalog_rpc_test, formal_sql_create_and_drop_use_catalog_rpc) {
     EXPECT_TRUE(manager()->entries()->empty());
     EXPECT_EQ(1, remote_.calls);
     db_impl()->config()->lowercase_regular_identifiers(false);
+}
+
+TEST_F(remote_catalog_rpc_test, formal_catalog_registration_is_independent_of_transaction_rollback) {
+    auto create_tx = utils::create_transaction(*db_);
+    execute_statement("CREATE FOREIGN CATALOG remote SERVER worker", *create_tx);
+    ASSERT_TRUE(manager()->find_catalog("remote"));
+    ASSERT_EQ(status::ok, create_tx->abort());
+    EXPECT_TRUE(manager()->find_catalog("remote"));
+    EXPECT_EQ(1, remote_.calls);
+    auto drop_tx = utils::create_transaction(*db_);
+    execute_statement("DROP FOREIGN CATALOG remote", *drop_tx);
+    EXPECT_FALSE(manager()->find_catalog("remote"));
+    ASSERT_EQ(status::ok, drop_tx->abort());
+    EXPECT_FALSE(manager()->find_catalog("remote"));
+    EXPECT_EQ(1, remote_.calls);
+    EXPECT_EQ(0, remote_.execution_calls);
 }
 
 TEST_F(remote_catalog_rpc_test, formal_sql_respects_disabled_identifier_normalization) {

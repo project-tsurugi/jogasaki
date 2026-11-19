@@ -62,7 +62,6 @@
 #include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/dist/remote_function_id_registry.h>
 #include <jogasaki/dist/rpc_remote_catalog_fetcher.h>
-#include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/plan/compile_option.h>
 #include <jogasaki/error_code.h>
@@ -636,21 +635,14 @@ TEST_F(remote_catalog_rpc_test, empty_catalog_stream_builds_an_empty_result_and_
     EXPECT_EQ(2, remote_.calls);
 }
 
-TEST_F(remote_catalog_rpc_test, snapshot_and_rpc_fetchers_preserve_the_same_catalog_contract) {
+TEST_F(remote_catalog_rpc_test, rpc_preserves_the_described_catalog_contract) {
     auto source = remote_catalog(true);
     remote_.handler = std::make_shared<encoding_handler>(source);
-    dist::remote_catalog_snapshot::locations_type locations{};
-    auto table = source->schema_provider().find("remote_schema")->storage_provider().find_table("T");
-    ASSERT_TRUE(table);
-    locations.emplace(table.get(), "worker");
-    auto snapshot = std::make_shared<dist::remote_catalog_snapshot>(
-        dist::remote_catalog_snapshot::catalogs_type{source}, locations);
-    dist::snapshot_remote_catalog_fetcher fixture{snapshot};
     dist::rpc_remote_catalog_fetcher rpc{};
     dist::remote_catalog_information expected{}, actual{};
     std::string diagnostic{};
     dist::remote_catalog_reference reference{"remote_source", "worker"};
-    ASSERT_EQ(status::ok, fixture.fetch(reference, {}, {}, expected, diagnostic)) << diagnostic;
+    ASSERT_EQ(status::ok, dist::describe_remote_catalog(*source, expected, diagnostic)) << diagnostic;
     ASSERT_EQ(status::ok, rpc.fetch(reference, db_impl()->remote_server_channels().find_channel("worker"),
         std::chrono::system_clock::now() + std::chrono::seconds(5), actual, diagnostic)) << diagnostic;
     ASSERT_EQ(1, actual.schemas.size()); ASSERT_EQ(1, expected.schemas.size());

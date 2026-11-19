@@ -19,7 +19,7 @@ def free_port():
     port = int(base) + _next_test_port if base else 0
     if base:
         if _next_test_port >= 4:
-            raise RuntimeError('fixture groups reserve four node ports and one proxy port')
+            raise RuntimeError('test groups reserve four node ports and one proxy port')
         _next_test_port += 1
     with socket.socket() as channel:
         channel.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -33,7 +33,7 @@ def rows(output):
 
 class Node:
     def __init__(self, root, name, args, worker_grpc, coordinator=False, remote=False, minimal_roles=False,
-                 formal_catalog=False, ports=None):
+                 ports=None):
         self.root = root / name
         self.root.mkdir()
         (self.root / 'pid').mkdir()
@@ -43,7 +43,6 @@ class Node:
         self.coordinator, self.remote = coordinator, remote
         self.catalog_enabled = args.catalog_routing
         self.minimal_roles = minimal_roles
-        self.formal_catalog = formal_catalog
         self.process = None
         self.log = None
         self.generation = 0
@@ -55,12 +54,6 @@ class Node:
         client_config = f"""[distributed_query_client]
 name=worker
 uri=dns:///127.0.0.1:{self.worker_grpc}
-"""
-        if self.formal_catalog and self.coordinator and not self.catalog_enabled:
-            client_config += 'catalog_source=disabled\n'
-        if not self.formal_catalog:
-            client_config += f"""catalog_source={'fixture' if self.coordinator and self.catalog_enabled else 'disabled'}
-fixture_path={self.root.parent / 'catalog.json' if self.coordinator and self.catalog_enabled else ''}
 """
         if self.minimal_roles and not self.coordinator:
             client_config = ''

@@ -56,8 +56,7 @@ struct remote_catalog_entry {
 /**
  * @brief obtains one complete remote catalog from a remote server.
  * @details The GetRemoteCatalog client (L3-07 stream, fragment reassembly and wire validation) is supplied
- * through this interface: rpc_remote_catalog_fetcher for catalog_source=rpc, snapshot_remote_catalog_fetcher for
- * the development fixture. Called only from remote_catalog_manager::create(), never retried automatically.
+ * through rpc_remote_catalog_fetcher. Called only from remote_catalog_manager::create(), never retried automatically.
  */
 class remote_catalog_fetcher {
 public:

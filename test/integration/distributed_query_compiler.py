@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Formal compiler API acceptance on two real Bootstrap processes (no catalog fixture).
 
-Build with FIXTURES=OFF. Normal DDL allocates and persists definition IDs;
+Normal DDL allocates and persists definition IDs;
 no fixed-ID metadata helper is required.
 """
 import argparse
@@ -37,10 +37,9 @@ def main():
     args.database_name_prefix = getpass.getuser() + '-native-compiler'
     args.work_dir.mkdir(parents=True, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix='native-compiler-', dir=args.work_dir))
-    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True,
-                  formal_catalog=True, ports=(args.port_base, args.port_base + 1))
+    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True, ports=(args.port_base, args.port_base + 1))
     coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True,
-                       minimal_roles=True, formal_catalog=True,
+                       minimal_roles=True,
                        ports=(args.port_base + 2, args.port_base + 3))
     result = {'status': 'running', 'catalogSource': 'CREATE FOREIGN CATALOG / RPC',
               'fixture': False, 'definitionIDSource': 'ordinary-DDL', 'cases': [], 'stops': [], 'cleanupErrors': []}

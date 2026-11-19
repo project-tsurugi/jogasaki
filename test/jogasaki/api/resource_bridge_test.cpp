@@ -300,27 +300,6 @@ TEST_F(resource_bridge_test, index_selection_cfg_out_of_range) {
     }
 }
 
-TEST_F(resource_bridge_test, fixture_metadata_does_not_create_local_tables) {
-    if (!dist::distributed_query_fixtures_available()) { GTEST_SKIP(); }
-    auto path = std::filesystem::temp_directory_path() / ("jogasaki-bridge-fixture-" + std::to_string(::getpid()) + ".json");
-    std::ofstream{path} << R"({"version":1,"catalogs":[{"name":"remote_catalog","server":"worker","schemas":[{"name":"public","tables":[{"name":"remote_only","columns":[{"name":"id","type":"bigint","nullable":false}],"primary_key":["id"]}]}]}]})";
-    db_teardown();
-    auto cfg = std::make_shared<configuration>();
-    cfg->distributed_query_coordinator_enabled(true);
-    cfg->distributed_query_remote_servers({{"worker", "dns:///localhost:12345", false, dist::root_certificate_source::none, {}}});
-    cfg->distributed_query_catalog({dist::remote_catalog_source::fixture, path.string()});
-    db_setup(cfg);
-    std::filesystem::remove(path);
-    ASSERT_TRUE(db_impl()->remote_catalogs());
-    EXPECT_EQ(1, db_impl()->remote_catalogs()->catalogs().size());
-    EXPECT_FALSE(db_impl()->tables()->find_table("remote_only"));
-    auto borrowed = db_impl()->remote_catalogs();
-    execute_statement("CREATE TABLE local_only (id BIGINT PRIMARY KEY)");
-    EXPECT_TRUE(db_impl()->tables()->find_table("local_only"));
-    db_teardown();
-    EXPECT_EQ(1, borrowed->catalogs().size());
-    db_setup();
-}
 
 
 TEST_F(resource_bridge_test, remote_catalog_failure_allows_database_start_retry) {
@@ -328,10 +307,9 @@ TEST_F(resource_bridge_test, remote_catalog_failure_allows_database_start_retry)
     auto cfg = db_impl()->configuration();
     cfg->distributed_query_coordinator_enabled(true);
     cfg->distributed_query_remote_servers({});
-    cfg->distributed_query_catalog({dist::remote_catalog_source::rpc, {}});
     EXPECT_EQ(status::err_invalid_argument, db_impl()->start());
     cfg->distributed_query_remote_servers({{"worker", "dns:///localhost:12345", false, dist::root_certificate_source::none, {}}});
-    // nothing listens on the worker: catalog_source=rpc starts empty and does not call GetRemoteCatalog
+    // nothing listens on the worker: catalog management starts empty and does not call GetRemoteCatalog
     ASSERT_EQ(status::ok, db_impl()->start());
     auto manager = db_impl()->remote_catalogs_manager();
     ASSERT_TRUE(manager);
@@ -362,13 +340,12 @@ TEST_F(resource_bridge_test, distributed_query_roles_are_independent) {
 
 TEST_F(resource_bridge_test, disabled_coordinator_ignores_invalid_client_settings) {
     for (auto const& role : {"", "[distributed_query_coordinator]\nenabled=false\n"}) {
-        std::stringstream ss{std::string{role} + "[distributed_query_client]\nname=worker\nuri=invalid\nsecure=invalid\ncatalog_source=unknown\n"};
+        std::stringstream ss{std::string{role} + "[distributed_query_client]\nname=worker\nuri=invalid\nsecure=invalid\n"};
         tateyama::api::configuration::whole cfg{ss, "[distributed_query_coordinator]\nenabled=false\n[distributed_query_remote]\nenabled=false\n[distributed_query_client]\nname=\nuri=\n"};
         auto converted = api::resource::convert_config(cfg);
         ASSERT_TRUE(converted);
         EXPECT_FALSE(converted->distributed_query_coordinator_enabled());
         EXPECT_TRUE(converted->distributed_query_remote_servers().empty());
-        EXPECT_EQ(dist::remote_catalog_source::disabled, converted->distributed_query_catalog().source);
     }
 }
 
@@ -391,7 +368,6 @@ TEST_F(resource_bridge_test, disabled_coordinator_does_not_initialize_channels_o
     auto cfg = db_impl()->configuration();
     cfg->distributed_query_coordinator_enabled(false);
     cfg->distributed_query_remote_servers({{"worker", "dns:///localhost:12345", false, dist::root_certificate_source::none, {}}});
-    cfg->distributed_query_catalog({dist::remote_catalog_source::rpc, {}});
     ASSERT_EQ(status::ok, db_impl()->start());
     EXPECT_FALSE(db_impl()->remote_server_channels().find_channel("worker"));
     EXPECT_FALSE(db_impl()->remote_catalogs());

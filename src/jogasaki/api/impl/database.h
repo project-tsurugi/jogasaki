@@ -376,7 +376,6 @@ private:
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<dist::remote_server_channel_manager> remote_server_channels_{
         std::make_unique<dist::remote_server_channel_manager>()};
-    std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
     std::shared_ptr<dist::remote_catalog_manager> remote_catalogs_manager_{};
     std::shared_ptr<dist::remote_function_id_registry> remote_function_ids_{};
     std::shared_ptr<dist::location_registry> remote_location_registry_{};

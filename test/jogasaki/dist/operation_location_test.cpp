@@ -71,7 +71,7 @@ namespace type = takatori::type;
 
 using step_set = std::multiset<takatori::plan::step const*>;
 
-// Stands in for the formal operation location query until the compiler provides it.
+// Test double for capture/selection validation; SQL compilation uses the formal compiler query.
 class dummy_operation_locations final : public dist::operation_locations {
 public:
     using steps_type = std::unordered_map<takatori::plan::step const*, location_id_set_type>;

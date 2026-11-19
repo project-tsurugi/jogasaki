@@ -47,7 +47,6 @@
 #include <jogasaki/dist/remote_catalog_information.h>
 #include <jogasaki/dist/remote_catalog_manager.h>
 #include <jogasaki/dist/remote_function_id_registry.h>
-#include <jogasaki/dist/snapshot_remote_catalog_fetcher.h>
 
 namespace jogasaki::testing {
 namespace {
@@ -424,82 +423,8 @@ TEST_F(remote_catalog_manager_test, reserved_local_server_is_rejected_before_fet
 }
 
 
-TEST_F(remote_catalog_manager_test, snapshot_fetcher_describes_published_catalog_and_rejects_wrong_reference) {
-    add_functions(fetcher->info);
-    ASSERT_EQ(status::ok, manager.create({"remote", "worker"}, channels, diagnostic));
-    // This source contains coordinator declarations: their definition IDs are not the original remote IDs.
-    snapshot_remote_catalog_fetcher source{manager.snapshot()};
-    auto references = source.references();
-    ASSERT_EQ(1, references.size());
-    EXPECT_EQ("remote", references[0].catalog_name);
-    EXPECT_EQ("worker", references[0].remote_server_name);
-    remote_catalog_information restored{};
-    ASSERT_EQ(status::ok, source.fetch(references[0], {}, {}, restored, diagnostic)) << diagnostic;
-    ASSERT_EQ(1, restored.tables.size());
-    EXPECT_EQ("t", restored.tables[0].name);
-    ASSERT_EQ(1, restored.columns.size());
-    EXPECT_EQ("id", restored.columns[0].name);
-    EXPECT_FALSE(restored.columns[0].nullable);
-    EXPECT_EQ(takatori::type::int8::tag, restored.columns[0].type->kind());
-    ASSERT_EQ(1, restored.functions.size());
-    EXPECT_EQ("f", restored.functions[0].name);
-    auto before = restored.tables[0].name;
-    auto counts = [](remote_catalog_information const& info) {
-        return std::vector<std::size_t>{info.schemas.size(), info.tables.size(), info.columns.size(),
-            info.indices.size(), info.functions.size(), info.aggregate_functions.size()};
-    };
-    auto before_counts = counts(restored);
-    EXPECT_EQ(status::err_not_found, source.fetch({"missing", "worker"}, {}, {}, restored, diagnostic));
-    EXPECT_EQ(before, restored.tables[0].name);
-    EXPECT_EQ(before_counts, counts(restored));
-    EXPECT_EQ(status::err_not_found, source.fetch({"remote", "other"}, {}, {}, restored, diagnostic));
-    EXPECT_EQ(before, restored.tables[0].name);
-    EXPECT_EQ(before_counts, counts(restored));
-}
 
-TEST_F(remote_catalog_manager_test, snapshot_fetcher_rejects_absent_or_inconsistent_placement) {
-    ASSERT_EQ(status::ok, manager.create({"remote", "worker"}, channels, diagnostic));
-    auto snapshot = manager.snapshot();
-    auto locations = snapshot->locations();
-    ASSERT_FALSE(locations.empty());
-    locations.clear();
-    auto unplaced = std::make_shared<remote_catalog_snapshot>(snapshot->catalogs(), locations);
-    snapshot_remote_catalog_fetcher missing{unplaced};
-    remote_catalog_information result{};
-    EXPECT_TRUE(missing.references().empty());
-    EXPECT_EQ(status::err_not_found, missing.fetch({"remote", "worker"}, {}, {}, result, diagnostic));
-    snapshot_remote_catalog_fetcher absent{{}};
-    EXPECT_TRUE(absent.references().empty());
-    EXPECT_EQ(status::err_not_found, absent.fetch({"remote", "worker"}, {}, {}, result, diagnostic));
 
-    fetcher->info.tables.push_back({43, "t2", {1}});
-    fetcher->info.columns.push_back({"id2", int8_type(), true});
-    fetcher->info.schemas[0].tables.push_back(1);
-    ASSERT_EQ(status::ok, manager.create({"mixed", "worker"}, channels, diagnostic));
-    auto mixed = manager.snapshot();
-    auto placements = mixed->locations();
-    auto table = manager.find_catalog("mixed")->schema_provider().find("public")->storage_provider().find_table("t2");
-    ASSERT_TRUE(table);
-    placements.at(table.get()) = "other";
-    snapshot_remote_catalog_fetcher inconsistent{
-        std::make_shared<remote_catalog_snapshot>(mixed->catalogs(), placements)};
-    EXPECT_EQ(status::err_not_found, inconsistent.fetch({"mixed", "worker"}, {}, {}, result, diagnostic));
-    auto refs = inconsistent.references();
-    ASSERT_EQ(1, refs.size());
-    EXPECT_EQ("remote", refs[0].catalog_name);
-}
-
-TEST_F(remote_catalog_manager_test, snapshot_fetcher_does_not_select_a_catalog_without_tables) {
-    fetcher->info = {};
-    fetcher->info.schemas.push_back({"public", {}, {}});
-    add_functions(fetcher->info);
-    // Development fetcher uses table placement; RPC can transfer a function-only catalog.
-    ASSERT_EQ(status::ok, manager.create({"functions", "worker"}, channels, diagnostic)) << diagnostic;
-    snapshot_remote_catalog_fetcher source{manager.snapshot()};
-    EXPECT_TRUE(source.references().empty());
-    remote_catalog_information result{};
-    EXPECT_EQ(status::err_not_found, source.fetch({"functions", "worker"}, {}, {}, result, diagnostic));
-}
 
 TEST(remote_function_id_registry_test, exhaustion_is_atomic_and_preserves_output_lease) {
     using id_type = remote_function_id_lease::definition_id_type;

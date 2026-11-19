@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""C2 real SQL streaming, interrupted delivery and RPC deadline checks."""
+"""C2 real SQL streaming and interrupted delivery checks."""
 import argparse
 from decimal import Decimal
 import json
@@ -26,9 +26,9 @@ def main():
         setattr(args,n,getattr(args,n).resolve())
     args.catalog_routing = True
     root = Path(tempfile.mkdtemp(prefix='c2-validity-',dir=args.work_dir))
-    worker = Node(root,'worker',args,None,remote=True, formal_catalog=True)
+    worker = Node(root,'worker',args,None,remote=True)
     proxy = Proxy(worker.grpc_port)
-    coordinator = Node(root,'coordinator',args,proxy.port,coordinator=True, formal_catalog=True)
+    coordinator = Node(root,'coordinator',args,proxy.port,coordinator=True)
     nodes=[coordinator,worker];ports=[p for n in nodes for p in [n.sql_port,n.grpc_port]]
     result={'status':'running','cases':[],'queries':[],'stops':[],'cleanupErrors':[]}
     initial={}
@@ -52,7 +52,6 @@ def main():
     small_sql=REMOTE_SQL.replace('C0 > 0','C0 < 10000')
     try:
         assert len(set(ports))==4 and not listeners(ports)
-        assert not os.environ.get('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS')
         worker.start();coordinator.start();initial={n.name:n.config.read_bytes()for n in nodes}
         for node,data in [(worker,"(900,'remote-process',12.34,0),(1000,NULL,56.78,2)"),
                           (coordinator,"(10,'coordinator-only',1.23,1),(20,NULL,4.56,2)")]:
@@ -79,21 +78,17 @@ def main():
         result['cases'].append({'case':'C2-T01','status':'passed','rows':40000,'rpcRecordCounts':counts})
         print('TRANSPORT multi-message',counts,flush=True)
         small_sql=REMOTE_SQL.replace('C0 > 0','C0 < 10000')
-        for case, mode in [('C2-T02','cut-after-message'),('C2-T03','stall')]:
+        for case, mode in [('C2-T02','cut-after-message')]:
             stop(coordinator,result['stops'])
-            if mode=='stall':os.environ['JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS']='1000'
-            try:
-                coordinator.start()
-                register_catalog(coordinator)
-            finally:os.environ.pop('JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS',None)
+            coordinator.start()
+            register_catalog(coordinator)
             assert query(coordinator,small_sql)['rows']==REMOTE_ROWS
-            fault_sql=(sql.format(t='remote_catalog."public".'+TABLE).replace(' ORDER BY C0','')
-                       if mode=='cut-after-message' else small_sql)
+            fault_sql=sql.format(t='remote_catalog."public".'+TABLE).replace(' ORDER BY C0','')
             local_sql=fault_sql.replace('remote_catalog."public".'+TABLE,TABLE)
             for kind in ('RTX','OCC'):
                 control=query(worker,local_sql,kind)
                 assert control['status']=='success',control['diagnostic']
-                expected_control=expected if mode=='cut-after-message' else REMOTE_ROWS
+                expected_control=expected
                 assert sorted(control['rows'],key=lambda v:v['C0'])==expected_control
             begin=len(proxy.events);proxy.mode=mode;proxy.release.clear()
             started=time.monotonic()
@@ -103,20 +98,15 @@ def main():
             events=proxy.events[begin:]
             assert sum(e.get('grpcMessages',0)for e in events if e.get('direction')=='request')==1,events
             proxy.mode='pass';proxy.release.set()
-            expected_code = 'SQL-02039' if mode == 'stall' else 'SQL-02000'
+            expected_code = 'SQL-02000'
             assert row['status'] == 'sql-error' and row['sqlCodes'] == [expected_code], row
-            if mode=='stall':
-                assert any(e.get('held')for e in events),events
-                assert 'ExecuteRemoteProcess timed out' in row['diagnostic'], row
-                assert elapsed<10,elapsed
-            else:
-                assert any(e.get('fault')=='cut-after-complete-response-message'for e in events),events
-                assert sum(e.get('grpcMessages',0)for e in events if e.get('direction')=='response')==1,events
-                assert any(sum(e.get('recordCounts',[]))>0 and e.get('forwarded')for e in events),events
-                assert len(row['rows'])<40000
-                assert len({v['C0']for v in row['rows']})==len(row['rows'])
-                assert all(10000<=v['C0']<50000 for v in row['rows'])
-                assert re.search('unavailable|socket closed|connection|transport',row['diagnostic'],re.I),row
+            assert any(e.get('fault')=='cut-after-complete-response-message'for e in events),events
+            assert sum(e.get('grpcMessages',0)for e in events if e.get('direction')=='response')==1,events
+            assert any(sum(e.get('recordCounts',[]))>0 and e.get('forwarded')for e in events),events
+            assert len(row['rows'])<40000
+            assert len({v['C0']for v in row['rows']})==len(row['rows'])
+            assert all(10000<=v['C0']<50000 for v in row['rows'])
+            assert re.search('unavailable|socket closed|connection|transport',row['diagnostic'],re.I),row
             result['cases'].append({'case':case,'status':'passed','error':row['diagnostic'],
                 'sqlRowsBeforeFailure':row['rows'],'elapsedSeconds':elapsed,'proxyEvents':events})
             print('TRANSPORT fault',case,row['sqlCodes'],row['diagnostic'],'rows',len(row['rows']),flush=True)

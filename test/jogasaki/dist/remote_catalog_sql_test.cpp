@@ -22,7 +22,6 @@
 #include <unistd.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
 
 #include <tateyama/proto/distributed_query/remote_catalog.grpc.pb.h>
 
@@ -40,6 +39,9 @@
 #include <yugawara/binding/extract.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/schema/provider.h>
+#include <yugawara/schema/configurable_provider.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <jogasaki/dist/remote_catalog_encoder.h>
 #include <jogasaki/dist/remote_write_target.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/api/api_test_base.h>
@@ -54,7 +56,7 @@
 #include <jogasaki/dist/remote_catalog_provider.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/dist/remote_execution_block_decoder.h>
-#include <jogasaki/dist/remote_execution_result.h>
+#include <jogasaki/test_utils/int8_remote_result.h>
 #include <jogasaki/executor/common/foreign_catalog_statement.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/global.h>
@@ -71,6 +73,34 @@ namespace {
 namespace wire = tateyama::grpc::proto;
 class catalog_worker : public wire::DistributedQueryService::Service {
 public:
+    std::string schema{};
+    grpc::Status GetRemoteCatalog(grpc::ServerContext*, wire::RemoteCatalogRequest const*,
+            grpc::ServerWriter<wire::RemoteCatalogResponse>* writer) override {
+        auto storage = std::make_shared<yugawara::storage::configurable_provider>();
+        auto table = storage->add_table({"T", {{"C0", takatori::type::int8{},
+            yugawara::variable::criteria{yugawara::variable::nullity{false}}}}});
+        table->definition_id(1234);
+        auto index = std::make_shared<yugawara::storage::index>(table, "T",
+            std::vector<yugawara::storage::index::key>{{table->columns()[0]}},
+            std::vector<std::reference_wrapper<yugawara::storage::column const>>{},
+            yugawara::storage::index_feature_set{yugawara::storage::index_feature::primary,
+                yugawara::storage::index_feature::unique, yugawara::storage::index_feature::scan,
+                yugawara::storage::index_feature::find});
+        index->definition_id(1257);
+        storage->add_index(index);
+        auto schemas = std::make_shared<yugawara::schema::configurable_provider>();
+        schemas->add(yugawara::schema::declaration{std::nullopt, schema, storage});
+        yugawara::schema::catalog catalog{"source", std::nullopt, schemas};
+        wire::RemoteCatalogResponse response{};
+        response.set_sequence_number(0);
+        std::string diagnostic{};
+        if (dist::remote_catalog_encoder{}.encode(catalog, *response.mutable_catalog_fragment(), diagnostic)
+                != status::ok) {
+            return {grpc::StatusCode::INTERNAL, diagnostic};
+        }
+        return writer->Write(response) ? grpc::Status::OK
+            : grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
+    }
     std::int64_t value{};
     std::atomic_int calls{};
     std::promise<void> execution_started{};
@@ -84,7 +114,7 @@ public:
                 return {grpc::StatusCode::DEADLINE_EXCEEDED, "test did not resume execution"};
             }
         }
-        dist::remote_execution_result result{};
+        test_utils::int8_remote_result result{};
         auto block = dist::decode_remote_execution_block(request->execution_block().SerializeAsString());
         if (!block) return {grpc::StatusCode::INVALID_ARGUMENT, block.error};
         if (block.block->operators.front().source->definition_id != std::optional<std::uint64_t>{1257}) {
@@ -93,7 +123,7 @@ public:
         result.columns = block.block->result_schema; result.rows = {{value}};
         wire::RemoteProcessResult response{};
         std::string error{};
-        auto encoded = dist::deserialize_remote_execution_result(dist::serialize_remote_execution_result(result), error);
+        auto encoded = test_utils::deserialize_int8_remote_result(test_utils::serialize_int8_remote_result(result), error);
         if (!encoded) return {grpc::StatusCode::INTERNAL, error};
         for (auto const& row : encoded->encoded_rows) response.add_record_list(row);
         return writer->Write(response) ? grpc::Status::OK : grpc::Status{grpc::StatusCode::CANCELLED, "closed"};
@@ -104,30 +134,22 @@ class remote_catalog_sql_test : public ::testing::Test, public api_test_base {
 public:
     bool to_explain() override { return false; }
     void SetUp() override {
-        if (!dist::distributed_query_fixtures_available()) GTEST_SKIP();
+        a_.schema = "schema_a"; b_.schema = "schema_b";
         int first{}, second{};
         grpc::ServerBuilder a{}; a.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &first); a.RegisterService(&a_); server_a_ = a.BuildAndStart();
         grpc::ServerBuilder b{}; b.AddListeningPort("127.0.0.1:0", grpc::InsecureServerCredentials(), &second); b.RegisterService(&b_); server_b_ = b.BuildAndStart();
         ASSERT_TRUE(server_a_); ASSERT_TRUE(server_b_); a_.value = 101; b_.value = 202;
-        path_ = std::filesystem::temp_directory_path() / ("jogasaki-catalog-sql-" + std::to_string(getpid()) + ".json");
-        using json = nlohmann::json;
-        json table{{"name", "T"}, {"definition_id", 1234}, {"index_definition_id", 1257}, {"columns", json::array({{{"name", "C0"}, {"type", "bigint"}, {"nullable", false}}})}, {"primary_key", json::array({"C0"})}};
-        json catalogs = json::array();
-        for (auto const& location : {std::pair{"worker_a", "schema_a"}, std::pair{"worker_b", "schema_b"}}) {
-            catalogs.push_back({{"name", location.first}, {"server", location.first}, {"schemas", json::array({{{"name", location.second}, {"tables", json::array({table})}}})}});
-        }
-        std::ofstream{path_} << json{{"version", 1}, {"catalogs", catalogs}};
         auto cfg = std::make_shared<configuration>(); cfg->thread_pool_size(4); cfg->distributed_query_coordinator_enabled(true);
         cfg->distributed_query_remote_servers({
             {"worker_a", "127.0.0.1:" + std::to_string(first), false, dist::root_certificate_source::none, {}},
             {"worker_b", "127.0.0.1:" + std::to_string(second), false, dist::root_certificate_source::none, {}}});
-        cfg->distributed_query_catalog({dist::remote_catalog_source::fixture, path_.string()});
         db_setup(cfg);
+        execute_statement("CREATE FOREIGN CATALOG worker_a SERVER worker_a");
+        execute_statement("CREATE FOREIGN CATALOG worker_b SERVER worker_b");
     }
     void TearDown() override {
         if (db_) db_teardown();
         if (server_a_) server_a_->Shutdown(); if (server_b_) server_b_->Shutdown();
-        if (!path_.empty()) std::filesystem::remove(path_);
     }
     std::int64_t query(std::string_view text) {
         auto tx = utils::create_transaction(*db_, true, false);
@@ -157,7 +179,6 @@ public:
 protected:
     catalog_worker a_{}, b_{};
     std::unique_ptr<grpc::Server> server_a_{}, server_b_{};
-    std::filesystem::path path_{};
 };
 TEST_F(remote_catalog_sql_test, request_factory_connects_catalog_ddl_to_database_registry) {
     auto request = api::impl::create_request_context(*db_impl(), {}, {}, {}, {}, false, {});

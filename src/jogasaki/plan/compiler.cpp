@@ -688,21 +688,7 @@ static status create_prepared_statement(
     std::shared_ptr<dist::process_locations const> locations{};
     bool coordinated = result.statement().kind() == takatori::statement::statement_kind::execute
         && global::config_pool()->distributed_query_coordinator_enabled();
-    if (coordinated && ctx.operation_locations()) {
-        std::shared_ptr<dist::operation_locations const> operation_query{};
-        // Extract while the compiler result still owns its statement and query.
-        try {
-            operation_query = ctx.operation_locations()(result);
-        } catch (std::exception const& e) {
-            return set_operation_location_error(ctx, "failed to obtain operation locations: ", e);
-        }
-        if (operation_query) {
-            auto const& graph = unsafe_downcast<takatori::statement::execute>(result.statement()).execution_plan();
-            if (auto st = capture_operation_locations(graph, *operation_query, ctx, locations); st != status::ok) {
-                return st;
-            }
-        }
-    } else if (coordinated && ctx.symbol_locations() && result.operation_location_query()) {
+    if (coordinated && ctx.symbol_locations() && result.operation_location_query()) {
         auto const& graph = unsafe_downcast<takatori::statement::execute>(result.statement()).execution_plan();
         dist::compiler_operation_locations query{*result.operation_location_query(), *ctx.symbol_locations()};
         if (auto st = capture_operation_locations(graph, query, ctx, locations); st != status::ok) {
@@ -839,7 +825,7 @@ static status compile_analysis(
         selection.max_early_stop_limit_count() = cfg->index_max_early_stop_limit_count();
     }
 
-    if (cfg && cfg->distributed_query_coordinator_enabled() && ctx.symbol_locations() && !ctx.operation_locations()) {
+    if (cfg && cfg->distributed_query_coordinator_enabled() && ctx.symbol_locations()) {
         dist::configure_remote_compilation(c_options, ctx.symbol_locations());
     }
 

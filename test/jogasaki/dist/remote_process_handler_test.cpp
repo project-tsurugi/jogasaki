@@ -52,7 +52,7 @@
 #include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/dist/remote_execution_block_proto.h>
 #include <jogasaki/dist/remote_execution_block_decoder.h>
-#include <jogasaki/dist/remote_execution_result.h>
+#include <jogasaki/test_utils/int8_remote_result.h>
 #include <jogasaki/dist/remote_process_handler.h>
 #include <jogasaki/dist/remote_type_codec.h>
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
@@ -237,7 +237,7 @@ TEST_F(remote_process_handler_test, rebound_worker_process_executes_locally_with
     config->distributed_query_coordinator_enabled(was_enabled);
     ASSERT_TRUE(result.success) << result.error;
     std::string error{};
-    auto decoded = dist::deserialize_remote_execution_result(result.payload, error);
+    auto decoded = test_utils::deserialize_int8_remote_result(result.payload, error);
     ASSERT_TRUE(decoded) << error;
     ASSERT_EQ(1, decoded->rows.size());
     ASSERT_EQ(1, decoded->rows[0].size());
@@ -448,7 +448,7 @@ TEST_F(remote_process_handler_test, record_sink_reads_fresh_rows_and_nullable_va
     auto payload = dist::serialize_remote_execution_block_proto(block);
     dist::remote_process_handler handler{*db_};
     auto read = [&] {
-        dist::remote_execution_result wire{};
+        test_utils::int8_remote_result wire{};
         wire.columns = block.result_schema;
         std::size_t batches{};
         std::size_t cancellation_checks{};
@@ -465,7 +465,7 @@ TEST_F(remote_process_handler_test, record_sink_reads_fresh_rows_and_nullable_va
         EXPECT_EQ(1, batches);
         EXPECT_GT(cancellation_checks, 0);
         std::string error{};
-        auto decoded = dist::deserialize_remote_execution_result(dist::serialize_remote_execution_result(wire), error);
+        auto decoded = test_utils::deserialize_int8_remote_result(test_utils::serialize_int8_remote_result(wire), error);
         EXPECT_TRUE(decoded) << error;
         return decoded;
     };
@@ -890,7 +890,7 @@ TEST_F(remote_process_handler_test, resolves_sales_output_in_schema_column_order
         auto response = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
         ASSERT_TRUE(response.success) << response.error;
         std::string error{};
-        auto result = dist::deserialize_remote_execution_result(response.payload, error);
+        auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
         ASSERT_TRUE(result) << error;
         ASSERT_EQ(3, result->rows.size());
         auto number_position = reversed ? 1 : 0;
@@ -919,7 +919,7 @@ TEST_F(remote_process_handler_test, resolves_sparse_external_ids_and_schema_colu
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     ASSERT_TRUE(response.success) << response.error;
     std::string error{};
-    auto result = dist::deserialize_remote_execution_result(response.payload, error);
+    auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
     ASSERT_TRUE(result) << error;
     ASSERT_EQ(2, result->rows.size());
     EXPECT_EQ(12000, result->rows[0][0]); EXPECT_EQ(101, result->rows[0][1]);
@@ -978,7 +978,7 @@ TEST_F(remote_process_handler_test, reads_worker_table_in_independent_rtx) {
     auto response = handler(dist::serialize_remote_execution_block_proto(scan_block()));
     ASSERT_TRUE(response.success) << response.error;
     std::string error{};
-    auto result = dist::deserialize_remote_execution_result(response.payload, error);
+    auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
     ASSERT_TRUE(result) << error;
     ASSERT_EQ(2, result->rows.size());
     EXPECT_EQ(10, result->rows[0][0]);
@@ -1018,7 +1018,7 @@ TEST_F(remote_process_handler_test, filters_and_projects_worker_rows) {
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     ASSERT_TRUE(response.success) << response.error;
     std::string error{};
-    auto result = dist::deserialize_remote_execution_result(response.payload, error);
+    auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
     ASSERT_TRUE(result) << error;
     ASSERT_EQ(1, result->rows.size());
     EXPECT_EQ(30, result->rows[0][0]);
@@ -1038,7 +1038,7 @@ TEST_F(remote_process_handler_test, executes_find_when_offer_is_stored_first) {
     auto response = handler(dist::serialize_remote_execution_block_proto(block));
     ASSERT_TRUE(response.success) << response.error;
     std::string error{};
-    auto result = dist::deserialize_remote_execution_result(response.payload, error);
+    auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
     ASSERT_TRUE(result) << error;
     ASSERT_EQ(1, result->rows.size());
     EXPECT_EQ(20, result->rows[0][0]);
@@ -1089,7 +1089,7 @@ TEST_F(remote_process_handler_test, executes_every_operator_storage_permutation)
         auto response = handler(dist::serialize_remote_execution_block_proto(block));
         ASSERT_TRUE(response.success) << response.error;
         std::string error{};
-        auto result = dist::deserialize_remote_execution_result(response.payload, error);
+        auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
         ASSERT_TRUE(result) << error;
         ASSERT_EQ(1, result->rows.size());
         EXPECT_EQ(30, result->rows[0][0]);
@@ -1627,7 +1627,7 @@ TEST_F(remote_process_handler_test, requires_type_payload_at_each_explicit_type_
     auto displayed = handler(dist::serialize_remote_execution_block_proto(valid));
     ASSERT_TRUE(displayed.success) << displayed.error;
     std::string diagnostic{};
-    auto result = dist::deserialize_remote_execution_result(displayed.payload, diagnostic);
+    auto result = test_utils::deserialize_int8_remote_result(displayed.payload, diagnostic);
     ASSERT_TRUE(result) << diagnostic;
     ASSERT_EQ(1U, result->rows.size());
     EXPECT_EQ(7, result->rows[0][0]);
@@ -1820,7 +1820,7 @@ TEST_F(remote_process_handler_test, executes_find_and_bounded_scan_keys) {
         auto response = handler(dist::serialize_remote_execution_block_proto(block));
         ASSERT_TRUE(response.success) << response.error;
         std::string error{};
-        auto result = dist::deserialize_remote_execution_result(response.payload, error);
+        auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
         ASSERT_TRUE(result) << error;
         ASSERT_EQ(1U, result->rows.size());
         ASSERT_EQ(1U, result->rows.front().size());
@@ -1829,7 +1829,7 @@ TEST_F(remote_process_handler_test, executes_find_and_bounded_scan_keys) {
             source.upper_endpoint_kind = dist::remote_endpoint_kind::prefixed_exclusive;
             auto excluded = handler(dist::serialize_remote_execution_block_proto(block));
             ASSERT_TRUE(excluded.success) << excluded.error;
-            auto empty = dist::deserialize_remote_execution_result(excluded.payload, error);
+            auto empty = test_utils::deserialize_int8_remote_result(excluded.payload, error);
             ASSERT_TRUE(empty) << error;
             EXPECT_TRUE(empty->rows.empty());
         }
@@ -1882,7 +1882,7 @@ TEST_F(remote_process_handler_test, creator_schema_order_and_nullability_reach_w
     auto response = handler(dist::serialize_remote_execution_block_proto(*block));
     ASSERT_TRUE(response.success) << response.error;
     std::string error{};
-    auto result = dist::deserialize_remote_execution_result(response.payload, error);
+    auto result = test_utils::deserialize_int8_remote_result(response.payload, error);
     ASSERT_TRUE(result) << error;
     ASSERT_EQ(2U, result->rows.size());
     EXPECT_EQ((std::vector<std::optional<std::int64_t>>{205, 18000}), result->rows[0]);
@@ -1996,7 +1996,7 @@ TEST_F(remote_process_handler_test, validates_post_order_expression_indexes_and_
     auto result = dist::remote_process_handler{*db_}(project.SerializeAsString());
     ASSERT_TRUE(result.success) << result.error;
     std::string decode_error{};
-    auto rows = dist::deserialize_remote_execution_result(result.payload, decode_error);
+    auto rows = test_utils::deserialize_int8_remote_result(result.payload, decode_error);
     ASSERT_TRUE(rows); ASSERT_EQ(1U, rows->rows.size());
     EXPECT_EQ(7, rows->rows[0][0]);
     project.mutable_operators(1)->mutable_project_columns(0)->clear_expression_index();
@@ -2018,7 +2018,7 @@ TEST_F(remote_process_handler_test, validates_post_order_expression_indexes_and_
     auto filter_wire = dist::encode_remote_execution_block(filter_base);
     result = dist::remote_process_handler{*db_}(filter_wire.SerializeAsString());
     ASSERT_TRUE(result.success) << result.error;
-    rows = dist::deserialize_remote_execution_result(result.payload, decode_error);
+    rows = test_utils::deserialize_int8_remote_result(result.payload, decode_error);
     ASSERT_TRUE(rows); ASSERT_EQ(1U, rows->rows.size()); EXPECT_EQ(205, rows->rows[0][0]);
     filter_wire.mutable_operators(1)->clear_filter_expression_index();
     EXPECT_NE(std::string::npos,
@@ -2114,7 +2114,7 @@ TEST_F(remote_process_handler_test, validates_but_does_not_evaluate_unused_expre
     auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
     ASSERT_TRUE(result.success) << result.error;
     std::string error{};
-    auto rows = dist::deserialize_remote_execution_result(result.payload, error);
+    auto rows = test_utils::deserialize_int8_remote_result(result.payload, error);
     ASSERT_TRUE(rows) << error;
     ASSERT_EQ(1U, rows->rows.size());
     EXPECT_EQ(205, rows->rows[0][0]);
@@ -2169,7 +2169,7 @@ TEST_F(remote_process_handler_test, enforces_expansion_boundary_across_shared_ro
     auto result = dist::remote_process_handler{*db_}(dist::serialize_remote_execution_block_proto(block));
     ASSERT_TRUE(result.success) << result.error;
     std::string error{};
-    auto rows = dist::deserialize_remote_execution_result(result.payload, error);
+    auto rows = test_utils::deserialize_int8_remote_result(result.payload, error);
     ASSERT_TRUE(rows) << error;
     ASSERT_EQ(1U, rows->rows.size());
     ASSERT_EQ(94U, rows->rows[0].size());

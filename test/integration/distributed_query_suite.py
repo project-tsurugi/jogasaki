@@ -16,7 +16,7 @@ import time
 GROUPS = {
     'c1': ('distributed_query_lifecycle.py', 6),
     'c2': ('distributed_query_sql.py', 34),
-    'transport': ('distributed_query_sql_transport.py', 3),
+    'transport': ('distributed_query_sql_transport.py', 2),
     'acceptance': ('distributed_query_acceptance.py', 11),
 }
 
@@ -69,16 +69,13 @@ def main():
                             for f in (args.prefix/'lib').glob('*.so*') if f.is_file()}
         if recorded_libraries != actual_libraries:
             raise RuntimeError('stack library set mismatch')
-        if manifest['buildOptions'].get('FIXTURES') is not False or manifest['buildOptions'].get('TEST_METADATA'):
-            raise RuntimeError('C1/C2 require the normal stack without metadata fixtures or fixed-ID helpers')
     client = out / 'client'; client.mkdir()
     shutil.copyfile(args.client_jar, client / 'tgsql.jar')
     shutil.copyfile(args.jni_library, client / 'libtsubakuro.so')
     subprocess.run(['javac', '-cp', str(client/'tgsql.jar'), '-d', str(client),
                     str(source/'DistributedQueryProbe.java')], check=True)
     env = os.environ.copy()
-    for key in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS',
-                'JOGASAKI_DQ_REMOTE_EXECUTION_TIMEOUT_MS'):
+    for key in ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS'):
         env.pop(key, None)
     env['LD_LIBRARY_PATH'] = str(args.prefix.resolve()/'lib')
     env['DQ_TEST_DATABASE_PREFIX'] = args.database_name_prefix

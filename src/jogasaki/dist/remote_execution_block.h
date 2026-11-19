@@ -157,7 +157,7 @@ struct remote_execution_block_generation_error {
  * @details This preserves operator order, value connections, and source
  *     storage/column/range structure and the remote execution scalar expression subset.
  *     Result schema types are populated when compiled_info is supplied.
- *     This development subset does not represent full L03 type support.
+ *     Unsupported operators, expressions, and types are rejected.
  * @param error optional failure status and reason, reset to ok on success. No partial block is returned.
  */
 [[nodiscard]] std::optional<remote_execution_block> create_remote_execution_block(

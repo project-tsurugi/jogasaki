@@ -127,7 +127,7 @@ class Proxy:
                             update = (4).to_bytes(3, 'big') + bytes([8, 0]) + (0).to_bytes(4, 'big') + size.to_bytes(4, 'big')
                             self.send(src, update, 'request', state)
                         continue
-                    if direction == 'response' and kind == 0 and self.mode in ('stall', 'stall-active'):
+                    if direction == 'response' and kind == 0 and self.mode == 'stall-active':
                         ev['held'] = True
                         self.events.append(ev)
                         released = self.release.wait(timeout=45)

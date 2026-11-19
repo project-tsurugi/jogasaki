@@ -125,8 +125,8 @@ def main():
     args.catalog_routing = True  # Register the catalog through the real RPC.
     args.work_dir.mkdir(parents=True, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix='c1-', dir=args.work_dir))
-    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True, formal_catalog=True)
-    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True, minimal_roles=True, formal_catalog=True)
+    worker = Node(root, 'worker', args, None, remote=True, minimal_roles=True)
+    coordinator = Node(root, 'coordinator', args, worker.grpc_port, coordinator=True, minimal_roles=True)
     nodes = [coordinator, worker]
     ports = [port for node in nodes for port in (node.sql_port, node.grpc_port)]
     result = {'status': 'running', 'scenarios': [], 'stops': [], 'cleanupErrors': []}

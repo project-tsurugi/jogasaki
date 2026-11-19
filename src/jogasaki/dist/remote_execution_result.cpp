@@ -15,14 +15,12 @@
  */
 #include "remote_execution_result.h"
 
-#include <limits>
 #include <unordered_set>
 
 #include <takatori/type/primitive.h>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/proto/distributed_query/remote_execution_block.pb.h>
-#include <jogasaki/serializer/value_writer.h>
 #include <jogasaki/utils/field_types.h>
 
 #include "remote_record_codec.h"
@@ -30,19 +28,6 @@
 
 namespace jogasaki::dist {
 namespace proto = jogasaki::proto::distributed_query;
-namespace {
-class buffer_writer {
-public:
-    bool write(char const* data, std::size_t length) {
-        bytes_.append(data, length);
-        return true;
-    }
-    std::string release() { return std::move(bytes_); }
-
-private:
-    std::string bytes_{};
-};
-} // namespace
 std::string serialize_remote_execution_result(remote_execution_result const& result) {
     proto::RemoteExecutionResult message{};
     message.set_version(2);
@@ -53,24 +38,8 @@ std::string serialize_remote_execution_result(remote_execution_result const& res
         out->set_nullable(column.nullable);
         out->set_type_payload(column.type_payload);
     }
-    if (!result.encoded_rows.empty()) {
-        for (auto const& row : result.encoded_rows) {
-            message.add_encoded_rows(row);
-        }
-    } else {
-        for (auto const& row : result.rows) {
-            buffer_writer buffer{};
-            serializer::value_writer<buffer_writer> out{buffer};
-            out.write_row_begin(row.size());
-            for (auto const& value : row) {
-                if (value) {
-                    out.write_int(*value);
-                } else {
-                    out.write_null();
-                }
-            }
-            message.add_encoded_rows(buffer.release());
-        }
+    for (auto const& row : result.encoded_rows) {
+        message.add_encoded_rows(row);
     }
     return message.SerializeAsString();
 }
@@ -90,7 +59,6 @@ std::optional<remote_execution_result> deserialize_remote_execution_result(std::
     std::vector<meta::field_type> fields{};
     boost::dynamic_bitset<std::uint64_t> nullable(message.schema().columns_size());
     std::unordered_set<std::uint64_t> ids{};
-    bool all_int8 = true;
     for (auto const& column : message.schema().columns()) {
         auto type = decode_remote_type(column.type_payload());
         if (!type || !ids.emplace(column.column_id()).second) {
@@ -115,7 +83,6 @@ std::optional<remote_execution_result> deserialize_remote_execution_result(std::
                 error = "unsupported remote result type";
                 return {};
         }
-        all_int8 = all_int8 && type->kind() == k::int8;
         nullable[fields.size()] = column.nullable();
         fields.emplace_back(utils::type_for(*type));
         result.columns.push_back({column.column_id(), column.type(), column.nullable(), column.type_payload()});
@@ -127,17 +94,6 @@ std::optional<remote_execution_result> deserialize_remote_execution_result(std::
             return {};
         }
         result.encoded_rows.emplace_back(encoded);
-        if (all_int8) {
-            std::vector<std::optional<std::int64_t>> row{};
-            for (std::size_t i = 0; i < meta->field_count(); ++i) {
-                if (meta->nullable(i) && record.ref().is_null(meta->nullity_offset(i))) {
-                    row.emplace_back(std::nullopt);
-                } else {
-                    row.emplace_back(record.ref().get_value<std::int64_t>(meta->value_offset(i)));
-                }
-            }
-            result.rows.emplace_back(std::move(row));
-        }
     }
     return result;
 }

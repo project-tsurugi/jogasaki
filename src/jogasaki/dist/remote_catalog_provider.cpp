@@ -23,7 +23,6 @@
 
 #include <jogasaki/dist/remote_catalog_provider.h>
 
-#include "fixture_remote_catalog_provider.h"
 
 namespace jogasaki::dist {
 
@@ -85,107 +84,6 @@ remote_catalog_snapshot::remote_definition(yugawara::aggregate::declaration cons
     auto it = definitions_.find(&function);
     return it == definitions_.end() || it->second.kind != remote_declaration_kind::aggregate_function ? nullptr
                                                                                                       : &it->second;
-}
-
-std::string remote_catalog_snapshot::validation_error(std::vector<remote_server_configuration> const& servers) const {
-    std::unordered_set<std::string> configured{};
-    for (auto const& server : servers) {
-        if (server.name.empty() || !configured.emplace(server.name).second) {
-            return "invalid or duplicate remote server name";
-        }
-    }
-    std::unordered_set<yugawara::storage::table const*> owned{};
-    std::unordered_set<std::string> names{};
-    std::string error{};
-    for (auto const& catalog : catalogs_) {
-        if (!catalog || catalog->name().empty() || !names.emplace(catalog->name()).second) {
-            return "invalid or duplicate remote catalog";
-        }
-        std::unordered_set<std::string> schemas{};
-        catalog->schema_provider().each([&](auto const& schema) {
-            if (!error.empty()) return;
-            if (!schema || schema->name().empty() || !schemas.emplace(schema->name()).second) {
-                error = "invalid or duplicate remote schema";
-                return;
-            }
-            schema->storage_provider().each_relation([&](auto, auto const& relation) {
-                if (!error.empty()) return;
-                // Use the callback relation; a provider lookup would reacquire its lock.
-                auto table = std::dynamic_pointer_cast<yugawara::storage::table const>(relation);
-                if (!table) {
-                    error = "unsupported remote catalog relation";
-                    return;
-                }
-                owned.emplace(table.get());
-                auto* server = remote_server(*table);
-                if (!server || configured.count(*server) == 0) {
-                    error = "missing or unknown remote table placement";
-                }
-            });
-        });
-        if (!error.empty()) return error;
-    }
-    for (auto const& entry : locations_) {
-        if (owned.count(entry.first) == 0) {
-            return "remote placement refers to an unowned table";
-        }
-    }
-    return {};
-}
-
-status load_remote_catalogs(remote_catalog_options const& options,
-                            std::vector<remote_server_configuration> const& servers,
-                            std::shared_ptr<remote_catalog_snapshot const>& result, std::string& diagnostic,
-                            remote_catalog_provider* rpc_provider) {
-    result.reset();
-    diagnostic.clear();
-    if (options.source != remote_catalog_source::fixture && !options.fixture_path.empty()) {
-        diagnostic = "fixture_path requires catalog_source=fixture";
-        return status::err_invalid_argument;
-    }
-    std::shared_ptr<remote_catalog_snapshot const> snapshot{};
-    status st{};
-    switch (options.source) {
-        case remote_catalog_source::disabled:
-            snapshot = std::make_shared<remote_catalog_snapshot>();
-            st = status::ok;
-            break;
-        case remote_catalog_source::rpc:
-            if (!rpc_provider) {
-                diagnostic = "remote catalog RPC provider is not implemented";
-                return status::err_not_implemented;
-            }
-            try {
-                st = rpc_provider->load(servers, snapshot, diagnostic);
-            } catch (std::exception const& e) {
-                diagnostic = std::string{"remote catalog provider failed: "} + e.what();
-                return status::err_io_error;
-            }
-            break;
-        case remote_catalog_source::fixture:
-            if (options.fixture_path.empty()) {
-                diagnostic = "catalog_source=fixture requires fixture_path";
-                return status::err_invalid_argument;
-            }
-            st = load_fixture_catalogs(options.fixture_path, servers, snapshot, diagnostic);
-            break;
-        default:
-            diagnostic = "invalid remote catalog source";
-            return status::err_invalid_argument;
-    }
-    if (st != status::ok) {
-        return st;
-    }
-    if (!snapshot) {
-        diagnostic = "remote catalog provider returned no snapshot";
-        return status::err_invalid_state;
-    }
-    if (auto error = snapshot->validation_error(servers); !error.empty()) {
-        diagnostic = std::move(error);
-        return status::err_invalid_argument;
-    }
-    result = std::move(snapshot);
-    return status::ok;
 }
 
 } // namespace jogasaki::dist

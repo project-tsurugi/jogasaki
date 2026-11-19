@@ -111,7 +111,7 @@ Normal CREATE TABLE and CREATE INDEX assign persistent definition IDs. Reservati
 are committed independently of the SQL transaction and are not undone by rollback
 or DROP. Existing metadata without IDs is upgraded on database startup.
 
-C1/C2 use the standard Bootstrap server with `ENABLE_DISTRIBUTED_QUERY_FIXTURES=OFF`.
+C1/C2 use the standard Bootstrap server.
 They create ordinary tables and register `remote_catalog` with
 `CREATE FOREIGN CATALOG remote_catalog SERVER worker`, then query
 `remote_catalog."public".C1_DUMMY_T` in an RTX. Repeat catalog registration after

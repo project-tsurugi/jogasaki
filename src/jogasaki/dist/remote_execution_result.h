@@ -17,7 +17,6 @@
 
 
 
-#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -29,7 +28,6 @@ namespace jogasaki::dist {
 
 struct remote_execution_result {
     std::vector<remote_result_column> columns{};
-    std::vector<std::vector<std::optional<std::int64_t>>> rows{}; // Legacy fixture view.
     std::vector<std::string> encoded_rows{};
 };
 

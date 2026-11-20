@@ -823,15 +823,18 @@ static data::any round_decimal(data::any src, int32_t precision, evaluator_conte
         return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
     }
     auto value  = src.to<runtime_t<kind::decimal>>();
+    if (value.sign() == 0 || value.exponent() >= -precision) { return src; }
     auto type   = std::in_place_type<runtime_t<kind::decimal>>;
     auto one    = data::any{type, takatori::decimal::triple{+1, 0, 1, -precision}};
     auto remain = expr::remainder_any(src, one, ctx);
+    if (remain.error()) { return remain; }
     auto check  = remain.to<runtime_t<kind::decimal>>();
     if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return src; }
+    auto res = expr::subtract_any(src, remain, ctx);
+    if (res.error()) { return res; }
     if (value.sign() > 0) {
         auto half_value = takatori::decimal::triple{+1, 0, 5, -precision - 1};
         auto half       = data::any{type, half_value};
-        auto res        = expr::subtract_any(src, remain, ctx);
         auto com =
             expr::compare_any(takatori::scalar::comparison_operator::greater_equal, remain, half);
         if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {
@@ -841,7 +844,6 @@ static data::any round_decimal(data::any src, int32_t precision, evaluator_conte
     }
     auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -precision - 1};
     auto minus_half       = data::any{type, minus_half_value};
-    auto res              = expr::subtract_any(src, remain, ctx);
     auto com =
         expr::compare_any(takatori::scalar::comparison_operator::less_equal, remain, minus_half);
     if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {

@@ -242,9 +242,9 @@ public:
     mutable std::size_t enumerations{};
     mutable std::size_t primary_lookups{};
     bool observe{};
-    void each_index(index_consumer_type const& consumer) const override {
+    void each_table_index(storage::table const& table, index_consumer_type const& consumer) const override {
         ++enumerations;
-        storage::configurable_provider::each_index(consumer);
+        storage::configurable_provider::each_table_index(table, consumer);
     }
     std::shared_ptr<storage::index const> find_primary_index(storage::table const& table) const override {
         if (!observe) return storage::configurable_provider::find_primary_index(table);

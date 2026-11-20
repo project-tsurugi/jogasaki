@@ -95,9 +95,9 @@ public:
     mutable std::size_t primary_lookups{};
     mutable bool in_callback{};
 
-    void each_index(index_consumer_type const& consumer) const override {
+    void each_table_index(storage::table const& table, index_consumer_type const& consumer) const override {
         ++enumerations;
-        storage::configurable_provider::each_index([&](auto name, auto const& entry) {
+        storage::configurable_provider::each_table_index(table, [&](auto name, auto const& entry) {
             in_callback = true;
             consumer(name, entry);
             in_callback = false;

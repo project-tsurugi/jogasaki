@@ -43,7 +43,7 @@ ROUND(numeric_expression[, integer_expression])
 * `numeric_expression` または `integer_expression` のいずれかが `NULL` の場合、戻り値は `NULL` となります。
 * `numeric_expression` が `REAL` または `DOUBLE` 型の `Infinity`、`-Infinity`、`-0.0`、`NaN` のいずれかである場合は、その値をそのまま返します。
 * `numeric_expression` が `INTEGER` または `BIGINT` の場合、戻り値も同じ型となります。丸めた結果がその型の範囲を超える場合は、`VALUE_EVALUATION_EXCEPTION`（overflow）となります。
-* `numeric_expression` が `DECIMAL` で、指定した小数点以下の桁数が値の小数部の桁数以上の場合、値をそのまま返します。例えば `ROUND(CAST(1.5 AS DECIMAL(2,1)), 38)` は `1.5` を返します。
+* `numeric_expression` が `DECIMAL` で、`integer_expression` が値の小数部の桁数以上の場合、値をそのまま返します。例えば `ROUND(CAST(1.5 AS DECIMAL(2,1)), 38)` は `1.5` を返します。
 * `integer_expression` にはnumeric_expressionの型に対応した上下限値が定められており、その範囲を超えた場合エラーとなります。
 
 | `numeric_expression` の型 | 上限値 | 下限値 |

@@ -361,7 +361,7 @@ bool write_bit(
         // write blocks except the last
         write_bytes(value.block_data(), value.block_size() - 1, position, end);
 
-        auto last = static_cast<std::uint8_t>(*--value.end());
+        auto last = static_cast<std::uint8_t>(value.block_data()[value.block_size() - 1]);
         write_fixed8(last & ~(0xffU << rest_bits), position, end);
     }
     return true;

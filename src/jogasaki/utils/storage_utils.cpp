@@ -35,5 +35,17 @@ std::size_t index_count(yugawara::storage::table const& table) {
     return count;
 }
 
+std::vector<std::shared_ptr<yugawara::storage::index const>> collect_secondary_indices(
+    yugawara::storage::index const& primary) {
+    std::vector<std::shared_ptr<yugawara::storage::index const>> result{};
+    primary.table().owner()->each_table_index(primary.table(),
+        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if (*entry != primary) {
+                result.emplace_back(entry);
+            }
+        });
+    return result;
+}
+
 }
 

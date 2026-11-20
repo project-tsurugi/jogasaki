@@ -356,6 +356,24 @@ TEST_F(secondary_index_dml_test, update_index_key_multi_secondaries) {
     }
 }
 
+TEST_F(secondary_index_dml_test, update_each_secondary_key_including_null_keeps_other_index) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I1 ON T (C1)");
+    execute_statement("CREATE INDEX I2 ON T (C2)");
+    execute_statement("INSERT INTO T VALUES (1, 10, 100)");
+    execute_statement("UPDATE T SET C1=NULL WHERE C0=1");
+    EXPECT_TRUE(get_secondary_entries("I1", 10).empty());
+    EXPECT_EQ((std::unordered_set<std::int32_t>{1}), get_secondary_entries("I1", std::nullopt));
+    EXPECT_EQ((std::unordered_set<std::int32_t>{1}), get_secondary_entries("I2", 100));
+    execute_statement("UPDATE T SET C2=200 WHERE C0=1");
+    EXPECT_TRUE(get_secondary_entries("I2", 100).empty());
+    EXPECT_EQ((std::unordered_set<std::int32_t>{1}), get_secondary_entries("I2", 200));
+    EXPECT_EQ((std::unordered_set<std::int32_t>{1}), get_secondary_entries("I1", std::nullopt));
+    execute_statement("DELETE FROM T WHERE C0=1");
+    EXPECT_TRUE(get_secondary_entries("I1", std::nullopt).empty());
+    EXPECT_TRUE(get_secondary_entries("I2", 200).empty());
+}
+
 TEST_F(secondary_index_dml_test, insert_or_skip_wont_update_secondary_index_on_duplicate_pk) {
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
     execute_statement("CREATE INDEX I ON T (C1)");

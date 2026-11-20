@@ -237,6 +237,50 @@ public:
     }
 };
 
+class observed_write_provider : public storage::configurable_provider {
+public:
+    mutable std::size_t enumerations{};
+    mutable std::size_t primary_lookups{};
+    bool observe{};
+    void each_index(index_consumer_type const& consumer) const override {
+        ++enumerations;
+        storage::configurable_provider::each_index(consumer);
+    }
+    std::shared_ptr<storage::index const> find_primary_index(storage::table const& table) const override {
+        if (!observe) return storage::configurable_provider::find_primary_index(table);
+        ++primary_lookups;
+        ADD_FAILURE() << "write preparation must use the supplied primary index";
+        return {};
+    }
+};
+
+TEST_F(write_existing_test, prepares_secondaries_once_without_primary_lookup) {
+    auto provider = std::make_shared<observed_write_provider>();
+    tables_ = provider;
+    auto table = create_table({"OBSERVED", {
+        {"K", t::int8{}, nullity{false}},
+        {"V", t::int8{}, nullity{true}},
+        {"W", t::int8{}, nullity{true}},
+    }});
+    auto primary = create_primary_index(table, {0}, {1, 2});
+    create_secondary_index(table, "S_V", {1}, {});
+    create_secondary_index(table, "S_W", {2}, {});
+    auto& take = add_take(3);
+    add_column_types(take, t::int8{}, t::int8{}, t::int8{});
+    auto& target = create_target(take, relation::write_kind::update, primary, table, {0}, {1});
+    take.output() >> target.input();
+    add_key_types(target, t::int8{});
+    add_column_types(target, t::int8{});
+    create_processor_info();
+    provider->enumerations = 0;
+    provider->primary_lookups = 0;
+    provider->observe = true;
+    write_existing wrt{0, *processor_info_, 0, write_kind::update, *primary,
+        target.keys(), target.columns()};
+    EXPECT_EQ(1, provider->enumerations);
+    EXPECT_EQ(0, provider->primary_lookups);
+}
+
 TEST_F(write_existing_test , simple_update) {
     auto&& [take, target] = create_update_take_target_i1();
     create_processor_info();

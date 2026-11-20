@@ -18,8 +18,10 @@
 #include <cstdlib>
 #include <decimal.hh>
 #include <exception>
+#include <limits>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <glog/logging.h>
 
@@ -327,6 +329,18 @@ divide(T const& l, T const& r, evaluator_context& ctx) {
         e.new_argument() << r;
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
+    if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
+        // the minimum value divided by -1 is not representable (and raises SIGFPE on x86-64)
+        if (r == -1 && l == std::numeric_limits<T>::min()) {
+            auto& e = ctx.add_error(
+                {error_kind::overflow,
+                 "integer out of range: overflow while performing division"}
+            );
+            e.new_argument() << l;
+            e.new_argument() << r;
+            return any{std::in_place_type<class error>, error_kind::overflow};
+        }
+    }
     return any{std::in_place_type<T>, utils::canonicalize_nan(l/r)};
 }
 
@@ -351,6 +365,13 @@ remainder(T const& l, T const& r, evaluator_context& ctx) {
         e.new_argument() << l;
         e.new_argument() << r;
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
+    }
+    if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
+        // the remainder of any value divided by -1 is 0. Avoid computing min % -1, which is undefined
+        // behavior (and raises SIGFPE on x86-64)
+        if (r == -1) {
+            return any{std::in_place_type<T>, static_cast<T>(0)};
+        }
     }
     return any{std::in_place_type<T>, l%r};
 }

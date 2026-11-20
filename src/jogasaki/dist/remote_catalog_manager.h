@@ -175,7 +175,7 @@ private:
 };
 
 /**
- * @brief whether a catalog or server name follows the common identifier rule of the SQL compiler.
+ * @brief whether a catalog or server name follows the common identifier rules used throughout Tsurugi.
  * @details Non-empty and not starting with the reserved prefix "__".
  */
 [[nodiscard]] bool valid_remote_catalog_identifier(std::string_view name) noexcept;

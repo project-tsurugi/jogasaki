@@ -22,14 +22,17 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
+
 #include <glog/logging.h>
 
 #include <takatori/datetime/date.h>
+#include <takatori/datetime/datetime_interval.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 
 #include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/bit.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/lob/blob_reference.h>
@@ -64,6 +67,8 @@ public:
         takatori::datetime::time_point,
         lob::blob_reference,
         lob::clob_reference,
+        accessor::bit,
+        takatori::datetime::datetime_interval,
         std::size_t  // for reference column position
     >;
 
@@ -164,6 +169,8 @@ inline bool operator==(any const& a, any const& b) noexcept {
         case any::index<takatori::datetime::time_point>: return eq<takatori::datetime::time_point>()(a, b);
         case any::index<lob::blob_reference>: return eq<lob::blob_reference>()(a, b);
         case any::index<lob::clob_reference>: return eq<lob::clob_reference>()(a, b);
+        case any::index<accessor::bit>: return eq<accessor::bit>()(a, b);
+        case any::index<takatori::datetime::datetime_interval>: return eq<takatori::datetime::datetime_interval>()(a, b);
         case any::index<std::size_t>: return eq<std::size_t>()(a, b);
         default:
             return false;
@@ -202,6 +209,8 @@ inline std::ostream& operator<<(std::ostream& out, any const& value) {
         case any::index<takatori::datetime::time_point>: out << value.to<takatori::datetime::time_point>(); break;
         case any::index<lob::blob_reference>: out << value.to<lob::blob_reference>(); break;
         case any::index<lob::clob_reference>: out << value.to<lob::clob_reference>(); break;
+        case any::index<accessor::bit>: out << value.to<accessor::bit>(); break;
+        case any::index<takatori::datetime::datetime_interval>: out << value.to<takatori::datetime::datetime_interval>(); break;
         case any::index<std::size_t>:  out << value.to<std::size_t>(); break;
     }
     out << ")";
@@ -230,6 +239,8 @@ inline std::string_view type_name(any const& value) {
         case any::index<takatori::datetime::time_point>: return "time_point";
         case any::index<lob::blob_reference>: return "blob";
         case any::index<lob::clob_reference>: return "clob";
+        case any::index<accessor::bit>: return "bit";
+        case any::index<takatori::datetime::datetime_interval>: return "datetime_interval";
         case any::index<std::size_t>: return "columm_position";
     }
     std::abort();

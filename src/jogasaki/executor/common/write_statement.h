@@ -16,6 +16,9 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
+#include <jogasaki/executor/conv/record_assignment.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -69,6 +72,12 @@ public:
      * @brief create empty object
      */
     write_statement() = default;
+    ~write_statement() override = default;
+    // Cached evaluators refer to info_; the statement must remain at the same address.
+    write_statement(write_statement const&) = delete;
+    write_statement& operator=(write_statement const&) = delete;
+    write_statement(write_statement&&) = delete;
+    write_statement& operator=(write_statement&&) = delete;
 
     /**
      * @brief create new object
@@ -89,6 +98,21 @@ public:
     bool process(request_context& context);
 
 private:
+    struct prepared_value {
+        expr::evaluator evaluator;
+        conv::record_assignment assignment;
+    };
+    using prepared_fields = std::vector<std::optional<prepared_value>>;
+    struct prepared_tuple {
+        prepared_fields keys;
+        prepared_fields values;
+    };
+    [[nodiscard]] prepared_fields prepare_fields(tuple const& tuple,
+        std::vector<wrt::write_field> const& fields) const;
+    static status create_record_from_tuple(request_context& ctx, wrt::write_context& wctx,
+        prepared_fields const& prepared, std::vector<wrt::write_field> const& fields,
+        memory::lifo_paged_memory_resource& resource, data::small_record_store& out);
+
     write_kind kind_{};
     yugawara::storage::index const* idx_{};
     takatori::statement::write const* wrt_{};
@@ -100,6 +124,7 @@ private:
     std::vector<wrt::write_field> key_fields_{};
     std::vector<wrt::write_field> value_fields_{};
     std::shared_ptr<wrt::insert_new_record> entity_{};
+    std::vector<prepared_tuple> tuples_{};
 };
 
 }  // namespace jogasaki::executor::common

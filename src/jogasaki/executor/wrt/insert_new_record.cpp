@@ -56,7 +56,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/as_any.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_encode_errors.h>

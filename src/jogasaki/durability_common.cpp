@@ -45,6 +45,14 @@
 
 namespace jogasaki {
 
+void submit_commit_teardown_if_last(request_context& rctx, bool try_on_suspended_worker) {
+    if(auto& cctx = rctx.commit_ctx(); cctx && ! cctx->arrive_for_teardown()) {
+        // the other party will submit teardown
+        return;
+    }
+    scheduler::submit_teardown(rctx, try_on_suspended_worker);
+}
+
 void submit_commit_response(
     std::shared_ptr<request_context> rctx,  //NOLINT(performance-unnecessary-value-param)
     commit_response_kind kind,
@@ -72,7 +80,7 @@ void submit_commit_response(
             } else {
                 rctx->commit_ctx()->on_response()(kind);
             }
-            scheduler::submit_teardown(*rctx, teardown_try_on_suspended_worker);
+            submit_commit_teardown_if_last(*rctx, teardown_try_on_suspended_worker);
             return model::task_result::complete;
         }, model::task_transaction_kind::none)
     );

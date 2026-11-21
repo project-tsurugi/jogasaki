@@ -1002,7 +1002,8 @@ static void process_commit_callback(
             rctx->commit_ctx()->on_response()(commit_response_kind::accepted);
             if(last_less_equals_accepted) {
                 // if the last response is accepted or requested, we can finish job and clean up resource here
-                scheduler::submit_teardown(*rctx);
+                // (teardown is submitted after the commit task finishes, see commit_context::arrive_for_teardown())
+                submit_commit_teardown_if_last(*rctx);
             }
         };
         if(global::config_pool()->direct_commit_callback()) {
@@ -1122,6 +1123,10 @@ scheduler::job_context::job_id_type commit_async(
                 rctx->transaction()->reset_storage_ref_scope();
                 rctx->transaction()->storage_lock(nullptr);
             });
+        // The cc engine has finished its commit processing (including log flush if it's done synchronously).
+        // Submit teardown here if the response has already been processed. Otherwise the response side does it.
+        // This avoids the teardown task to be resubmitted repeatedly while this task is waiting for the log flush.
+        submit_commit_teardown_if_last(*rctx);
         return model::task_result::complete;
     }, model::task_transaction_kind::none);
     rctx->job()->callback([rctx, txid, jobid](){

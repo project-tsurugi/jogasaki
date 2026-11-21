@@ -16,6 +16,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -70,10 +71,26 @@ public:
     commit_error_callback& on_error() noexcept {
         return on_error_;
     }
+
+    /**
+     * @brief notify that one of the parties that must finish before the commit job teardown has finished
+     * @details the commit job can be torn down only after both of the following have finished:
+     * (1) the commit task returned from the cc engine commit call (i.e. the cc engine finished its commit processing
+     * including log flush), and (2) the commit response (or error) has been processed.
+     * Each party calls this function once, and the caller that receives true is responsible to submit teardown.
+     * This avoids submitting teardown before the commit task completes, which makes the teardown task
+     * resubmit repeatedly until the commit task finishes.
+     * @return true if the caller is the last party and should submit teardown
+     * @return false otherwise
+     */
+    bool arrive_for_teardown() noexcept {
+        return teardown_parties_.fetch_sub(1) == 1;
+    }
 private:
     commit_response_callback on_response_{};
     commit_response_kind_set response_kinds_{};
     commit_error_callback on_error_{};
+    std::atomic<std::int32_t> teardown_parties_{2};
 
 };
 

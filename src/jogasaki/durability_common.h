@@ -40,4 +40,13 @@ void submit_commit_response(
     bool teardown_try_on_suspended_worker
 );
 
+/**
+ * @brief submit teardown for the commit job if the caller is the last party to finish
+ * @details see commit_context::arrive_for_teardown(). If the request context has no commit context,
+ * teardown is submitted unconditionally.
+ * @param rctx the request context of the commit job
+ * @param try_on_suspended_worker whether to submit teardown on the suspended worker
+ */
+void submit_commit_teardown_if_last(request_context& rctx, bool try_on_suspended_worker = false);
+
 }  // namespace jogasaki

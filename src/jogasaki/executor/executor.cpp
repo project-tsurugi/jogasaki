@@ -15,6 +15,7 @@
  */
 #include "executor.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -136,6 +137,7 @@ static bool execute_internal(
         req_info,
         static_cast<bool>(stmt->mirrors()->external_writer_meta()),
         std::move(req),
+        nullptr,
         stmt->mirrors()->emits_ordered_relation()
     );
     rctx->lightweight(
@@ -380,6 +382,7 @@ bool execute_async(
         req_info,
         stmt->has_result_records(),
         req,
+        nullptr,
         stmt->body()->mirrors()->emits_ordered_relation()
     );
     request_ctx->req_info(req_info);
@@ -776,6 +779,8 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
     }
     rctx->enable_stats();
     auto& e = s.body();
+    // Retain compilation metadata; admission below checks only registrations used by this plan.
+    rctx->remote_catalogs(e->mirrors()->remote_catalogs());
     auto job = rctx->job();
     auto& ts = *rctx->scheduler();
 
@@ -793,6 +798,34 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
         return true; // inactive tx error - this is normal error so return true
     }
 
+    auto const& dependencies = e->mirrors()->remote_catalog_dependencies();
+    if (!dependencies.empty()) {
+        // This single snapshot read orders execution admission against DROP under the manager's existing mutex.
+        auto current = database.remote_catalogs();
+        for (auto const& catalog : dependencies) {
+            if (current && std::find(current->catalogs().begin(), current->catalogs().end(), catalog)
+                != current->catalogs().end()) {
+                continue;
+            }
+            LOG_LP(INFO) << "distributed query internal_code:FOREIGN_CATALOG_DROPPED"
+                         << " job_id:" << rctx->job()->id() << " catalog:" << catalog->name();
+            set_error_context(*rctx, error_code::target_not_found_exception,
+                string_builder{} << "Foreign catalog \"" << catalog->name()
+                                 << "\" has been dropped." << string_builder::to_string,
+                status::err_not_found);
+            if (rctx->transaction()) {
+                abort_transaction(rctx->transaction(), req_info);
+            }
+            external_log_stmt_end(*rctx, req_info, statement);
+            on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
+            if (auto req = job->request()) {
+                req->status(scheduler::request_detail_status::finishing);
+                log_request(*req, false);
+            }
+            ts.unregister_job(job->id());
+            return true;
+        }
+    }
     // acquire shared lock for DML operations
     if (e->is_execute() || (!e->is_ddl() && !e->is_empty())) {
         if (! acquire_shared_lock(*rctx, *e)) {

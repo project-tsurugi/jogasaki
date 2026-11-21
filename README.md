@@ -208,4 +208,3 @@ Running jogasaki with likwid-perfctr command will show you the performance count
 ## License
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-

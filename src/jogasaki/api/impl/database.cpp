@@ -16,6 +16,8 @@
 #include "database.h"
 
 #include <algorithm>
+#include <limits>
+#include <jogasaki/storage/definition_id_allocator.h>
 #include <chrono>
 #include <cstdint>
 #include <map>
@@ -35,7 +37,9 @@
 #include <boost/exception/exception.hpp>
 #include <glog/logging.h>
 
+#include <takatori/plan/process.h>
 #include <takatori/serializer/json_printer.h>
+#include <takatori/serializer/object_acceptor.h>
 #include <takatori/serializer/object_scanner.h>
 #include <takatori/type/blob.h>
 #include <takatori/type/character.h>
@@ -78,6 +82,7 @@
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/dist/rpc_remote_catalog_fetcher.h>
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info_factory.h>
@@ -159,6 +164,22 @@ std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
 }
 
+dist::remote_server_channel_manager& database::remote_server_channels() noexcept {
+    return *remote_server_channels_;
+}
+
+std::shared_ptr<dist::remote_catalog_snapshot const> database::remote_catalogs() const noexcept {
+    return remote_catalogs_manager_ ? remote_catalogs_manager_->snapshot() : nullptr;
+}
+
+std::shared_ptr<dist::remote_catalog_manager> database::remote_catalogs_manager() const noexcept {
+    return remote_catalogs_manager_;
+}
+
+std::shared_ptr<dist::remote_function_id_registry> const& database::remote_function_ids() const noexcept {
+    return remote_function_ids_;
+}
+
 void database::reset_tables() {
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
 }
@@ -169,6 +190,10 @@ std::shared_ptr<yugawara::storage::configurable_provider> const& database::table
 
 std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::aggregate_functions() const noexcept {
     return global::function_registry().aggregate_provider();
+}
+
+std::shared_ptr<yugawara::function::configurable_provider> const& database::regular_functions() const noexcept {
+    return global::function_registry().regular_provider();
 }
 
 #define LOGCFG (LOG(INFO) << lp << std::boolalpha)
@@ -280,6 +305,48 @@ status database::init_kvs_db() noexcept {
     }
     return status::ok;
 }
+status database::initialize_remote_catalogs() {
+    auto fetcher = std::make_shared<dist::rpc_remote_catalog_fetcher>();
+    remote_function_ids_ = std::make_shared<dist::remote_function_id_registry>();
+    global::function_registry().regular_provider()->each([&](std::shared_ptr<yugawara::function::declaration const> const& function) {
+        if (function) remote_function_ids_->exclude_function(function->definition_id());
+    });
+    global::function_registry().aggregate_provider()->each([&](std::shared_ptr<yugawara::aggregate::declaration const> const& function) {
+        if (function) remote_function_ids_->exclude_aggregate_function(function->definition_id());
+    });
+    remote_catalogs_manager_ = std::make_shared<dist::remote_catalog_manager>(std::move(fetcher),
+        dist::remote_catalog_manager::default_fetch_timeout, remote_function_ids_);
+    if (auto st = remote_catalogs_manager_->start(); st != status::ok) return st;
+    return status::ok;
+}
+
+status database::start_distributed_query() {
+    remote_server_channels_ = std::make_unique<dist::remote_server_channel_manager>();
+    remote_location_registry_ = std::make_shared<dist::location_registry>();
+    if (cfg_->distributed_query_coordinator_enabled()) {
+        if (cfg_->distributed_query_remote_servers().empty()) {
+            LOG_LP(ERROR) << "distributed query coordinator requires at least one remote server";
+            return status::err_invalid_argument;
+        }
+
+        if (auto st = remote_server_channels_->start(cfg_->distributed_query_remote_servers()); st != status::ok) {
+            return st;
+        }
+        return initialize_remote_catalogs();
+    }
+    return status::ok;
+}
+
+void database::cleanup_failed_start() noexcept {
+    try {
+        (void) shutdown();
+    } catch (std::exception const& e) {
+        LOG_LP(ERROR) << "start failure cleanup failed: " << e.what();
+    } catch (...) {
+        LOG_LP(ERROR) << "start failure cleanup failed with an unknown exception";
+    }
+}
+
 status database::start() {
     LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
     dump_public_configurations(*cfg_);
@@ -294,21 +361,23 @@ status database::start() {
     bool startup_completed = false;
     utils::finally rollback{[this, &startup_completed] {
         if (!startup_completed) {
-            try {
-                (void) shutdown();
-            } catch (std::exception const& e) {
-                LOG_LP(ERROR) << "start failure cleanup failed: " << e.what();
-            } catch (...) {
-                LOG_LP(ERROR) << "start failure cleanup failed with an unknown exception";
-            }
+            cleanup_failed_start();
         }
     }};
+    if (auto st = start_distributed_query(); st != status::ok) {
+        return st;
+    }
     if(auto st = init_kvs_db(); st != status::ok) {
         return st;
     }
     if(auto res = kvs::setup_system_storage(); res != status::ok) {
         return res;
     }
+    definition_ids_ = std::make_unique<storage::definition_id_allocator>(*kvs_db_);
+    if (auto rc = definition_ids_->initialize(); rc != status::ok) return rc;
+    if (auto rc = kvs_db_->register_durability_callback([marker = definition_ids_->durable_marker()](auto value) {
+            marker->store(value, std::memory_order_release);
+        }); rc != status::ok) return rc;
     if (auto res = prepare_analytics_benchmark_tables(); res != status::ok) {
         return res;
     }
@@ -334,7 +403,10 @@ status database::start() {
     }
 
     commit_stats_->enabled(cfg_->profile_commits());
-    kvs_db_->register_durability_callback(durability_callback{*this});
+    kvs_db_->register_durability_callback([marker = definition_ids_->durable_marker(), callback = durability_callback{*this}](auto value) mutable {
+        marker->store(value, std::memory_order_release);
+        callback(value);
+    });
 
     stop_requested_ = false;
 
@@ -392,6 +464,12 @@ status database::stop() {
 }
 
 status database::shutdown() {
+    if (remote_catalogs_manager_) (void) remote_catalogs_manager_->stop();
+    remote_catalogs_manager_.reset();
+    // snapshots still borrowed elsewhere keep their declarations; their leases no longer have IDs to release
+    remote_function_ids_.reset();
+    remote_server_channels_->stop();
+    remote_location_registry_.reset();
     stop_requested_ = true;
     if (maintenance_thread_.joinable()) {
         maintenance_stop_requested_ = true;
@@ -402,6 +480,7 @@ status database::shutdown() {
         task_scheduler_->stop();
         task_scheduler_.reset();
     }
+    definition_ids_.reset();
     sequence_manager_.reset();
     deinit();
     prepared_statements_.clear();
@@ -452,6 +531,8 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 }
 
 database::database() : database(std::make_shared<class configuration>()) {}
+
+database::~database() = default;
 
 bool database::init() {
     global::storage_manager()->clear(); // clean up global objects first
@@ -518,9 +599,23 @@ status database::prepare_common(
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
+    ctx->remote_catalogs(remote_catalogs());
     ctx->aggregate_provider(global::function_registry().aggregate_provider());
     ctx->function_provider(global::function_registry().regular_provider());
     ctx->variable_provider(std::move(provider));
+    if (cfg_->distributed_query_coordinator_enabled() && ctx->remote_catalogs()) {
+        // Name resolution and symbol locations retain the same catalog/declaration identities.
+        try {
+            ctx->symbol_locations(std::make_shared<dist::symbol_locations>(
+                ctx->remote_catalogs(), remote_location_registry_, tables_, global::function_registry().regular_provider(), global::function_registry().aggregate_provider(),
+                ctx->variable_provider()));
+        } catch (std::exception const& e) {
+            out = create_error_info(error_code::unsupported_compiler_feature_exception, e.what(), status::err_unsupported);
+            req->status(scheduler::request_detail_status::finishing);
+            log_request(*req, false);
+            return status::err_unsupported;
+        }
+    }
     ctx->option(option);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         req->status(scheduler::request_detail_status::finishing);
@@ -840,7 +935,19 @@ status database::resolve_common(
     ctx->aggregate_provider(global::function_registry().aggregate_provider());
     ctx->function_provider(global::function_registry().regular_provider());
     auto& ps = stmt.body();
+    ctx->remote_catalogs(ps->mirrors()->remote_catalogs());
     ctx->variable_provider(ps->host_variables());
+    if (cfg_->distributed_query_coordinator_enabled() && ctx->remote_catalogs()) {
+        // Name resolution and symbol locations retain the same catalog/declaration identities.
+        try {
+            ctx->symbol_locations(std::make_shared<dist::symbol_locations>(
+                ctx->remote_catalogs(), remote_location_registry_, tables_, global::function_registry().regular_provider(), global::function_registry().aggregate_provider(),
+                ctx->variable_provider()));
+        } catch (std::exception const& e) {
+            out = create_error_info(error_code::unsupported_compiler_feature_exception, e.what(), status::err_unsupported);
+            return status::err_unsupported;
+        }
+    }
     ctx->prepared_statement(ps);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
@@ -963,6 +1070,36 @@ static bool validate_explain_auth(
     return true;
 }
 
+namespace {
+
+class explain_location_scanner final : public yugawara::serializer::object_scanner {
+public:
+    explain_location_scanner(yugawara::serializer::object_scanner scanner, dist::process_locations const* locations)
+        : yugawara::serializer::object_scanner(std::move(scanner)), locations_(locations) {}
+
+protected:
+    void properties(takatori::plan::step const& step, takatori::serializer::object_acceptor& out) const override {
+        yugawara::serializer::object_scanner::properties(step, out);
+        if (locations_ == nullptr || step.kind() != takatori::plan::step_kind::process) {
+            return;
+        }
+        auto const& process = unsafe_downcast<takatori::plan::process>(step);
+        if (auto const* location = locations_->find(process)) {
+            out.property_begin("location_id");
+            out.unsigned_integer(location->id);
+            out.property_end();
+            out.property_begin("location_name");
+            out.string(location->server.empty() ? "local" : location->server);
+            out.property_end();
+        }
+    }
+
+private:
+    dist::process_locations const* locations_;
+};
+
+} // namespace
+
 status database::explain(
     api::executable_statement const& executable,
     std::ostream& out,
@@ -979,10 +1116,10 @@ status database::explain(
         return status::err_illegal_operation;
     }
     auto r = unsafe_downcast<impl::executable_statement>(executable).body();
-    r->compiled_info().object_scanner()(
-        *r->statement(),
-        takatori::serializer::json_printer{ out }
-    );
+    auto const* locations = r->mirrors() ? r->mirrors()->process_locations().get() : nullptr;
+    explain_location_scanner scanner{r->compiled_info().object_scanner(), locations};
+    takatori::serializer::json_printer printer{out};
+    scanner(*r->statement(), printer);
     return status::ok;
 }
 
@@ -1112,6 +1249,9 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         return err->status();
     }
 
+    if (definition_ids_) {
+        if (auto rc = definition_ids_->assign(storage); rc != status::ok) return rc;
+    }
     auto target = std::make_shared<yugawara::storage::configurable_provider>();
     if(auto err = recovery::deserialize_storage_option_into_provider(storage, *tables_, *target, false)) {
         if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
@@ -1366,6 +1506,45 @@ status database::recover_metadata() {
         // found deprecated system table - db should not start
         LOG(ERROR) << "database metadata version is too old to recover";
         return status::err_invalid_state;
+    }
+
+    // Seed from all durable declarations, including delete-reserved storage, before assigning any missing ID.
+    std::uint64_t minimum_id = 1;
+    for (auto const& name : names) {
+        auto storage = kvs_db_->get_storage(name);
+        if (!storage) return status::err_invalid_state;
+        sharksfin::StorageOptions options{};
+        if (auto rc = storage->get_options(options); rc != status::ok) return rc;
+        if (options.payload().empty()) continue;
+        proto::metadata::storage::IndexDefinition index{};
+        std::uint64_t version{};
+        if (auto err = recovery::validate_extract(options.payload(), index, version)) return err->status();
+        auto advance = [&](std::uint64_t id) {
+            minimum_id = std::max(minimum_id, id == std::numeric_limits<std::uint64_t>::max() ? id : id + 1);
+        };
+        if (index.definition_id_optional_case() != proto::metadata::storage::IndexDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) advance(index.definition_id());
+        if (index.has_table_definition() && index.table_definition().definition_id_optional_case() != proto::metadata::storage::TableDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) advance(index.table_definition().definition_id());
+    }
+    std::uint64_t ignored{};
+    if (auto rc = definition_ids_->reserve(0, minimum_id, ignored); rc != status::ok) return rc;
+    for (auto const& name : names) {
+        auto storage = kvs_db_->get_storage(name);
+        if (!storage) return status::err_invalid_state;
+        sharksfin::StorageOptions options{};
+        if (auto rc = storage->get_options(options); rc != status::ok) return rc;
+        auto payload = std::string{options.payload()};
+        if (payload.empty()) continue;
+        proto::metadata::storage::Storage metadata{};
+        if (!metadata.ParseFromString(payload)) return status::err_invalid_state;
+        auto const& index = metadata.index();
+        if (index.definition_id_optional_case() != proto::metadata::storage::IndexDefinition::DEFINITION_ID_OPTIONAL_NOT_SET &&
+            (!index.has_table_definition() || index.table_definition().definition_id_optional_case() != proto::metadata::storage::TableDefinition::DEFINITION_ID_OPTIONAL_NOT_SET)) continue;
+        auto before = payload;
+        if (auto rc = definition_ids_->assign(payload); rc != status::ok) return rc;
+        if (payload != before) {
+            options.payload(std::move(payload));
+            if (auto rc = storage->set_options(options); rc != status::ok) return rc;
+        }
     }
 
     std::uint64_t max_surrogate_id = 0;

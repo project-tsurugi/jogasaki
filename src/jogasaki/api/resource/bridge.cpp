@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <boost/thread.hpp>
 #include <glog/logging.h>
@@ -35,10 +39,17 @@
 #include <tateyama/framework/repository.h>
 #include <tateyama/framework/transactional_kvs_resource.h>
 #include <tateyama/grpc/blob_relay/service_adapter.h>
+#include <tateyama/grpc/distributed_query/service_adapter.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/impl/database.h>
+#include <tateyama/metrics/metrics_store.h>
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/commit_response.h>
+#include <jogasaki/dist/local_catalog_handler.h>
+#include <jogasaki/dist/remote_catalog_manager.h>
+#include <jogasaki/dist/remote_server_configuration_validation.h>
+#include <jogasaki/dist/remote_process_handler.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -63,7 +74,19 @@ bool bridge::setup(framework::environment& env) {
         return true;
     }
     cfg_ = convert_config(*env.configuration());
-    return cfg_ != nullptr;
+    if (!cfg_) {
+        return false;
+    }
+    remote_enabled_ = false;
+    try {
+        auto remote = env.configuration()->get_section("distributed_query_remote");
+        remote_enabled_ = remote && remote->get<bool>("enabled").value_or(false);
+    } catch (std::exception const& e) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_remote.enabled: " << e.what();
+        return false;
+    }
+    LOG_LP(INFO) << "distributed_query_remote.enabled=" << remote_enabled_;
+    return true;
 }
 
 static void borrow_relay_service(framework::environment& env) {
@@ -93,6 +116,11 @@ bool bridge::start(framework::environment& env) {
         return true;
     }
 
+    if (started_) {
+        LOG_LP(ERROR) << "database is already started; complete shutdown before restarting";
+        return false;
+    }
+
     borrow_relay_service(env);
 
     if (! db_) {
@@ -106,10 +134,31 @@ bool bridge::start(framework::environment& env) {
 
     auto ret = db_->start() == status::ok;
     started_ = ret;
+    if (ret && cfg_->distributed_query_coordinator_enabled()) {
+        if (auto* store = tateyama::metrics::find_metrics_store(env)) {
+            api::impl::get_impl(*db_).remote_server_channels().register_metrics(*store);
+        }
+    }
+    if (ret && remote_enabled_) {
+        auto adapter = env.resource_repository().find<tateyama::grpc::distributed_query::service_adapter>();
+        if (!adapter) {
+            LOG_LP(ERROR) << "distributed query remote service adapter is unavailable";
+            if (db_->stop() == status::ok) {
+                started_ = false;
+            }
+            return false;
+        }
+        remote_service_adapter_ = adapter;
+        catalog_handler_ = std::make_shared<dist::local_catalog_handler>(*db_);
+        adapter->set_remote_catalog_handler(catalog_handler_);
+        remote_process_handler_ = std::make_shared<dist::remote_process_handler>(*db_);
+        adapter->set_remote_process_handler(remote_process_handler_);
+    }
     return ret;
 }
 
 bool bridge::shutdown(framework::environment&) {
+    unregister_remote_handlers();
     if(started_) {
         if(db_->stop() == status::ok) {
             started_ = false;
@@ -119,7 +168,19 @@ bool bridge::shutdown(framework::environment&) {
     return true;
 }
 
+void bridge::unregister_remote_handlers() {
+    if (remote_process_handler_ || catalog_handler_) {
+        auto adapter = remote_service_adapter_.lock();
+        if (adapter && remote_process_handler_) adapter->set_remote_process_handler({});
+        if (adapter && catalog_handler_) adapter->set_remote_catalog_handler({});
+        remote_process_handler_.reset();
+        catalog_handler_.reset();
+    }
+    remote_service_adapter_.reset();
+}
+
 bridge::~bridge() {
+    unregister_remote_handlers();
     if(db_ && started_) {
         db_->stop();
     }
@@ -510,6 +571,133 @@ static bool process_grpc_server_config(std::shared_ptr<jogasaki::configuration>&
     return true;
 }
 
+[[nodiscard]] static std::optional<std::filesystem::path> resolve_root_certificate_path(
+    tateyama::api::configuration::whole& cfg,
+    std::string_view value)
+{
+    std::filesystem::path path{std::string{value}};
+    if (path.is_absolute()) {
+        return path;
+    }
+    if (auto base = cfg.base_path(); base) {
+        return *base / path;
+    }
+    LOG_LP(ERROR) << "invalid configuration - distributed_query_client.root_cert contains relative path \""
+                  << value << "\" but the configuration base path is empty";
+    return std::nullopt;
+}
+
+[[nodiscard]] static std::optional<std::string> read_root_certificate(
+    tateyama::api::configuration::whole& cfg,
+    std::string_view value)
+{
+    auto path = resolve_root_certificate_path(cfg, value);
+    if (! path) {
+        return std::nullopt;
+    }
+    std::ifstream input{*path, std::ios::binary};
+    if (! input) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.root_cert file is not readable: "
+                      << path->string();
+        return std::nullopt;
+    }
+    std::string contents{
+        std::istreambuf_iterator<char>{input},
+        std::istreambuf_iterator<char>{}
+    };
+    if (!dist::valid_remote_root_certificates(contents)) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.root_cert file contains invalid X.509 certificates: "
+                      << path->string();
+        return std::nullopt;
+    }
+    return contents;
+}
+
+static bool process_distributed_query_client_config(
+    std::shared_ptr<jogasaki::configuration>& ret,
+    tateyama::api::configuration::whole& cfg)
+{
+    auto section = cfg.get_section("distributed_query_client");
+    if (section == nullptr) {
+        return true;
+    }
+
+    auto names = section->get_vector<std::string>("name", "|");
+    auto uris = section->get_vector<std::string>("uri", "|");
+    if (! names && ! uris) {
+        return true;
+    }
+    if (! names || ! uris) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.name and uri must be specified together";
+        return false;
+    }
+    if (names->size() == 1 && uris->size() == 1 && names->front().empty() && uris->front().empty()) {
+        return true;
+    }
+    if (names->size() != uris->size()) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.name and uri count mismatch";
+        return false;
+    }
+
+    auto const configured_client = cfg.get_ptree().get_child_optional("distributed_query_client");
+    auto secure_values = section->get_vector<bool>("secure", "|").value_or(std::vector<bool>(names->size(), false));
+    // A scalar default applies to every server; an explicitly supplied list must match its count.
+    if (configured_client && !configured_client->get_optional<std::string>("secure") && secure_values.size() == 1) {
+        bool const default_secure = secure_values.front();
+        secure_values.assign(names->size(), default_secure);
+    }
+    if (secure_values.size() != names->size()) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.secure count mismatch";
+        return false;
+    }
+
+    auto root_cert_values = section->get_vector<std::string>("root_cert", "|")
+        .value_or(std::vector<std::string>(names->size(), "grpc_default"));
+    if (configured_client && !configured_client->get_optional<std::string>("root_cert") && root_cert_values.size() == 1) {
+        auto const default_root_cert = root_cert_values.front();
+        root_cert_values.assign(names->size(), default_root_cert);
+    }
+    if (root_cert_values.size() != names->size()) {
+        LOG_LP(ERROR) << "invalid configuration - distributed_query_client.root_cert count mismatch";
+        return false;
+    }
+
+    std::vector<dist::remote_server_configuration> remote_servers{};
+    remote_servers.reserve(names->size());
+    for (std::size_t i = 0; i < names->size(); ++i) {
+        if (!dist::valid_remote_catalog_identifier((*names)[i])) {
+            LOG_LP(ERROR) << "invalid configuration - distributed_query_client.name contains an invalid identifier";
+            return false;
+        }
+        if ((*uris)[i].empty() || ! dist::valid_remote_server_uri((*uris)[i], secure_values[i])) {
+            LOG_LP(ERROR) << "invalid configuration - distributed_query_client.uri contains unsupported value: "
+                          << "scheme=" << dist::remote_server_uri_scheme((*uris)[i]);
+            return false;
+        }
+
+        dist::remote_server_configuration remote_server{
+            (*names)[i],
+            (*uris)[i],
+            secure_values[i],
+            dist::root_certificate_source::none,
+            {},
+        };
+        if (remote_server.secure) {
+            if (boost::algorithm::iequals(root_cert_values[i], "grpc_default")) {
+                remote_server.root_certificate = dist::root_certificate_source::grpc_default_roots;
+            } else if (auto pem = read_root_certificate(cfg, root_cert_values[i]); pem) {
+                remote_server.root_certificate = dist::root_certificate_source::pem;
+                remote_server.pem_root_certs = std::move(*pem);
+            } else {
+                return false;
+            }
+        }
+        remote_servers.emplace_back(std::move(remote_server));
+    }
+    ret->distributed_query_remote_servers(std::move(remote_servers));
+    return true;
+}
+
 static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     auto ret = std::make_shared<jogasaki::configuration>();
     if(! process_sql_config(ret, cfg)) {
@@ -523,6 +711,29 @@ static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama
     }
     if(! process_grpc_server_config(ret, cfg)) {
         return {};
+    }
+    auto coordinator = cfg.get_section("distributed_query_coordinator");
+    bool coordinator_enabled = coordinator != nullptr && coordinator->get<bool>("enabled").value_or(false);
+    ret->distributed_query_coordinator_enabled(coordinator_enabled);
+    LOG_LP(INFO) << "distributed_query_coordinator.enabled=" << coordinator_enabled;
+    if (coordinator_enabled) {
+        if (! process_distributed_query_client_config(ret, cfg)) {
+            return {};
+        }
+        if (ret->distributed_query_remote_servers().empty()) {
+            LOG_LP(ERROR) << "distributed_query_coordinator.enabled=true requires at least one remote server";
+            return {};
+        }
+    }
+
+    if (coordinator_enabled) {
+        auto const& servers = ret->distributed_query_remote_servers();
+        LOG_LP(INFO) << "distributed query configuration event:validated server_count:" << servers.size();
+        for (auto const& server : servers) {
+            auto scheme = dist::remote_server_uri_scheme(server.uri);
+            LOG_LP(INFO) << "distributed query configuration event:server name:" << server.name
+                         << " uri_scheme:" << scheme << " secure:" << std::boolalpha << server.secure;
+        }
     }
     return ret;
 }

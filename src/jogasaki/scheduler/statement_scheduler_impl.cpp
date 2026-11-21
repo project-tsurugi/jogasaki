@@ -26,6 +26,7 @@
 #include <jogasaki/executor/common/create_table.h>
 #include <jogasaki/executor/common/drop_index.h>
 #include <jogasaki/executor/common/drop_table.h>
+#include <jogasaki/executor/common/foreign_catalog_statement.h>
 #include <jogasaki/executor/common/grant_table.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/graph.h>
@@ -71,6 +72,16 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
         case kind::drop_table: {
             auto& dt = unsafe_downcast<executor::common::drop_table>(s);
             dt(context);
+            break;
+        }
+        case kind::create_foreign_catalog: {
+            auto& statement = unsafe_downcast<executor::common::create_foreign_catalog>(s);
+            statement(context);
+            break;
+        }
+        case kind::drop_foreign_catalog: {
+            auto& statement = unsafe_downcast<executor::common::drop_foreign_catalog>(s);
+            statement(context);
             break;
         }
         case kind::create_index: {

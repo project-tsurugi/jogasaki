@@ -41,6 +41,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -1137,6 +1138,26 @@ TEST_F(coder_test, decimal_simple) {
     EXPECT_EQ(decimal::Decimal{v3}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
     EXPECT_EQ(decimal::Decimal{v4}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
     EXPECT_EQ(0, decimal::context.status());
+}
+
+TEST_F(coder_test, decimal_write_ignores_stale_status) {
+    // regression test for tsurugi-issues #1634
+    // flags left in thread-local decimal::context by previous operations should not fail encoding
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto opt = std::make_shared<meta::decimal_field_option>(5, 2);
+    auto v = rtype<ft::decimal>{1, 0, 15, -1}; // 1.5
+
+    // emulate failed operation such as MOD(x, 0) that leaves invalid operation flag
+    executor::expr::details::ensure_decimal_context(); // use the context without traps as in sql execution
+    decimal::context.clear_status();
+    (void) (decimal::Decimal{"7.5"} % decimal::Decimal{0});
+    ASSERT_NE(0, decimal::context.status() & MPD_IEEE_Invalid_operation);
+
+    EXPECT_EQ(status::ok, s.write(v, asc, *opt));
+    auto rs = s.readable();
+    EXPECT_EQ(decimal::Decimal{v}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
+    decimal::context.clear_status();
 }
 
 TEST_F(coder_test, decimal_64bit_boundary_values) {

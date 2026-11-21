@@ -173,6 +173,9 @@ status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data,
     }
     std::size_t precision = option.precision_.value();
     std::size_t scale = option.scale_.value();
+    // clear status before checking it - decimal::context is thread local and may retain the flags
+    // raised by previous decimal operations on the same thread (e.g. failed MOD)
+    decimal::context.clear_status();
     decimal::Decimal x{data};
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
         decimal_error_logging("value creation", data, precision, scale, -1);

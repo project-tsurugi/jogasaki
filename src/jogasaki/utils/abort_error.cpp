@@ -78,7 +78,8 @@ read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, d
     buf.resize(sz);
     accessor::record_ref rec{buf.data(), sz};
     try {
-        if(! mapper->read(true, stream, rec, resource)) {
+        if(! mapper->read(true, stream, rec, resource) ||
+            (idx->features().contains(yugawara::storage::index_feature::primary) && stream.size() != stream.capacity())) {
             // key is corrupted or not available
             return {};
         }

@@ -169,6 +169,28 @@ TEST_F(abort_message_storage_name_test, ltx_write_conflict_shows_key_and_index_n
     incompatible_context.storage_provider(std::move(incompatible_tables));
     auto incompatible_message = utils::create_abort_message(incompatible_context);
     EXPECT_NE(std::string::npos, incompatible_message.find(expected.str())) << incompatible_message;
+
+    // A shorter same-name primary-key definition must not accept a partially decoded locator key.
+    auto shorter_tables = std::make_shared<yugawara::storage::configurable_provider>();
+    auto shorter_table = shorter_tables->add_table(yugawara::storage::table{"T0", {
+        yugawara::storage::column{
+            "C0",
+            takatori::type::boolean{},
+            yugawara::variable::nullity{false},
+        },
+    }});
+    shorter_tables->add_index(yugawara::storage::index{
+        shorter_table,
+        "T0",
+        {shorter_table->columns()[0]},
+        {},
+        {yugawara::storage::index_feature::primary},
+    });
+    request_context shorter_context{
+        {}, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, failed_tx};
+    shorter_context.storage_provider(std::move(shorter_tables));
+    auto shorter_message = utils::create_abort_message(shorter_context);
+    EXPECT_NE(std::string::npos, shorter_message.find(expected.str())) << shorter_message;
 }
 /**
  * @brief Verify that abort messages show the secondary index name.

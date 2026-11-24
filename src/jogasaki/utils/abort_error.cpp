@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 #include "abort_error.h"
 
+#include <algorithm>
+#include <exception>
 #include <optional>
 #include <ostream>
 #include <type_traits>
@@ -50,23 +52,39 @@ using takatori::util::string_builder;
 
 static std::pair <maybe_shared_ptr<meta::record_meta>, accessor::record_ref>
 read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, data::aligned_buffer &buf,
-    std::string_view storage_name, std::string_view data, memory::lifo_paged_memory_resource *resource) {
-    auto idx = find_storage(tables, storage_name);
+    std::optional<std::string> const& index_name, std::string_view data, memory::lifo_paged_memory_resource *resource) {
+    if (! index_name) {
+        return {};
+    }
+    auto idx = find_storage(tables, *index_name);
     if(! idx) {
-        // Storage name is not available somehow. Return empty metadata and let caller handle this case.
+        // Index name is not available somehow. Return empty metadata and let caller handle this case.
         return {};
     }
     auto meta = index::create_meta(*idx, true);
+    auto key_fields = index::index_fields(*idx, true);
+    if(resource == nullptr && std::any_of(key_fields.begin(), key_fields.end(), [](auto const& field) {
+        auto kind = field.type_.kind();
+        return kind == jogasaki::meta::field_type_kind::character || kind == jogasaki::meta::field_type_kind::octet;
+    })) {
+        return {};
+    }
     auto mapper = std::make_shared<index::mapper>(
-        index::index_fields(*idx, true),
+        std::move(key_fields),
         index::index_fields(*idx, false)
     );
     kvs::readable_stream stream{data.data(), data.size()};
     auto sz = meta->record_size();
     buf.resize(sz);
     accessor::record_ref rec{buf.data(), sz};
-    if(! mapper->read(true, stream, rec, resource)) {
-        // key is corrupted or not available
+    try {
+        if(! mapper->read(true, stream, rec, resource) ||
+            (idx->features().contains(yugawara::storage::index_feature::primary) && stream.size() != stream.capacity())) {
+            // key is corrupted or not available
+            return {};
+        }
+    } catch(std::exception const&) {
+        // Abort-message creation must not fail even if the locator and the current index definition disagree.
         return {};
     }
     return {std::move(meta), rec};
@@ -85,10 +103,12 @@ static void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorL
             assert_with_exception(locator->kind() == sharksfin::ErrorLocatorKind::storage_key, locator->kind());
             auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);  //NOLINT
             data::aligned_buffer buf{default_record_buffer_size};
-            auto stg = loc->storage().has_value() ? loc->storage().value() : "";
+            // The locator carries the physical storage key, not the logical index name.
+            auto name = loc->storage().has_value() ?
+                global::storage_manager()->get_index_name(*loc->storage()) : std::nullopt;
             ss << "location={key:";
             if (loc->key().has_value()) {
-                auto [meta, ref] = read_key_as_record_ref(tables, buf, stg, loc->key().value(), resource);
+                auto [meta, ref] = read_key_as_record_ref(tables, buf, name, loc->key().value(), resource);
                 if (meta) {
                     ss << ref << *meta;
                 } else {
@@ -102,7 +122,6 @@ static void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorL
             ss << " index:";
             if (loc->storage().has_value()) {
                 auto stg_key = loc->storage().value();
-                auto name = global::storage_manager()->get_index_name(stg_key);
                 if (name.has_value()) {
                     ss << *name;
                 } else {
@@ -144,11 +163,11 @@ std::string create_abort_message(
 }
 
 std::shared_ptr<yugawara::storage::index const>
-find_storage(const yugawara::storage::configurable_provider &tables, std::string_view storage_name) {
+find_storage(const yugawara::storage::configurable_provider &tables, std::string_view index_name) {
     std::shared_ptr<yugawara::storage::index const> found{};
     tables.each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
         (void) id;
-        if (entry->simple_name() == storage_name) {
+        if (entry->simple_name() == index_name) {
             found = entry;
         }
     });
@@ -156,4 +175,3 @@ find_storage(const yugawara::storage::configurable_provider &tables, std::string
 }
 
 }
-

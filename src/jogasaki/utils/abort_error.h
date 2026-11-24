@@ -31,10 +31,9 @@ std::string create_abort_message(request_context const& rctx);
 
 std::shared_ptr<yugawara::storage::index const> find_storage(
     yugawara::storage::configurable_provider const& tables,
-    std::string_view storage_name
+    std::string_view index_name
 );
 
 std::string transaction_id_str(transaction_context& tx);
 
 }
-

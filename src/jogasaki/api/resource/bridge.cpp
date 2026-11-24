@@ -238,6 +238,27 @@ static bool process_index_selection_config(
     return true;
 }
 
+/**
+ * @brief reads the number of shards of the lock of the table metadata provider from the sql section
+ * @details if the value is omitted or empty, the configuration is left as is (0, the default of the compiler)
+ * @return false if the value is out of the range (it must be positive)
+ */
+static bool process_table_metadata_config(
+    std::shared_ptr<jogasaki::configuration>& ret,
+    tateyama::api::configuration::section const& section
+) {
+    // read as signed integer, because negative value is wrapped around when read as std::size_t
+    if (auto v = section.get<std::int64_t>("dev_table_metadata_lock_shards")) {
+        if (v.value() <= 0) {
+            LOG_LP(ERROR) << "invalid configuration - value " << v.value()
+                          << " specified for parameter \"dev_table_metadata_lock_shards\" is out of the range";
+            return false;
+        }
+        ret->table_metadata_lock_shards(static_cast<std::size_t>(v.value()));
+    }
+    return true;
+}
+
 static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     // sql section
     auto jogasaki_config = cfg.get_section("sql");
@@ -446,6 +467,10 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
         ret->scan_impl(static_cast<scan_impl_kind>(idx));
     }
     if (! process_index_selection_config(ret, *jogasaki_config)) {
+        ret = {};
+        return false;
+    }
+    if (! process_table_metadata_config(ret, *jogasaki_config)) {
         ret = {};
         return false;
     }

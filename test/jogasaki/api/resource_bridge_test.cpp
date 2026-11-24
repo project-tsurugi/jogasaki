@@ -282,4 +282,67 @@ TEST_F(resource_bridge_test, index_selection_cfg_out_of_range) {
     }
 }
 
+TEST_F(resource_bridge_test, table_metadata_lock_shards_cfg) {
+    std::stringstream ss{
+        "[sql]\n"
+        "dev_table_metadata_lock_shards=4\n"
+    };
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
+    auto c = api::resource::convert_config(cfg);
+    ASSERT_TRUE(c);
+    EXPECT_EQ(4, c->table_metadata_lock_shards());
+}
+
+TEST_F(resource_bridge_test, table_metadata_lock_shards_cfg_default_value) {
+    std::stringstream ss{
+        "[sql]\n"
+    };
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
+    auto c = api::resource::convert_config(cfg);
+    ASSERT_TRUE(c);
+    EXPECT_EQ(0, c->table_metadata_lock_shards());
+}
+
+TEST_F(resource_bridge_test, table_metadata_lock_shards_cfg_empty_value) {
+    // empty value is regarded as omitted, and the default of the compiler is used
+    std::stringstream ss{
+        "[sql]\n"
+        "dev_table_metadata_lock_shards=\n"
+    };
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
+    auto c = api::resource::convert_config(cfg);
+    ASSERT_TRUE(c);
+    EXPECT_EQ(0, c->table_metadata_lock_shards());
+}
+
+TEST_F(resource_bridge_test, table_metadata_lock_shards_cfg_empty_default_value) {
+    // tateyama-bootstrap gives empty value as the default
+    std::string_view default_with_empty{
+        "[sql]\n"
+            "dev_table_metadata_lock_shards=\n"
+        "[datastore]\n"
+            "log_location=\n"
+    };
+    std::stringstream ss{
+        "[sql]\n"
+    };
+    tateyama::api::configuration::whole cfg{ss, default_with_empty};
+    auto c = api::resource::convert_config(cfg);
+    ASSERT_TRUE(c);
+    EXPECT_EQ(0, c->table_metadata_lock_shards());
+}
+
+TEST_F(resource_bridge_test, table_metadata_lock_shards_cfg_out_of_range) {
+    for(auto&& entry : {
+        "dev_table_metadata_lock_shards=0",
+        "dev_table_metadata_lock_shards=-1",
+    }) {
+        SCOPED_TRACE(entry);
+        std::stringstream ss{"[sql]\n"s + entry + "\n"};
+        tateyama::api::configuration::whole cfg{ss, default_configuration};
+        auto c = api::resource::convert_config(cfg);
+        EXPECT_FALSE(c);
+    }
+}
+
 }

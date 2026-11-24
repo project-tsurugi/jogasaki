@@ -159,8 +159,15 @@ std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
 }
 
+static std::shared_ptr<yugawara::storage::configurable_provider> create_tables(configuration const& cfg) {
+    if (auto shards = cfg.table_metadata_lock_shards(); shards > 0) {
+        return std::make_shared<yugawara::storage::configurable_provider>(nullptr, shards);
+    }
+    return std::make_shared<yugawara::storage::configurable_provider>();
+}
+
 void database::reset_tables() {
-    tables_ = std::make_shared<yugawara::storage::configurable_provider>();
+    tables_ = create_tables(*cfg_);
 }
 
 std::shared_ptr<yugawara::storage::configurable_provider> const& database::tables() const noexcept {
@@ -234,6 +241,7 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_index_indirect_access_weight) " << cfg.index_indirect_access_weight() << " : weight of the index access which looks up the primary index again";
     LOGCFG << "(dev_index_sort_cost) " << cfg.index_sort_cost() << " : cost factor of sorting the candidate without the order required by the downstream";
     LOGCFG << "(dev_index_max_early_stop_limit_count) " << cfg.index_max_early_stop_limit_count() << " : maximum row count of LIMIT to choose the index in the order without comparing the estimation";
+    LOGCFG << "(dev_table_metadata_lock_shards) " << cfg.table_metadata_lock_shards() << " : number of shards of the reader lock of the table metadata (0 means the default of the compiler)";
     LOGCFG << "(dev_enable_apply_preserves_order) " << cfg.enable_apply_preserves_order() << " : whether the apply operator tells the compiler that it outputs records in the order of its input records";
     LOGCFG << "(dev_scan_impl) " << cfg.scan_impl() << " : transaction engine scan implementation used by scan operator (auto, legacy or iscan)";
 }
@@ -459,7 +467,7 @@ bool database::init() {
     if(initialized_) {
         return true;
     }
-    tables_ = std::make_shared<yugawara::storage::configurable_provider>();
+    tables_ = create_tables(*cfg_);
     global::function_registry().initialize(*cfg_);
     initialized_ = true;
     return true;

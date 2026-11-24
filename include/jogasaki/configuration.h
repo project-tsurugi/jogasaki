@@ -810,6 +810,18 @@ public:
         index_max_early_stop_limit_count_ = arg;
     }
 
+    /**
+     * @brief the number of shards of the lock of the table metadata provider (storage::configurable_provider)
+     * @details 0 means the default of yugawara (yugawara::util::sharded_shared_mutex::default_shard_count)
+     */
+    [[nodiscard]] std::size_t table_metadata_lock_shards() const noexcept {
+        return table_metadata_lock_shards_;
+    }
+
+    void table_metadata_lock_shards(std::size_t arg) noexcept {
+        table_metadata_lock_shards_ = arg;
+    }
+
     [[nodiscard]] std::size_t udf_client_timeout() const noexcept {
         return udf_client_timeout_;
     }
@@ -906,6 +918,7 @@ public:
         print_non_default(index_indirect_access_weight);
         print_non_default(index_sort_cost);
         print_non_default(index_max_early_stop_limit_count);
+        print_non_default(table_metadata_lock_shards);
         print_non_default(udf_client_timeout);
 
         if(cfg.req_cancel_config()) {
@@ -999,6 +1012,7 @@ private:
     double index_indirect_access_weight_ = 2.0;
     double index_sort_cost_ = 0.1;
     std::size_t index_max_early_stop_limit_count_ = 10000;
+    std::size_t table_metadata_lock_shards_ = 0;
     std::size_t udf_client_timeout_ = 0;
 };
 

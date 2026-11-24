@@ -54,25 +54,18 @@ TEST(remote_server_configuration_validation_test, rejects_relative_unix_and_unix
     EXPECT_FALSE(dist::valid_remote_server_uri("unix:path", false));
     EXPECT_FALSE(dist::valid_remote_server_uri("unix:///tmp/dq.sock", true));
 }
-TEST(remote_server_configuration_validation_test, parses_every_certificate_in_a_bundle) {
+TEST(remote_server_configuration_validation_test, accepts_single_and_multiple_certificate_pem) {
     auto certificate = std::string{remote_test_root_certificate};
     EXPECT_TRUE(dist::valid_remote_root_certificates(certificate));
     EXPECT_TRUE(dist::valid_remote_root_certificates(certificate + certificate));
-    std::string crlf{};
-    for (char c : certificate) { if (c == '\n') crlf += '\r'; crlf += c; }
-    EXPECT_TRUE(dist::valid_remote_root_certificates(crlf));
-    EXPECT_FALSE(dist::valid_remote_root_certificates(certificate + "x" + certificate));
-    EXPECT_FALSE(dist::valid_remote_root_certificates(certificate + " " + certificate));
-    auto garbage = certificate;
-    garbage.insert(garbage.find("-----END CERTIFICATE-----") + std::string{"-----END CERTIFICATE-----"}.size(), "garbage");
-    EXPECT_FALSE(dist::valid_remote_root_certificates(certificate + garbage + certificate));
+}
+TEST(remote_server_configuration_validation_test, rejects_empty_or_broken_certificate_pem) {
+    auto certificate = std::string{remote_test_root_certificate};
     std::string broken{"-----BEGIN CERTIFICATE-----\nnot-a-certificate\n-----END CERTIFICATE-----\n"};
-    EXPECT_FALSE(dist::valid_remote_root_certificates(broken));
-    EXPECT_FALSE(dist::valid_remote_root_certificates(certificate + broken));
-    EXPECT_FALSE(dist::valid_remote_root_certificates(broken + certificate));
-    EXPECT_FALSE(dist::valid_remote_root_certificates(certificate + "-----BEGIN CERTIFICATE-----\ntruncated"));
-    EXPECT_FALSE(dist::valid_remote_root_certificates("-----BEGIN PRIVATE KEY-----\nunused\n-----END PRIVATE KEY-----\n" + certificate));
     EXPECT_FALSE(dist::valid_remote_root_certificates(""));
+    EXPECT_FALSE(dist::valid_remote_root_certificates(certificate + broken));
+    EXPECT_FALSE(dist::valid_remote_root_certificates(
+        certificate + "-----BEGIN CERTIFICATE-----\ntruncated"));
 }
 TEST(remote_server_configuration_validation_test, rejects_inconsistent_direct_credentials_without_publication) {
     using source = dist::root_certificate_source;

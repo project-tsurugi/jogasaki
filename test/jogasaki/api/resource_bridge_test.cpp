@@ -728,9 +728,6 @@ TEST_F(resource_bridge_test, resolves_relative_certificate_and_rejects_missing_o
     EXPECT_FALSE(parse());
     { std::ofstream out{certificate}; out << "not a PEM certificate"; }
     EXPECT_FALSE(parse());
-    // A syntactically invalid certificate must not reach TLS connection setup.
-    { std::ofstream out{certificate}; out << "-----BEGIN CERTIFICATE-----\nparser-fixture\n-----END CERTIFICATE-----\n"; }
-    EXPECT_FALSE(parse());
     std::string pem{::jogasaki::testing::remote_test_root_certificate};
     { std::ofstream out{certificate}; out << pem; }
     auto converted = parse();

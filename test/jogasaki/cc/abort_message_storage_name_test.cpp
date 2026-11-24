@@ -148,10 +148,14 @@ TEST_F(abort_message_storage_name_test, ltx_write_conflict_shows_key_and_index_n
     auto fallback_message = utils::create_abort_message(context);
     EXPECT_NE(std::string::npos, fallback_message.find(expected.str())) << fallback_message;
 
-    // A definition with the same index name but an incompatible key layout must not be used to print the old key.
+    // A same-name definition whose key layout cannot decode the locator key must fall back to the binary key.
     auto incompatible_tables = std::make_shared<yugawara::storage::configurable_provider>();
     auto incompatible_table = incompatible_tables->add_table(yugawara::storage::table{"T0", {
-        {"C0", takatori::type::int8{}},
+        yugawara::storage::column{
+            "C0",
+            takatori::type::int8{},
+            yugawara::variable::nullity{false},
+        },
     }});
     incompatible_tables->add_index(yugawara::storage::index{
         incompatible_table,

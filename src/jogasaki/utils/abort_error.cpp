@@ -56,7 +56,7 @@ read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, d
     }
     auto idx = find_storage(tables, *index_name);
     if(! idx) {
-        // Storage name is not available somehow. Return empty metadata and let caller handle this case.
+        // Index name is not available somehow. Return empty metadata and let caller handle this case.
         return {};
     }
     auto meta = index::create_meta(*idx, true);
@@ -148,11 +148,11 @@ std::string create_abort_message(
 }
 
 std::shared_ptr<yugawara::storage::index const>
-find_storage(const yugawara::storage::configurable_provider &tables, std::string_view storage_name) {
+find_storage(const yugawara::storage::configurable_provider &tables, std::string_view index_name) {
     std::shared_ptr<yugawara::storage::index const> found{};
     tables.each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
         (void) id;
-        if (entry->simple_name() == storage_name) {
+        if (entry->simple_name() == index_name) {
             found = entry;
         }
     });
@@ -160,4 +160,3 @@ find_storage(const yugawara::storage::configurable_provider &tables, std::string
 }
 
 }
-

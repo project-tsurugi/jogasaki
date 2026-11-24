@@ -20,6 +20,7 @@
 
 #include <takatori/decimal/triple.h>
 
+#include <jogasaki/executor/expr/details/decimal_context.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
@@ -173,6 +174,8 @@ status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data,
     }
     std::size_t precision = option.precision_.value();
     std::size_t scale = option.scale_.value();
+    // this can run on threads that never evaluated expressions, so set up decimal context here
+    executor::expr::details::ensure_decimal_context();
     // clear status before checking it - decimal::context is thread local and may retain the flags
     // raised by previous decimal operations on the same thread (e.g. failed MOD)
     decimal::context.clear_status();

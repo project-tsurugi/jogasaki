@@ -48,6 +48,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
 #include <jogasaki/executor/file/utils.h>
 #include <jogasaki/executor/file/writer_column_option.h>
 #include <jogasaki/logging.h>
@@ -284,6 +285,8 @@ bool parquet_writer::impl::write_decimal(
     if (null) {
         return write_null(writer);
     }
+    // this can run on threads that never evaluated expressions, so set up decimal context here
+    expr::details::ensure_decimal_context();
     auto sv = static_cast<decimal::Decimal>(v);
     decimal::context.clear_status();
     auto y = sv.rescale(-static_cast<std::int64_t>(colopt.scale_));

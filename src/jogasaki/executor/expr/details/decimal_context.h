@@ -33,6 +33,13 @@ decimal::Context standard_decimal_context();
  * the standard context (provided by standard_decimal_context()) is set at least once for the current thread. After the
  * first call on a thread this function is no-op when called again from the thread.
  * @note this function is thread safe and should be called at least once from any thread that uses decimal::Decimal
+ * @note policy: call this function at the beginning of any code that uses mpdecimal (e.g. arithmetic, rescale,
+ * reading/checking decimal::context status), unless it is clear that the code does not depend on the context
+ * (e.g. creating decimal::Decimal from triple and comparing them). Do not assume the caller has already called this.
+ * The code can run on threads that never evaluated expressions (e.g. aggregation or key encoding on a scheduler
+ * worker or a request thread), where decimal::context is still mpdecimal default (16 digits precision with traps
+ * enabled), which causes silent rounding or unexpected exceptions. The call is cheap (checking a thread local flag)
+ * after the first call on the thread.
  * @note mpdecimal has the mechanism to initialize decimal::context with the template set by decimal::context_template.
  * But as far as we tested, it didn't work reliably enough and decimal::context sometime failed to have correct properties,
  * even if we set decimal::context_template before the first use of decimal::context (e.g. global constructor).

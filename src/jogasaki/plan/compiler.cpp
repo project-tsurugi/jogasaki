@@ -61,6 +61,8 @@
 #include <takatori/relation/write_kind.h>
 #include <takatori/statement/create_index.h>
 #include <takatori/statement/create_table.h>
+#include <takatori/statement/create_foreign_catalog.h>
+#include <takatori/statement/drop_foreign_catalog.h>
 #include <takatori/statement/drop_index.h>
 #include <takatori/statement/drop_table.h>
 #include <takatori/statement/execute.h>
@@ -105,10 +107,15 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/datastore/register_lob.h>
+#include <jogasaki/dist/operation_location.h>
+#include <jogasaki/dist/compiler_locations.h>
+#include <jogasaki/dist/remote_catalog_provider.h>
+#include <jogasaki/dist/remote_write_target.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/create_index.h>
 #include <jogasaki/executor/common/create_table.h>
+#include <jogasaki/executor/common/foreign_catalog_statement.h>
 #include <jogasaki/executor/common/drop_index.h>
 #include <jogasaki/executor/common/drop_table.h>
 #include <jogasaki/executor/common/empty.h>
@@ -132,6 +139,7 @@
 #include <jogasaki/executor/process/impl/ops/emit.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/process_preparation.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/step.h>
@@ -196,6 +204,22 @@ static void add_table_to_storage_list(
 ) {
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(relation);
     auto& table = secondary_or_primary_index.table();
+    if (auto const& catalogs = container->remote_catalogs(); catalogs && catalogs->remote_server(table)) {
+        if (actions != auth::action_set{auth::action_kind::select}) {
+            throw_exception(plan_exception(create_error_info(
+                error_code::unsupported_compiler_feature_exception,
+                "Writing remote tables is not supported.", status::err_unsupported)));
+        }
+        auto catalog = catalogs->catalog_for(table);
+        if (!catalog) {
+            throw_exception(plan_exception(create_error_info(
+                error_code::internal_exception,
+                "Remote table has no owning catalog.", status::err_invalid_state)));
+        }
+        container->add_remote_catalog_dependency(catalog);
+        // Remote declarations have no physical storage entry on the coordinator.
+        return;
+    }
     if(auto v = global::storage_manager()->find_by_name(table.simple_name()); v.has_value()) {
         // ideally preserve() should be called for the storages/actions list, but currently this function is called from
         // many places and storage count is not calculated
@@ -379,8 +403,14 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     compiled_info info, compiler_context &ctx
 ) {
-     (void)ctx;  // unused parameter
+    // Compiler diagnostics have already been handled. Reject resolved remote update targets
+    // before collecting local storage operations or creating executable runtime metadata.
+    if (auto error = dist::validate_remote_write_target(*statement, ctx.remote_catalogs().get())) {
+        ctx.error_info(error);
+        return {error->status(), {}};
+    }
     auto container = std::make_shared<mirror_container>();
+    container->remote_catalogs(ctx.remote_catalogs());
     switch(statement->kind()) {
         case statement::statement_kind::execute:
             container->work_level().set_minimum(statement_work_level_kind::key_operation);
@@ -430,6 +460,10 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::drop_index:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
+            break;
+        case statement::statement_kind::create_foreign_catalog: [[fallthrough]];
+        case statement::statement_kind::drop_foreign_catalog:
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::empty:
@@ -556,6 +590,7 @@ static error_code map_compiler_error(yugawara::compiler_code code) {
         case ycc::unsupported_type: return ec::unsupported_compiler_feature_exception;
         case ycc::unresolved_variable: return ec::symbol_analyze_exception;
         case ycc::unsupported_feature: return ec::unsupported_compiler_feature_exception;
+        case ycc::empty_operation_location: return ec::unsupported_compiler_feature_exception;
         default: return ec::compile_exception;
     }
     std::abort();
@@ -607,6 +642,37 @@ static void handle_compile_errors(
     set_compile_error(ctx, code, msg, res);
 }
 
+// Preserve the L3-04 generation status at each prepare/resolve entry.
+static status set_remote_generation_error(compiler_context& ctx, std::string const& message, status code) {
+    ctx.error_info(create_error_info(code == status::err_unsupported
+        ? error_code::unsupported_compiler_feature_exception : error_code::compile_exception, message, code));
+    return code;
+}
+
+// Failures of the operation location interface are reported as compile errors with their cause.
+static status set_operation_location_error(compiler_context& ctx, std::string_view prefix, std::exception const& e) {
+    auto message = string_builder{} << prefix << e.what() << string_builder::to_string;
+    VLOG_LP(log_error) << message;
+    set_compile_error(ctx, error_code::compile_exception, message, status::err_compiler_error);
+    return status::err_compiler_error;
+}
+
+static status capture_operation_locations(takatori::plan::graph_type const& graph,
+    dist::operation_locations const& query, compiler_context& ctx,
+    std::shared_ptr<dist::process_locations const>& locations) {
+    dist::process_locations_result captured{};
+    try {
+        captured = dist::capture_process_locations(graph, query, ctx.remote_catalogs().get());
+    } catch (std::exception const& e) {
+        return set_operation_location_error(ctx, "operation location lookup failed: ", e);
+    }
+    if (!captured.error.empty()) {
+        return set_remote_generation_error(ctx, captured.error, captured.code);
+    }
+    locations = std::move(captured.locations);
+    return status::ok;
+}
+
 static status create_prepared_statement(
     yugawara::compiler_result result,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
@@ -619,16 +685,34 @@ static status create_prepared_statement(
         handle_compile_errors(result.diagnostics(), res, ctx);
         return res;
     }
+    std::shared_ptr<dist::process_locations const> locations{};
+    bool coordinated = result.statement().kind() == takatori::statement::statement_kind::execute
+        && global::config_pool()->distributed_query_coordinator_enabled();
+    if (coordinated && ctx.symbol_locations() && result.operation_location_query()) {
+        auto const& graph = unsafe_downcast<takatori::statement::execute>(result.statement()).execution_plan();
+        dist::compiler_operation_locations query{*result.operation_location_query(), *ctx.symbol_locations()};
+        if (auto st = capture_operation_locations(graph, query, ctx, locations); st != status::ok) {
+            return st;
+        }
+    }
+    if (coordinated && ctx.symbol_locations() && !locations) {
+        set_compile_error(ctx, error_code::compile_exception,
+            "Compiler did not provide execution locations.", status::err_compiler_error);
+        return status::err_compiler_error;
+    }
     auto stmt = result.release_statement();
     stmt->runtime_hint() = sp->result();
     auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
-    auto [mirror_status, mirror] = preprocess_mirror(s, provider, result.info(), ctx);
+    auto info = result.info();
+
+    auto [mirror_status, mirror] = preprocess_mirror(s, provider, info, ctx);
     if (mirror_status != status::ok) { return mirror_status; }
     mirror->reads_written_tables(ctx.statement_reads_written_tables());
-    check_blob_relay_availability(*s, result.info());
+    mirror->process_locations(std::move(locations));
+    check_blob_relay_availability(*s, info);
     out = std::make_shared<plan::prepared_statement>(
         s,
-        result.info(),
+        info,
         provider,
         std::move(mirror),
         ctx.sql_text()
@@ -741,11 +825,17 @@ static status compile_analysis(
         selection.max_early_stop_limit_count() = cfg->index_max_early_stop_limit_count();
     }
 
-    // Reject foreign catalog DDL until runtime support is available, including text-only EXPLAIN.
-    c_options.restricted_features() += {
-        yugawara::restricted_feature::statement_create_foreign_catalog,
-        yugawara::restricted_feature::statement_drop_foreign_catalog,
-    };
+    if (cfg && cfg->distributed_query_coordinator_enabled() && ctx.symbol_locations()) {
+        dist::configure_remote_compilation(c_options, ctx.symbol_locations());
+    }
+
+    // Foreign catalog DDL requires coordinator catalog management, including text-only EXPLAIN.
+    if (!cfg || !cfg->distributed_query_coordinator_enabled()) {
+        c_options.restricted_features() += {
+            yugawara::restricted_feature::statement_create_foreign_catalog,
+            yugawara::restricted_feature::statement_drop_foreign_catalog,
+        };
+    }
 
     // restricted features - jogasaki does not implement yet
     if(! ctx.option().explain_by_text_only()) {
@@ -825,6 +915,7 @@ static bool reads_written_tables(takatori::statement::statement const& statement
     return std::any_of(written.begin(), written.end(), [&](auto* t) { return read.count(t) != 0; });
 }
 
+
 static status prepare(
     std::string_view sql,
     compiler_context &ctx,
@@ -867,13 +958,21 @@ static status prepare(
         ctx.aggregate_provider()
     });
     yugawara::schema::catalog catalog{std::string{default_catalog_name}};
-    catalog.schema_provider(std::move(schema_provider));
+    catalog.schema_provider(schema_provider);
     yugawara::schema::search_path schema_search_path{{schema}};
+
+
     mizugaki::analyzer::sql_analyzer_options opts{
         maybe_shared_ptr{std::addressof(catalog)},
         maybe_shared_ptr{std::addressof(schema_search_path)},
         schema
     };
+
+    if (ctx.symbol_locations()) {
+        for (auto const& external : ctx.symbol_locations()->external_catalogs()) {
+            opts.external_catalogs().emplace_back(external);
+        }
+    }
 
     // allow null literals
     opts.allow_context_independent_null() = true;
@@ -978,15 +1077,25 @@ executor::process::step create(
     std::shared_ptr<mirror_container> const& mirrors,
     variable_table const* host_variables
 ) {
+    dist::process_location const* location{};
+    if (auto const& locations = mirrors->process_locations()) {
+        // Only processes queried at prepare time have a location; never guess one for other steps.
+        location = locations->find(process);
+        if (! location) {
+            throw_exception(plan_exception(create_error_info(
+                error_code::internal_exception,
+                "process has no captured operation location",
+                status::err_invalid_state
+            )));
+        }
+    }
     auto& mirror = mirrors->at(std::addressof(process));
-    auto pinfo = std::make_shared<executor::process::processor_info>(
-        const_cast<relation::graph_type&>(process.operators()),
-        info,
-        mirror.first,
-        mirror.second,
-        host_variables
-    );
+    auto pinfo = executor::process::prepare_processor(
+        process.operators(), info, host_variables, mirror.first, mirror.second);
     pinfo->statement_reads_written_tables(mirrors->reads_written_tables());
+    if (location) {
+        pinfo->captured_location(location->server);
+    }
 
     yugawara::binding::factory bindings{};
     std::unordered_map<takatori::descriptor::relation, std::size_t> inputs{};
@@ -999,10 +1108,8 @@ executor::process::step create(
     for(std::size_t i=0, n=offers.size(); i < n; ++i) {
         outputs[offers[i]] = i;
     }
-    return {
-        std::move(pinfo),
-        std::make_shared<executor::process::relation_io_map>(std::move(inputs), std::move(outputs))
-    };
+    return executor::process::prepare_process(std::move(pinfo),
+        std::make_shared<executor::process::relation_io_map>(std::move(inputs), std::move(outputs)));
 }
 
 executor::exchange::forward::step create(
@@ -1372,6 +1479,25 @@ static void create_mirror_for_ddl(
             ops = std::make_shared<executor::common::truncate_table>(node);
             break;
         }
+        case statement::statement_kind::create_foreign_catalog: {
+            auto const& node = unsafe_downcast<statement::create_foreign_catalog>(*statement);
+            dist::create_foreign_catalog_command command{
+                {node.catalog_name(), node.server_name()},
+                node.options().contains(statement::create_foreign_catalog_option_kind::if_catalog_not_exists),
+                node.options().contains(statement::create_foreign_catalog_option_kind::if_server_exists),
+            };
+            ops = std::make_shared<executor::common::create_foreign_catalog>(std::move(command));
+            break;
+        }
+        case statement::statement_kind::drop_foreign_catalog: {
+            auto const& node = unsafe_downcast<statement::drop_foreign_catalog>(*statement);
+            dist::drop_foreign_catalog_command command{
+                node.catalog_name(),
+                node.options().contains(statement::drop_foreign_catalog_option_kind::if_catalog_exists),
+            };
+            ops = std::make_shared<executor::common::drop_foreign_catalog>(std::move(command));
+            break;
+        }
         default:
             throw_exception(std::logic_error{""});
     }
@@ -1514,6 +1640,7 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
             create_mirror_for_write(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::execute:
+
             create_mirror_for_execute(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::create_table:
@@ -1526,6 +1653,10 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::drop_index:
+            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::create_foreign_catalog: [[fallthrough]];
+        case statement_kind::drop_foreign_catalog:
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::empty:

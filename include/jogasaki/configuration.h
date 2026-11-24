@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include <jogasaki/dist/remote_server_configuration.h>
 #include <jogasaki/request_cancel_config.h>
 
 #include "commit_response.h"
@@ -830,6 +831,22 @@ public:
         udf_client_timeout_ = arg;
     }
 
+    [[nodiscard]] bool distributed_query_coordinator_enabled() const noexcept {
+        return distributed_query_coordinator_enabled_;
+    }
+
+    void distributed_query_coordinator_enabled(bool arg) noexcept {
+        distributed_query_coordinator_enabled_ = arg;
+    }
+
+    [[nodiscard]] std::vector<dist::remote_server_configuration> const& distributed_query_remote_servers() const noexcept {
+        return distributed_query_remote_servers_;
+    }
+
+    void distributed_query_remote_servers(std::vector<dist::remote_server_configuration> arg) {
+        distributed_query_remote_servers_ = std::move(arg);
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -1014,6 +1031,8 @@ private:
     std::size_t index_max_early_stop_limit_count_ = 10000;
     std::size_t table_metadata_lock_shards_ = 0;
     std::size_t udf_client_timeout_ = 0;
+    bool distributed_query_coordinator_enabled_{};
+    std::vector<dist::remote_server_configuration> distributed_query_remote_servers_{};
 };
 
 }  // namespace jogasaki

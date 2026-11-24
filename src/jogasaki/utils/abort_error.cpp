@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 #include "abort_error.h"
 
+#include <algorithm>
+#include <exception>
 #include <optional>
 #include <ostream>
 #include <type_traits>
@@ -60,16 +62,28 @@ read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, d
         return {};
     }
     auto meta = index::create_meta(*idx, true);
+    auto key_fields = index::index_fields(*idx, true);
+    if(resource == nullptr && std::any_of(key_fields.begin(), key_fields.end(), [](auto const& field) {
+        auto kind = field.type_.kind();
+        return kind == jogasaki::meta::field_type_kind::character || kind == jogasaki::meta::field_type_kind::octet;
+    })) {
+        return {};
+    }
     auto mapper = std::make_shared<index::mapper>(
-        index::index_fields(*idx, true),
+        std::move(key_fields),
         index::index_fields(*idx, false)
     );
     kvs::readable_stream stream{data.data(), data.size()};
     auto sz = meta->record_size();
     buf.resize(sz);
     accessor::record_ref rec{buf.data(), sz};
-    if(! mapper->read(true, stream, rec, resource)) {
-        // key is corrupted or not available
+    try {
+        if(! mapper->read(true, stream, rec, resource)) {
+            // key is corrupted or not available
+            return {};
+        }
+    } catch(std::exception const&) {
+        // Abort-message creation must not fail even if the locator and the current index definition disagree.
         return {};
     }
     return {std::move(meta), rec};

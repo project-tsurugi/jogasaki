@@ -32,6 +32,9 @@
 #include <gtest/gtest.h>
 #include <sharksfin/CallResult.h>
 #include <sharksfin/ErrorLocator.h>
+#include <takatori/type/primitive.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/table.h>
 
 #include <jogasaki/api/error_info.h>
 #include <jogasaki/api/transaction_handle.h>
@@ -144,6 +147,24 @@ TEST_F(abort_message_storage_name_test, ltx_write_conflict_shows_key_and_index_n
              << " index:T0}";
     auto fallback_message = utils::create_abort_message(context);
     EXPECT_NE(std::string::npos, fallback_message.find(expected.str())) << fallback_message;
+
+    // A definition with the same index name but an incompatible key layout must not be used to print the old key.
+    auto incompatible_tables = std::make_shared<yugawara::storage::configurable_provider>();
+    auto incompatible_table = incompatible_tables->add_table(yugawara::storage::table{"T0", {
+        {"C0", takatori::type::int8{}},
+    }});
+    incompatible_tables->add_index(yugawara::storage::index{
+        incompatible_table,
+        "T0",
+        {incompatible_table->columns()[0]},
+        {},
+        {yugawara::storage::index_feature::primary},
+    });
+    request_context incompatible_context{
+        {}, std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()), {}, failed_tx};
+    incompatible_context.storage_provider(std::move(incompatible_tables));
+    auto incompatible_message = utils::create_abort_message(incompatible_context);
+    EXPECT_NE(std::string::npos, incompatible_message.find(expected.str())) << incompatible_message;
 }
 /**
  * @brief Verify that abort messages show the secondary index name.
@@ -190,6 +211,7 @@ TEST_F(abort_message_storage_name_test, ltx_conflict_decodes_composite_character
     execute_statement("INSERT INTO T1 VALUES ('key-with-more-than-sixteen-characters', 205, 1)");
     auto tx1 = utils::create_transaction(*db_, false, true, {"T1"});
     auto tx2 = utils::create_transaction(*db_, false, true, {"T1"});
+    auto failed_tx = db_impl()->find_transaction(*tx2);
     execute_statement("UPDATE T1 SET V=10 WHERE C0='key-with-more-than-sixteen-characters' AND C1=205", *tx1);
     execute_statement("UPDATE T1 SET V=20 WHERE C0='key-with-more-than-sixteen-characters' AND C1=205", *tx2);
     ASSERT_EQ(status::ok, tx1->commit());
@@ -198,6 +220,21 @@ TEST_F(abort_message_storage_name_test, ltx_conflict_decodes_composite_character
     ASSERT_TRUE(info);
     std::string message{info->message()};
     EXPECT_NE(std::string::npos, message.find("[key-with-more-than-sixteen-characters] (1:int4*)[205] index:T1}")) << message;
+
+    // A request without a memory resource must retain the binary fallback instead of dereferencing nullptr
+    // while decoding the character key.
+    request_context context{{}, nullptr, {}, failed_tx};
+    context.storage_provider(db_impl()->tables());
+    auto result = failed_tx->recent_call_result();
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result->location());
+    auto const& locator = static_cast<sharksfin::StorageKeyErrorLocator const&>(*result->location());
+    ASSERT_TRUE(locator.key());
+    std::ostringstream expected{};
+    expected << "location={key:" << utils::binary_printer{locator.key()->data(), locator.key()->size()}
+             << " index:T1}";
+    auto fallback_message = utils::create_abort_message(context);
+    EXPECT_NE(std::string::npos, fallback_message.find(expected.str())) << fallback_message;
 }
 
 TEST_F(abort_message_storage_name_test, occ_conflict_decodes_null_secondary_key) {

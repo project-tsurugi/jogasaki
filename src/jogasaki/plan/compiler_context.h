@@ -15,15 +15,18 @@
  */
 #pragma once
 
+
 #include <cstddef>
-#include <functional>
+#include <memory>
 
 #include <yugawara/aggregate/configurable_provider.h>
-#include <yugawara/compiler_result.h>
 #include <yugawara/function/configurable_provider.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/variable/configurable_provider.h>
 
+#include <jogasaki/dist/operation_location.h>
+#include <jogasaki/dist/remote_catalog_provider.h>
+#include <jogasaki/dist/symbol_locations.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/graph.h>
@@ -42,7 +45,6 @@ namespace jogasaki::plan {
  */
 class cache_align compiler_context {
 public:
-
     void prepared_statement(std::shared_ptr<prepared_statement> statement) noexcept {
         prepared_statement_ = std::move(statement);
     }
@@ -57,6 +59,22 @@ public:
 
     [[nodiscard]] std::shared_ptr<class executable_statement> const& executable_statement() noexcept {
         return executable_statement_;
+    }
+
+    void remote_catalogs(std::shared_ptr<dist::remote_catalog_snapshot const> catalogs) noexcept {
+        remote_catalogs_ = std::move(catalogs);
+    }
+
+    [[nodiscard]] std::shared_ptr<dist::remote_catalog_snapshot const> const& remote_catalogs() const noexcept {
+        return remote_catalogs_;
+    }
+
+    void symbol_locations(std::shared_ptr<dist::symbol_locations const> locations) noexcept {
+        symbol_locations_ = std::move(locations);
+    }
+
+    [[nodiscard]] std::shared_ptr<dist::symbol_locations const> const& symbol_locations() const noexcept {
+        return symbol_locations_;
     }
 
     void storage_provider(std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider) noexcept {
@@ -149,6 +167,8 @@ private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};
     std::shared_ptr<::yugawara::storage::configurable_provider> storage_provider_{};
+    std::shared_ptr<dist::remote_catalog_snapshot const> remote_catalogs_{};
+    std::shared_ptr<dist::symbol_locations const> symbol_locations_{};
     std::shared_ptr<::yugawara::variable::configurable_provider> variable_provider_{};
     std::shared_ptr<::yugawara::function::configurable_provider> function_provider_{};
     std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_provider_{};

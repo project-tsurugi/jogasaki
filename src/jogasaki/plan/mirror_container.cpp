@@ -60,4 +60,12 @@ storage::storage_operation const& mirror_container::storage_operation() const no
     return storage_operation_;
 }
 
+void mirror_container::process_locations(std::shared_ptr<dist::process_locations const> locations) noexcept {
+    process_locations_ = std::move(locations);
+}
+
+std::shared_ptr<dist::process_locations const> const& mirror_container::process_locations() const noexcept {
+    return process_locations_;
+}
+
 } // namespace jogasaki::plan

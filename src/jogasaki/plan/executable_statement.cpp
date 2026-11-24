@@ -84,6 +84,8 @@ bool executable_statement::is_ddl() const noexcept {
     return
         k == statement_kind::create_table ||
         k == statement_kind::drop_table ||
+        k == statement_kind::create_foreign_catalog ||
+        k == statement_kind::drop_foreign_catalog ||
         k == statement_kind::create_index ||
         k == statement_kind::drop_index ||
         k == statement_kind::grant_table ||

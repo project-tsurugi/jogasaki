@@ -43,6 +43,7 @@
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
@@ -668,7 +669,8 @@ static T plus(T a, T b) {
 
 template <>
 runtime_t<kind::decimal> plus(runtime_t<kind::decimal> a, runtime_t<kind::decimal> b) {
-    // TODO use context
+    // aggregation can run on threads that never evaluated expressions, so set up decimal context here
+    expr::details::ensure_decimal_context();
     auto aa = static_cast<decimal::Decimal>(a);
     auto bb = static_cast<decimal::Decimal>(b);
     return runtime_t<kind::decimal>{(aa + bb).as_uint128_triple()};
@@ -792,7 +794,8 @@ static T div_by_count(T a, runtime_t<kind::int8> b) {
 
 template <>
 runtime_t<kind::decimal> div_by_count(runtime_t<kind::decimal> a, runtime_t<kind::int8> b) {
-    // TODO add context
+    // aggregation can run on threads that never evaluated expressions, so set up decimal context here
+    expr::details::ensure_decimal_context();
     auto aa = static_cast<decimal::Decimal>(a);
     return runtime_t<kind::decimal>{(aa / b).as_uint128_triple()};
 }

@@ -49,13 +49,10 @@
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/wrt/fill_record_fields.h>
-#include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/primary_target.h>
-#include <jogasaki/index/secondary_context.h>
 #include <jogasaki/index/secondary_target.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/storage.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
@@ -65,7 +62,6 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
-#include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "context_helper.h"
 #include "details/error_abort.h"
@@ -180,24 +176,12 @@ operation_status write_create::process_record(abstract::task_context* context) {
     context_helper ctx{*context};
     auto* p = ctx.find_context<write_create_context>(index());
     if (! p) {
-        std::vector<index::secondary_context> contexts{};
-        contexts.reserve(core_->secondaries().size());
-        for(auto&& s : core_->secondaries()) {
-            contexts.emplace_back(
-                utils::get_existing_storage_by_index_name(s.storage_name()),
-                ctx.req_context()
-            );
-        }
         p = ctx.make_context<write_create_context>(
             index(),
             block_index(),
-            utils::get_existing_storage_by_index_name(storage_name()),
             ctx.transaction(),
-            core_->primary().key_meta(),
-            core_->primary().value_meta(),
             ctx.resource(),
-            ctx.varlen_resource(),
-            std::move(contexts)
+            ctx.varlen_resource()
         );
     }
     return (*this)(*p);

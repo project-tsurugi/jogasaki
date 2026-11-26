@@ -21,7 +21,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 
 namespace jogasaki::executor::process::mock {
 

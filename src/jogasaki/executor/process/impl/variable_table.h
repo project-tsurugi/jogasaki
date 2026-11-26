@@ -23,6 +23,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/data/value.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/meta/record_meta.h>
 
@@ -35,7 +36,6 @@ using takatori::util::maybe_shared_ptr;
  */
 class variable_table {
 public:
-    using lob_locator = std::variant<lob::blob_locator, lob::clob_locator>;
 
     /**
      * @brief construct empty instance
@@ -77,19 +77,16 @@ public:
      */
     void dump(std::string const& indent = "") const noexcept;
 
-    /**
-     * @brief add lob locator to maintain the locator lifecycle for blob reference
-     */
-    template <class T>
-    std::enable_if_t<std::is_same_v<lob::blob_locator, T> || std::is_same_v<lob::clob_locator, T>, T> const& add_lob_locator(T locator) {
-        lob_locators_.emplace_back(std::in_place_type<T>, std::forward<T>(locator));
-        return std::get<T>(lob_locators_.back());
+    /** Retain every parameter's ownership for the lifetime of compiled execution variables. */
+    [[nodiscard]] data::any retain(data::value value) {
+        owners_.emplace_back(std::move(value));
+        return owners_.back().view();
     }
 
 private:
     variable_table_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};
-    std::deque<lob_locator> lob_locators_{};
+    std::vector<data::value> owners_{};
 };
 
 /**

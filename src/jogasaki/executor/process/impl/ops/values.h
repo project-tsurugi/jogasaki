@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/executor/conv/record_assignment.h>
 
 #include <cstddef>
 #include <memory>
@@ -39,20 +40,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
 
-namespace details {
 
-/**
- * @brief field for the values operator
- */
-struct values_field {
-    meta::field_type type_{};                       //NOLINT
-    bool nullable_{true};                           //NOLINT
-    std::size_t offset_{};                          //NOLINT
-    std::size_t nullity_offset_{};                  //NOLINT
-    takatori::type::data const* target_type_{};     //NOLINT
-};
-
-} // namespace details
 
 /**
  * @brief values operator - produces tuples from scalar expressions without any upstream scan.
@@ -117,14 +105,10 @@ public:
 
 private:
     std::vector<std::vector<expr::evaluator>> row_evaluators_{};
-    std::vector<std::vector<takatori::type::data const*>> row_source_types_{};
-    std::vector<details::values_field> fields_{};
+    std::vector<std::vector<conv::record_assignment>> row_assignments_{};
     std::unique_ptr<operator_base> downstream_{};
 
-    [[nodiscard]] std::vector<details::values_field> create_fields(
-        std::vector<takatori::descriptor::variable> const& columns,
-        processor_info const& pinfo
-    );
+
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <jogasaki/data/field_operations.h>
 
 #include <cstddef>
 
@@ -77,8 +78,11 @@ public:
      */
     [[nodiscard]] explicit operator bool() const noexcept;
 
+    [[nodiscard]] data::field_operations const& operations() const noexcept { return operations_; }
+
 private:
     meta::field_type const* type_{};
+    data::field_operations operations_{};
     bool nullable_{};
     std::size_t value_offset_{};
     std::size_t nullity_offset_{};

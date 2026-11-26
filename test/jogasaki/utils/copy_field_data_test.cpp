@@ -26,7 +26,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_utils/types.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 
 namespace jogasaki::utils {
 
@@ -50,7 +50,7 @@ TEST_F(copy_field_data_test, simple) {
         auto& f = src_meta->at(i);
         auto src_offset = src_meta->value_offset(i);
         auto tgt_offset = tgt_meta->value_offset(j);
-        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset);
+        ::jogasaki::data::field_operations::for_type(f).copy( tgt.ref(), tgt_offset, src.ref(), src_offset);
     }
     ASSERT_EQ((create_record<kind::int8, kind::float4>(100, 1.0)), tgt);
 }
@@ -66,7 +66,7 @@ TEST_F(copy_field_data_test, types) {
         auto& f = src_meta->at(i);
         auto src_offset = src_meta->value_offset(i);
         auto tgt_offset = tgt_meta->value_offset(i);
-        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset);
+        ::jogasaki::data::field_operations::for_type(f).copy( tgt.ref(), tgt_offset, src.ref(), src_offset);
     }
     ASSERT_EQ(src, tgt);
 }
@@ -81,7 +81,7 @@ TEST_F(copy_field_data_test, temporal_types) {
         auto& f = src_meta->at(i);
         auto src_offset = src_meta->value_offset(i);
         auto tgt_offset = tgt_meta->value_offset(i);
-        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset);
+        ::jogasaki::data::field_operations::for_type(f).copy( tgt.ref(), tgt_offset, src.ref(), src_offset);
     }
     ASSERT_EQ(src, tgt);
 }
@@ -101,7 +101,7 @@ TEST_F(copy_field_data_test, text) {
         auto& f = src_meta->at(i);
         auto src_offset = src_meta->value_offset(i);
         auto tgt_offset = tgt_meta->value_offset(i);
-        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset); // copied text refers existing varlen buffer
+        ::jogasaki::data::field_operations::for_type(f).copy( tgt.ref(), tgt_offset, src.ref(), src_offset); // copied text refers existing varlen buffer
     }
     ASSERT_EQ(60, r1.total_bytes_allocated_);
     ASSERT_EQ(0, r2.total_bytes_allocated_);
@@ -110,7 +110,7 @@ TEST_F(copy_field_data_test, text) {
         auto& f = src_meta->at(i);
         auto src_offset = src_meta->value_offset(i);
         auto tgt_offset = tgt_meta->value_offset(i);
-        copy_field(f, tgt.ref(), tgt_offset, src.ref(), src_offset, &r2); // copied text refers new varlen buffer
+        ::jogasaki::data::field_operations::for_type(f).copy( tgt.ref(), tgt_offset, src.ref(), src_offset, &r2); // copied text refers new varlen buffer
     }
     ASSERT_EQ(30, r2.total_bytes_allocated_);
     ASSERT_EQ(src, tgt);

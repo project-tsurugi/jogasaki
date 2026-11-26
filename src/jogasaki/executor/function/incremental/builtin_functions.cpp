@@ -55,7 +55,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/canonicalize_nan.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/field_operations.h>
 #include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::function::incremental {
@@ -697,8 +697,7 @@ void sum(
         // target value is empty, do not use
         target.set_null(target_nullity_offset, src_is_null);
         if (src_is_null) return;
-        utils::copy_nullable_field(
-            arg_type,
+        args[0].operations().copy_nullable(
             target,
             target_offset,
             target_nullity_offset,
@@ -864,8 +863,7 @@ void max(
         // target value is empty, do not use
         target.set_null(target_nullity_offset, src_is_null);
         if (src_is_null) return;
-        utils::copy_nullable_field(
-            arg_type,
+        args[0].operations().copy_nullable(
             target,
             target_offset,
             target_nullity_offset,
@@ -916,8 +914,7 @@ void min(
         // target value is empty, do not use
         target.set_null(target_nullity_offset, src_is_null);
         if (src_is_null) return;
-        utils::copy_nullable_field(
-            arg_type,
+        args[0].operations().copy_nullable(
             target,
             target_offset,
             target_nullity_offset,

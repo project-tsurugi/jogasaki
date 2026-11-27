@@ -15,14 +15,6 @@
  */
 #include "write_create_context.h"
 
-#include <memory>
-#include <utility>
-#include <vector>
-
-#include <jogasaki/index/primary_context.h>
-#include <jogasaki/index/secondary_context.h>
-#include <jogasaki/kvs/storage.h>
-
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -30,23 +22,12 @@ namespace jogasaki::executor::process::impl::ops {
 write_create_context::write_create_context(
     class abstract::task_context* ctx,
     variables_view variables,
-    std::unique_ptr<kvs::storage> stg,
     transaction_context* tx,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta,
     context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource,
-    std::vector<index::secondary_context> secondary_contexts
+    context_base::memory_resource* varlen_resource
 ) :
     context_base(ctx, variables, resource, varlen_resource),
-    tx_(tx),
-    primary_context_(
-        std::move(stg),
-        std::move(key_meta),
-        std::move(value_meta),
-        req_context()
-    ),
-    secondary_contexts_(std::move(secondary_contexts))
+    tx_(tx)
 {}
 
 operator_kind write_create_context::kind() const noexcept {
@@ -59,10 +40,6 @@ void write_create_context::release() {
 
 transaction_context* write_create_context::transaction() const noexcept {
     return tx_;
-}
-
-index::primary_context& write_create_context::primary_context() noexcept {
-    return primary_context_;
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -32,6 +33,7 @@
 
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
@@ -47,6 +49,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/test_utils/secondary_index.h>
 #include <jogasaki/utils/create_tx.h>
 
 #include "api_test_base.h"
@@ -65,6 +68,7 @@ using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
+using api::impl::get_impl;
 
 class sql_insert_from_select_test :
     public ::testing::Test,
@@ -212,16 +216,86 @@ TEST_F(sql_insert_from_select_test, assign_conversion) {
     }
 }
 
+TEST_F(sql_insert_from_select_test, secondary_index) {
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 10), (2, null), (3, 30)");
+    execute_statement("create table t1 (c0 int primary key, c1 int)");
+    execute_statement("create index i1 on t1 (c1)");
+    execute_statement("create index i2 on t1 (c0)");
+    execute_statement("insert into t1 select * from t0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t1 ORDER BY c0", result);
+        ASSERT_EQ(3, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, std::nullopt)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(3, 30)), result[2]);
+    }
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("t1"),
+            *get_impl(*db_).tables()->find_index("i1"),
+            create_nullable_record<kind::int4>(),
+            create_nullable_record<kind::int4>());
+        ASSERT_EQ(3, entries.size());
+        bool found_10_1{};
+        bool found_null_2{};
+        bool found_30_3{};
+        for(auto const& [secondary_key, primary_key] : entries) {
+            found_10_1 = found_10_1 ||
+                (secondary_key == create_nullable_record<kind::int4>(10) &&
+                 primary_key == create_nullable_record<kind::int4>(1));
+            found_null_2 = found_null_2 ||
+                (secondary_key == create_nullable_record<kind::int4>(std::nullopt) &&
+                 primary_key == create_nullable_record<kind::int4>(2));
+            found_30_3 = found_30_3 ||
+                (secondary_key == create_nullable_record<kind::int4>(30) &&
+                 primary_key == create_nullable_record<kind::int4>(3));
+        }
+        EXPECT_TRUE(found_10_1);
+        EXPECT_TRUE(found_null_2);
+        EXPECT_TRUE(found_30_3);
+    }
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("t1"),
+            *get_impl(*db_).tables()->find_index("i2"),
+            create_nullable_record<kind::int4>(),
+            create_nullable_record<kind::int4>());
+        ASSERT_EQ(3, entries.size());
+        for(std::int32_t value = 1; value <= 3; ++value) {
+            auto const expected = create_nullable_record<kind::int4>(value);
+            EXPECT_TRUE(std::any_of(entries.begin(), entries.end(), [&](auto const& entry) {
+                return entry.first == expected && entry.second == expected;
+            }));
+        }
+    }
+}
+
 TEST_F(sql_insert_from_select_test, insert_or_replace) {
     execute_statement("create table t0 (c0 int, c1 int)");
     execute_statement("INSERT INTO t0 VALUES (1, 10), (1, 20), (1, 30)");
     execute_statement("create table t1 (c0 int primary key, c1 int)");
+    execute_statement("create index i1 on t1 (c1)");
     execute_statement("insert or replace into t1 select * from t0 order by c1");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM t1 ORDER BY c0", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 30)), result[0]);
+    }
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("t1"),
+            *get_impl(*db_).tables()->find_index("i1"),
+            create_nullable_record<kind::int4>(),
+            create_nullable_record<kind::int4>());
+        ASSERT_EQ(1, entries.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(30)), entries[0].first);
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), entries[0].second);
     }
 }
 
@@ -242,12 +316,24 @@ TEST_F(sql_insert_from_select_test, insert_or_ignore) {
     execute_statement("create table t0 (c0 int, c1 int)");
     execute_statement("INSERT INTO t0 VALUES (1, 10), (1, 20), (1, 30)");
     execute_statement("create table t1 (c0 int primary key, c1 int)");
+    execute_statement("create index i1 on t1 (c1)");
     execute_statement("insert or ignore into t1 select * from t0 order by c1 desc");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM t1 ORDER BY c0", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 30)), result[0]);
+    }
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("t1"),
+            *get_impl(*db_).tables()->find_index("i1"),
+            create_nullable_record<kind::int4>(),
+            create_nullable_record<kind::int4>());
+        ASSERT_EQ(1, entries.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(30)), entries[0].first);
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), entries[0].second);
     }
 }
 

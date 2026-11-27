@@ -15,28 +15,17 @@
  */
 #pragma once
 
-#include <memory>
-#include <vector>
-
-#include <takatori/util/maybe_shared_ptr.h>
-
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variables_view.h>
-#include <jogasaki/index/primary_context.h>
-#include <jogasaki/index/secondary_context.h>
-#include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/transaction_context.h>
 
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
-
-using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief write_create operator context
@@ -55,13 +44,9 @@ public:
     write_create_context(
         class abstract::task_context* ctx,
         variables_view variables,
-        std::unique_ptr<kvs::storage> stg,
         transaction_context* tx,
-        maybe_shared_ptr<meta::record_meta> key_meta,
-        maybe_shared_ptr<meta::record_meta> value_meta,
         memory_resource* resource,
-        memory_resource* varlen_resource,
-        std::vector<index::secondary_context> secondary_contexts
+        memory_resource* varlen_resource
     );
 
     [[nodiscard]] operator_kind kind() const noexcept override;
@@ -70,12 +55,8 @@ public:
 
     [[nodiscard]] transaction_context* transaction() const noexcept;
 
-    [[nodiscard]] index::primary_context& primary_context() noexcept;
-
 private:
     transaction_context* tx_{};
-    index::primary_context primary_context_{};
-    std::vector<index::secondary_context> secondary_contexts_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

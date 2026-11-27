@@ -49,6 +49,26 @@ protected:
         }
         return {*index->table().definition_id(), *index->definition_id()};
     }
+    void clear_persisted_definition_ids() {
+        std::vector<std::string> names{};
+        ASSERT_EQ(status::ok, global::db()->list_storages(names));
+        for (auto const& name : names) {
+            auto target = global::db()->get_storage(name);
+            ASSERT_TRUE(target);
+            sharksfin::StorageOptions options{};
+            ASSERT_EQ(status::ok, target->get_options(options));
+            if (options.payload().empty()) continue;
+            proto::metadata::storage::Storage metadata{};
+            ASSERT_TRUE(metadata.ParseFromString(std::string{options.payload()}));
+            auto* index = metadata.mutable_index();
+            index->clear_definition_id_optional();
+            if (index->has_table_definition()) index->mutable_table_definition()->clear_definition_id_optional();
+            std::string payload{};
+            ASSERT_TRUE(metadata.SerializeToString(&payload));
+            options.payload(std::move(payload));
+            ASSERT_EQ(status::ok, target->set_options(options));
+        }
+    }
 };
 
 TEST_F(definition_id_test, normal_tables_and_secondary_indices_receive_ids) {
@@ -156,23 +176,17 @@ TEST_F(definition_id_test, parallel_ddl_uses_unique_ids) {
 TEST_F(definition_id_test, legacy_missing_ids_are_assigned_once_and_persisted) {
     if (kvs::implementation_id() == "memory") GTEST_SKIP();
     execute_statement("CREATE TABLE T(K BIGINT PRIMARY KEY)");
-    auto key = global::storage_manager()->get_storage_key("T");
-    ASSERT_TRUE(key);
-    {
-        auto storage = global::db()->get_storage(*key);
-        ASSERT_TRUE(storage);
-        sharksfin::StorageOptions options{};
-        ASSERT_EQ(status::ok, storage->get_options(options));
-        proto::metadata::storage::Storage metadata{};
-        ASSERT_TRUE(metadata.ParseFromString(std::string{options.payload()}));
-        metadata.mutable_index()->clear_definition_id_optional();
-        metadata.mutable_index()->mutable_table_definition()->clear_definition_id_optional();
-        std::string payload{};
-        ASSERT_TRUE(metadata.SerializeToString(&payload));
-        options.payload(std::move(payload));
-        ASSERT_EQ(status::ok, storage->set_options(options));
-    }
+    clear_persisted_definition_ids();
     ASSERT_EQ(status::ok, db_->stop());
+    {
+        auto database = kvs::database::open({{"location", path()}});
+        ASSERT_TRUE(database);
+        auto counter = database->get_storage(storage::definition_id_allocator::storage_name);
+        ASSERT_TRUE(counter);
+        ASSERT_EQ(status::ok, counter->delete_storage());
+        counter.reset();
+        ASSERT_TRUE(database->close());
+    }
     ASSERT_EQ(status::ok, db_->start());
     auto migrated = ids("T");
     EXPECT_NE(migrated[0], migrated[1]);
@@ -200,6 +214,43 @@ TEST_F(definition_id_test, missing_counter_is_an_error_not_a_reset_or_partial_cr
     execute_statement("CREATE TABLE T(K BIGINT PRIMARY KEY)", status::err_invalid_state);
     EXPECT_FALSE(db_impl()->tables()->find_table("T"));
     EXPECT_FALSE(global::storage_manager()->find_by_name("T"));
+}
+
+TEST_F(definition_id_test, missing_counter_storage_with_persisted_ids_fails_restart) {
+    if (kvs::implementation_id() == "memory") GTEST_SKIP();
+    execute_statement("CREATE TABLE T(K BIGINT PRIMARY KEY)");
+    ASSERT_EQ(status::ok, db_->stop());
+    auto database = kvs::database::open({{"location", path()}});
+    ASSERT_TRUE(database);
+    auto counter = database->get_storage(storage::definition_id_allocator::storage_name);
+    ASSERT_TRUE(counter);
+    ASSERT_EQ(status::ok, counter->delete_storage());
+    counter.reset();
+    ASSERT_TRUE(database->close());
+    database.reset();
+    EXPECT_EQ(status::err_invalid_state, db_->start());
+    database = kvs::database::open({{"location", path()}});
+    ASSERT_TRUE(database);
+    EXPECT_FALSE(database->get_storage(storage::definition_id_allocator::storage_name));
+    ASSERT_TRUE(database->close());
+}
+
+TEST_F(definition_id_test, empty_existing_counter_storage_with_persisted_ids_fails_restart) {
+    if (kvs::implementation_id() == "memory") GTEST_SKIP();
+    execute_statement("CREATE TABLE T(K BIGINT PRIMARY KEY)");
+    ASSERT_EQ(status::ok, db_->stop());
+    auto database = kvs::database::open({{"location", path()}});
+    ASSERT_TRUE(database);
+    auto counter = database->get_storage(storage::definition_id_allocator::storage_name);
+    ASSERT_TRUE(counter);
+    ASSERT_EQ(status::ok, counter->delete_storage());
+    counter.reset();
+    counter = database->create_storage(storage::definition_id_allocator::storage_name);
+    ASSERT_TRUE(counter);
+    counter.reset();
+    ASSERT_TRUE(database->close());
+    database.reset();
+    EXPECT_EQ(status::err_invalid_state, db_->start());
 }
 
 TEST_F(definition_id_test, durability_progress_does_not_require_another_sql_worker) {
@@ -246,7 +297,8 @@ TEST_F(definition_id_test, maximum_existing_id_survives_recovery_and_truncate) {
 
 TEST_F(definition_id_test, empty_counter_storage_recovers_unfinished_initialization) {
     if (kvs::implementation_id() == "memory") GTEST_SKIP();
-    // Simulate a crash after counter storage creation but before its first commit.
+    // Simulate a legacy upgrade that stopped after counter storage creation but before its first reservation.
+    clear_persisted_definition_ids();
     auto counter = global::db()->get_storage(storage::definition_id_allocator::storage_name);
     ASSERT_TRUE(counter);
     auto tx = global::db()->create_transaction();

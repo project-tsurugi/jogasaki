@@ -1518,6 +1518,7 @@ status database::recover_metadata() {
 
     // Seed from all durable declarations, including delete-reserved storage, before assigning any missing ID.
     std::uint64_t minimum_id = 1;
+    bool has_definition_id = false;
     for (auto const& name : names) {
         auto storage = kvs_db_->get_storage(name);
         if (!storage) return status::err_invalid_state;
@@ -1530,8 +1531,23 @@ status database::recover_metadata() {
         auto advance = [&](std::uint64_t id) {
             minimum_id = std::max(minimum_id, id == std::numeric_limits<std::uint64_t>::max() ? id : id + 1);
         };
-        if (index.definition_id_optional_case() != proto::metadata::storage::IndexDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) advance(index.definition_id());
-        if (index.has_table_definition() && index.table_definition().definition_id_optional_case() != proto::metadata::storage::TableDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) advance(index.table_definition().definition_id());
+        if (index.definition_id_optional_case() != proto::metadata::storage::IndexDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) {
+            has_definition_id = true;
+            advance(index.definition_id());
+        }
+        if (index.has_table_definition() && index.table_definition().definition_id_optional_case() != proto::metadata::storage::TableDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) {
+            has_definition_id = true;
+            advance(index.table_definition().definition_id());
+        }
+    }
+    bool allocator_initialized = false;
+    if (auto rc = definition_ids_->inspect(allocator_initialized); rc != status::ok) return rc;
+    if (!allocator_initialized && has_definition_id) {
+        LOG_LP(ERROR) << "Definition ID allocator storage is missing or uninitialized while persisted table or index metadata contains definition IDs.";
+        if (definition_ids_->storage_created()) {
+            if (auto rc = definition_ids_->discard_created_storage(); rc != status::ok) return rc;
+        }
+        return status::err_invalid_state;
     }
     std::uint64_t ignored{};
     if (auto rc = definition_ids_->reserve(0, minimum_id, ignored); rc != status::ok) return rc;

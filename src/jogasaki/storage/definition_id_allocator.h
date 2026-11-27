@@ -28,18 +28,22 @@ namespace jogasaki::storage {
 // IDs belong to a worker database, not to a process or a live-storage list.
 class definition_id_allocator {
 public:
-    static constexpr char storage_name[] = "__system_definition_ids";
+    static constexpr char storage_name[] = "__system_storage_definition_ids";
     explicit definition_id_allocator(kvs::database& db, std::chrono::milliseconds durability_wait = std::chrono::seconds(30)) :
         db_(&db), durability_wait_(durability_wait) {}
     status initialize();
+    status discard_created_storage();
+    status inspect(bool& initialized);
     status reserve(std::uint64_t count, std::uint64_t minimum, std::uint64_t& first);
     // Assign only missing IDs in the serialized metadata, preserving prepared statements.
     status assign(std::string& payload);
+    [[nodiscard]] bool storage_created() const noexcept { return storage_created_; }
     [[nodiscard]] std::shared_ptr<std::atomic<std::uint64_t>> const& durable_marker() const { return durable_; }
 private:
     kvs::database* db_{};
     std::chrono::milliseconds durability_wait_{};
     std::unique_ptr<kvs::storage> storage_{};
+    bool storage_created_{};
     std::shared_ptr<std::atomic<std::uint64_t>> durable_{std::make_shared<std::atomic<std::uint64_t>>(0)};
 };
 }

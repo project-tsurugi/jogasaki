@@ -29,8 +29,40 @@
 namespace jogasaki::storage {
 status definition_id_allocator::initialize() {
     storage_ = db_->get_storage(storage_name);
-    if (!storage_) storage_ = db_->create_storage(storage_name);
+    storage_created_ = !storage_;
+    if (storage_created_) storage_ = db_->create_storage(storage_name);
     return storage_ ? status::ok : status::err_io_error;
+}
+
+status definition_id_allocator::discard_created_storage() {
+    if (!storage_created_ || !storage_) return status::err_invalid_state;
+    auto rc = storage_->delete_storage();
+    if (rc == status::ok || rc == status::not_found) {
+        storage_.reset();
+        storage_created_ = false;
+        return status::ok;
+    }
+    return rc;
+}
+
+status definition_id_allocator::inspect(bool& initialized) {
+    initialized = false;
+    if (!storage_) return status::err_invalid_state;
+    std::unique_ptr<kvs::transaction> tx{};
+    if (auto rc = kvs::transaction::create_transaction(*db_, tx); rc != status::ok) return rc;
+    std::string_view next{};
+    auto next_rc = storage_->content_get(*tx, "next", next);
+    if (next_rc != status::ok && next_rc != status::not_found) return next_rc;
+    std::string_view marker{};
+    auto marker_rc = storage_->content_get(*tx, "initialized", marker);
+    if (marker_rc != status::ok && marker_rc != status::not_found) return marker_rc;
+    if (next_rc == status::not_found && marker_rc == status::not_found) return status::ok;
+    if (next_rc != status::ok || marker_rc != status::ok || next.size() != sizeof(std::uint64_t) ||
+        utils::from_big_endian(next) == 0 || marker != "v1") {
+        return status::err_invalid_state;
+    }
+    initialized = true;
+    return status::ok;
 }
 
 status definition_id_allocator::reserve(std::uint64_t count, std::uint64_t minimum, std::uint64_t& first) {

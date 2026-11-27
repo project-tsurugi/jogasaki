@@ -685,8 +685,6 @@ TEST_F(exclusive_ddl_dml_test, truncate_while_dml_compiled_concurrently_sees_con
     }
     std::size_t truncated = 0;
     std::size_t inconsistent = 0;
-    std::size_t verified = 0;
-    std::map<status, std::size_t> verify_errors{};  // unexpected errors on verification
     // Repeat at least 20 times, and continue until TRUNCATE succeeds at least once since TRUNCATE can be blocked by
     // on-going DML every time. Give up after 300 seconds to avoid running forever. Note that the test can fail
     // (truncated == 0) by bad luck if TRUNCATE is blocked for the whole period, though it is very unlikely.
@@ -698,41 +696,21 @@ TEST_F(exclusive_ddl_dml_test, truncate_while_dml_compiled_concurrently_sees_con
             break;
         }
         {
-            // Verify every row in the primary index is found via the secondary index (c0 = c1 for all rows).
-            // Verify by OCC and count the inconsistency only when the transaction commits successfully, which
-            // ensures that the primary and secondary indices were read consistently. The verification is often
-            // aborted by the concurrent inserts (serialization failure), and its result is discarded then.
-            auto vtx = utils::create_transaction(*db_, false, false);
+            // verify every row in the primary index is found via the secondary index, reading them in the same
+            // snapshot (c0 = c1 for all rows)
+            auto rtx = utils::create_transaction(*db_, true, false);
             std::vector<mock::basic_record> primary{};
-            status res{};
-            (void) builder().text("SELECT c0 FROM t").tx(*vtx).output_records(primary).st(res).expect_error(true).run();
-            std::vector<std::string> missing{};
+            (void) builder().text("SELECT c0 FROM t").tx(*rtx).output_records(primary).run();
             for(auto&& r : primary) {
-                if(res != status::ok) {
-                    break;
-                }
                 auto v = std::to_string(r.get_value<std::int64_t>(0));
                 std::vector<mock::basic_record> secondary{};
-                (void) builder().text(index_query(v)).tx(*vtx).output_records(secondary).st(res).expect_error(true).run();
-                if(res == status::ok && secondary.size() != 1) {
-                    missing.emplace_back(v);
-                }
-            }
-            if(res == status::ok) {
-                res = vtx->commit();
-            } else {
-                // the transaction is already aborted by the error, but abort again to make sure
-                (void) vtx->abort();
-            }
-            if(res == status::ok) {
-                ++verified;
-                inconsistent += missing.size();
-                for(auto&& v : missing) {
+                (void) builder().text(index_query(v)).tx(*rtx).output_records(secondary).run();
+                if(secondary.size() != 1) {
+                    ++inconsistent;
                     std::cerr << "row c0=" << v << " is not found via the secondary index" << std::endl;
                 }
-            } else if(res != status::err_serialization_failure) {
-                ++verify_errors[res];
             }
+            ASSERT_EQ(status::ok, rtx->commit());
         }
         auto tx = utils::create_transaction(*db_);
         status res{};
@@ -750,22 +728,17 @@ TEST_F(exclusive_ddl_dml_test, truncate_while_dml_compiled_concurrently_sees_con
     for(auto&& f : workers) {
         f.get();
     }
-    std::cerr << "truncated:" << truncated << " inserted:" << inserted << " blocked dml:" << blocked_dml
-              << " verified:" << verified << std::endl;
+    std::cerr << "truncated:" << truncated << " inserted:" << inserted << " blocked dml:" << blocked_dml << std::endl;
     for(auto&& [msg, cnt] : compile_errors) {
         std::cerr << "compile error x" << cnt << ": " << msg << std::endl;
     }
     for(auto&& [st, cnt] : exec_errors) {
         std::cerr << "execution error x" << cnt << ": " << st << std::endl;
     }
-    for(auto&& [st, cnt] : verify_errors) {
-        std::cerr << "verification error x" << cnt << ": " << st << std::endl;
-    }
     EXPECT_LT(0, truncated);
     EXPECT_LT(0, inserted);
     EXPECT_TRUE(compile_errors.empty());
     EXPECT_TRUE(exec_errors.empty());
-    EXPECT_TRUE(verify_errors.empty());
     EXPECT_EQ(0, inconsistent);
 }
 

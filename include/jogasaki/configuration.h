@@ -937,6 +937,7 @@ public:
         print_non_default(index_max_early_stop_limit_count);
         print_non_default(table_metadata_lock_shards);
         print_non_default(udf_client_timeout);
+        print_non_default(distributed_query_coordinator_enabled);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \

@@ -78,6 +78,7 @@ model::statement_kind create_table::kind() const noexcept {
 }
 
 
+
 bool create_table::operator()(request_context& context) const {
     assert_with_exception(context.storage_provider());
     auto& provider = *context.storage_provider();
@@ -129,6 +130,7 @@ bool create_table::operator()(request_context& context) const {
     if(! utils::validate_index_key_type(context, *i)) {
         return false;
     }
+
 
     // Creating sequence can possibly hit cc engine error (esp. with occ),
     // so do it first so that we can exit early in case of errors.

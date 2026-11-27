@@ -74,7 +74,9 @@ void serial_task_scheduler::start() {
 }
 
 void serial_task_scheduler::stop() {
+    // discard everything not yet executed on this thread, including conditional tasks
     tasks_.clear();
+    conditional_tasks_.clear();
 }
 
 task_scheduler_kind serial_task_scheduler::kind() const noexcept {

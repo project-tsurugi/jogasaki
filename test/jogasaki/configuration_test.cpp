@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,14 @@ TEST_F(configuration_test, print_non_default_values) {
     std::stringstream ss{};
     ss << c;
     EXPECT_EQ("single_thread:true thread_pool_size:123 ", ss.str());
+}
+
+TEST_F(configuration_test, print_distributed_query_coordinator_enabled) {
+    configuration c{};
+    c.distributed_query_coordinator_enabled(true);
+    std::stringstream ss{};
+    ss << c;
+    EXPECT_EQ("distributed_query_coordinator_enabled:true ", ss.str());
 }
 
 TEST_F(configuration_test, print_request_cancel_cfg) {
